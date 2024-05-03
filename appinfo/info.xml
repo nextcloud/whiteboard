@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+	<id>whiteboard</id>
+	<name>Whiteboard</name>
+	<summary>Whiteboard app</summary>
+	<description><![CDATA[
+
+Collaborative whiteboard app for Nextcloud
+
+]]>
+	</description>
+	<version>0.1.0</version>
+	<licence>agpl</licence>
+	<author>Julius Härtl</author>
+	<namespace>Whiteboard</namespace>
+	<types>
+		<filesystem/>
+		<dav/>
+	</types>
+	<documentation>
+		<admin>https://github.com/nextcloud/whiteboard/blob/main/README.md</admin>
+	</documentation>
+	<category>tools</category>
+	<category>files</category>
+
+	<website>https://github.com/nextcloud/whiteboard</website>
+	<bugs>https://github.com/nextcloud/whiteboard/issues</bugs>
+	<repository>https://github.com/nextcloud/whiteboard.git</repository>
+	<screenshot>https://raw.githubusercontent.com/nextcloud/whiteboard/main/screenshots/0.7.0.png</screenshot>
+
+	<dependencies>
+		<nextcloud min-version="29" max-version="29"/>
+	</dependencies>
+</info>

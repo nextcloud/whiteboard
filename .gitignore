@@ -1,0 +1,11 @@
+
+\.idea/
+
+/build/
+/js/
+/dist/
+/vendor/
+/node_modules/
+
+.php-cs-fixer.cache
+.phpunit.result.cache

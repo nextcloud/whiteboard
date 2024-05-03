@@ -1,0 +1,62 @@
+{
+  "name": "whiteboard",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite --mode production build",
+    "dev": "vite --mode development build",
+    "watch": "vite --mode development build --watch",
+    "lint": "eslint --ext .js,.ts,.vue src",
+    "lint:fix": "eslint --ext .js,.ts,.vue src --fix",
+    "stylelint": "stylelint 'src/**/*.vue'",
+    "stylelint:fix": "stylelint src/**/*.vue --fix"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "^0.17.6",
+    "@mdi/svg": "^7.4.47",
+    "@nextcloud/auth": "^2.3.0",
+    "@nextcloud/axios": "^2.5.0",
+    "@nextcloud/event-bus": "^3.2.0",
+    "@nextcloud/files": "^3.2.1",
+    "@nextcloud/l10n": "^3.0.0",
+    "@nextcloud/router": "^3.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vue": "^2.7.14"
+  },
+  "devDependencies": {
+    "@nextcloud/browserslist-config": "^3.0.1",
+    "@nextcloud/eslint-config": "^8.3.0",
+    "@nextcloud/stylelint-config": "^3.0.0",
+    "@nextcloud/vite-config": "^1.2.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vue/tsconfig": "^0.5.1",
+    "prettier": "^3.2.5",
+    "stylelint-config-css-modules": "^4.4.0",
+    "typescript": "^5.4.5",
+    "typescript-plugin-css-modules": "^5.1.0",
+    "vite": "^5.2.11"
+  },
+  "prettier": {
+    "useTabs": true,
+    "semi": false,
+    "singleQuote": true,
+    "bracketSameLine": true,
+    "tabWidth": 4
+  },
+  "browserslist": [
+    "extends @nextcloud/browserslist-config"
+  ],
+  "eslintConfig": {
+    "extends": [
+      "@nextcloud/eslint-config/typescript"
+    ]
+  },
+  "engines": {
+    "node": "^20",
+    "npm": "^9"
+  }
+}
