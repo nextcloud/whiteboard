@@ -65,6 +65,7 @@ if (typeof OCA.Viewer !== 'undefined') {
 		id: 'whiteboard',
 		mimes: [
 			'application/gzip',
+			'application/vnd.excalidraw+json'
 		],
 		component: Component,
 		group: null,

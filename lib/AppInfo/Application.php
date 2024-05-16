@@ -12,10 +12,12 @@ namespace OCA\Whiteboard\AppInfo;
 
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Listener\LoadViewerListener;
+use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Files\Template\RegisterTemplateCreatorEvent;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'whiteboard';
@@ -26,7 +28,7 @@ class Application extends App implements IBootstrap {
 
 	public function register(IRegistrationContext $context): void {
 		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
-
+		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 	}
 
 	public function boot(IBootContext $context): void {
