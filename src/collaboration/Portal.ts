@@ -20,33 +20,34 @@ export class Portal {
 	open(socket: Socket) {
 		this.socket = socket
 		this.socket.on('init-room', () => {
-			alert('room initialized')
 			console.log('room initialized')
 			if (this.socket) {
-				alert(`joined room ${this.roomId}`)
 				console.log(`joined room ${this.roomId}`)
 				this.socket.emit('join-room', this.roomId)
 			}
 		})
 		this.socket.on('new-user', async (_socketId: string) => {
-			alert(`NEW USER ${_socketId}`)
 			console.log(`NEW USER ${_socketId}`)
 			this.broadcastScene('SCENE_INIT', this.collab.getSceneElementsIncludingDeleted())
 		})
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		this.socket.on('room-user-change', (clients: any) => {
-			alert(`ROOM USER CHANGE ${clients}`)
 			console.log(`ROOM USER CHANGE ${clients}`)
 		})
 
 		this.socket.on('client-broadcast', (data, iv:Uint8Array) => {
-			console.log(iv, data)
 
-			switch (data.type) {
+			const decoded = JSON.parse(new TextDecoder().decode(data))
+			console.log(iv, data)
+			console.log(decoded)
+			console.log(data)
+
+			switch (decoded.type) {
 			case 'SCENE_INIT': {
-				const remoteElements = data.payload.elements
+				const remoteElements = decoded.payload.elements
 				const reconciledElements = this.collab._reconcileElements(remoteElements)
+				this.collab.handleRemoteSceneUpdate(reconciledElements)
 				break
 			}
 			}
@@ -97,7 +98,6 @@ export class Portal {
 			},
 		}
 		await this._broadcastSocketData(data)
-		alert('BROADCASTED')
 	}
 
 }

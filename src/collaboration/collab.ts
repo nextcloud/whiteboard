@@ -22,23 +22,31 @@ export class Collab {
 		this.excalidrawAPI.onChange(this.onChange)
 	}
 
-	private onChange(elements: readonly ExcalidrawElement[], state: AppState) {
-		console.log(elements)
-		console.log(state)
+	private onChange = (elements: readonly ExcalidrawElement[], state: AppState) => {
+		this.portal.broadcastScene('SCENE_INIT', elements)
+		console.log('updated')
 	}
 
 	public getSceneElementsIncludingDeleted = () => {
 		return this.excalidrawAPI.getSceneElementsIncludingDeleted()
 	}
 
-
 	public _reconcileElements = (remoteElements: readonly ExcalidrawElement[]) => {
-		const localElements = this.getSceneElementsIncludingDeleted()
-		const appState = this.excalidrawAPI.getAppState()
 		const restoredRemoteElements = restoreElements(remoteElements, null)
-		const reconciledElements = reconcileElements(localElements,restoredRemoteElements, appState)
 
-		return reconciledElements
+		// TODO excalidraw.com has a reconcilation algo in place here
+		// const localElements = this.getSceneElementsIncludingDeleted()
+		// const appState = this.excalidrawAPI.getAppState()
+		// const reconciledElements = reconcileElements(localElements,restoredRemoteElements, appState)
+
+		return restoredRemoteElements
+	}
+
+	handleRemoteSceneUpdate(elements: ExcalidrawElement[]) {
+		this.excalidrawAPI.updateScene({
+			elements,
+		},
+		)
 	}
 
 }

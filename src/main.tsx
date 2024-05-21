@@ -61,7 +61,6 @@ const Component = {
 }
 
 if (typeof OCA.Viewer !== 'undefined') {
-	alert('registering')
 	window.OCA.Viewer.registerHandler({
 		id: 'whiteboard',
 		mimes: [
