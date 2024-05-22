@@ -11,9 +11,11 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\AppInfo;
 
 use OCA\Viewer\Event\LoadViewer;
+use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
 use OCP\AppFramework\App;
+use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
@@ -27,8 +29,8 @@ class Application extends App implements IBootstrap {
 	}
 
 	public function register(IRegistrationContext $context): void {
-		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
-		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
+		$context->registerEventListener(AddContentSecurityPolicyEvent::class, AddContentSecurityPolicyListener::class);
+		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);;
 	}
 
 	public function boot(IBootContext $context): void {

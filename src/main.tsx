@@ -71,4 +71,6 @@ if (typeof OCA.Viewer !== 'undefined') {
 		theme: 'default',
 		canCompare: true,
 	})
+} else {
+	alert('UNDEFINED')
 }
