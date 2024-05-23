@@ -47,15 +47,18 @@ try {
 
 		socket.on('server-broadcast', (roomID, encryptedData, iv) => {
 			console.log(`${socket.id} sends update to ${roomID}`);
+			console.log(`Data: ${encryptedData}, IV: ${iv}`);
 			socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv);
 		});
 
 		socket.on('server-volatile-broadcast', (roomID, encryptedData, iv) => {
 			console.log(`${socket.id} sends volatile update to ${roomID}`);
+			console.log(`Data: ${encryptedData}, IV: ${iv}`);
 			socket.volatile.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv);
 		});
 
 		socket.on('user-follow', async (payload) => {
+			console.log(`User follow action: ${JSON.stringify(payload)}`);
 			const roomID = `follow@${payload.userToFollow.socketId}`;
 
 			switch (payload.action) {
