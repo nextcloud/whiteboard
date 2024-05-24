@@ -8,7 +8,6 @@ export class Portal {
 	socket: Socket | null = null
 	roomId: string
 	roomKey: string
-	broadcastedElementVersions: Map<string, number> = new Map()
 	collab: Collab
 
 	constructor(roomId: string, roomKey: string, collab: Collab) {
@@ -66,31 +65,23 @@ export class Portal {
 		volatile: boolean = false,
 		roomId?: string,
 	  ) {
-		if (this.isOpen()) {
-		  const json = JSON.stringify(data)
-		  const encoded = new TextEncoder().encode(json)
-		  const encryptedBuffer = encoded
+		const json = JSON.stringify(data)
+		const encoded = new TextEncoder().encode(json)
 
-		  this.socket?.emit(
-				volatile ? 'server-volatile-broadcast' : 'server-broadcast',
-				roomId ?? this.roomId,
-				encryptedBuffer,
-				[],
-		  )
-		}
+		// TODO possibly add end to end encryption
+		const encryptedBuffer = encoded
+
+		this.socket?.emit(
+			volatile ? 'server-volatile-broadcast' : 'server-broadcast',
+			roomId ?? this.roomId,
+			encryptedBuffer,
+			[],
+		)
 	  }
 
 	async broadcastScene(
 		updateType: string,
 		elements: readonly ExcalidrawElement[]) {
-
-		for (const element of elements) {
-			this.broadcastedElementVersions.set(
-				element.id,
-				element.version,
-			)
-		}
-
 		const data = {
 			type: updateType,
 			payload: {
