@@ -1,18 +1,23 @@
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
-import { Portal } from './Portal'
-import { io } from 'socket.io-client'
-import { restoreElements } from '@excalidraw/excalidraw'
-import { throttle } from 'lodash'
-import { hashElementsVersion, reconcileElements } from './util'
+import type {
+	ExcalidrawElement
+} from '@excalidraw/excalidraw/types/element/types'
+import type {
+	AppState,
+	ExcalidrawImperativeAPI
+} from '@excalidraw/excalidraw/types/types'
+import {Portal} from './Portal'
+import {io} from 'socket.io-client'
+import {restoreElements} from '@excalidraw/excalidraw'
+import {throttle} from 'lodash'
+import {hashElementsVersion, reconcileElements} from './util'
 
 export class Collab {
 
-	excalidrawAPI : ExcalidrawImperativeAPI
+	excalidrawAPI: ExcalidrawImperativeAPI
 	portal: Portal
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 
-	constructor(excalidrawAPI : ExcalidrawImperativeAPI) {
+	constructor(excalidrawAPI: ExcalidrawImperativeAPI) {
 		this.excalidrawAPI = excalidrawAPI
 		const url = window.location.href
 		const fileIdMatch = url.match(/\/files\/(\d+)\?/)
@@ -47,8 +52,8 @@ export class Collab {
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
-			elements,
-		},
+				elements,
+			},
 		)
 	}
 
@@ -58,13 +63,11 @@ export class Collab {
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	private onChange = (elements: readonly ExcalidrawElement[], _state: AppState) => {
-
 		if (hashElementsVersion(elements)
-				> this.getLastBroadcastedOrReceivedSceneVersion()
+			> this.getLastBroadcastedOrReceivedSceneVersion()
 		) {
 			this.lastBroadcastedOrReceivedSceneVersion = hashElementsVersion(elements)
 			throttle(() => this.portal.broadcastScene('SCENE_INIT', elements))()
 		}
 	}
-
 }

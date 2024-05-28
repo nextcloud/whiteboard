@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
-import { Server as SocketIO } from 'socket.io';
+import {Server as SocketIO} from 'socket.io';
+import axios from 'axios';
 
 const app = express();
 
@@ -18,13 +19,11 @@ server.listen(port, () => {
 
 try {
 	const io = new SocketIO(server, {
-		transports: ['websocket', 'polling'],
-		cors: {
+		transports: ['websocket', 'polling'], cors: {
 			allowedHeaders: ['X-Requested-With', 'Content-Type', 'Authorization'],
 			origin: '*',
 			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-		},
-		allowEIO3: true,
+		}, allowEIO3: true,
 	});
 
 	io.on('connection', (socket) => {
@@ -34,6 +33,30 @@ try {
 		socket.on('join-room', async (roomID) => {
 			console.log(`${socket.id} has joined ${roomID}`);
 			await socket.join(roomID);
+
+			// Fetch data from the PHP service API
+			try {
+				const response = await axios.get(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
+					auth: {
+						username: 'admin', password: 'admin'
+					}
+				});
+				const roomData = response.data.data;
+
+				// Convert the room data to a JSON string
+				const jsonString = JSON.stringify(roomData.elements);
+
+				// Use the TextEncoder API to convert the JSON string to a Uint8Array
+				const uint8Array = new TextEncoder().encode(jsonString);
+
+				// Get the ArrayBuffer from the Uint8Array
+				const arrayBuffer = uint8Array.buffer;
+
+				socket.emit('joined-data', arrayBuffer, []);
+			} catch (error) {
+				console.error(`Failed to fetch data for room ${roomID}`, error);
+			}
+
 			const sockets = await io.in(roomID).fetchSockets();
 			if (sockets.length <= 1) {
 				io.to(`${socket.id}`).emit('first-in-room');
@@ -46,14 +69,10 @@ try {
 		});
 
 		socket.on('server-broadcast', (roomID, encryptedData, iv) => {
-			console.log(`${socket.id} sends update to ${roomID}`);
-			console.log(`Data: ${encryptedData}, IV: ${iv}`);
 			socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv);
 		});
 
 		socket.on('server-volatile-broadcast', (roomID, encryptedData, iv) => {
-			console.log(`${socket.id} sends volatile update to ${roomID}`);
-			console.log(`Data: ${encryptedData}, IV: ${iv}`);
 			socket.volatile.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv);
 		});
 
