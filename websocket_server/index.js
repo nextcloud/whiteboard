@@ -1,7 +1,7 @@
 import express from 'express';
 import http from 'http';
 import {Server as SocketIO} from 'socket.io';
-import axios from 'axios';
+import fetch from 'node-fetch';
 
 const app = express();
 
@@ -34,14 +34,19 @@ try {
 			console.log(`${socket.id} has joined ${roomID}`);
 			await socket.join(roomID);
 
-			// Fetch data from the PHP service API
 			try {
-				const response = await axios.get(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
-					auth: {
-						username: 'admin', password: 'admin'
+				const response = await fetch(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
+					headers: {
+						'Authorization': 'Basic ' + Buffer.from('admin:admin').toString('base64')
 					}
 				});
-				const roomData = response.data.data;
+
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+
+				const data = await response.json();
+				const roomData = data.data;
 
 				// Convert the room data to a JSON string
 				const jsonString = JSON.stringify(roomData.elements);
