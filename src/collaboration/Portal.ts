@@ -1,9 +1,8 @@
 /* eslint-disable no-console */
-import type {
-	ExcalidrawElement
-} from '@excalidraw/excalidraw/types/element/types'
-import type {Socket} from 'socket.io-client'
-import type {Collab} from './collab'
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import type { Socket } from 'socket.io-client'
+import type { Collab } from './collab'
+import type { Gesture } from '@excalidraw/excalidraw/types/types'
 
 export class Portal {
 
@@ -33,15 +32,16 @@ export class Portal {
 					console.log(`JOINED DATA ${new TextDecoder().decode(data)}`)
 
 					const reconciledElements = this.collab._reconcileElements(remoteElements)
+
 					this.collab.handleRemoteSceneUpdate(reconciledElements)
 
-					const elements = this.collab.excalidrawAPI.getSceneElements();
+					const elements = this.collab.excalidrawAPI.getSceneElements()
 
 					this.collab.excalidrawAPI.scrollToContent(elements, {
 						fitToContent: true,
 						animate: true,
 						duration: 500
-					});
+					})
 				})
 			}
 		})
@@ -69,6 +69,9 @@ export class Portal {
 					this.collab.handleRemoteSceneUpdate(reconciledElements)
 					break
 				}
+				case 'MOUSE_LOCATION': {
+					this.collab.updateCollaborator(decoded.payload.socketId, decoded.payload)
+				}
 			}
 		})
 
@@ -83,7 +86,7 @@ export class Portal {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		data: any,
 		volatile: boolean = false,
-		roomId?: string,
+		roomId?: string
 	) {
 		const json = JSON.stringify(data)
 
@@ -93,7 +96,7 @@ export class Portal {
 			volatile ? 'server-volatile-broadcast' : 'server-broadcast',
 			roomId ?? this.roomId,
 			encryptedBuffer,
-			[],
+			[]
 		)
 	}
 
@@ -103,9 +106,30 @@ export class Portal {
 		const data = {
 			type: updateType,
 			payload: {
-				elements,
-			},
+				elements
+			}
 		}
 		await this._broadcastSocketData(data)
+	}
+
+	async broadcastMouseLocation(payload: {
+		pointer: { x: number, y: number, tool: 'pointer' | 'laser' };
+		button: 'down' | 'up';
+		pointersMap: Gesture['pointers'];
+	}) {
+		const data = {
+			type: 'MOUSE_LOCATION',
+			payload: {
+				socketId: this.socket?.id,
+				pointer: payload.pointer,
+				button: payload.button || 'up',
+				selectedElementIds: this.collab.excalidrawAPI.getAppState().selectedElementIds,
+				username: this.socket?.id
+			}
+		}
+		return this._broadcastSocketData(
+			data,
+			true // volatile
+		)
 	}
 }

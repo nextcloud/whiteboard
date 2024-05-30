@@ -1,31 +1,26 @@
 /* eslint-disable no-console */
-import {useCallback, useEffect, useRef, useState} from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	Excalidraw,
 	exportToClipboard,
 	LiveCollaborationTrigger,
 	MainMenu,
-	MIME_TYPES,
 	restoreElements,
 	sceneCoordsToViewportCoords,
 	Sidebar,
 	useHandleLibrary,
-	viewportCoordsToSceneCoords,
+	viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
 
 import ExampleSidebar from './sidebar/ExampleSidebar'
 import './App.scss'
 import initialData from './initialData'
 
-import {nanoid} from 'nanoid'
-import {
-	distance2d,
-	resolvablePromise,
-	withBatchedUpdates,
-	withBatchedUpdatesThrottled,
-} from './utils'
-import type {ExcalidrawImperativeAPI} from '@excalidraw/excalidraw/types/types'
-import {Collab} from './collaboration/collab'
+import { nanoid } from 'nanoid'
+import { distance2d, resolvablePromise, withBatchedUpdates, withBatchedUpdatesThrottled } from './utils'
+
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import { Collab } from './collaboration/collab'
 
 declare global {
 	interface Window {
@@ -88,6 +83,10 @@ export default function App() {
 		excalidrawAPI,
 		setExcalidrawAPI,
 	] = useState<ExcalidrawImperativeAPI | null>(null)
+	const [collab, setCollab] = useState<Collab | null>(null)
+
+	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI))
+	if (collab && !collab.portal.socket) collab.startCollab()
 
 	useHandleLibrary({excalidrawAPI})
 
@@ -478,6 +477,7 @@ export default function App() {
 			</MainMenu>
 		)
 	}
+
 	return (
 		<div className="App" ref={appRef}>
 			<ExampleSidebar>
@@ -492,11 +492,7 @@ export default function App() {
 						onChange={(elements, state) => {
 							console.info('Elements :', elements, 'State : ', state)
 						}}
-						onPointerUpdate={(payload: {
-							pointer: { x: number; y: number };
-							button: 'down' | 'up';
-							pointersMap: Gesture['pointers'];
-						}) => setPointerData(payload)}
+						onPointerUpdate={collab?.onPointerUpdate}
 						viewModeEnabled={viewModeEnabled}
 						zenModeEnabled={zenModeEnabled}
 						gridModeEnabled={gridModeEnabled}

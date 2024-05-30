@@ -1,21 +1,17 @@
-import type {
-	ExcalidrawElement
-} from '@excalidraw/excalidraw/types/element/types'
-import type {
-	AppState,
-	ExcalidrawImperativeAPI
-} from '@excalidraw/excalidraw/types/types'
-import {Portal} from './Portal'
-import {io} from 'socket.io-client'
-import {restoreElements} from '@excalidraw/excalidraw'
-import {throttle} from 'lodash'
-import {hashElementsVersion, reconcileElements} from './util'
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import type { AppState, Collaborator, ExcalidrawImperativeAPI, Gesture } from '@excalidraw/excalidraw/types/types'
+import { Portal } from './Portal'
+import { io } from 'socket.io-client'
+import { restoreElements } from '@excalidraw/excalidraw'
+import { throttle } from 'lodash'
+import { hashElementsVersion, reconcileElements } from './util'
 
 export class Collab {
 
 	excalidrawAPI: ExcalidrawImperativeAPI
 	portal: Portal
 	lastBroadcastedOrReceivedSceneVersion: number = -1
+	private collaborators = new Map<string, Collaborator>()
 
 	constructor(excalidrawAPI: ExcalidrawImperativeAPI) {
 		this.excalidrawAPI = excalidrawAPI
@@ -23,7 +19,6 @@ export class Collab {
 		const fileIdMatch = url.match(/\/files\/(\d+)\?/)
 
 		if (fileIdMatch) {
-			alert(`${fileIdMatch[1]}`)
 			this.portal = new Portal(fileIdMatch[1], '1', this)
 		} else {
 			throw new Error('No FileId found in URL')
@@ -52,8 +47,8 @@ export class Collab {
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
-				elements,
-			},
+				elements
+			}
 		)
 	}
 
@@ -69,5 +64,36 @@ export class Collab {
 			this.lastBroadcastedOrReceivedSceneVersion = hashElementsVersion(elements)
 			throttle(() => this.portal.broadcastScene('SCENE_INIT', elements))()
 		}
+	}
+
+	onPointerUpdate = (payload: {
+		pointersMap: Gesture['pointers'],
+		pointer: { x: number; y: number; tool: 'laser' | 'pointer' },
+		button: 'down' | 'up'
+	}) => {
+		payload.pointersMap.size < 2 && this.portal.socket && this.portal.broadcastMouseLocation(payload)
+	}
+
+	setCollaborators(socketIds: string[]) {
+		const collaborators = new Map()
+		for (const socketId of socketIds) {
+			collaborators.set(socketId, Object.assign({}, this.collaborators.get(socketId), {
+				isCurrentUser: socketId === this.portal.socket?.id
+			}))
+		}
+
+		this.collaborators = collaborators
+		this.excalidrawAPI.updateScene({ collaborators })
+	}
+
+	updateCollaborator = (socketId: string, updates: Partial<Collaborator>) => {
+		const collaborators = new Map(this.collaborators)
+		const user = Object.assign({}, collaborators.get(socketId), updates, { isCurrentUser: socketId === this.portal.socket?.id })
+		collaborators.set(socketId, user)
+		this.collaborators = collaborators
+
+		this.excalidrawAPI.updateScene({
+			collaborators
+		})
 	}
 }
