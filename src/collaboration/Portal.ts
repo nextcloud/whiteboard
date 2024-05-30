@@ -29,6 +29,9 @@ export class Portal {
 
 				this.socket.on('joined-data', (data) => {
 					const remoteElements = JSON.parse(new TextDecoder().decode(data))
+
+					console.log(`JOINED DATA ${new TextDecoder().decode(data)}`)
+
 					const reconciledElements = this.collab._reconcileElements(remoteElements)
 					this.collab.handleRemoteSceneUpdate(reconciledElements)
 
