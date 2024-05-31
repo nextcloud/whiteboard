@@ -64,7 +64,7 @@ if (typeof OCA.Viewer !== 'undefined') {
 	window.OCA.Viewer.registerHandler({
 		id: 'whiteboard',
 		mimes: [
-			'application/gzip',
+			'application/octet-stream',
 		],
 		component: Component,
 		group: null,
