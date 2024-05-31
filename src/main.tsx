@@ -19,46 +19,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-import { StrictMode } from "react";
-import { createRoot } from "react-dom";
-import App from "./App";
 
 import './viewer.css'
-
-const Component = {
-	name: 'Whiteboard',
-	render(createElement) {
-		this.$emit('update:loaded', true)
-		this.$nextTick(() => {
-			const rootElement = document.getElementById("whiteboard");
-			const root = createRoot(rootElement);
-
-			root.render(
-				<StrictMode>
-					<App />
-				</StrictMode>
-			);
-		})
-		return createElement('div', {
-			attrs: {
-				id: 'whiteboard',
-			},
-		}, 'Hello whiteboard')
-	},
-	props: {
-		filename: {
-			type: String,
-			default: null,
-		},
-		fileid: {
-			type: Number,
-			default: null,
-		},
-	},
-	data() {
-		return {}
-	},
-}
+import Whiteboard from './Whiteboard.vue'
 
 if (typeof OCA.Viewer !== 'undefined') {
 	window.OCA.Viewer.registerHandler({
@@ -66,7 +29,7 @@ if (typeof OCA.Viewer !== 'undefined') {
 		mimes: [
 			'application/octet-stream',
 		],
-		component: Component,
+		component: Whiteboard,
 		group: null,
 		theme: 'default',
 		canCompare: true,

@@ -62,7 +62,7 @@ const COMMENT_ICON_DIMENSION = 32;
 const COMMENT_INPUT_HEIGHT = 50;
 const COMMENT_INPUT_WIDTH = 150;
 
-export default function App() {
+export default function App({initialData}) {
   const appRef = useRef<any>(null);
   const [viewModeEnabled, setViewModeEnabled] = useState(false);
   const [zenModeEnabled, setZenModeEnabled] = useState(false);
@@ -649,7 +649,7 @@ export default function App() {
           </div>
           <Excalidraw
             excalidrawAPI={(api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api)}
-            initialData={initialStatePromiseRef.current.promise}
+            initialData={initialData}
             onChange={(elements, state) => {
               console.info("Elements :", elements, "State : ", state);
             }}
