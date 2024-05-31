@@ -99,9 +99,6 @@ export default function App() {
 		}
 		fetchData()
 
-		const collab: Collab = new Collab(excalidrawAPI)
-
-		collab.startCollab()
 	}, [excalidrawAPI])
 
 	const renderTopRightUI = (isMobile: boolean) => {

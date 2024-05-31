@@ -78,7 +78,7 @@ export class Collab {
 		const collaborators = new Map()
 		for (const socketId of socketIds) {
 			collaborators.set(socketId, Object.assign({}, this.collaborators.get(socketId), {
-				isCurrentUser: socketId === this.portal.socket?.id
+				isCurrentUser: socketId === this.portal.socket?.id,
 			}))
 		}
 
