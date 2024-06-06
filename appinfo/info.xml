@@ -9,7 +9,7 @@ Collaborative whiteboard app for Nextcloud
 
 ]]>
 	</description>
-	<version>0.1.0</version>
+	<version>0.2.1</version>
 	<licence>agpl</licence>
 	<author>Julius Härtl</author>
 	<namespace>Whiteboard</namespace>
@@ -29,6 +29,6 @@ Collaborative whiteboard app for Nextcloud
 	<screenshot>https://raw.githubusercontent.com/nextcloud/whiteboard/main/screenshots/0.7.0.png</screenshot>
 
 	<dependencies>
-		<nextcloud min-version="29" max-version="29"/>
+		<nextcloud min-version="29" max-version="30"/>
 	</dependencies>
 </info>

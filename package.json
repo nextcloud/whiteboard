@@ -11,7 +11,8 @@
     "lint": "eslint --ext .js,.ts,.vue src",
     "lint:fix": "eslint --ext .js,.ts,.vue src --fix",
     "stylelint": "stylelint 'src/**/*.vue'",
-    "stylelint:fix": "stylelint src/**/*.vue --fix"
+    "stylelint:fix": "stylelint src/**/*.vue --fix",
+    "server:start": "node websocket_server/index.js"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.17.6",
@@ -22,8 +23,13 @@
     "@nextcloud/files": "^3.2.1",
     "@nextcloud/l10n": "^3.0.0",
     "@nextcloud/router": "^3.0.1",
+    "express": "^4.19.2",
+    "lodash": "^4.17.21",
+    "node-fetch": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5",
     "vue": "^2.7.14"
   },
   "devDependencies": {
