@@ -47,8 +47,8 @@ export class Collab {
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
-				elements
-			}
+			elements,
+		},
 		)
 	}
 
@@ -93,7 +93,8 @@ export class Collab {
 		this.collaborators = collaborators
 
 		this.excalidrawAPI.updateScene({
-			collaborators
+			collaborators,
 		})
 	}
+
 }

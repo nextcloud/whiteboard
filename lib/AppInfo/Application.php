@@ -15,11 +15,11 @@ use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
 use OCP\AppFramework\App;
-use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\Files\Template\RegisterTemplateCreatorEvent;
+use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'whiteboard';
