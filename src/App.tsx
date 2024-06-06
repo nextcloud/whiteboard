@@ -55,6 +55,7 @@ const COMMENT_INPUT_WIDTH = 150
  *
  */
 export default function App() {
+	const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
 	const appRef = useRef<any>(null)
 	const [viewModeEnabled, setViewModeEnabled] = useState(false)
 	const [zenModeEnabled, setZenModeEnabled] = useState(false)
@@ -63,7 +64,7 @@ export default function App() {
 	const [canvasUrl, setCanvasUrl] = useState<string>('')
 	const [exportWithDarkMode, setExportWithDarkMode] = useState(false)
 	const [exportEmbedScene, setExportEmbedScene] = useState(false)
-	const [theme, setTheme] = useState('light')
+	const [theme, setTheme] = useState(darkMode ? 'dark' : 'light')
 	const [isCollaborating, setIsCollaborating] = useState(false)
 	const [commentIcons, setCommentIcons] = useState<{ [id: string]: Comment }>(
 		{},
