@@ -29,6 +29,7 @@ export class Collab {
 	startCollab() {
 		if (this.portal.socket) return
 		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
+		console.log('collabBackendUrl', collabBackendUrl)
 		const token = localStorage.getItem('jwt')
 		this.portal.open(io(collabBackendUrl, {
 			withCredentials: true,

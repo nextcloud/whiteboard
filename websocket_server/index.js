@@ -1,3 +1,6 @@
+/* eslint-disable no-console */
+/* eslint-disable n/no-process-exit */
+
 import express from 'express'
 import http from 'http'
 import https from 'https'
@@ -26,26 +29,32 @@ const server = (tls ? https : http).createServer({
 
 let roomDataStore = {}
 
-const getRoomDataFromFile = async (roomID) => {
-	let response
-
+const getRoomDataFromFile = async (roomID, socket) => {
 	try {
-		response = await fetch(`${nextcloudUrl}/index.php/apps/whiteboard/${roomID}`, {
+		const token = socket.handshake.auth.token
+
+		const response = await fetch(`${nextcloudUrl}/index.php/apps/whiteboard/${roomID}`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`,
 			},
 		})
 
-		console.log(response)
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`)
+		}
+
+		const data = await response.json()
+		const roomData = data.data
+
+		return JSON.stringify(roomData.elements)
 	} catch (error) {
 		console.error(error)
+		socket.emit('error', { message: 'Failed to get room data' })
+		socket.leave(roomID)
+		return null
 	}
-
-	const data = await response.json()
-	const roomData = data.data
-
-	return JSON.stringify(roomData.elements)
 }
 
 const convertStringToArrayBuffer = (string) => {
@@ -66,6 +75,7 @@ const saveRoomDataToFile = async (roomID, data) => {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',
+				Authorization: 'Basic ' + Buffer.from('admin:admin').toString('base64'),
 			},
 			body,
 		})
@@ -85,7 +95,7 @@ const saveAllRoomsData = async () => {
 const io = new SocketIO(server, {
 	transports: ['websocket', 'polling'],
 	cors: {
-		origin: 'http://nextcloud.local',
+		origin: nextcloudUrl,
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 		credentials: true,
 	},
@@ -113,7 +123,7 @@ io.on('connection', async (socket) => {
 		await socket.join(roomID)
 
 		if (!roomDataStore[roomID]) {
-			roomDataStore[roomID] = await getRoomDataFromFile(roomID)
+			roomDataStore[roomID] = await getRoomDataFromFile(roomID, socket)
 		}
 
 		socket.emit('joined-data', convertStringToArrayBuffer(roomDataStore[roomID]), [])
@@ -142,6 +152,7 @@ io.on('connection', async (socket) => {
 		})
 	})
 
+	// Volatile broadcasting, when data loss is acceptable (e.g., cursor position, ...)
 	socket.on('server-volatile-broadcast', (roomID, encryptedData, iv) => {
 		console.log(`Volatile broadcasting to room ${roomID}`)
 
@@ -150,10 +161,6 @@ io.on('connection', async (socket) => {
 		const decryptedData = JSON.parse(convertArrayBufferToString(encryptedData))
 
 		console.log(decryptedData.payload)
-
-		// setTimeout(() => {
-		// 	roomDataStore[roomID] = decryptedData.payload.elements
-		// })
 	})
 
 	socket.on('user-follow', async (payload) => {
@@ -198,7 +205,7 @@ io.on('connection', async (socket) => {
 			if (otherClients.length === 0 && roomDataStore[roomID]) {
 				await saveRoomDataToFile(roomID, roomDataStore[roomID])
 
-				//Flush room data if no one is in the room
+				// Flush room data if no one is in the room
 				delete roomDataStore[roomID]
 			}
 
