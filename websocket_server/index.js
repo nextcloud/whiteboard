@@ -1,18 +1,28 @@
 import express from 'express'
 import http from 'http'
+import https from 'https'
 import { Server as SocketIO } from 'socket.io'
 import fetch from 'node-fetch'
 import jwt from 'jsonwebtoken'
+import * as fs from 'node:fs'
+
+const nextcloudUrl = process.env.NEXTCLOUD_URL || 'http://nextcloud.local'
+const port = process.env.PORT || 3002
+
+const tls = process.env.TLS || false
+const key = process.env.TLS_KEY || undefined
+const cert = process.env.TLS_CERT || undefined
 
 const app = express()
-
-const port = process.env.PORT || 3002
 
 app.get('/', (req, res) => {
 	res.send('Excalidraw collaboration server is up :)')
 })
 
-const server = http.createServer(app)
+const server = (tls ? https : http).createServer({
+	key: key ? fs.readFileSync(key) : undefined,
+	cert: cert ? fs.readFileSync(cert) : undefined,
+}, app)
 
 let roomDataStore = {}
 
@@ -20,7 +30,7 @@ const getRoomDataFromFile = async (roomID) => {
 	let response
 
 	try {
-		response = await fetch(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
+		response = await fetch(`${nextcloudUrl}/index.php/apps/whiteboard/${roomID}`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -52,7 +62,7 @@ const saveRoomDataToFile = async (roomID, data) => {
 	const body = JSON.stringify({ data: { elements: data } })
 
 	try {
-		await fetch(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
+		await fetch(`${nextcloudUrl}/index.php/apps/whiteboard/${roomID}`, {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',

@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
+import { loadState } from '@nextcloud/initial-state'
 
 export class Collab {
 
@@ -27,13 +28,15 @@ export class Collab {
 
 	startCollab() {
 		if (this.portal.socket) return
+		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
 		const token = localStorage.getItem('jwt')
-		this.portal.open(io('nextcloud.local:3002/', {
+		this.portal.open(io(collabBackendUrl, {
 			withCredentials: true,
 			auth: {
-				token
-			}
+				token,
+			},
 		}))
+
 		this.excalidrawAPI.onChange(this.onChange)
 	}
 
@@ -46,15 +49,13 @@ export class Collab {
 		const localElements = this.getSceneElementsIncludingDeleted()
 		const appState = this.excalidrawAPI.getAppState()
 
-		const reconciledElements = reconcileElements(localElements, restoredRemoteElements, appState)
-
-		return reconciledElements
+		return reconcileElements(localElements, restoredRemoteElements, appState)
 	}
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
-				elements
-			}
+			elements,
+		},
 		)
 	}
 
@@ -84,7 +85,7 @@ export class Collab {
 		const collaborators = new Map()
 		for (const socketId of socketIds) {
 			collaborators.set(socketId, Object.assign({}, this.collaborators.get(socketId), {
-				isCurrentUser: socketId === this.portal.socket?.id
+				isCurrentUser: socketId === this.portal.socket?.id,
 			}))
 		}
 
@@ -99,7 +100,8 @@ export class Collab {
 		this.collaborators = collaborators
 
 		this.excalidrawAPI.updateScene({
-			collaborators
+			collaborators,
 		})
 	}
+
 }

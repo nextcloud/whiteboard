@@ -40,7 +40,7 @@ export class Portal {
 					this.collab.excalidrawAPI.scrollToContent(elements, {
 						fitToContent: true,
 						animate: true,
-						duration: 500
+						duration: 500,
 					})
 				})
 			}
@@ -57,21 +57,21 @@ export class Portal {
 			console.log(`ROOM USER CHANGE ${clients}`)
 		})
 
-		this.socket.on('client-broadcast', (data, iv: Uint8Array) => {
+		this.socket.on('client-broadcast', (data) => {
 			const decoded = JSON.parse(new TextDecoder().decode(data))
 			console.log(decoded)
 			console.log(data)
 
 			switch (decoded.type) {
-				case 'SCENE_INIT': {
-					const remoteElements = decoded.payload.elements
-					const reconciledElements = this.collab._reconcileElements(remoteElements)
-					this.collab.handleRemoteSceneUpdate(reconciledElements)
-					break
-				}
-				case 'MOUSE_LOCATION': {
-					this.collab.updateCollaborator(decoded.payload.socketId, decoded.payload)
-				}
+			case 'SCENE_INIT': {
+				const remoteElements = decoded.payload.elements
+				const reconciledElements = this.collab._reconcileElements(remoteElements)
+				this.collab.handleRemoteSceneUpdate(reconciledElements)
+				break
+			}
+			case 'MOUSE_LOCATION': {
+				this.collab.updateCollaborator(decoded.payload.socketId, decoded.payload)
+			}
 			}
 		})
 
@@ -86,7 +86,7 @@ export class Portal {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		data: any,
 		volatile: boolean = false,
-		roomId?: string
+		roomId?: string,
 	) {
 		const json = JSON.stringify(data)
 
@@ -96,7 +96,7 @@ export class Portal {
 			volatile ? 'server-volatile-broadcast' : 'server-broadcast',
 			roomId ?? this.roomId,
 			encryptedBuffer,
-			[]
+			[],
 		)
 	}
 
@@ -106,8 +106,8 @@ export class Portal {
 		const data = {
 			type: updateType,
 			payload: {
-				elements
-			}
+				elements,
+			},
 		}
 		await this._broadcastSocketData(data)
 	}
@@ -124,12 +124,13 @@ export class Portal {
 				pointer: payload.pointer,
 				button: payload.button || 'up',
 				selectedElementIds: this.collab.excalidrawAPI.getAppState().selectedElementIds,
-				username: this.socket?.id
-			}
+				username: this.socket?.id,
+			},
 		}
 		return this._broadcastSocketData(
 			data,
-			true // volatile
+			true, // volatile
 		)
 	}
+
 }
