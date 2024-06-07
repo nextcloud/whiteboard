@@ -7,6 +7,7 @@ namespace OCA\Whiteboard\Controller;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
@@ -20,6 +21,7 @@ final class WhiteboardController extends ApiController {
 
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
+	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
 		$user = $this->userSession->getUser();
 		$userFolder = $this->rootFolder->getUserFolder($user?->getUID());
@@ -32,6 +34,7 @@ final class WhiteboardController extends ApiController {
 
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
+	#[PublicPage]
 	public function show(int $fileId): DataResponse {
 		$user = $this->userSession->getUser();
 		$userFolder = $this->rootFolder->getUserFolder($user?->getUID());

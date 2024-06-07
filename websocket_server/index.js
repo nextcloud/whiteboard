@@ -2,6 +2,7 @@ import express from 'express'
 import http from 'http'
 import { Server as SocketIO } from 'socket.io'
 import fetch from 'node-fetch'
+import jwt from 'jsonwebtoken'
 
 const app = express()
 
@@ -16,14 +17,19 @@ const server = http.createServer(app)
 let roomDataStore = {}
 
 const getRoomDataFromFile = async (roomID) => {
-	const response = await fetch(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
-		headers: {
-			'Authorization': 'Basic ' + Buffer.from('admin:admin').toString('base64'),
-		},
-	})
+	let response
 
-	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`)
+	try {
+		response = await fetch(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		})
+
+		console.log(response)
+	} catch (error) {
+		console.error(error)
 	}
 
 	const data = await response.json()
@@ -49,10 +55,9 @@ const saveRoomDataToFile = async (roomID, data) => {
 		await fetch(`http://nextcloud.local/index.php/apps/whiteboard/${roomID}`, {
 			method: 'PUT',
 			headers: {
-				'Authorization': 'Basic ' + Buffer.from('admin:admin').toString('base64'),
 				'Content-Type': 'application/json',
 			},
-			body: body,
+			body,
 		})
 	} catch (error) {
 		console.error(error)
@@ -70,11 +75,24 @@ const saveAllRoomsData = async () => {
 const io = new SocketIO(server, {
 	transports: ['websocket', 'polling'],
 	cors: {
-		allowedHeaders: ['X-Requested-With', 'Content-Type', 'Authorization'],
-		origin: '*',
+		origin: 'http://nextcloud.local',
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+		credentials: true,
 	},
-	allowEIO3: true,
+})
+
+const secret = 'your_secret_key'
+
+io.use((socket, next) => {
+	const token = socket.handshake.auth.token
+
+	try {
+		socket.user = jwt.verify(token, secret)
+		next()
+	} catch (err) {
+		console.error(err)
+		next(new Error('Authentication error'))
+	}
 })
 
 io.on('connection', async (socket) => {

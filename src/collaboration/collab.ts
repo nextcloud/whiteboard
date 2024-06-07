@@ -27,7 +27,13 @@ export class Collab {
 
 	startCollab() {
 		if (this.portal.socket) return
-		this.portal.open(io('nextcloud.local:3002/'))
+		const token = localStorage.getItem('jwt')
+		this.portal.open(io('nextcloud.local:3002/', {
+			withCredentials: true,
+			auth: {
+				token
+			}
+		}))
 		this.excalidrawAPI.onChange(this.onChange)
 	}
 
@@ -78,7 +84,7 @@ export class Collab {
 		const collaborators = new Map()
 		for (const socketId of socketIds) {
 			collaborators.set(socketId, Object.assign({}, this.collaborators.get(socketId), {
-				isCurrentUser: socketId === this.portal.socket?.id,
+				isCurrentUser: socketId === this.portal.socket?.id
 			}))
 		}
 
