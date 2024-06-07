@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
+import { loadState } from '@nextcloud/initial-state'
 
 export class Collab {
 
@@ -27,7 +28,9 @@ export class Collab {
 
 	startCollab() {
 		if (this.portal.socket) return
-		this.portal.open(io('nextcloud.local:3002/'))
+
+		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
+		this.portal.open(io(collabBackendUrl))
 		this.excalidrawAPI.onChange(this.onChange)
 	}
 
