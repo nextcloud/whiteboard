@@ -6,6 +6,7 @@ import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
 import { loadState } from '@nextcloud/initial-state'
+import axios from '@nextcloud/axios'
 
 export class Collab {
 
@@ -13,6 +14,7 @@ export class Collab {
 	portal: Portal
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
+	private jwt: string | null = null;
 
 	constructor(excalidrawAPI: ExcalidrawImperativeAPI) {
 		this.excalidrawAPI = excalidrawAPI
@@ -29,17 +31,33 @@ export class Collab {
 	startCollab() {
 		if (this.portal.socket) return
 		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
-		console.log('collabBackendUrl', collabBackendUrl)
+
 		const token = localStorage.getItem('jwt')
 		this.portal.open(io(collabBackendUrl, {
 			withCredentials: true,
 			auth: {
-				token,
-			},
+				token
+			}
 		}))
 
 		this.excalidrawAPI.onChange(this.onChange)
 	}
+
+	refreshJWT = async (): Promise<string | null> => {
+		try {
+			const response = await axios.get('http://nextcloud.local/index.php/apps/whiteboard/token', {
+				withCredentials: true,
+			});
+			const token = response.data.token;
+			localStorage.setItem('jwt', token);
+			this.jwt = token;
+			return token;
+		} catch (error) {
+			console.error('Error refreshing JWT:', error);
+			return null;
+		}
+	};
+
 
 	getSceneElementsIncludingDeleted = () => {
 		return this.excalidrawAPI.getSceneElementsIncludingDeleted()
@@ -55,8 +73,8 @@ export class Collab {
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
-			elements,
-		},
+				elements
+			}
 		)
 	}
 
@@ -86,7 +104,7 @@ export class Collab {
 		const collaborators = new Map()
 		for (const socketId of socketIds) {
 			collaborators.set(socketId, Object.assign({}, this.collaborators.get(socketId), {
-				isCurrentUser: socketId === this.portal.socket?.id,
+				isCurrentUser: socketId === this.portal.socket?.id
 			}))
 		}
 
@@ -101,7 +119,7 @@ export class Collab {
 		this.collaborators = collaborators
 
 		this.excalidrawAPI.updateScene({
-			collaborators,
+			collaborators
 		})
 	}
 

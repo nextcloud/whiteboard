@@ -101,19 +101,27 @@ const io = new SocketIO(server, {
 	},
 })
 
-const secret = 'your_secret_key'
-
-io.use((socket, next) => {
+const verifyToken = (socket, next) => {
 	const token = socket.handshake.auth.token
 
-	try {
-		socket.user = jwt.verify(token, secret)
-		next()
-	} catch (err) {
-		console.error(err)
-		next(new Error('Authentication error'))
+	if (!token) {
+		return next(new Error('Authentication error'))
 	}
-})
+
+	jwt.verify(token, 'your_secret_key', (err, decoded) => {
+		if (err) {
+			if (err.name === 'TokenExpiredError') {
+				socket.emit('token-expired')
+			}
+			return next(new Error('Authentication error'))
+		}
+
+		socket.user = decoded
+		next()
+	})
+}
+
+io.use(verifyToken)
 
 io.on('connection', async (socket) => {
 	io.to(`${socket.id}`).emit('init-room')

@@ -78,10 +78,6 @@ export class Portal {
 		return this.socket
 	}
 
-	isOpen() {
-		return true
-	}
-
 	async _broadcastSocketData(
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		data: any,

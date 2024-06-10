@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import axios from '@nextcloud/axios'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	Excalidraw,
@@ -79,17 +78,6 @@ export default function App() {
 		}
 
 		fetchData().then()
-
-		axios.get('http://nextcloud.local/index.php/apps/whiteboard/token', {
-			withCredentials: true
-		})
-			.then(response => {
-				const token = response.data.token
-				localStorage.setItem('jwt', token)
-			})
-			.catch(error => {
-				console.error('Error fetching JWT:', error)
-			})
 	}, [excalidrawAPI])
 
 	const renderTopRightUI = (isMobile: boolean) => {
