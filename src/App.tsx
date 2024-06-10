@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	Excalidraw,
@@ -11,7 +10,7 @@ import {
 	viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
 import './App.scss'
-import { resolvablePromise, withBatchedUpdates, withBatchedUpdatesThrottled } from './utils'
+import { distance2d, resolvablePromise, withBatchedUpdates, withBatchedUpdatesThrottled } from './utils'
 import type {
 	AppState,
 	ExcalidrawImperativeAPI,
@@ -21,12 +20,6 @@ import type {
 import { Collab } from './collaboration/collab'
 import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-
-declare global {
-	interface Window {
-		ExcalidrawLib: any;
-	}
-}
 
 type Comment = {
 	x: number;
@@ -158,41 +151,41 @@ export default function App() {
 	}
 
 	const onPointerMoveFromPointerDownHandler = (
-		pointerDownState: PointerDownState,
+		pointerDownState: PointerDownState
 	) => {
 		return withBatchedUpdatesThrottled((event) => {
 			if (!excalidrawAPI) {
 				return false
 			}
-			const {x, y} = viewportCoordsToSceneCoords(
+			const { x, y } = viewportCoordsToSceneCoords(
 				{
 					clientX: event.clientX - pointerDownState.hitElementOffsets.x,
-					clientY: event.clientY - pointerDownState.hitElementOffsets.y,
+					clientY: event.clientY - pointerDownState.hitElementOffsets.y
 				},
-				excalidrawAPI.getAppState(),
+				excalidrawAPI.getAppState()
 			)
 			setCommentIcons({
 				...commentIcons,
 				[pointerDownState.hitElement.id!]: {
 					...commentIcons[pointerDownState.hitElement.id!],
 					x,
-					y,
-				},
+					y
+				}
 			})
 		})
 	}
 	const onPointerUpFromPointerDownHandler = (
-		pointerDownState: PointerDownState,
+		pointerDownState: PointerDownState
 	) => {
 		return withBatchedUpdates((event) => {
 			window.removeEventListener('pointermove', pointerDownState.onMove)
 			window.removeEventListener('pointerup', pointerDownState.onUp)
-			excalidrawAPI?.setActiveTool({type: 'selection'})
+			excalidrawAPI?.setActiveTool({ type: 'selection' })
 			const distance = distance2d(
 				pointerDownState.x,
 				pointerDownState.y,
 				event.clientX,
-				event.clientY,
+				event.clientY
 			)
 			if (distance === 0) {
 				if (!comment) {
@@ -200,7 +193,7 @@ export default function App() {
 						x: pointerDownState.hitElement.x + 60,
 						y: pointerDownState.hitElement.y,
 						value: pointerDownState.hitElement.value,
-						id: pointerDownState.hitElement.id,
+						id: pointerDownState.hitElement.id
 					})
 				} else {
 					setComment(null)
@@ -223,8 +216,8 @@ export default function App() {
 				x: comment.id ? comment.x - 60 : comment.x,
 				y: comment.y,
 				id,
-				value: comment.value,
-			},
+				value: comment.value
+			}
 		})
 		setComment(null)
 	}
@@ -235,9 +228,9 @@ export default function App() {
 				return false
 			}
 			const appState = excalidrawAPI.getAppState()
-			const {x, y} = sceneCoordsToViewportCoords(
-				{sceneX: commentIcon.x, sceneY: commentIcon.y},
-				excalidrawAPI.getAppState(),
+			const { x, y } = sceneCoordsToViewportCoords(
+				{ sceneX: commentIcon.x, sceneY: commentIcon.y },
+				excalidrawAPI.getAppState()
 			)
 			return (
 				<div
@@ -251,7 +244,7 @@ export default function App() {
 						width: `${COMMENT_ICON_DIMENSION}px`,
 						height: `${COMMENT_ICON_DIMENSION}px`,
 						cursor: 'pointer',
-						touchAction: 'none',
+						touchAction: 'none'
 					}}
 					className="comment-icon"
 					onPointerDown={(event) => {
@@ -267,13 +260,13 @@ export default function App() {
 							hitElementOffsets: {
 								x: event.clientX - x,
 								y: event.clientY - y
-							},
+							}
 						}
 						const onPointerMove = onPointerMoveFromPointerDownHandler(
-							pointerDownState,
+							pointerDownState
 						)
 						const onPointerUp = onPointerUpFromPointerDownHandler(
-							pointerDownState,
+							pointerDownState
 						)
 						window.addEventListener('pointermove', onPointerMove)
 						window.addEventListener('pointerup', onPointerUp)
@@ -283,12 +276,12 @@ export default function App() {
 
 						excalidrawAPI?.setActiveTool({
 							type: 'custom',
-							customType: 'comment',
+							customType: 'comment'
 						})
 					}}
 				>
 					<div className="comment-avatar">
-						<img src="doremon.png" alt="doremon"/>
+						<img src="doremon.png" alt="doremon" />
 					</div>
 				</div>
 			)
@@ -300,9 +293,9 @@ export default function App() {
 			return null
 		}
 		const appState = excalidrawAPI?.getAppState()!
-		const {x, y} = sceneCoordsToViewportCoords(
-			{sceneX: comment.x, sceneY: comment.y},
-			appState,
+		const { x, y } = sceneCoordsToViewportCoords(
+			{ sceneX: comment.x, sceneY: comment.y },
+			appState
 		)
 		let top = y - COMMENT_ICON_DIMENSION / 2 - appState.offsetTop
 		let left = x - COMMENT_ICON_DIMENSION / 2 - appState.offsetLeft
@@ -335,7 +328,7 @@ export default function App() {
 					position: 'absolute',
 					zIndex: 1,
 					height: `${COMMENT_INPUT_HEIGHT}px`,
-					width: `${COMMENT_INPUT_WIDTH}px`,
+					width: `${COMMENT_INPUT_WIDTH}px`
 				}}
 				ref={(ref) => {
 					setTimeout(() => ref?.focus())
@@ -343,7 +336,7 @@ export default function App() {
 				placeholder={comment.value ? 'Reply' : 'Comment'}
 				value={comment.value}
 				onChange={(event) => {
-					setComment({...comment, value: event.target.value})
+					setComment({ ...comment, value: event.target.value })
 				}}
 				onBlur={saveComment}
 				onKeyDown={(event) => {
@@ -386,8 +379,8 @@ export default function App() {
 					name="Custom name of drawing"
 					UIOptions={{
 						canvasActions: {
-							loadScene: false,
-						},
+							loadScene: false
+						}
 					}}
 					renderTopRightUI={renderTopRightUI}
 					onLinkOpen={onLinkOpen}

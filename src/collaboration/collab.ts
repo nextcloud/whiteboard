@@ -6,7 +6,6 @@ import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
 import { loadState } from '@nextcloud/initial-state'
-import axios from '@nextcloud/axios'
 
 export class Collab {
 
@@ -14,7 +13,6 @@ export class Collab {
 	portal: Portal
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
-	private jwt: string | null = null;
 
 	constructor(excalidrawAPI: ExcalidrawImperativeAPI) {
 		this.excalidrawAPI = excalidrawAPI
@@ -28,36 +26,34 @@ export class Collab {
 		}
 	}
 
-	startCollab() {
+	async startCollab() {
 		if (this.portal.socket) return
 		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
 
-		const token = localStorage.getItem('jwt')
-		this.portal.open(io(collabBackendUrl, {
-			withCredentials: true,
-			auth: {
-				token
+		let token = localStorage.getItem('jwt')
+		if (!token) {
+			token = await this.refreshJWT()
+			if (!token) {
+				console.error('Failed to fetch JWT')
+				return
 			}
-		}))
+		}
+
+		this.connectSocket(collabBackendUrl, token)
 
 		this.excalidrawAPI.onChange(this.onChange)
 	}
 
-	refreshJWT = async (): Promise<string | null> => {
-		try {
-			const response = await axios.get('http://nextcloud.local/index.php/apps/whiteboard/token', {
-				withCredentials: true,
-			});
-			const token = response.data.token;
-			localStorage.setItem('jwt', token);
-			this.jwt = token;
-			return token;
-		} catch (error) {
-			console.error('Error refreshing JWT:', error);
-			return null;
-		}
-	};
+	connectSocket = (collabBackendUrl: string, token: string) => {
+		const socket = io(collabBackendUrl, {
+			withCredentials: true,
+			auth: {
+				token
+			}
+		})
 
+		this.portal.open(socket)
+	}
 
 	getSceneElementsIncludingDeleted = () => {
 		return this.excalidrawAPI.getSceneElementsIncludingDeleted()
@@ -120,6 +116,16 @@ export class Collab {
 
 		this.excalidrawAPI.updateScene({
 			collaborators
+		})
+	}
+
+	scrollToContent = () => {
+		const elements = this.excalidrawAPI.getSceneElements()
+
+		this.excalidrawAPI.scrollToContent(elements, {
+			fitToContent: true,
+			animate: true,
+			duration: 500
 		})
 	}
 

@@ -45,10 +45,9 @@ const getRoomDataFromFile = async (roomID, socket) => {
 			throw new Error(`HTTP error! status: ${response.status}`)
 		}
 
-		const data = await response.json()
-		const roomData = data.data
+		const { data: roomData } = await response.json()
 
-		return JSON.stringify(roomData.elements)
+		return roomData.elements
 	} catch (error) {
 		console.error(error)
 		socket.emit('error', { message: 'Failed to get room data' })
@@ -105,18 +104,24 @@ const verifyToken = (socket, next) => {
 	const token = socket.handshake.auth.token
 
 	if (!token) {
+		console.log('No token provided')
+
 		return next(new Error('Authentication error'))
 	}
 
 	jwt.verify(token, 'your_secret_key', (err, decoded) => {
 		if (err) {
 			if (err.name === 'TokenExpiredError') {
-				socket.emit('token-expired')
+				console.log('Token expired')
 			}
+
+			console.log('Token verification failed')
+
 			return next(new Error('Authentication error'))
 		}
 
 		socket.user = decoded
+
 		next()
 	})
 }
@@ -126,15 +131,39 @@ io.use(verifyToken)
 io.on('connection', async (socket) => {
 	io.to(`${socket.id}`).emit('init-room')
 
+	socket.use((packet, next) => {
+		jwt.verify(socket.handshake.auth.token, 'your_secret_key', (err, decoded) => {
+			console.log('Verifying token ...')
+
+			if (err) {
+				if (err.name === 'TokenExpiredError') {
+					socket.emit('token-expired')
+				} else {
+					socket.emit('invalid-token')
+				}
+
+				console.log('Token invalid')
+
+				return next(new Error('Authentication error'))
+			}
+
+			socket.user = decoded
+
+			next()
+		})
+	})
+
 	socket.on('join-room', async (roomID) => {
 		console.log(`${socket.id} has joined ${roomID}`)
 		await socket.join(roomID)
 
 		if (!roomDataStore[roomID]) {
+			console.log('Data for room ' + roomID + ' is not available, fetching from file ...')
+
 			roomDataStore[roomID] = await getRoomDataFromFile(roomID, socket)
 		}
 
-		socket.emit('joined-data', convertStringToArrayBuffer(roomDataStore[roomID]), [])
+		socket.emit('joined-data', convertStringToArrayBuffer(JSON.stringify(roomDataStore[roomID])), [])
 
 		const sockets = await io.in(roomID).fetchSockets()
 
