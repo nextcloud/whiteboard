@@ -8,10 +8,10 @@
     "build": "vite --mode production build",
     "dev": "vite --mode development build",
     "watch": "vite --mode development build --watch",
-    "lint": "eslint --ext .js,.ts,.vue src",
-    "lint:fix": "eslint --ext .js,.ts,.vue src --fix",
-    "stylelint": "stylelint 'src/**/*.vue'",
-    "stylelint:fix": "stylelint src/**/*.vue --fix",
+    "lint": "eslint --ext .js,.ts,.vue src websocket_server",
+    "lint:fix": "eslint --ext .js,.ts,.vue src websocket_server --fix",
+    "stylelint": "stylelint 'src/**/*.{css,scss,sass}'",
+    "stylelint:fix": "stylelint 'src/**/*.{css,scss,sass}' --fix",
     "server:start": "node websocket_server/index.js"
   },
   "dependencies": {

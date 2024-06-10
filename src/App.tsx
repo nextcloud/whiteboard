@@ -7,12 +7,10 @@ import {
 	MainMenu,
 	restoreElements,
 	sceneCoordsToViewportCoords,
-	Sidebar,
 	useHandleLibrary,
 	viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
 
-import ExampleSidebar from './sidebar/ExampleSidebar'
 import './App.scss'
 import initialData from './initialData'
 
@@ -57,6 +55,7 @@ const COMMENT_INPUT_WIDTH = 150
  *
  */
 export default function App() {
+	const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
 	const appRef = useRef<any>(null)
 	const [viewModeEnabled, setViewModeEnabled] = useState(false)
 	const [zenModeEnabled, setZenModeEnabled] = useState(false)
@@ -65,7 +64,7 @@ export default function App() {
 	const [canvasUrl, setCanvasUrl] = useState<string>('')
 	const [exportWithDarkMode, setExportWithDarkMode] = useState(false)
 	const [exportEmbedScene, setExportEmbedScene] = useState(false)
-	const [theme, setTheme] = useState('light')
+	const [theme, setTheme] = useState(darkMode ? 'dark' : 'light')
 	const [isCollaborating, setIsCollaborating] = useState(false)
 	const [commentIcons, setCommentIcons] = useState<{ [id: string]: Comment }>(
 		{},
@@ -112,13 +111,6 @@ export default function App() {
 						}}
 					/>
 				)}
-				<button
-					onClick={() => alert('This is dummy top right UI')}
-					style={{height: '2.5rem'}}
-				>
-					{' '}
-					Click me{' '}
-				</button>
 			</>
 		)
 	}
@@ -440,15 +432,6 @@ export default function App() {
 		)
 	}
 
-	const renderSidebar = () => {
-		return (
-			<Sidebar>
-				<Sidebar.Header>Custom header!</Sidebar.Header>
-				Custom sidebar!
-			</Sidebar>
-		)
-	}
-
 	const renderMenu = () => {
 		return (
 			<MainMenu>
@@ -477,37 +460,36 @@ export default function App() {
 
 	return (
 		<div className="App" ref={appRef}>
-			<ExampleSidebar>
-				<div className="excalidraw-wrapper">
-					<Excalidraw
-						excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-							console.log(api)
-							console.log('Setting API')
-							setExcalidrawAPI(api)
-						}}
-						initialData={initialStatePromiseRef.current.promise}
-						onChange={(elements, state) => {
-							console.info('Elements :', elements, 'State : ', state)
-						}}
-						onPointerUpdate={collab?.onPointerUpdate}
-						viewModeEnabled={viewModeEnabled}
-						zenModeEnabled={zenModeEnabled}
-						gridModeEnabled={gridModeEnabled}
-						theme={theme}
-						name="Custom name of drawing"
-						UIOptions={{
-							canvasActions: {loadScene: false},
-						}}
-						renderTopRightUI={renderTopRightUI}
-						onLinkOpen={onLinkOpen}
-						onPointerDown={onPointerDown}
-						onScrollChange={rerenderCommentIcons}
-						renderSidebar={renderSidebar}
-					>
-						{renderMenu()}
-					</Excalidraw>
-				</div>
-			</ExampleSidebar>
+			<div className="excalidraw-wrapper">
+				<Excalidraw
+					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
+						console.log(api)
+						console.log('Setting API')
+						setExcalidrawAPI(api)
+					}}
+					initialData={initialStatePromiseRef.current.promise}
+					onChange={(elements, state) => {
+						console.info('Elements :', elements, 'State : ', state)
+					}}
+					onPointerUpdate={collab?.onPointerUpdate}
+					viewModeEnabled={viewModeEnabled}
+					zenModeEnabled={zenModeEnabled}
+					gridModeEnabled={gridModeEnabled}
+					theme={theme}
+					name="Custom name of drawing"
+					UIOptions={{
+						canvasActions: {
+							loadScene: false,
+						},
+					}}
+					renderTopRightUI={renderTopRightUI}
+					onLinkOpen={onLinkOpen}
+					onPointerDown={onPointerDown}
+					onScrollChange={rerenderCommentIcons}
+				>
+					{renderMenu()}
+				</Excalidraw>
+			</div>
 		</div>
 	)
 }

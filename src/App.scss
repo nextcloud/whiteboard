@@ -1,6 +1,9 @@
 .App {
   font-family: sans-serif;
   text-align: center;
+  position: relative;
+  height: 100%;
+  width: 100%;
 
   .comment-avatar {
     background: #faa2c1;
@@ -30,8 +33,7 @@
 }
 
 .excalidraw-wrapper {
-  height: 800px;
-  margin: 50px;
+  height: 100%;
   position: relative;
   overflow: hidden;
 }
