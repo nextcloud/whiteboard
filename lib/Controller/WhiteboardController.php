@@ -15,12 +15,19 @@ use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotPermittedException;
+use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
 final class WhiteboardController extends ApiController {
 
-	public function __construct($appName, IRequest $request, private readonly IUserSession $userSession, private readonly IRootFolder $rootFolder) {
+	public function __construct(
+		$appName,
+		IRequest $request,
+		private readonly IUserSession $userSession,
+		private readonly IRootFolder $rootFolder,
+		private readonly IConfig $config
+	) {
 		parent::__construct($appName, $request);
 	}
 
@@ -59,7 +66,8 @@ final class WhiteboardController extends ApiController {
 		}
 
 		try {
-			$decoded = JWT::decode($jwt, new Key('your_secret_key', 'HS256'));
+			$key = $this->config->getSystemValueString('jwt_secret_key');
+			$decoded = JWT::decode($jwt, new Key($key, 'HS256'));
 			$userId = $decoded->userid;
 		} catch (\Exception $e) {
 			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);

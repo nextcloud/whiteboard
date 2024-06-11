@@ -8,11 +8,16 @@ use Firebase\JWT\JWT;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
 final class JWTController extends Controller {
-	public function __construct(IRequest $request, private readonly IUserSession $userSession) {
+	public function __construct(
+		IRequest $request,
+		private readonly IUserSession $userSession,
+		private readonly IConfig $config
+	) {
 		parent::__construct('whiteboard', $request);
 	}
 
@@ -33,7 +38,7 @@ final class JWTController extends Controller {
 
 		$userId = $user->getUID();
 
-		$key = "your_secret_key";
+		$key = $this->config->getSystemValueString('jwt_secret_key');
 		$issuedAt = time();
 		$expirationTime = $issuedAt + 3600;
 		$payload = [
