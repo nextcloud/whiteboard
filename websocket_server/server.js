@@ -5,6 +5,7 @@ import app from './app.js'
 import { initSocket } from './socket.js'
 import { gracefulShutdown, saveAllRoomsData } from './roomData.js'
 import dotenv from 'dotenv'
+import { parseBooleanFromEnv } from './utils.js'
 
 dotenv.config()
 
@@ -15,7 +16,7 @@ const {
 	TLS_CERT: cert,
 } = process.env
 
-const server = (TLS ? https : http).createServer(
+const server = (parseBooleanFromEnv(TLS) ? https : http).createServer(
 	{
 		key: key ? fs.readFileSync(key) : undefined,
 		cert: cert ? fs.readFileSync(cert) : undefined,
