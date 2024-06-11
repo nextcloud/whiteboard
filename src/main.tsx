@@ -19,15 +19,19 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-import { StrictMode } from 'react'
+
+import { linkTo } from '@nextcloud/router'
+import { StrictMode, lazy } from 'react'
 import { createRoot } from 'react-dom'
-import App from './App'
 
 import './viewer.css'
+
+window.EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
 
 const Component = {
 	name: 'Whiteboard',
 	render(createElement: (arg0: string, arg1: { attrs: { id: string } }, arg2: string) => any) {
+		const App = React.lazy(() => import('./App'))
 		this.$emit('update:loaded', true)
 		this.$nextTick(() => {
 			const rootElement = document.getElementById('whiteboard')
