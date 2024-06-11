@@ -13,7 +13,7 @@ use OCP\IRequest;
 use OCP\IUserSession;
 
 final class JWTController extends Controller {
-	private const EXPIRATION_TIME = 5;
+	private const EXPIRATION_TIME = 15 * 60;
 
 	private const JWT_CONFIG_KEY = 'jwt_secret_key';
 
