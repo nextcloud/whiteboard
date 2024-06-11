@@ -2,6 +2,9 @@ import { Server as SocketIO } from 'socket.io'
 import jwt from 'jsonwebtoken'
 import { getRoomDataFromFile, roomDataStore, saveRoomDataToFile } from './roomData.js'
 import { convertArrayBufferToString, convertStringToArrayBuffer } from './utils.js'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const {
 	NEXTCLOUD_URL = 'http://nextcloud.local',

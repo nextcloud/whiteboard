@@ -1,4 +1,7 @@
 import fetch from 'node-fetch'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const { NEXTCLOUD_URL = 'http://nextcloud.local' } = process.env
 const FORCE_CLOSE_TIMEOUT = 60 * 1000

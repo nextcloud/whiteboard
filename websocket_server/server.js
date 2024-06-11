@@ -4,6 +4,9 @@ import fs from 'fs'
 import app from './app.js'
 import { initSocket } from './socket.js'
 import { gracefulShutdown, saveAllRoomsData } from './roomData.js'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const {
 	PORT = 3002,

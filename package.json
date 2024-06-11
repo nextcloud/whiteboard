@@ -25,6 +25,7 @@
     "@nextcloud/initial-state": "^2.2.0",
     "@nextcloud/l10n": "^3.0.0",
     "@nextcloud/router": "^3.0.1",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
