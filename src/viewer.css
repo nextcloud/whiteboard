@@ -1,6 +1,11 @@
-#whiteboard {
+.whiteboard {
 	width: 100%;
 	height: calc(100% + 50px);
 	position: absolute;
 	top: 0;
+}
+
+.whiteboard-viewer__embedding {
+	min-height: min(200px, 50vh);
+	position: relative;
 }
