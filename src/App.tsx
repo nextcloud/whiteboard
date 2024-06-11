@@ -51,14 +51,16 @@ const COMMENT_ICON_DIMENSION = 32
 const COMMENT_INPUT_HEIGHT = 50
 const COMMENT_INPUT_WIDTH = 150
 
-/**
- *
- */
-export default function App() {
+interface WhiteboardAppProps {
+	fileId: number;
+	isEmbedded: boolean;
+}
+
+export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
 	const appRef = useRef<any>(null)
-	const [viewModeEnabled, setViewModeEnabled] = useState(false)
-	const [zenModeEnabled, setZenModeEnabled] = useState(false)
+	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
+	const [zenModeEnabled, setZenModeEnabled] = useState(isEmbedded)
 	const [gridModeEnabled, setGridModeEnabled] = useState(false)
 	const [blobUrl, setBlobUrl] = useState<string>('')
 	const [canvasUrl, setCanvasUrl] = useState<string>('')
@@ -84,7 +86,7 @@ export default function App() {
 	] = useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
-	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI))
+	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
 	if (collab && !collab.portal.socket) collab.startCollab()
 
 	useHandleLibrary({excalidrawAPI})

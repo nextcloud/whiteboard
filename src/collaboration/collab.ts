@@ -14,16 +14,9 @@ export class Collab {
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 
-	constructor(excalidrawAPI: ExcalidrawImperativeAPI) {
+	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number) {
 		this.excalidrawAPI = excalidrawAPI
-		const url = window.location.href
-		const fileIdMatch = url.match(/\/files\/(\d+)\?/)
-
-		if (fileIdMatch) {
-			this.portal = new Portal(fileIdMatch[1], '1', this)
-		} else {
-			throw new Error('No FileId found in URL')
-		}
+		this.portal = new Portal(String(fileId), '1', this)
 	}
 
 	startCollab() {

@@ -29,20 +29,22 @@ const Component = {
 	name: 'Whiteboard',
 	render(createElement: (arg0: string, arg1: { attrs: { id: string } }, arg2: string) => any) {
 		this.$emit('update:loaded', true)
+		const randomId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10);
 		this.$nextTick(() => {
-			const rootElement = document.getElementById('whiteboard')
+			const rootElement = document.getElementById('whiteboard-' + randomId)
 			const root = createRoot(rootElement)
 
 			root.render(
 				<StrictMode>
-					<App />
+					<App fileId={this.fileid} isEmbedded={this.isEmbedded}/>
 				</StrictMode>,
 			)
 		})
 		return createElement('div', {
 			attrs: {
-				id: 'whiteboard',
+				id: 'whiteboard-' + randomId,
 			},
+			class: ['whiteboard', { 'whiteboard-viewer__embedding': this.isEmbedded }],
 		}, 'Hello whiteboard')
 	},
 	props: {
@@ -53,6 +55,10 @@ const Component = {
 		fileid: {
 			type: Number,
 			default: null,
+		},
+		isEmbedded: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
