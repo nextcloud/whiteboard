@@ -30,14 +30,7 @@ export class Collab {
 		if (this.portal.socket) return
 		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
 
-		let token = localStorage.getItem('jwt')
-		if (!token) {
-			token = await this.refreshJWT()
-			if (!token) {
-				console.error('Failed to fetch JWT')
-				return
-			}
-		}
+		const token = localStorage.getItem('jwt') || ''
 
 		this.connectSocket(collabBackendUrl, token)
 

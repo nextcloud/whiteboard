@@ -25,14 +25,32 @@ export class Portal {
 
 		this.socket.on('connect_error', async (err) => {
 			if (err.message === 'Authentication error') {
+				alert('Collaboration session expired, trying reconnect...')
+
 				const newToken = await this.refreshJWT()
 				if (newToken) {
 					socket.auth.token = newToken
-					socket.connect() // Reconnect with new token
-				} else {
-					console.error('Failed to refresh token')
-					// Handle token refresh failure (e.g., redirect to login page)
+					socket.connect()
 				}
+			}
+		})
+
+		this.socket.on('token-expired', async () => {
+			alert('Collaboration session expired, trying reconnect...')
+			const newToken = await this.refreshJWT()
+			if (newToken) {
+				socket.auth.token = newToken
+				socket.connect()
+			}
+		})
+
+		this.socket.on('invalid-token', async () => {
+			alert('Collaboration session expired, trying reconnect...')
+
+			const newToken = await this.refreshJWT()
+			if (newToken) {
+				socket.auth.token = newToken
+				socket.connect()
 			}
 		})
 
@@ -105,7 +123,7 @@ export class Portal {
 		} catch (error) {
 			console.error('Error refreshing JWT:', error)
 
-			alert('Cannot join the board. Please login again.')
+			window.location.href = '/index.php/apps/files/files'
 
 			return null
 		}

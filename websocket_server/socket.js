@@ -48,8 +48,11 @@ export const initSocket = (server) => {
 				console.log('Verifying token ...')
 				if (err) {
 					console.log('Token invalid')
+					// socket.emit(err.name === 'TokenExpiredError' ? 'token-expired' : 'invalid-token')
+					// socket.disconnect()
+					// return next(new Error('Authentication error'))
 					socket.emit(err.name === 'TokenExpiredError' ? 'token-expired' : 'invalid-token')
-					return next(new Error('Authentication error'))
+					return socket.disconnect(true)
 				}
 				socket.user = decoded
 				next()

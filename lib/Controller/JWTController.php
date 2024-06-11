@@ -13,10 +13,16 @@ use OCP\IRequest;
 use OCP\IUserSession;
 
 final class JWTController extends Controller {
+	private const EXPIRATION_TIME = 5;
+
+	private const JWT_CONFIG_KEY = 'jwt_secret_key';
+
+	private const JWT_ALGORITHM = 'HS256';
+
 	public function __construct(
-		IRequest $request,
+		IRequest                      $request,
 		private readonly IUserSession $userSession,
-		private readonly IConfig $config
+		private readonly IConfig      $config
 	) {
 		parent::__construct('whiteboard', $request);
 	}
@@ -38,16 +44,16 @@ final class JWTController extends Controller {
 
 		$userId = $user->getUID();
 
-		$key = $this->config->getSystemValueString('jwt_secret_key');
+		$key = $this->config->getSystemValueString(self::JWT_CONFIG_KEY);
 		$issuedAt = time();
-		$expirationTime = $issuedAt + 3600;
+		$expirationTime = $issuedAt + self::EXPIRATION_TIME;
 		$payload = [
 			'userid' => $userId,
 			'iat' => $issuedAt,
 			'exp' => $expirationTime
 		];
 
-		$jwt = JWT::encode($payload, $key, 'HS256');
+		$jwt = JWT::encode($payload, $key, self::JWT_ALGORITHM);
 
 		return new DataResponse(['token' => $jwt]);
 	}
