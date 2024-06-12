@@ -45,7 +45,8 @@
     "stylelint-config-css-modules": "^4.4.0",
     "typescript": "^5.4.5",
     "typescript-plugin-css-modules": "^5.1.0",
-    "vite": "^5.2.11"
+    "vite": "^5.2.11",
+    "vite-plugin-static-copy": "^1.0.5"
   },
   "prettier": {
     "useTabs": true,
