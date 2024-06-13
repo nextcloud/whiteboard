@@ -76,7 +76,11 @@ final class WhiteboardController extends ApiController {
 		$userFolder = $this->rootFolder->getUserFolder($userId);
 		$file = $userFolder->getById($fileId)[0];
 
-		$data = json_decode($file->getContent(), true, 512, JSON_THROW_ON_ERROR);
+		$fileContent = $file->getContent();
+		if ($fileContent === '') {
+			$fileContent = '{"elements":[],"scrollToContent":true}';
+		}
+		$data = json_decode($fileContent, true, 512, JSON_THROW_ON_ERROR);
 
 		return new DataResponse([
 			'data' => $data,

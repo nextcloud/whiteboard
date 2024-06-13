@@ -30,17 +30,23 @@ type Comment = {
 
 const COMMENT_ICON_DIMENSION = 32
 
-/**
- *
- */
-export default function App() {
+interface WhiteboardAppProps {
+	fileId: number;
+	isEmbedded: boolean;
+}
+
+export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
 	const appRef = useRef<any>(null)
-	const [viewModeEnabled] = useState(false)
-	const [zenModeEnabled] = useState(false)
-	const [gridModeEnabled] = useState(false)
-	const [theme] = useState(darkMode ? 'dark' : 'light')
-	const [isCollaborating] = useState(false)
+	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
+	const [zenModeEnabled, setZenModeEnabled] = useState(isEmbedded)
+	const [gridModeEnabled, setGridModeEnabled] = useState(false)
+	const [blobUrl, setBlobUrl] = useState<string>('')
+	const [canvasUrl, setCanvasUrl] = useState<string>('')
+	const [exportWithDarkMode, setExportWithDarkMode] = useState(false)
+	const [exportEmbedScene, setExportEmbedScene] = useState(false)
+	const [theme, setTheme] = useState(darkMode ? 'dark' : 'light')
+	const [isCollaborating, setIsCollaborating] = useState(false)
 	const [commentIcons, setCommentIcons] = useState<{ [id: string]: Comment }>(
 		{}
 	)
@@ -63,7 +69,7 @@ export default function App() {
 	] = useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
-	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI))
+	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
 	if (collab && !collab.portal.socket) collab.startCollab()
 
 	useHandleLibrary({ excalidrawAPI })
