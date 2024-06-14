@@ -1,3 +1,8 @@
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 /* eslint-disable no-console */
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { Socket } from 'socket.io-client'

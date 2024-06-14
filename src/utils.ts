@@ -1,3 +1,10 @@
+/**
+ * SPDX-FileCopyrightText: 2020 Excalidraw
+ * SPDX-License-Identifier: MIT
+ */
+
+// https://github.com/excalidraw/excalidraw/blob/4dc4590f247a0a0d9c3f5d39fe09c00c5cef87bf/examples/excalidraw/utils.ts
+
 import { unstable_batchedUpdates } from 'react-dom'
 
 export const throttleRAF = <T extends any[]>(
