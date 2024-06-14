@@ -1,4 +1,4 @@
-<?php
+ lib/Controller/WhiteboardController.php<?php
 
 declare(strict_types=1);
 /**
@@ -17,7 +17,7 @@ use OCP\IUserSession;
 
 final class WhiteboardController extends ApiController {
 
-	public function __construct($appName, IRequest $request, private readonly IUserSession $userSession, private readonly IRootFolder $rootFolder) {
+	public function __construct($appName, IRequest $request, private IUserSession $userSession, private IRootFolder $rootFolder) {
 		parent::__construct($appName, $request);
 	}
 

@@ -18,7 +18,7 @@ use OCP\IL10N;
 /** @template-implements IEventListener<RegisterTemplateCreatorEvent|Event> */
 final class RegisterTemplateCreatorListener implements IEventListener {
 	public function __construct(
-		private readonly IL10N $l10n
+		private IL10N $l10n
 	) {
 	}
 
