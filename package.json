@@ -22,7 +22,7 @@
     "@nextcloud/event-bus": "^3.2.0",
     "@nextcloud/files": "^3.2.1",
     "@nextcloud/initial-state": "^2.2.0",
-    "@nextcloud/l10n": "^3.0.0",
+    "@nextcloud/l10n": "^3.1.0",
     "@nextcloud/router": "^3.0.1",
     "express": "^4.19.2",
     "lodash": "^4.17.21",
