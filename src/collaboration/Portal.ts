@@ -25,9 +25,8 @@ export class Portal {
 
 		this.socket.on('connect_error', async (err) => {
 			if (err.message === 'Authentication error') {
-				alert('Collaboration session expired, trying reconnect...')
-
 				const newToken = await this.refreshJWT()
+
 				if (newToken) {
 					socket.auth.token = newToken
 					socket.connect()
@@ -36,8 +35,8 @@ export class Portal {
 		})
 
 		this.socket.on('token-expired', async () => {
-			alert('Collaboration session expired, trying reconnect...')
 			const newToken = await this.refreshJWT()
+
 			if (newToken) {
 				socket.auth.token = newToken
 				socket.connect()
@@ -45,9 +44,8 @@ export class Portal {
 		})
 
 		this.socket.on('invalid-token', async () => {
-			alert('Collaboration session expired, trying reconnect...')
-
 			const newToken = await this.refreshJWT()
+
 			if (newToken) {
 				socket.auth.token = newToken
 				socket.connect()
@@ -55,18 +53,11 @@ export class Portal {
 		})
 
 		this.socket.on('init-room', () => {
-			console.log('room initialized')
-
 			if (this.socket) {
-				console.log(`joined room ${this.roomId}`)
 				this.socket.emit('join-room', this.roomId)
 
 				this.socket.on('joined-data', (data) => {
-					console.log('JOINED DATA', new TextDecoder().decode(data))
-
 					const remoteElements = JSON.parse(new TextDecoder().decode(data))
-
-					console.log(`JOINED DATA ${new TextDecoder().decode(data)}`)
 
 					const reconciledElements = this.collab._reconcileElements(remoteElements)
 
@@ -77,20 +68,12 @@ export class Portal {
 			}
 		})
 
-		this.socket.on('new-user', async (_socketId: string) => {
-			console.log(`NEW USER ${_socketId}`)
-
-			this.broadcastScene('SCENE_INIT', this.collab.getSceneElementsIncludingDeleted())
-		})
-
-		this.socket.on('room-user-change', (clients: any) => {
-			console.log(`ROOM USER CHANGE ${clients}`)
+		this.socket.on('room-user-change', (users: any) => {
+			this.collab.updateCollaborators(users)
 		})
 
 		this.socket.on('client-broadcast', (data) => {
 			const decoded = JSON.parse(new TextDecoder().decode(data))
-			console.log(decoded)
-			console.log(data)
 
 			switch (decoded.type) {
 				case 'SCENE_INIT': {
@@ -99,13 +82,14 @@ export class Portal {
 					this.collab.handleRemoteSceneUpdate(reconciledElements)
 					break
 				}
+
 				case 'MOUSE_LOCATION': {
-					this.collab.updateCollaborator(decoded.payload.socketId, decoded.payload)
+					const collaborator = decoded.payload
+
+					this.collab.updateCursor(collaborator)
 				}
 			}
 		})
-
-		return this.socket
 	}
 
 	async refreshJWT(): Promise<string | null> {
@@ -174,6 +158,7 @@ export class Portal {
 				username: this.socket?.id
 			}
 		}
+
 		return this._broadcastSocketData(
 			data,
 			true // volatile

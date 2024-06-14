@@ -82,26 +82,35 @@ export class Collab {
 		payload.pointersMap.size < 2 && this.portal.socket && this.portal.broadcastMouseLocation(payload)
 	}
 
-	setCollaborators(socketIds: string[]) {
-		const collaborators = new Map()
-		for (const socketId of socketIds) {
-			collaborators.set(socketId, Object.assign({}, this.collaborators.get(socketId), {
-				isCurrentUser: socketId === this.portal.socket?.id
-			}))
-		}
+	updateCollaborators = (users: any[]) => {
+		const collaborators = new Map<string, Collaborator>()
+
+		users.forEach((payload) => {
+			collaborators.set(payload.user.userid, {
+				username: payload.user.userid,
+				...payload
+			})
+		})
+
+		this.excalidrawAPI.updateScene({ collaborators })
 
 		this.collaborators = collaborators
-		this.excalidrawAPI.updateScene({ collaborators })
 	}
 
-	updateCollaborator = (socketId: string, updates: Partial<Collaborator>) => {
-		const collaborators = new Map(this.collaborators)
-		const user = Object.assign({}, collaborators.get(socketId), updates, { isCurrentUser: socketId === this.portal.socket?.id })
-		collaborators.set(socketId, user)
-		this.collaborators = collaborators
-
+	updateCursor = (payload: {
+		socketId: string,
+		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
+		button: 'down' | 'up',
+		selectedElementIds: AppState['selectedElementIds'],
+		username: string
+		userid: string
+		user: any
+	}) => {
 		this.excalidrawAPI.updateScene({
-			collaborators
+			collaborators: this.collaborators.set(payload.userid, {
+				...this.collaborators.get(payload.userid),
+				...payload
+			})
 		})
 	}
 

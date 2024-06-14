@@ -45,7 +45,6 @@ export const initSocket = (server) => {
 
 		socket.use((packet, next) => {
 			jwt.verify(socket.handshake.auth.token, JWT_SECRET_KEY, (err, decoded) => {
-				console.log('Verifying token ...')
 				if (err) {
 					console.log('Token invalid')
 					// socket.emit(err.name === 'TokenExpiredError' ? 'token-expired' : 'invalid-token')
@@ -69,16 +68,19 @@ export const initSocket = (server) => {
 			}
 
 			socket.emit('joined-data', convertStringToArrayBuffer(JSON.stringify(roomDataStore[roomID])), [])
+
 			const sockets = await io.in(roomID).fetchSockets()
 
 			if (sockets.length <= 1) {
 				io.to(socket.id).emit('first-in-room')
 			} else {
-				console.log(`${socket.id} new-user emitted to room ${roomID}`)
-				socket.broadcast.to(roomID).emit('new-user', socket.id)
+				socket.broadcast.to(roomID).emit('new-user')
 			}
 
-			io.in(roomID).emit('room-user-change', sockets.map((s) => s.id))
+			io.in(roomID).emit('room-user-change', sockets.map(s => ({
+				socketId: s.id,
+				user: s.user,
+			})))
 		})
 
 		socket.on('server-broadcast', (roomID, encryptedData, iv) => {
@@ -91,12 +93,24 @@ export const initSocket = (server) => {
 			})
 		})
 
-		socket.on('server-volatile-broadcast', (roomID, encryptedData, iv) => {
-			console.log(`Volatile broadcasting to room ${roomID}`)
-			socket.volatile.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
+		socket.on('server-volatile-broadcast', async (roomID, encryptedData) => {
+			const payload = JSON.parse(convertArrayBufferToString(encryptedData))
 
-			const decryptedData = JSON.parse(convertArrayBufferToString(encryptedData))
-			console.log(decryptedData.payload)
+			if (payload.type === 'MOUSE_LOCATION') {
+				const data = {
+					type: 'MOUSE_LOCATION',
+					payload: {
+						...payload.payload,
+						userid: socket.user.userid,
+						user: socket.user,
+						username: socket.user.userid,
+					},
+				}
+
+				const reEncodedData = convertStringToArrayBuffer(JSON.stringify(data))
+
+				socket.volatile.broadcast.to(roomID).emit('client-broadcast', reEncodedData)
+			}
 		})
 
 		socket.on('user-follow', async (payload) => {
@@ -130,7 +144,10 @@ export const initSocket = (server) => {
 				}
 
 				if (!roomID.startsWith('follow@') && otherClients.length > 0) {
-					socket.broadcast.to(roomID).emit('room-user-change', otherClients.map((s) => s.id))
+					socket.broadcast.to(roomID).emit('room-user-change', otherClients.map((s) => ({
+						socketId: s.id,
+						user: s.user,
+					})))
 				}
 
 				if (roomID.startsWith('follow@') && otherClients.length === 0) {
@@ -141,6 +158,7 @@ export const initSocket = (server) => {
 		}
 
 		socket.on('disconnecting', handleDisconnect)
+
 		socket.on('disconnect', () => {
 			socket.removeAllListeners()
 			socket.disconnect()
