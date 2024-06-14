@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+version: 2
+updates:
+- package-ecosystem: npm
+  directory: "/"
+  target-branch: "main"
+  schedule:
+    interval: weekly
+    day: saturday
+    time: "03:00"
+    timezone: Europe/Paris
+  open-pull-requests-limit: 10
+  reviewers:
+  - juliushaertl
+  - hweihwang
+  - grnd-alt
+
+- package-ecosystem: composer
+  directory: "/"
+  schedule:
+    interval: weekly
+    day: saturday
+    time: "03:00"
+    timezone: Europe/Paris
+  open-pull-requests-limit: 10
+  reviewers:
+  - juliushaertl
+  - hweihwang
+  - grnd-alt
