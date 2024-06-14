@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import http from 'http'
 import https from 'https'
 import fs from 'fs'
@@ -11,18 +13,25 @@ dotenv.config()
 
 const {
 	PORT = 3002,
-	TLS = false,
-	TLS_KEY: key,
-	TLS_CERT: cert,
+	TLS,
+	TLS_KEY: keyPath,
+	TLS_CERT: certPath,
 } = process.env
 
-const server = (parseBooleanFromEnv(TLS) ? https : http).createServer(
-	{
-		key: key ? fs.readFileSync(key) : undefined,
-		cert: cert ? fs.readFileSync(cert) : undefined,
-	},
-	app,
-)
+const readTlsCredentials = (keyPath, certPath) => ({
+	key: keyPath ? fs.readFileSync(keyPath) : undefined,
+	cert: certPath ? fs.readFileSync(certPath) : undefined,
+})
+
+const createConfiguredServer = (app) => {
+	const useTls = parseBooleanFromEnv(TLS)
+	const serverType = useTls ? https : http
+	const serverOptions = useTls ? readTlsCredentials(keyPath, certPath) : {}
+
+	return serverType.createServer(serverOptions, app)
+}
+
+const server = createConfiguredServer(app)
 
 initSocket(server)
 
@@ -32,10 +41,9 @@ server.listen(PORT, () => {
 
 const interval = setInterval(saveAllRoomsData, 60 * 60 * 1000)
 
-// Graceful Shutdown
 const shutdown = async () => {
-	clearInterval(interval)
-	await gracefulShutdown(server)
+	clearInterval(interval) // Stop the regular saving of room data
+	await gracefulShutdown(server) // Perform graceful shutdown tasks
 }
 
 process.on('SIGTERM', shutdown)

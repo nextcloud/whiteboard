@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import { Server as SocketIO } from 'socket.io'
 import jwt from 'jsonwebtoken'
 import { getRoomDataFromFile, roomDataStore, saveRoomDataToFile } from './roomData.js'
@@ -11,6 +13,16 @@ const {
 	JWT_SECRET_KEY,
 } = process.env
 
+const verifyToken = (token) => new Promise((resolve, reject) => {
+	jwt.verify(token, JWT_SECRET_KEY, (err, decoded) => {
+		if (err) {
+			console.log(err.name === 'TokenExpiredError' ? 'Token expired' : 'Token verification failed')
+			return reject(new Error('Authentication error'))
+		}
+		resolve(decoded)
+	})
+})
+
 export const initSocket = (server) => {
 	const io = new SocketIO(server, {
 		transports: ['websocket', 'polling'],
@@ -21,147 +33,97 @@ export const initSocket = (server) => {
 		},
 	})
 
-	const verifyToken = (socket, next) => {
-		const token = socket.handshake.auth.token
-		if (!token) {
-			console.log('No token provided')
-			return next(new Error('Authentication error'))
-		}
-
-		jwt.verify(token, JWT_SECRET_KEY, (err, decoded) => {
-			if (err) {
-				console.log(err.name === 'TokenExpiredError' ? 'Token expired' : 'Token verification failed')
-				return next(new Error('Authentication error'))
-			}
-			socket.user = decoded
+	io.use(async (socket, next) => {
+		try {
+			const token = socket.handshake.auth.token
+			if (!token) throw new Error('No token provided')
+			socket.user = await verifyToken(token)
 			next()
-		})
-	}
-
-	io.use(verifyToken)
+		} catch (error) {
+			console.log(error.message)
+			next(error)
+		}
+	})
 
 	io.on('connection', (socket) => {
-		io.to(socket.id).emit('init-room')
+		setupSocketEvents(socket, io)
+	})
+}
 
-		socket.use((packet, next) => {
-			jwt.verify(socket.handshake.auth.token, JWT_SECRET_KEY, (err, decoded) => {
-				if (err) {
-					console.log('Token invalid')
-					// socket.emit(err.name === 'TokenExpiredError' ? 'token-expired' : 'invalid-token')
-					// socket.disconnect()
-					// return next(new Error('Authentication error'))
-					socket.emit(err.name === 'TokenExpiredError' ? 'token-expired' : 'invalid-token')
-					return socket.disconnect(true)
-				}
-				socket.user = decoded
-				next()
-			})
-		})
+const setupSocketEvents = (socket, io) => {
+	socket.emit('init-room')
+	socket.on('join-room', (roomID) => joinRoomHandler(socket, io, roomID))
+	socket.on('server-broadcast', (roomID, encryptedData, iv) => serverBroadcastHandler(socket, io, roomID, encryptedData, iv))
+	socket.on('server-volatile-broadcast', (roomID, encryptedData) => serverVolatileBroadcastHandler(socket, roomID, encryptedData))
+	socket.on('disconnecting', () => disconnectingHandler(socket, io))
+	socket.on('disconnect', () => socket.removeAllListeners())
+}
 
-		socket.on('join-room', async (roomID) => {
-			console.log(`${socket.id} has joined ${roomID}`)
-			await socket.join(roomID)
+const joinRoomHandler = async (socket, io, roomID) => {
+	console.log(`${socket.user.userid} has joined ${roomID}`)
+	await socket.join(roomID)
 
-			if (!roomDataStore[roomID]) {
-				console.log(`Data for room ${roomID} is not available, fetching from file ...`)
-				roomDataStore[roomID] = await getRoomDataFromFile(roomID, socket)
-			}
+	if (!roomDataStore[roomID]) {
+		console.log(`Data for room ${roomID} is not available, fetching from file ...`)
+		roomDataStore[roomID] = await getRoomDataFromFile(roomID, socket)
+	}
 
-			socket.emit('joined-data', convertStringToArrayBuffer(JSON.stringify(roomDataStore[roomID])), [])
+	socket.emit('joined-data', convertStringToArrayBuffer(JSON.stringify(roomDataStore[roomID])), [])
 
-			const sockets = await io.in(roomID).fetchSockets()
+	const sockets = await io.in(roomID).fetchSockets()
 
-			if (sockets.length <= 1) {
-				io.to(socket.id).emit('first-in-room')
-			} else {
-				socket.broadcast.to(roomID).emit('new-user')
-			}
+	io.in(roomID).emit('room-user-change', sockets.map((s) => ({
+		socketId: s.id,
+		user: s.user,
+	})))
+}
 
-			io.in(roomID).emit('room-user-change', sockets.map(s => ({
+const serverBroadcastHandler = (socket, io, roomID, encryptedData, iv) => {
+	setTimeout(() => {
+		const decryptedData = JSON.parse(convertArrayBufferToString(encryptedData))
+		roomDataStore[roomID] = decryptedData.payload.elements
+	})
+
+	socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
+}
+
+const serverVolatileBroadcastHandler = (socket, roomID, encryptedData) => {
+	const payload = JSON.parse(convertArrayBufferToString(encryptedData))
+
+	if (payload.type === 'MOUSE_LOCATION') {
+		const data = {
+			type: 'MOUSE_LOCATION',
+			payload: {
+				...payload.payload,
+				userid: socket.user.userid,
+				user: socket.user,
+				username: socket.user.userid,
+			},
+		}
+
+		const reEncodedData = convertStringToArrayBuffer(JSON.stringify(data))
+
+		socket.volatile.broadcast.to(roomID).emit('client-broadcast', reEncodedData)
+	}
+}
+
+const disconnectingHandler = async (socket, io) => {
+	console.log(`${socket.user.userid} has disconnected`)
+	for (const roomID of Array.from(socket.rooms)) {
+		if (roomID === socket.id) continue
+		console.log(`${socket.id} has left ${roomID}`)
+		const otherClients = (await io.in(roomID).fetchSockets()).filter((s) => s.id !== socket.id)
+
+		if (otherClients.length === 0 && roomDataStore[roomID]) {
+			await saveRoomDataToFile(roomID, roomDataStore[roomID])
+			delete roomDataStore[roomID]
+		}
+
+		if (otherClients.length > 0) {
+			socket.broadcast.to(roomID).emit('room-user-change', otherClients.map((s) => ({
 				socketId: s.id,
 				user: s.user,
 			})))
-		})
-
-		socket.on('server-broadcast', (roomID, encryptedData, iv) => {
-			console.log(`Broadcasting to room ${roomID}`)
-			socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
-
-			const decryptedData = JSON.parse(convertArrayBufferToString(encryptedData))
-			setTimeout(() => {
-				roomDataStore[roomID] = decryptedData.payload.elements
-			})
-		})
-
-		socket.on('server-volatile-broadcast', async (roomID, encryptedData) => {
-			const payload = JSON.parse(convertArrayBufferToString(encryptedData))
-
-			if (payload.type === 'MOUSE_LOCATION') {
-				const data = {
-					type: 'MOUSE_LOCATION',
-					payload: {
-						...payload.payload,
-						userid: socket.user.userid,
-						user: socket.user,
-						username: socket.user.userid,
-					},
-				}
-
-				const reEncodedData = convertStringToArrayBuffer(JSON.stringify(data))
-
-				socket.volatile.broadcast.to(roomID).emit('client-broadcast', reEncodedData)
-			}
-		})
-
-		socket.on('user-follow', async (payload) => {
-			console.log(`User follow action: ${JSON.stringify(payload)}`)
-			const roomID = `follow@${payload.userToFollow.socketId}`
-
-			switch (payload.action) {
-			case 'FOLLOW':
-				await socket.join(roomID)
-				break
-			case 'UNFOLLOW':
-				await socket.leave(roomID)
-				break
-			}
-
-			const sockets = await io.in(roomID).fetchSockets()
-			const followedBy = sockets.map((s) => s.id)
-			io.to(payload.userToFollow.socketId).emit('user-follow-room-change', followedBy)
-		})
-
-		const handleDisconnect = async () => {
-			console.log(`${socket.id} has disconnected`)
-			for (const roomID of Array.from(socket.rooms)) {
-				if (roomID === socket.id) continue
-				console.log(`${socket.id} has left ${roomID}`)
-				const otherClients = (await io.in(roomID).fetchSockets()).filter((s) => s.id !== socket.id)
-
-				if (otherClients.length === 0 && roomDataStore[roomID]) {
-					await saveRoomDataToFile(roomID, roomDataStore[roomID])
-					delete roomDataStore[roomID]
-				}
-
-				if (!roomID.startsWith('follow@') && otherClients.length > 0) {
-					socket.broadcast.to(roomID).emit('room-user-change', otherClients.map((s) => ({
-						socketId: s.id,
-						user: s.user,
-					})))
-				}
-
-				if (roomID.startsWith('follow@') && otherClients.length === 0) {
-					const socketId = roomID.replace('follow@', '')
-					io.to(socketId).emit('broadcast-unfollow')
-				}
-			}
 		}
-
-		socket.on('disconnecting', handleDisconnect)
-
-		socket.on('disconnect', () => {
-			socket.removeAllListeners()
-			socket.disconnect()
-		})
-	})
+	}
 }
