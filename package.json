@@ -31,7 +31,7 @@
     "react-dom": "^18.3.1",
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
-    "vue": "^2.7.14"
+    "vue": "^3.4.29"
   },
   "devDependencies": {
     "@nextcloud/browserslist-config": "^3.0.1",
