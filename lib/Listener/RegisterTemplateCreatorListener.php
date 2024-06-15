@@ -7,7 +7,6 @@ declare(strict_types=1);
  */
 namespace OCA\Whiteboard\Listener;
 
-use OC;
 use OCA\Whiteboard\AppInfo\Application;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
@@ -30,7 +29,7 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 		$event->getTemplateManager()->registerTemplateFileCreator(function () {
 			$whiteboard = new TemplateFileCreator(Application::APP_ID, $this->l10n->t('New whiteboard'), '.excalidraw');
 			$whiteboard->addMimetype('application/vnd.excalidraw+json');
-			$whiteboard->setIconSvgInline(file_get_contents(OC::$SERVERROOT . '/core/img/filetypes/whiteboard.svg'));
+			$whiteboard->setIconSvgInline(file_get_contents(__DIR__ . '/../../img/app-filetype.svg'));
 			$whiteboard->setActionLabel($this->l10n->t('Create new whiteboard'));
 			return $whiteboard;
 		});

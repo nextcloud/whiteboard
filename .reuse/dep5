@@ -10,3 +10,7 @@ License: CC0-1.0
 Files: l10n/*.js l10n/*.json js/*.mjs.map js/*.mjs css/*
 Copyright: 2019-2024 Nextcloud GmbH and Nextcloud contributors
 License: AGPL-3.0-or-later
+
+Files: img/app.svg img/app-dark.svg img/app-filetype.svg
+Copyright: 2019 Simran-B <https://pictogrammers.com/contributor/Simran-B/>
+License: Apache-2.0

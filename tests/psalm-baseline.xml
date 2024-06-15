@@ -7,9 +7,4 @@
       <code><![CDATA[private]]></code>
     </MissingDependency>
   </file>
-  <file src="lib/Listener/RegisterTemplateCreatorListener.php">
-    <UndefinedClass>
-      <code><![CDATA[OC]]></code>
-    </UndefinedClass>
-  </file>
 </files>
