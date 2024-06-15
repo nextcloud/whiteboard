@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   static-analysis:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, self-hosted]
 
     name: static-psalm-analysis
     steps:

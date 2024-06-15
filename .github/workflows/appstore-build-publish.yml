@@ -14,7 +14,7 @@ on:
 
 jobs:
   build_and_publish:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, self-hosted]
 
     # Only allowed to be run on nextcloud-releases repositories
     if: ${{ github.repository_owner == 'nextcloud-releases' }}
