@@ -10,7 +10,6 @@ import { Server as SocketIO } from 'socket.io'
 import fetch from 'node-fetch'
 import * as fs from 'node:fs'
 
-
 const nextcloudUrl = process.env.NEXTCLOUD_URL || 'http://nextcloud.local'
 const port = process.env.PORT || 3002
 
@@ -34,7 +33,7 @@ let roomDataStore = {}
 const getRoomDataFromFile = async (roomID) => {
 	const response = await fetch(`${nextcloudUrl}/index.php/apps/whiteboard/${roomID}`, {
 		headers: {
-			'Authorization': 'Basic ' + Buffer.from('admin:admin').toString('base64'),
+			Authorization: 'Basic ' + Buffer.from('admin:admin').toString('base64'),
 		},
 	})
 
@@ -57,7 +56,7 @@ const convertArrayBufferToString = (arrayBuffer) => {
 }
 
 const saveRoomDataToFile = async (roomID, data) => {
-	console.log(`Saving room data to file: ${roomID}`)
+	console.info(`Saving room data to file: ${roomID}`)
 
 	const body = JSON.stringify({ data: { elements: data } })
 
@@ -65,10 +64,10 @@ const saveRoomDataToFile = async (roomID, data) => {
 		await fetch(`${nextcloudUrl}/index.php/apps/whiteboard/${roomID}`, {
 			method: 'PUT',
 			headers: {
-				'Authorization': 'Basic ' + Buffer.from('admin:admin').toString('base64'),
+				Authorization: 'Basic ' + Buffer.from('admin:admin').toString('base64'),
 				'Content-Type': 'application/json',
 			},
-			body: body,
+			body,
 		})
 	} catch (error) {
 		console.error(error)
@@ -97,7 +96,7 @@ io.on('connection', async (socket) => {
 	io.to(`${socket.id}`).emit('init-room')
 
 	socket.on('join-room', async (roomID) => {
-		console.log(`${socket.id} has joined ${roomID}`)
+		console.debug(`${socket.id} has joined ${roomID}`)
 		await socket.join(roomID)
 
 		if (!roomDataStore[roomID]) {
@@ -111,7 +110,7 @@ io.on('connection', async (socket) => {
 		if (sockets.length <= 1) {
 			io.to(`${socket.id}`).emit('first-in-room')
 		} else {
-			console.log(`${socket.id} new-user emitted to room ${roomID}`)
+			console.debug(`${socket.id} new-user emitted to room ${roomID}`)
 			socket.broadcast.to(roomID).emit('new-user', socket.id)
 		}
 
@@ -119,7 +118,7 @@ io.on('connection', async (socket) => {
 	})
 
 	socket.on('server-broadcast', (roomID, encryptedData, iv) => {
-		console.log(`Broadcasting to room ${roomID}`)
+		console.debug(`Broadcasting to room ${roomID}`)
 
 		socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
 
@@ -131,21 +130,21 @@ io.on('connection', async (socket) => {
 	})
 
 	socket.on('server-volatile-broadcast', (roomID, encryptedData, iv) => {
-		console.log(`Volatile broadcasting to room ${roomID}`)
+		console.debug(`Volatile broadcasting to room ${roomID}`)
 
 		socket.volatile.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
 
 		const decryptedData = JSON.parse(convertArrayBufferToString(encryptedData))
 
-		console.log(decryptedData.payload)
+		console.debug(decryptedData.payload)
 
 		// setTimeout(() => {
-		// 	roomDataStore[roomID] = decryptedData.payload.elements
+		// roomDataStore[roomID] = decryptedData.payload.elements
 		// })
 	})
 
 	socket.on('user-follow', async (payload) => {
-		console.log(`User follow action: ${JSON.stringify(payload)}`)
+		console.debug(`User follow action: ${JSON.stringify(payload)}`)
 		const roomID = `follow@${payload.userToFollow.socketId}`
 
 		switch (payload.action) {
@@ -173,12 +172,12 @@ io.on('connection', async (socket) => {
 	})
 
 	socket.on('disconnecting', async () => {
-		console.log(`${socket.id} has disconnected`)
+		console.debug(`${socket.id} has disconnected`)
 
 		for (const roomID of Array.from(socket.rooms)) {
 			if (roomID === socket.id) continue
 
-			console.log(`${socket.id} has left ${roomID}`)
+			console.debug(`${socket.id} has left ${roomID}`)
 
 			const otherClients = (await io.in(roomID).fetchSockets()).filter((_socket) => _socket.id !== socket.id)
 
@@ -186,7 +185,7 @@ io.on('connection', async (socket) => {
 			if (otherClients.length === 0 && roomDataStore[roomID]) {
 				await saveRoomDataToFile(roomID, roomDataStore[roomID])
 
-				//Flush room data if no one is in the room
+				// Flush room data if no one is in the room
 				delete roomDataStore[roomID]
 			}
 
@@ -214,16 +213,17 @@ const interval = setInterval(saveAllRoomsData, 60 * 60 * 1000)
 
 // Graceful Shutdown
 const gracefulShutdown = async () => {
-	console.log('Received shutdown signal, saving all data...')
+	console.debug('Received shutdown signal, saving all data...')
 	await saveAllRoomsData()
-	console.log('All data saved, shutting down server...')
+	console.debug('All data saved, shutting down server...')
 	clearInterval(interval)
 	roomDataStore = {}
 
 	// Close the server gracefully
 	server.close(() => {
-		console.log('HTTP server closed.')
+		console.debug('HTTP server closed.')
 
+		// eslint-disable-next-line n/no-process-exit
 		process.exit(0)
 	})
 
@@ -231,11 +231,12 @@ const gracefulShutdown = async () => {
 	setTimeout(() => {
 		console.error('Force closing server after 1 minute.')
 
+		// eslint-disable-next-line n/no-process-exit
 		process.exit(1)
 	}, 60 * 1000)
 
 	io.close(() => {
-		console.log('Socket server closed.')
+		console.debug('Socket server closed.')
 	})
 }
 
@@ -244,5 +245,5 @@ process.on('SIGTERM', gracefulShutdown)
 process.on('SIGINT', gracefulShutdown)
 
 server.listen(port, () => {
-	console.log(`listening on port: ${port}`)
+	console.debug(`listening on port: ${port}`)
 })
