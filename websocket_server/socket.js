@@ -37,7 +37,8 @@ export const initSocket = (server) => {
 		try {
 			const token = socket.handshake.auth.token
 			if (!token) throw new Error('No token provided')
-			socket.user = await verifyToken(token)
+			socket.decodedData = await verifyToken(token)
+
 			next()
 		} catch (error) {
 			console.log(error.message)
@@ -60,7 +61,7 @@ const setupSocketEvents = (socket, io) => {
 }
 
 const joinRoomHandler = async (socket, io, roomID) => {
-	console.log(`${socket.user.userid} has joined ${roomID}`)
+	console.log(`${socket.decodedData.user.name} has joined ${roomID}`)
 	await socket.join(roomID)
 
 	if (!roomDataStore[roomID]) {
@@ -74,7 +75,7 @@ const joinRoomHandler = async (socket, io, roomID) => {
 
 	io.in(roomID).emit('room-user-change', sockets.map((s) => ({
 		socketId: s.id,
-		user: s.user,
+		user: s.decodedData.user,
 	})))
 }
 
@@ -91,27 +92,25 @@ const serverVolatileBroadcastHandler = (socket, roomID, encryptedData) => {
 	const payload = JSON.parse(convertArrayBufferToString(encryptedData))
 
 	if (payload.type === 'MOUSE_LOCATION') {
-		const data = {
+		const eventData = {
 			type: 'MOUSE_LOCATION',
 			payload: {
 				...payload.payload,
-				userid: socket.user.userid,
-				user: socket.user,
-				username: socket.user.userid,
+				user: socket.decodedData.user,
 			},
 		}
 
-		const reEncodedData = convertStringToArrayBuffer(JSON.stringify(data))
+		const encodedEventData = convertStringToArrayBuffer(JSON.stringify(eventData))
 
-		socket.volatile.broadcast.to(roomID).emit('client-broadcast', reEncodedData)
+		socket.volatile.broadcast.to(roomID).emit('client-broadcast', encodedEventData)
 	}
 }
 
 const disconnectingHandler = async (socket, io) => {
-	console.log(`${socket.user.userid} has disconnected`)
+	console.log(`${socket.decodedData.user.name} has disconnected`)
 	for (const roomID of Array.from(socket.rooms)) {
 		if (roomID === socket.id) continue
-		console.log(`${socket.id} has left ${roomID}`)
+		console.log(`${socket.decodedData.user.name} has left ${roomID}`)
 		const otherClients = (await io.in(roomID).fetchSockets()).filter((s) => s.id !== socket.id)
 
 		if (otherClients.length === 0 && roomDataStore[roomID]) {
@@ -122,7 +121,7 @@ const disconnectingHandler = async (socket, io) => {
 		if (otherClients.length > 0) {
 			socket.broadcast.to(roomID).emit('room-user-change', otherClients.map((s) => ({
 				socketId: s.id,
-				user: s.user,
+				user: s.decodedData.user,
 			})))
 		}
 	}

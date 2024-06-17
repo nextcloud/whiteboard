@@ -375,7 +375,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 					}}
 					initialData={initialStatePromiseRef.current.promise}
 					onChange={(elements, state) => {
-						console.info('Elements :', elements, 'State : ', state)
+
 					}}
 					onPointerUpdate={collab?.onPointerUpdate}
 					viewModeEnabled={viewModeEnabled}

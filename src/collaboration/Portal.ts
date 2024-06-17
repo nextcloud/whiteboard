@@ -1,8 +1,9 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { Socket } from 'socket.io-client'
+import { io, type Socket } from 'socket.io-client'
 import type { Collab } from './collab'
 import type { Gesture } from '@excalidraw/excalidraw/types/types'
 import axios from '@nextcloud/axios'
+import { loadState } from '@nextcloud/initial-state'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT',
@@ -22,15 +23,28 @@ export class Portal {
 		this.collab = collab
 	}
 
+	connectSocket = () => {
+		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
+
+		const token = localStorage.getItem(`jwt-${this.roomId}`) || ''
+
+		const socket = io(collabBackendUrl, {
+			withCredentials: true,
+			auth: {
+				token
+			}
+		})
+
+		this.open(socket)
+	}
+
 	open(socket: Socket) {
 		this.socket = socket
 
 		const eventsNeedingTokenRefresh = ['connect_error', 'token-expired', 'invalid-token']
 		eventsNeedingTokenRefresh.forEach((event) =>
-			this.socket?.on(event, async (err) => {
-				if (['Authentication error', undefined].includes(err?.message)) {
-					await this.handleTokenRefresh()
-				}
+			this.socket?.on(event, async () => {
+				await this.handleTokenRefresh()
 			})
 		)
 
@@ -76,10 +90,12 @@ export class Portal {
 
 	async refreshJWT(): Promise<string | null> {
 		try {
-			const response = await axios.get('/index.php/apps/whiteboard/token', { withCredentials: true })
+			const response = await axios.get(`/index.php/apps/whiteboard/${this.roomId}/token`, { withCredentials: true })
 			const token = response.data.token
 			if (!token) throw new Error('No token received')
-			localStorage.setItem('jwt', token)
+
+			localStorage.setItem(`jwt-${this.roomId}`, token)
+
 			return token
 		} catch (error) {
 			console.error('Error refreshing JWT:', error)

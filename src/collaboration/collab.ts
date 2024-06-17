@@ -1,11 +1,9 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { AppState, Collaborator, ExcalidrawImperativeAPI, Gesture } from '@excalidraw/excalidraw/types/types'
 import { Portal } from './Portal'
-import { io } from 'socket.io-client'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
-import { loadState } from '@nextcloud/initial-state'
 
 export class Collab {
 
@@ -21,24 +19,10 @@ export class Collab {
 
 	async startCollab() {
 		if (this.portal.socket) return
-		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
 
-		const token = localStorage.getItem('jwt') || ''
-
-		this.connectSocket(collabBackendUrl, token)
+		this.portal.connectSocket()
 
 		this.excalidrawAPI.onChange(this.onChange)
-	}
-
-	connectSocket = (collabBackendUrl: string, token: string) => {
-		const socket = io(collabBackendUrl, {
-			withCredentials: true,
-			auth: {
-				token
-			}
-		})
-
-		this.portal.open(socket)
 	}
 
 	getSceneElementsIncludingDeleted = () => {
@@ -86,8 +70,8 @@ export class Collab {
 		const collaborators = new Map<string, Collaborator>()
 
 		users.forEach((payload) => {
-			collaborators.set(payload.user.userid, {
-				username: payload.user.userid,
+			collaborators.set(payload.user.id, {
+				username: payload.user.name,
 				...payload
 			})
 		})
@@ -102,14 +86,16 @@ export class Collab {
 		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
 		button: 'down' | 'up',
 		selectedElementIds: AppState['selectedElementIds'],
-		username: string
-		userid: string
-		user: any
+		user: {
+			id: string,
+			name: string
+		}
 	}) => {
 		this.excalidrawAPI.updateScene({
-			collaborators: this.collaborators.set(payload.userid, {
-				...this.collaborators.get(payload.userid),
-				...payload
+			collaborators: this.collaborators.set(payload.user.id, {
+				...this.collaborators.get(payload.user.id),
+				...payload,
+				username: payload.user.name
 			})
 		})
 	}
