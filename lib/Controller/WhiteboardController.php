@@ -43,27 +43,8 @@ final class WhiteboardController extends ApiController {
 	#[NoCSRFRequired]
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
-		$authHeader = $this->request->getHeader('Authorization');
-
-		if (!$authHeader) {
-			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
-		}
-
-		[$jwt] = sscanf($authHeader, 'Bearer %s');
-
-		if (!$jwt) {
-			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
-		}
-
-		try {
-			$key = $this->config->getSystemValueString('jwt_secret_key');
-			$decoded = JWT::decode($jwt, new Key($key, 'HS256'));
-			$userId = $decoded->userid;
-		} catch (\Exception $e) {
-			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
-		}
-
-		$userFolder = $this->rootFolder->getUserFolder($userId);
+		$user = $this->userSession->getUser();
+		$userFolder = $this->rootFolder->getUserFolder($user?->getUID());
 		$file = $userFolder->getById($fileId)[0];
 
 		if (empty($data)) {
@@ -108,11 +89,9 @@ final class WhiteboardController extends ApiController {
 		$file = $userFolder->getById($fileId)[0];
 
 		$fileContent = $file->getContent();
-
-		if (empty($fileContent)) {
+		if ($fileContent === '') {
 			$fileContent = '{"elements":[],"scrollToContent":true}';
 		}
-
 		$data = json_decode($fileContent, true, 512, JSON_THROW_ON_ERROR);
 
 		return new DataResponse([
