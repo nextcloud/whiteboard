@@ -1,3 +1,13 @@
+/**
+ * SPDX-FileCopyrightText: 2020 Excalidraw
+ * SPDX-License-Identifier: MIT
+ */
+
+// https://github.com/excalidraw/excalidraw/blob/4dc4590f247a0a0d9c3f5d39fe09c00c5cef87bf/examples/excalidraw/utils.ts
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/* eslint-disable-next-line camelcase */
 import { unstable_batchedUpdates } from 'react-dom'
 
 export const throttleRAF = <T extends any[]>(
@@ -58,9 +68,9 @@ export const withBatchedUpdates = <
 >(
 		func: Parameters<TFunction>['length'] extends 0 | 1 ? TFunction : never,
 	) =>
-  ((event) => {
-  	unstable_batchedUpdates(func as TFunction, event)
-  }) as TFunction
+		((event) => {
+			unstable_batchedUpdates(func as TFunction, event)
+		}) as TFunction
 
 export const withBatchedUpdatesThrottled = <
   TFunction extends ((event: any) => void) | (() => void)

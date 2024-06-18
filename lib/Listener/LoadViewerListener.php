@@ -15,7 +15,6 @@ use OCA\Whiteboard\AppInfo\Application;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
-use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\Util;
 

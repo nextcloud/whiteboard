@@ -1,5 +1,5 @@
 {
-    "name": "nextcloud/whiteboard",
+	"name": "nextcloud/whiteboard",
 	"config": {
 		"autoloader-suffix": "Whiteboard",
 		"optimize-autoloader": true,
@@ -8,11 +8,11 @@
 		},
 		"sort-packages": true
 	},
-    "license": "AGPL",
-    "require": {
-      "php": "^8.1",
-	  "firebase/php-jwt": "^6.10"
-    },
+	"license": "AGPL",
+	"require": {
+		"php": "^8.1",
+		"firebase/php-jwt": "^6.10"
+	},
 	"require-dev": {
 		"roave/security-advisories": "dev-latest",
 		"phpunit/phpunit": "^9.5",
@@ -21,11 +21,11 @@
 		"sabre/dav": "^4.3",
 		"nextcloud/ocp": "dev-master"
 	},
-    "scripts": {
-      "lint": "find . -name \\*.php -not -path './vendor/*' -print0 | xargs -0 -n1 php -l",
-      "cs:check": "php-cs-fixer fix --dry-run --diff",
-      "cs:fix": "php-cs-fixer fix",
-      "psalm": "psalm.phar",
-      "test:unit": "phpunit -c tests/phpunit.xml"
-    }
+	"scripts": {
+		"lint": "find . -name \\*.php -not -path './vendor/*' -print0 | xargs -0 -n1 php -l",
+		"cs:check": "php-cs-fixer fix --dry-run --diff",
+		"cs:fix": "php-cs-fixer fix",
+		"psalm": "psalm.phar",
+		"test:unit": "phpunit -c tests/phpunit.xml"
+	}
 }

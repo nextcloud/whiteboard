@@ -21,6 +21,9 @@ class AddContentSecurityPolicyListener implements IEventListener {
 	}
 
 	public function handle(Event $event): void {
+		if (!$event instanceof AddContentSecurityPolicyEvent) {
+			return;
+		}
 
 		$policy = new EmptyContentSecurityPolicy();
 
