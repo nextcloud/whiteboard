@@ -5,6 +5,7 @@ declare(strict_types=1);
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+
 namespace OCA\Whiteboard\Controller;
 
 use Firebase\JWT\JWT;
@@ -33,13 +34,41 @@ final class WhiteboardController extends ApiController {
 		parent::__construct($appName, $request);
 	}
 
+	/**
+	 * @throws NotPermittedException
+	 * @throws NoUserException
+	 * @throws \JsonException
+	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
-		$user = $this->userSession->getUser();
-		$userFolder = $this->rootFolder->getUserFolder($user?->getUID());
+		$authHeader = $this->request->getHeader('Authorization');
+
+		if (!$authHeader) {
+			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
+		}
+
+		[$jwt] = sscanf($authHeader, 'Bearer %s');
+
+		if (!$jwt) {
+			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
+		}
+
+		try {
+			$key = $this->config->getSystemValueString('jwt_secret_key');
+			$decoded = JWT::decode($jwt, new Key($key, 'HS256'));
+			$userId = $decoded->userid;
+		} catch (\Exception $e) {
+			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$userFolder = $this->rootFolder->getUserFolder($userId);
 		$file = $userFolder->getById($fileId)[0];
+
+		if (empty($data)) {
+			$data = ['elements' => [], 'scrollToContent' => true];
+		}
 
 		$file->putContent(json_encode($data, JSON_THROW_ON_ERROR));
 
@@ -79,9 +108,11 @@ final class WhiteboardController extends ApiController {
 		$file = $userFolder->getById($fileId)[0];
 
 		$fileContent = $file->getContent();
-		if ($fileContent === '') {
+
+		if (empty($fileContent)) {
 			$fileContent = '{"elements":[],"scrollToContent":true}';
 		}
+
 		$data = json_decode($fileContent, true, 512, JSON_THROW_ON_ERROR);
 
 		return new DataResponse([

@@ -63,7 +63,7 @@ const socketAuthenticateHandler = async (socket, next) => {
 
 		console.log(`User ${socket.decodedData.user.name} with permission ${socket.decodedData.permissions} connected`)
 
-		if (socket.decodedData.permissions === 1) {
+		if (isSocketReadOnly(socket)) {
 			socket.emit('read-only')
 		}
 
@@ -95,8 +95,11 @@ const joinRoomHandler = async (socket, io, roomID) => {
 }
 
 const serverBroadcastHandler = (socket, io, roomID, encryptedData, iv) => {
+	if (isSocketReadOnly(socket)) return
+
 	setTimeout(() => {
 		const decryptedData = JSON.parse(convertArrayBufferToString(encryptedData))
+
 		roomDataStore[roomID] = decryptedData.payload.elements
 	})
 
@@ -130,7 +133,7 @@ const disconnectingHandler = async (socket, io) => {
 
 		if (otherClients.length === 0 && roomDataStore[roomID]) {
 			await saveRoomDataToFile(roomID, roomDataStore[roomID])
-			delete roomDataStore[roomID]
+			// delete roomDataStore[roomID]
 		}
 
 		if (otherClients.length > 0) {
@@ -141,3 +144,5 @@ const disconnectingHandler = async (socket, io) => {
 		}
 	}
 }
+
+const isSocketReadOnly = (socket) => socket.decodedData.permissions === 1

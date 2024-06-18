@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-/* eslint-disable n/no-process-exit */
 
 import fetch from 'node-fetch'
 import dotenv from 'dotenv'
@@ -9,16 +8,15 @@ dotenv.config()
 const {
 	NEXTCLOUD_URL = 'http://nextcloud.local',
 	ADMIN_USER = 'admin',
-	ADMIN_PASS = 'admin',
+	ADMIN_PASS = 'admin'
 } = process.env
-const FORCE_CLOSE_TIMEOUT = 60 * 1000
 
-export let roomDataStore = {}
+export const roomDataStore = {}
 
 const fetchOptions = (method, token, body = null) => {
 	const headers = {
 		'Content-Type': 'application/json',
-		Authorization: `Bearer ${token}`,
+		Authorization: `Bearer ${token}`
 	}
 
 	if (method === 'PUT') {
@@ -28,7 +26,7 @@ const fetchOptions = (method, token, body = null) => {
 	return {
 		method,
 		headers,
-		...(body && { body: JSON.stringify(body) }),
+		...(body && { body: JSON.stringify(body) })
 	}
 }
 
@@ -58,6 +56,7 @@ export const getRoomDataFromFile = async (roomID, socket) => {
 	return result ? result.data.elements : null
 }
 
+// Called when there's nobody in the room (No one keeping the latest data), BE to BE communication
 export const saveRoomDataToFile = async (roomID, data) => {
 	console.log(`Saving room data to file: ${roomID}`)
 	const url = `${NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
@@ -67,27 +66,16 @@ export const saveRoomDataToFile = async (roomID, data) => {
 	await fetchData(url, options)
 }
 
+// TODO: Should be called when the server is shutting down and a should be a BE to BE (or OS) communication
+//  in batch operation, run in background and check if it's necessary to save for each room.
+//  Should be called periodically and saved somewhere else for preventing data loss (memory loss, server crash, electricity cut, etc.)
 export const saveAllRoomsData = async () => {
-	for (const roomID in roomDataStore) {
-		if (Object.prototype.hasOwnProperty.call(roomDataStore, roomID) && roomDataStore[roomID]) {
-			await saveRoomDataToFile(roomID, roomDataStore[roomID])
-		}
-	}
 }
 
-export const gracefulShutdown = async (server) => {
-	console.log('Received shutdown signal, saving all data...')
-	await saveAllRoomsData()
-	console.log('All data saved, shutting down server...')
-	roomDataStore = {}
-
-	server.close(() => {
-		console.log('HTTP server closed.')
-		process.exit(0)
-	})
-
-	setTimeout(() => {
-		console.error('Force closing server after 1 minute.')
-		process.exit(1)
-	}, FORCE_CLOSE_TIMEOUT)
+export const removeAllRoomData = async () => {
+	for (const roomID in roomDataStore) {
+		if (Object.prototype.hasOwnProperty.call(roomDataStore, roomID)) {
+			delete roomDataStore[roomID]
+		}
+	}
 }

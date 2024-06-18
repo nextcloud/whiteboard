@@ -1,11 +1,12 @@
 /* eslint-disable no-console */
+/* eslint-disable n/no-process-exit */
 
 import http from 'http'
 import https from 'https'
 import fs from 'fs'
 import app from './app.js'
 import { initSocket } from './socket.js'
-import { gracefulShutdown, saveAllRoomsData } from './roomData.js'
+import { removeAllRoomData, saveAllRoomsData } from './roomData.js'
 import dotenv from 'dotenv'
 import { parseBooleanFromEnv } from './utils.js'
 
@@ -15,12 +16,14 @@ const {
 	PORT = 3002,
 	TLS,
 	TLS_KEY: keyPath,
-	TLS_CERT: certPath,
+	TLS_CERT: certPath
 } = process.env
+
+const FORCE_CLOSE_TIMEOUT = 60 * 60 * 1000
 
 const readTlsCredentials = (keyPath, certPath) => ({
 	key: keyPath ? fs.readFileSync(keyPath) : undefined,
-	cert: certPath ? fs.readFileSync(certPath) : undefined,
+	cert: certPath ? fs.readFileSync(certPath) : undefined
 })
 
 const createConfiguredServer = (app) => {
@@ -39,10 +42,26 @@ server.listen(PORT, () => {
 	console.log(`Listening on port: ${PORT}`)
 })
 
-const interval = setInterval(saveAllRoomsData, 60 * 60 * 1000)
+export const gracefulShutdown = async (server) => {
+	console.log('Received shutdown signal, saving all data...')
+	await saveAllRoomsData()
+
+	console.log('Clear all room data...')
+	await removeAllRoomData()
+
+	console.log('Closing server...')
+	server.close(() => {
+		console.log('HTTP server closed.')
+		process.exit(0)
+	})
+
+	setTimeout(() => {
+		console.error('Force closing server after 1 hour')
+		process.exit(1)
+	}, FORCE_CLOSE_TIMEOUT)
+}
 
 const shutdown = async () => {
-	clearInterval(interval) // Stop the regular saving of room data
 	await gracefulShutdown(server) // Perform graceful shutdown tasks
 }
 
