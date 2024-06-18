@@ -47,16 +47,21 @@ export class Portal {
 	open(socket: Socket) {
 		this.socket = socket
 
-		const eventsNeedingTokenRefresh = ['connect_error', 'token-expired', 'invalid-token']
+		const eventsNeedingTokenRefresh = ['connect_error']
 		eventsNeedingTokenRefresh.forEach((event) =>
 			this.socket?.on(event, async () => {
 				await this.handleTokenRefresh()
 			})
 		)
 
+		this.socket.on('read-only', () => this.handleReadOnlySocket())
 		this.socket.on('init-room', () => this.handleInitRoom())
 		this.socket.on('room-user-change', (users: any) => this.collab.updateCollaborators(users))
 		this.socket.on('client-broadcast', (data) => this.handleClientBroadcast(data))
+	}
+
+	async handleReadOnlySocket() {
+		this.collab.makeBoardReadOnly()
 	}
 
 	async handleTokenRefresh() {

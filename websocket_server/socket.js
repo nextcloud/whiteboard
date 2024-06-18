@@ -10,15 +10,17 @@ dotenv.config()
 
 const {
 	NEXTCLOUD_URL = 'http://nextcloud.local',
-	JWT_SECRET_KEY,
+	JWT_SECRET_KEY
 } = process.env
 
 const verifyToken = (token) => new Promise((resolve, reject) => {
 	jwt.verify(token, JWT_SECRET_KEY, (err, decoded) => {
 		if (err) {
 			console.log(err.name === 'TokenExpiredError' ? 'Token expired' : 'Token verification failed')
+
 			return reject(new Error('Authentication error'))
 		}
+
 		resolve(decoded)
 	})
 })
@@ -29,22 +31,11 @@ export const initSocket = (server) => {
 		cors: {
 			origin: NEXTCLOUD_URL,
 			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-			credentials: true,
-		},
-	})
-
-	io.use(async (socket, next) => {
-		try {
-			const token = socket.handshake.auth.token
-			if (!token) throw new Error('No token provided')
-			socket.decodedData = await verifyToken(token)
-
-			next()
-		} catch (error) {
-			console.log(error.message)
-			next(error)
+			credentials: true
 		}
 	})
+
+	io.use(socketAuthenticateHandler)
 
 	io.on('connection', (socket) => {
 		setupSocketEvents(socket, io)
@@ -58,6 +49,30 @@ const setupSocketEvents = (socket, io) => {
 	socket.on('server-volatile-broadcast', (roomID, encryptedData) => serverVolatileBroadcastHandler(socket, roomID, encryptedData))
 	socket.on('disconnecting', () => disconnectingHandler(socket, io))
 	socket.on('disconnect', () => socket.removeAllListeners())
+}
+
+const socketAuthenticateHandler = async (socket, next) => {
+	try {
+		const token = socket.handshake.auth.token || null
+		if (!token) {
+			console.error('No token provided')
+			next(new Error('Authentication error'))
+		}
+
+		socket.decodedData = await verifyToken(token)
+
+		console.log(`User ${socket.decodedData.user.name} with permission ${socket.decodedData.permissions} connected`)
+
+		if (socket.decodedData.permissions === 1) {
+			socket.emit('read-only')
+		}
+
+		next()
+	} catch (error) {
+		console.error(error.message)
+
+		next(new Error('Authentication error'))
+	}
 }
 
 const joinRoomHandler = async (socket, io, roomID) => {
@@ -75,7 +90,7 @@ const joinRoomHandler = async (socket, io, roomID) => {
 
 	io.in(roomID).emit('room-user-change', sockets.map((s) => ({
 		socketId: s.id,
-		user: s.decodedData.user,
+		user: s.decodedData.user
 	})))
 }
 
@@ -96,8 +111,8 @@ const serverVolatileBroadcastHandler = (socket, roomID, encryptedData) => {
 			type: 'MOUSE_LOCATION',
 			payload: {
 				...payload.payload,
-				user: socket.decodedData.user,
-			},
+				user: socket.decodedData.user
+			}
 		}
 
 		const encodedEventData = convertStringToArrayBuffer(JSON.stringify(eventData))
@@ -121,7 +136,7 @@ const disconnectingHandler = async (socket, io) => {
 		if (otherClients.length > 0) {
 			socket.broadcast.to(roomID).emit('room-user-change', otherClients.map((s) => ({
 				socketId: s.id,
-				user: s.decodedData.user,
+				user: s.decodedData.user
 			})))
 		}
 	}

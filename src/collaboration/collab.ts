@@ -115,4 +115,12 @@ export class Collab {
 		})
 	}
 
+	makeBoardReadOnly = () => {
+		this.excalidrawAPI.updateScene({
+			appState: {
+				viewModeEnabled: true
+			}
+		})
+	}
+
 }
