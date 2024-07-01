@@ -34,10 +34,9 @@ final class JWTController extends Controller {
 
 	public function __construct(
 		IRequest                      $request,
-		private readonly IUserSession $userSession,
-		private readonly IConfig      $config,
-		/** @psalm-suppress MissingDependency */
-		private readonly IRootFolder  $rootFolder
+		private IUserSession $userSession,
+		private IConfig      $config,
+		private IRootFolder  $rootFolder
 	) {
 		parent::__construct('whiteboard', $request);
 	}

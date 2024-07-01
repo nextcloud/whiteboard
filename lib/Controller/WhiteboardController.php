@@ -31,9 +31,9 @@ final class WhiteboardController extends ApiController {
 	public function __construct(
 		$appName,
 		IRequest $request,
-		private readonly IUserSession $userSession,
-		private readonly IRootFolder $rootFolder,
-		private readonly IConfig $config
+		private IUserSession $userSession,
+		private IRootFolder $rootFolder,
+		private IConfig $config
 	) {
 		parent::__construct($appName, $request);
 	}
