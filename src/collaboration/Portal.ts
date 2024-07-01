@@ -5,9 +5,16 @@
 
 /* eslint-disable no-console */
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { Socket } from 'socket.io-client'
+import { io, type Socket } from 'socket.io-client'
 import type { Collab } from './collab'
-import type { Gesture } from '@excalidraw/excalidraw/types/types'
+import type { AppState, Gesture } from '@excalidraw/excalidraw/types/types'
+import axios from '@nextcloud/axios'
+import { loadState } from '@nextcloud/initial-state'
+
+enum BroadcastType {
+	SceneInit = 'SCENE_INIT',
+	MouseLocation = 'MOUSE_LOCATION',
+}
 
 export class Portal {
 
@@ -22,108 +29,131 @@ export class Portal {
 		this.collab = collab
 	}
 
+	connectSocket = () => {
+		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
+
+		const token = localStorage.getItem(`jwt-${this.roomId}`) || ''
+
+		const socket = io(collabBackendUrl, {
+			withCredentials: true,
+			auth: {
+				token,
+			},
+		})
+
+		this.open(socket)
+	}
+
 	open(socket: Socket) {
 		this.socket = socket
 
-		this.socket.on('init-room', () => {
-			console.log('room initialized')
-			if (this.socket) {
-				console.log(`joined room ${this.roomId}`)
-				this.socket.emit('join-room', this.roomId)
-
-				this.socket.on('joined-data', (data) => {
-					const remoteElements = JSON.parse(new TextDecoder().decode(data))
-
-					console.log(`JOINED DATA ${new TextDecoder().decode(data)}`)
-
-					const reconciledElements = this.collab._reconcileElements(remoteElements)
-
-					this.collab.handleRemoteSceneUpdate(reconciledElements)
-
-					const elements = this.collab.excalidrawAPI.getSceneElements()
-
-					this.collab.excalidrawAPI.scrollToContent(elements, {
-						fitToContent: true,
-						animate: true,
-						duration: 500,
-					})
-				})
-			}
-		})
-
-		this.socket.on('new-user', async (_socketId: string) => {
-			console.log(`NEW USER ${_socketId}`)
-
-			this.broadcastScene('SCENE_INIT', this.collab.getSceneElementsIncludingDeleted())
-		})
-
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		this.socket.on('room-user-change', (clients: any) => {
-			console.log(`ROOM USER CHANGE ${clients}`)
-		})
-
-		this.socket.on('client-broadcast', (data) => {
-			const decoded = JSON.parse(new TextDecoder().decode(data))
-			console.log(decoded)
-			console.log(data)
-
-			switch (decoded.type) {
-			case 'SCENE_INIT': {
-				const remoteElements = decoded.payload.elements
-				const reconciledElements = this.collab._reconcileElements(remoteElements)
-				this.collab.handleRemoteSceneUpdate(reconciledElements)
-				break
-			}
-			case 'MOUSE_LOCATION': {
-				this.collab.updateCollaborator(decoded.payload.socketId, decoded.payload)
-			}
-			}
-		})
-
-		return this.socket
-	}
-
-	isOpen() {
-		return true
-	}
-
-	async _broadcastSocketData(
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		data: any,
-		volatile: boolean = false,
-		roomId?: string,
-	) {
-		const json = JSON.stringify(data)
-
-		const encryptedBuffer = new TextEncoder().encode(json)
-
-		this.socket?.emit(
-			volatile ? 'server-volatile-broadcast' : 'server-broadcast',
-			roomId ?? this.roomId,
-			encryptedBuffer,
-			[],
+		const eventsNeedingTokenRefresh = ['connect_error']
+		eventsNeedingTokenRefresh.forEach((event) =>
+			this.socket?.on(event, async () => {
+				await this.handleTokenRefresh()
+			}),
 		)
+
+		this.socket.on('read-only', () => this.handleReadOnlySocket())
+		this.socket.on('init-room', () => this.handleInitRoom())
+		this.socket.on('room-user-change', (users: {
+			user: {
+				id: string,
+				name: string
+			},
+			socketId: string,
+			pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
+			button: 'down' | 'up',
+			selectedElementIds: AppState['selectedElementIds']
+		}[]) => this.collab.updateCollaborators(users))
+		this.socket.on('client-broadcast', (data) => this.handleClientBroadcast(data))
 	}
 
-	async broadcastScene(
-		updateType: string,
-		elements: readonly ExcalidrawElement[]) {
-		const data = {
-			type: updateType,
-			payload: {
-				elements,
-			},
+	async handleReadOnlySocket() {
+		this.collab.makeBoardReadOnly()
+	}
+
+	async handleTokenRefresh() {
+		const newToken = await this.refreshJWT()
+		if (this.socket && newToken) {
+			this.socket.auth.token = newToken
+			this.socket?.connect()
 		}
-		await this._broadcastSocketData(data)
+	}
+
+	handleInitRoom() {
+		this.socket?.emit('join-room', this.roomId)
+		this.socket?.on('joined-data', (data) => {
+			const remoteElements = JSON.parse(new TextDecoder().decode(data))
+			const reconciledElements = this.collab._reconcileElements(remoteElements)
+			this.collab.handleRemoteSceneUpdate(reconciledElements)
+			this.collab.scrollToContent()
+		})
+	}
+
+	handleClientBroadcast(data: ArrayBuffer) {
+		const decoded = JSON.parse(new TextDecoder().decode(data))
+		switch (decoded.type) {
+		case BroadcastType.SceneInit:
+			this.handleSceneInit(decoded.payload.elements)
+			break
+		case BroadcastType.MouseLocation:
+			this.collab.updateCursor(decoded.payload)
+			break
+		}
+	}
+
+	handleSceneInit(elements: readonly ExcalidrawElement[]) {
+		const reconciledElements = this.collab._reconcileElements(elements)
+		this.collab.handleRemoteSceneUpdate(reconciledElements)
+	}
+
+	async refreshJWT(): Promise<string | null> {
+		try {
+			const response = await axios.get(`/index.php/apps/whiteboard/${this.roomId}/token`, { withCredentials: true })
+			const token = response.data.token
+			if (!token) throw new Error('No token received')
+
+			localStorage.setItem(`jwt-${this.roomId}`, token)
+
+			return token
+		} catch (error) {
+			console.error('Error refreshing JWT:', error)
+			window.location.href = '/index.php/apps/files/files'
+			return null
+		}
+	}
+
+	async _broadcastSocketData(data: {
+		type: string;
+		payload: {
+			elements?: readonly ExcalidrawElement[];
+			socketId?: string;
+			pointer?: { x: number; y: number; tool: 'pointer' | 'laser' };
+			button?: 'down' | 'up';
+			selectedElementIds?: AppState['selectedElementIds'];
+			username?: string;
+		};
+	}, volatile: boolean = false, roomId?: string) {
+
+		const json = JSON.stringify(data)
+		const encryptedBuffer = new TextEncoder().encode(json)
+		this.socket?.emit(volatile ? 'server-volatile-broadcast' : 'server-broadcast', roomId ?? this.roomId, encryptedBuffer, [])
+
+	}
+
+	async broadcastScene(updateType: string, elements: readonly ExcalidrawElement[]) {
+		await this._broadcastSocketData({ type: updateType, payload: { elements } })
 	}
 
 	async broadcastMouseLocation(payload: {
-		pointer: { x: number, y: number, tool: 'pointer' | 'laser' };
+		pointer: { x: number; y: number; tool: 'pointer' | 'laser' };
 		button: 'down' | 'up';
 		pointersMap: Gesture['pointers'];
 	}) {
+
 		const data = {
-			type: 'MOUSE_LOCATION',
+			type: BroadcastType.MouseLocation,
 			payload: {
 				socketId: this.socket?.id,
 				pointer: payload.pointer,
@@ -132,10 +162,9 @@ export class Portal {
 				username: this.socket?.id,
 			},
 		}
-		return this._broadcastSocketData(
-			data,
-			true, // volatile
-		)
+
+		await this._broadcastSocketData(data, true)
+
 	}
 
 }

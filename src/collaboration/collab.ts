@@ -6,11 +6,9 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { AppState, Collaborator, ExcalidrawImperativeAPI, Gesture } from '@excalidraw/excalidraw/types/types'
 import { Portal } from './Portal'
-import { io } from 'socket.io-client'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
-import { loadState } from '@nextcloud/initial-state'
 
 export class Collab {
 
@@ -24,11 +22,11 @@ export class Collab {
 		this.portal = new Portal(String(fileId), '1', this)
 	}
 
-	startCollab() {
+	async startCollab() {
 		if (this.portal.socket) return
 
-		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
-		this.portal.open(io(collabBackendUrl))
+		this.portal.connectSocket()
+
 		this.excalidrawAPI.onChange(this.onChange)
 	}
 
@@ -41,9 +39,7 @@ export class Collab {
 		const localElements = this.getSceneElementsIncludingDeleted()
 		const appState = this.excalidrawAPI.getAppState()
 
-		const reconciledElements = reconcileElements(localElements, restoredRemoteElements, appState)
-
-		return reconciledElements
+		return reconcileElements(localElements, restoredRemoteElements, appState)
 	}
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
@@ -75,26 +71,64 @@ export class Collab {
 		payload.pointersMap.size < 2 && this.portal.socket && this.portal.broadcastMouseLocation(payload)
 	}
 
-	setCollaborators(socketIds: string[]) {
-		const collaborators = new Map()
-		for (const socketId of socketIds) {
-			collaborators.set(socketId, Object.assign({}, this.collaborators.get(socketId), {
-				isCurrentUser: socketId === this.portal.socket?.id,
-			}))
-		}
+	updateCollaborators = (users: {
+		user: {
+			id: string,
+			name: string
+		},
+		socketId: string,
+		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
+		button: 'down' | 'up',
+		selectedElementIds: AppState['selectedElementIds']
+	}[]) => {
+		const collaborators = new Map<string, Collaborator>()
+
+		users.forEach((payload) => {
+			collaborators.set(payload.user.id, {
+				username: payload.user.name,
+				...payload,
+			})
+		})
+
+		this.excalidrawAPI.updateScene({ collaborators })
 
 		this.collaborators = collaborators
-		this.excalidrawAPI.updateScene({ collaborators })
 	}
 
-	updateCollaborator = (socketId: string, updates: Partial<Collaborator>) => {
-		const collaborators = new Map(this.collaborators)
-		const user = Object.assign({}, collaborators.get(socketId), updates, { isCurrentUser: socketId === this.portal.socket?.id })
-		collaborators.set(socketId, user)
-		this.collaborators = collaborators
-
+	updateCursor = (payload: {
+		socketId: string,
+		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
+		button: 'down' | 'up',
+		selectedElementIds: AppState['selectedElementIds'],
+		user: {
+			id: string,
+			name: string
+		}
+	}) => {
 		this.excalidrawAPI.updateScene({
-			collaborators,
+			collaborators: this.collaborators.set(payload.user.id, {
+				...this.collaborators.get(payload.user.id),
+				...payload,
+				username: payload.user.name,
+			}),
+		})
+	}
+
+	scrollToContent = () => {
+		const elements = this.excalidrawAPI.getSceneElements()
+
+		this.excalidrawAPI.scrollToContent(elements, {
+			fitToContent: true,
+			animate: true,
+			duration: 500,
+		})
+	}
+
+	makeBoardReadOnly = () => {
+		this.excalidrawAPI.updateScene({
+			appState: {
+				viewModeEnabled: true,
+			},
 		})
 	}
 

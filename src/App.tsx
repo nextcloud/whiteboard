@@ -6,32 +6,27 @@
 // https://github.com/excalidraw/excalidraw/blob/4dc4590f247a0a0d9c3f5d39fe09c00c5cef87bf/examples/excalidraw
 
 /* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	Excalidraw,
-	exportToClipboard,
 	LiveCollaborationTrigger,
 	MainMenu,
-	restoreElements,
 	sceneCoordsToViewportCoords,
 	useHandleLibrary,
 	viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
-
 import './App.scss'
-import initialData from './initialData'
-
-import { nanoid } from 'nanoid'
 import { distance2d, resolvablePromise, withBatchedUpdates, withBatchedUpdatesThrottled } from './utils'
-
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import type {
+	AppState,
+	ExcalidrawImperativeAPI,
+	ExcalidrawInitialDataState,
+	PointerDownState
+} from '@excalidraw/excalidraw/types/types'
 import { Collab } from './collaboration/collab'
-
-declare global {
-	interface Window {
-		ExcalidrawLib: any;
-	}
-}
+import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
+import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 
 type Comment = {
 	x: number;
@@ -40,23 +35,7 @@ type Comment = {
 	id?: string;
 };
 
-type PointerDownState = {
-	x: number;
-	y: number;
-	hitElement: Comment;
-	onMove: any;
-	onUp: any;
-	hitElementOffsets: {
-		x: number;
-		y: number;
-	};
-};
-// This is so that we use the bundled excalidraw.development.js file instead
-// of the actual source code
-
 const COMMENT_ICON_DIMENSION = 32
-const COMMENT_INPUT_HEIGHT = 50
-const COMMENT_INPUT_WIDTH = 150
 
 interface WhiteboardAppProps {
 	fileId: number;
@@ -76,27 +55,31 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	const [theme, setTheme] = useState(darkMode ? 'dark' : 'light')
 	const [isCollaborating, setIsCollaborating] = useState(false)
 	const [commentIcons, setCommentIcons] = useState<{ [id: string]: Comment }>(
-		{},
+		{}
 	)
 	const [comment, setComment] = useState<Comment | null>(null)
+	const initialData = {
+		elements: [],
+		scrollToContent: true
+	}
 
 	const initialStatePromiseRef = useRef<{
 		promise: ResolvablePromise<ExcalidrawInitialDataState | null>;
-	}>({promise: null!})
+	}>({ promise: null! })
 	if (!initialStatePromiseRef.current.promise) {
-		initialStatePromiseRef.current.promise = resolvablePromise<ExcalidrawInitialDataState | null>()
+		initialStatePromiseRef.current.promise = resolvablePromise()
 	}
 
 	const [
 		excalidrawAPI,
-		setExcalidrawAPI,
+		setExcalidrawAPI
 	] = useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
 	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
 	if (collab && !collab.portal.socket) collab.startCollab()
 
-	useHandleLibrary({excalidrawAPI})
+	useHandleLibrary({ excalidrawAPI })
 
 	useEffect(() => {
 		if (!excalidrawAPI) {
@@ -105,8 +88,8 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 		const fetchData = async () => {
 			initialStatePromiseRef.current.promise.resolve(initialData)
 		}
-		fetchData()
 
+		fetchData().then()
 	}, [excalidrawAPI])
 
 	const renderTopRightUI = (isMobile: boolean) => {
@@ -124,58 +107,15 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 		)
 	}
 
-	const updateScene = () => {
-		const sceneData = {
-			elements: restoreElements(
-				[
-					{
-						type: 'rectangle',
-						version: 141,
-						versionNonce: 361174001,
-						isDeleted: false,
-						id: 'oDVXy8D6rom3H1-LLH2-f',
-						fillStyle: 'hachure',
-						strokeWidth: 1,
-						strokeStyle: 'solid',
-						roughness: 1,
-						opacity: 100,
-						angle: 0,
-						x: 100.50390625,
-						y: 93.67578125,
-						strokeColor: '#c92a2a',
-						backgroundColor: 'transparent',
-						width: 186.47265625,
-						height: 141.9765625,
-						seed: 1968410350,
-						groupIds: [],
-						boundElements: null,
-						locked: false,
-						link: null,
-						updated: 1,
-						roundness: {
-							type: 3,
-							value: 32,
-						},
-					},
-				],
-				null,
-			),
-			appState: {
-				viewBackgroundColor: '#edf2ff',
-			},
-		}
-		excalidrawAPI?.updateScene(sceneData)
-	}
-
 	const onLinkOpen = useCallback(
 		(
 			element: NonDeletedExcalidrawElement,
 			event: CustomEvent<{
 				nativeEvent: MouseEvent | React.PointerEvent<HTMLCanvasElement>;
-			}>,
+			}>
 		) => {
 			const link = element.link!
-			const {nativeEvent} = event.detail
+			const { nativeEvent } = event.detail
 			const isNewTab = nativeEvent.ctrlKey || nativeEvent.metaKey
 			const isNewWindow = nativeEvent.shiftKey
 			const isInternalLink
@@ -187,35 +127,16 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 				// ...
 			}
 		},
-		[],
+		[]
 	)
-
-	const onCopy = async (type: 'png' | 'svg' | 'json') => {
-		if (!excalidrawAPI) {
-			return false
-		}
-		await exportToClipboard({
-			elements: excalidrawAPI.getSceneElements(),
-			appState: excalidrawAPI.getAppState(),
-			files: excalidrawAPI.getFiles(),
-			type,
-		})
-		window.alert(`Copied to clipboard as ${type} successfully`)
-	}
-
-	const [pointerData, setPointerData] = useState<{
-		pointer: { x: number; y: number };
-		button: 'down' | 'up';
-		pointersMap: Gesture['pointers'];
-	} | null>(null)
 
 	const onPointerDown = (
 		activeTool: AppState['activeTool'],
-		pointerDownState: ExcalidrawPointerDownState,
+		pointerDownState: any
 	) => {
 		if (activeTool.type === 'custom' && activeTool.customType === 'comment') {
-			const {x, y} = pointerDownState.origin
-			setComment({x, y, value: ''})
+			const { x, y } = pointerDownState.origin
+			setComment({ x, y, value: '' })
 		}
 	}
 
@@ -224,14 +145,14 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 			return false
 		}
 		const commentIconsElements = appRef.current.querySelectorAll(
-			'.comment-icon',
+			'.comment-icon'
 		) as HTMLElement[]
 		commentIconsElements.forEach((ele) => {
 			const id = ele.id
 			const appstate = excalidrawAPI.getAppState()
-			const {x, y} = sceneCoordsToViewportCoords(
-				{sceneX: commentIcons[id].x, sceneY: commentIcons[id].y},
-				appstate,
+			const { x, y } = sceneCoordsToViewportCoords(
+				{ sceneX: commentIcons[id].x, sceneY: commentIcons[id].y },
+				appstate
 			)
 			ele.style.left = `${
 				x - COMMENT_ICON_DIMENSION / 2 - appstate!.offsetLeft
@@ -243,41 +164,41 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	}
 
 	const onPointerMoveFromPointerDownHandler = (
-		pointerDownState: PointerDownState,
+		pointerDownState: PointerDownState
 	) => {
 		return withBatchedUpdatesThrottled((event) => {
 			if (!excalidrawAPI) {
 				return false
 			}
-			const {x, y} = viewportCoordsToSceneCoords(
+			const { x, y } = viewportCoordsToSceneCoords(
 				{
 					clientX: event.clientX - pointerDownState.hitElementOffsets.x,
-					clientY: event.clientY - pointerDownState.hitElementOffsets.y,
+					clientY: event.clientY - pointerDownState.hitElementOffsets.y
 				},
-				excalidrawAPI.getAppState(),
+				excalidrawAPI.getAppState()
 			)
 			setCommentIcons({
 				...commentIcons,
 				[pointerDownState.hitElement.id!]: {
 					...commentIcons[pointerDownState.hitElement.id!],
 					x,
-					y,
-				},
+					y
+				}
 			})
 		})
 	}
 	const onPointerUpFromPointerDownHandler = (
-		pointerDownState: PointerDownState,
+		pointerDownState: PointerDownState
 	) => {
 		return withBatchedUpdates((event) => {
 			window.removeEventListener('pointermove', pointerDownState.onMove)
 			window.removeEventListener('pointerup', pointerDownState.onUp)
-			excalidrawAPI?.setActiveTool({type: 'selection'})
+			excalidrawAPI?.setActiveTool({ type: 'selection' })
 			const distance = distance2d(
 				pointerDownState.x,
 				pointerDownState.y,
 				event.clientX,
-				event.clientY,
+				event.clientY
 			)
 			if (distance === 0) {
 				if (!comment) {
@@ -285,7 +206,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 						x: pointerDownState.hitElement.x + 60,
 						y: pointerDownState.hitElement.y,
 						value: pointerDownState.hitElement.value,
-						id: pointerDownState.hitElement.id,
+						id: pointerDownState.hitElement.id
 					})
 				} else {
 					setComment(null)
@@ -308,8 +229,8 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 				x: comment.id ? comment.x - 60 : comment.x,
 				y: comment.y,
 				id,
-				value: comment.value,
-			},
+				value: comment.value
+			}
 		})
 		setComment(null)
 	}
@@ -320,9 +241,9 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 				return false
 			}
 			const appState = excalidrawAPI.getAppState()
-			const {x, y} = sceneCoordsToViewportCoords(
-				{sceneX: commentIcon.x, sceneY: commentIcon.y},
-				excalidrawAPI.getAppState(),
+			const { x, y } = sceneCoordsToViewportCoords(
+				{ sceneX: commentIcon.x, sceneY: commentIcon.y },
+				excalidrawAPI.getAppState()
 			)
 			return (
 				<div
@@ -336,7 +257,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 						width: `${COMMENT_ICON_DIMENSION}px`,
 						height: `${COMMENT_ICON_DIMENSION}px`,
 						cursor: 'pointer',
-						touchAction: 'none',
+						touchAction: 'none'
 					}}
 					className="comment-icon"
 					onPointerDown={(event) => {
@@ -352,13 +273,13 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 							hitElementOffsets: {
 								x: event.clientX - x,
 								y: event.clientY - y
-							},
+							}
 						}
 						const onPointerMove = onPointerMoveFromPointerDownHandler(
-							pointerDownState,
+							pointerDownState
 						)
 						const onPointerUp = onPointerUpFromPointerDownHandler(
-							pointerDownState,
+							pointerDownState
 						)
 						window.addEventListener('pointermove', onPointerMove)
 						window.addEventListener('pointerup', onPointerUp)
@@ -368,12 +289,12 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 
 						excalidrawAPI?.setActiveTool({
 							type: 'custom',
-							customType: 'comment',
+							customType: 'comment'
 						})
 					}}
 				>
 					<div className="comment-avatar">
-						<img src="doremon.png" alt="doremon"/>
+						<img src="doremon.png" alt="doremon" />
 					</div>
 				</div>
 			)
@@ -385,9 +306,9 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 			return null
 		}
 		const appState = excalidrawAPI?.getAppState()!
-		const {x, y} = sceneCoordsToViewportCoords(
-			{sceneX: comment.x, sceneY: comment.y},
-			appState,
+		const { x, y } = sceneCoordsToViewportCoords(
+			{ sceneX: comment.x, sceneY: comment.y },
+			appState
 		)
 		let top = y - COMMENT_ICON_DIMENSION / 2 - appState.offsetTop
 		let left = x - COMMENT_ICON_DIMENSION / 2 - appState.offsetLeft
@@ -420,7 +341,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 					position: 'absolute',
 					zIndex: 1,
 					height: `${COMMENT_INPUT_HEIGHT}px`,
-					width: `${COMMENT_INPUT_WIDTH}px`,
+					width: `${COMMENT_INPUT_WIDTH}px`
 				}}
 				ref={(ref) => {
 					setTimeout(() => ref?.focus())
@@ -428,7 +349,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 				placeholder={comment.value ? 'Reply' : 'Comment'}
 				value={comment.value}
 				onChange={(event) => {
-					setComment({...comment, value: event.target.value})
+					setComment({ ...comment, value: event.target.value })
 				}}
 				onBlur={saveComment}
 				onKeyDown={(event) => {
@@ -444,25 +365,8 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	const renderMenu = () => {
 		return (
 			<MainMenu>
-				<MainMenu.DefaultItems.SaveAsImage/>
-				<MainMenu.DefaultItems.Export/>
-				<MainMenu.Separator/>
-				<MainMenu.DefaultItems.LiveCollaborationTrigger
-					isCollaborating={isCollaborating}
-					onSelect={() => window.alert('You clicked on collab button')}
-				/>
-				<MainMenu.Group title="Excalidraw links">
-					<MainMenu.DefaultItems.Socials/>
-				</MainMenu.Group>
-				<MainMenu.Separator/>
-				<MainMenu.ItemCustom>
-					<button
-						style={{height: '2rem'}}
-						onClick={() => window.alert('custom menu item')}
-					>
-						custom item
-					</button>
-				</MainMenu.ItemCustom>
+				<MainMenu.DefaultItems.ToggleTheme />
+				<MainMenu.DefaultItems.ChangeCanvasBackground />
 			</MainMenu>
 		)
 	}
@@ -478,7 +382,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 					}}
 					initialData={initialStatePromiseRef.current.promise}
 					onChange={(elements, state) => {
-						console.info('Elements :', elements, 'State : ', state)
+
 					}}
 					onPointerUpdate={collab?.onPointerUpdate}
 					viewModeEnabled={viewModeEnabled}
@@ -488,8 +392,8 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 					name="Custom name of drawing"
 					UIOptions={{
 						canvasActions: {
-							loadScene: false,
-						},
+							loadScene: false
+						}
 					}}
 					renderTopRightUI={renderTopRightUI}
 					onLinkOpen={onLinkOpen}
