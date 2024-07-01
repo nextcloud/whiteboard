@@ -1,5 +1,10 @@
 /* eslint-disable no-console */
 
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import { Server as SocketIO } from 'socket.io'
 import jwt from 'jsonwebtoken'
 import { getRoomDataFromFile, roomDataStore, saveRoomDataToFile } from './roomData.js'

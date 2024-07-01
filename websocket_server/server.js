@@ -1,6 +1,11 @@
 /* eslint-disable no-console */
 /* eslint-disable n/no-process-exit */
 
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import http from 'http'
 import https from 'https'
 import fs from 'fs'
