@@ -71,9 +71,13 @@ final class WhiteboardController extends ApiController {
 			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
 		}
 
-		[$jwt] = sscanf($authHeader, 'Bearer %s');
+		$assignedValues = sscanf($authHeader, 'Bearer %s', $jwt);
 
-		if (!$jwt) {
+		if (!$assignedValues) {
+			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
+		}
+
+		if (!$jwt || !is_string($jwt)) {
 			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
 		}
 

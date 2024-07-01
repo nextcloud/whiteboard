@@ -44,8 +44,8 @@ export class Collab {
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
-				elements
-			}
+			elements,
+		},
 		)
 	}
 
@@ -71,13 +71,22 @@ export class Collab {
 		payload.pointersMap.size < 2 && this.portal.socket && this.portal.broadcastMouseLocation(payload)
 	}
 
-	updateCollaborators = (users: any[]) => {
+	updateCollaborators = (users: {
+		user: {
+			id: string,
+			name: string
+		},
+		socketId: string,
+		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
+		button: 'down' | 'up',
+		selectedElementIds: AppState['selectedElementIds']
+	}[]) => {
 		const collaborators = new Map<string, Collaborator>()
 
 		users.forEach((payload) => {
 			collaborators.set(payload.user.id, {
 				username: payload.user.name,
-				...payload
+				...payload,
 			})
 		})
 
@@ -100,8 +109,8 @@ export class Collab {
 			collaborators: this.collaborators.set(payload.user.id, {
 				...this.collaborators.get(payload.user.id),
 				...payload,
-				username: payload.user.name
-			})
+				username: payload.user.name,
+			}),
 		})
 	}
 
@@ -111,15 +120,15 @@ export class Collab {
 		this.excalidrawAPI.scrollToContent(elements, {
 			fitToContent: true,
 			animate: true,
-			duration: 500
+			duration: 500,
 		})
 	}
 
 	makeBoardReadOnly = () => {
 		this.excalidrawAPI.updateScene({
 			appState: {
-				viewModeEnabled: true
-			}
+				viewModeEnabled: true,
+			},
 		})
 	}
 

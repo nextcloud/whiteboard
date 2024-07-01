@@ -8,7 +8,7 @@ dotenv.config()
 const {
 	NEXTCLOUD_URL = 'http://nextcloud.local',
 	ADMIN_USER = 'admin',
-	ADMIN_PASS = 'admin'
+	ADMIN_PASS = 'admin',
 } = process.env
 
 export const roomDataStore = {}
@@ -16,7 +16,7 @@ export const roomDataStore = {}
 const fetchOptions = (method, token, body = null) => {
 	const headers = {
 		'Content-Type': 'application/json',
-		Authorization: `Bearer ${token}`
+		Authorization: `Bearer ${token}`,
 	}
 
 	if (method === 'PUT') {
@@ -26,7 +26,7 @@ const fetchOptions = (method, token, body = null) => {
 	return {
 		method,
 		headers,
-		...(body && { body: JSON.stringify(body) })
+		...(body && { body: JSON.stringify(body) }),
 	}
 }
 

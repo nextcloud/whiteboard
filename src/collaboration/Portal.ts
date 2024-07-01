@@ -7,7 +7,7 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { io, type Socket } from 'socket.io-client'
 import type { Collab } from './collab'
-import type { Gesture } from '@excalidraw/excalidraw/types/types'
+import type { AppState, Gesture } from '@excalidraw/excalidraw/types/types'
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 
@@ -37,8 +37,8 @@ export class Portal {
 		const socket = io(collabBackendUrl, {
 			withCredentials: true,
 			auth: {
-				token
-			}
+				token,
+			},
 		})
 
 		this.open(socket)
@@ -51,12 +51,21 @@ export class Portal {
 		eventsNeedingTokenRefresh.forEach((event) =>
 			this.socket?.on(event, async () => {
 				await this.handleTokenRefresh()
-			})
+			}),
 		)
 
 		this.socket.on('read-only', () => this.handleReadOnlySocket())
 		this.socket.on('init-room', () => this.handleInitRoom())
-		this.socket.on('room-user-change', (users: any) => this.collab.updateCollaborators(users))
+		this.socket.on('room-user-change', (users: {
+			user: {
+				id: string,
+				name: string
+			},
+			socketId: string,
+			pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
+			button: 'down' | 'up',
+			selectedElementIds: AppState['selectedElementIds']
+		}[]) => this.collab.updateCollaborators(users))
 		this.socket.on('client-broadcast', (data) => this.handleClientBroadcast(data))
 	}
 
@@ -85,12 +94,12 @@ export class Portal {
 	handleClientBroadcast(data: ArrayBuffer) {
 		const decoded = JSON.parse(new TextDecoder().decode(data))
 		switch (decoded.type) {
-			case BroadcastType.SceneInit:
-				this.handleSceneInit(decoded.payload.elements)
-				break
-			case BroadcastType.MouseLocation:
-				this.collab.updateCursor(decoded.payload)
-				break
+		case BroadcastType.SceneInit:
+			this.handleSceneInit(decoded.payload.elements)
+			break
+		case BroadcastType.MouseLocation:
+			this.collab.updateCursor(decoded.payload)
+			break
 		}
 	}
 
@@ -115,10 +124,22 @@ export class Portal {
 		}
 	}
 
-	async _broadcastSocketData(data: any, volatile: boolean = false, roomId?: string) {
+	async _broadcastSocketData(data: {
+		type: string;
+		payload: {
+			elements?: readonly ExcalidrawElement[];
+			socketId?: string;
+			pointer?: { x: number; y: number; tool: 'pointer' | 'laser' };
+			button?: 'down' | 'up';
+			selectedElementIds?: AppState['selectedElementIds'];
+			username?: string;
+		};
+	}, volatile: boolean = false, roomId?: string) {
+
 		const json = JSON.stringify(data)
 		const encryptedBuffer = new TextEncoder().encode(json)
 		this.socket?.emit(volatile ? 'server-volatile-broadcast' : 'server-broadcast', roomId ?? this.roomId, encryptedBuffer, [])
+
 	}
 
 	async broadcastScene(updateType: string, elements: readonly ExcalidrawElement[]) {
@@ -130,6 +151,7 @@ export class Portal {
 		button: 'down' | 'up';
 		pointersMap: Gesture['pointers'];
 	}) {
+
 		const data = {
 			type: BroadcastType.MouseLocation,
 			payload: {
@@ -137,9 +159,12 @@ export class Portal {
 				pointer: payload.pointer,
 				button: payload.button || 'up',
 				selectedElementIds: this.collab.excalidrawAPI.getAppState().selectedElementIds,
-				username: this.socket?.id
-			}
+				username: this.socket?.id,
+			},
 		}
+
 		await this._broadcastSocketData(data, true)
+
 	}
+
 }

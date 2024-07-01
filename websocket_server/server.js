@@ -16,14 +16,14 @@ const {
 	PORT = 3002,
 	TLS,
 	TLS_KEY: keyPath,
-	TLS_CERT: certPath
+	TLS_CERT: certPath,
 } = process.env
 
 const FORCE_CLOSE_TIMEOUT = 60 * 60 * 1000
 
 const readTlsCredentials = (keyPath, certPath) => ({
 	key: keyPath ? fs.readFileSync(keyPath) : undefined,
-	cert: certPath ? fs.readFileSync(certPath) : undefined
+	cert: certPath ? fs.readFileSync(certPath) : undefined,
 })
 
 const createConfiguredServer = (app) => {

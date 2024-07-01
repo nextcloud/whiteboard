@@ -10,7 +10,7 @@ dotenv.config()
 
 const {
 	NEXTCLOUD_URL = 'http://nextcloud.local',
-	JWT_SECRET_KEY
+	JWT_SECRET_KEY,
 } = process.env
 
 const verifyToken = (token) => new Promise((resolve, reject) => {
@@ -31,8 +31,8 @@ export const initSocket = (server) => {
 		cors: {
 			origin: NEXTCLOUD_URL,
 			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-			credentials: true
-		}
+			credentials: true,
+		},
 	})
 
 	io.use(socketAuthenticateHandler)
@@ -90,7 +90,7 @@ const joinRoomHandler = async (socket, io, roomID) => {
 
 	io.in(roomID).emit('room-user-change', sockets.map((s) => ({
 		socketId: s.id,
-		user: s.decodedData.user
+		user: s.decodedData.user,
 	})))
 }
 
@@ -114,8 +114,8 @@ const serverVolatileBroadcastHandler = (socket, roomID, encryptedData) => {
 			type: 'MOUSE_LOCATION',
 			payload: {
 				...payload.payload,
-				user: socket.decodedData.user
-			}
+				user: socket.decodedData.user,
+			},
 		}
 
 		const encodedEventData = convertStringToArrayBuffer(JSON.stringify(eventData))
@@ -139,7 +139,7 @@ const disconnectingHandler = async (socket, io) => {
 		if (otherClients.length > 0) {
 			socket.broadcast.to(roomID).emit('room-user-change', otherClients.map((s) => ({
 				socketId: s.id,
-				user: s.decodedData.user
+				user: s.decodedData.user,
 			})))
 		}
 	}
