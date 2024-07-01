@@ -23,6 +23,7 @@ use OCP\IUserSession;
 
 /**
  * @psalm-suppress UndefinedClass
+ * @psalm-suppress MissingDependency
  */
 final class JWTController extends Controller {
 	private const EXPIRATION_TIME = 15 * 60;
