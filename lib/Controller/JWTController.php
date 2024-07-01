@@ -21,6 +21,9 @@ use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
+/**
+ * @psalm-suppress UndefinedClass
+ */
 final class JWTController extends Controller {
 	private const EXPIRATION_TIME = 15 * 60;
 
@@ -32,16 +35,9 @@ final class JWTController extends Controller {
 		IRequest                      $request,
 		private readonly IUserSession $userSession,
 		private readonly IConfig      $config,
+		/** @psalm-suppress MissingDependency */
 		private readonly IRootFolder  $rootFolder
 	) {
-		if (!class_exists(IRootFolder::class)) {
-			throw new \RuntimeException('Dependency IRootFolder not found');
-		}
-
-		if (!class_exists(NoUserException::class)) {
-			throw new \RuntimeException('Dependency NoUserException not found');
-		}
-
 		parent::__construct('whiteboard', $request);
 	}
 

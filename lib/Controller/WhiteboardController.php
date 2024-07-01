@@ -23,6 +23,10 @@ use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
+/**
+ * @psalm-suppress UndefinedClass
+ * @psalm-suppress UndefinedDocblockClass
+ */
 final class WhiteboardController extends ApiController {
 	public function __construct(
 		$appName,
