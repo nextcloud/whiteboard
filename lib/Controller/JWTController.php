@@ -34,8 +34,6 @@ final class JWTController extends Controller {
 		private readonly IConfig      $config,
 		private readonly IRootFolder  $rootFolder
 	) {
-		parent::__construct('whiteboard', $request);
-
 		if (!class_exists(IRootFolder::class)) {
 			throw new \RuntimeException('Dependency IRootFolder not found');
 		}
@@ -43,6 +41,8 @@ final class JWTController extends Controller {
 		if (!class_exists(NoUserException::class)) {
 			throw new \RuntimeException('Dependency NoUserException not found');
 		}
+
+		parent::__construct('whiteboard', $request);
 	}
 
 	/**
