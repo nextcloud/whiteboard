@@ -32,7 +32,7 @@ const Component = {
 				id: 'whiteboard-' + randomId,
 			},
 			class: ['whiteboard', { 'whiteboard-viewer__embedding': this.isEmbedded }],
-		}, 'Hello whiteboard')
+		}, '')
 	},
 	beforeDestroy() {
 		this.root?.unmount()

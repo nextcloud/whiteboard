@@ -98,21 +98,6 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 		fetchData().then()
 	}, [excalidrawAPI])
 
-	const renderTopRightUI = (isMobile: boolean) => {
-		return (
-			<>
-				{!isMobile && (
-					<LiveCollaborationTrigger
-						isCollaborating={isCollaborating}
-						onSelect={() => {
-							window.alert('Collab dialog clicked')
-						}}
-					/>
-				)}
-			</>
-		)
-	}
-
 	const onLinkOpen = useCallback(
 		(
 			element: NonDeletedExcalidrawElement,
@@ -373,6 +358,9 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 			<MainMenu>
 				<MainMenu.DefaultItems.ToggleTheme />
 				<MainMenu.DefaultItems.ChangeCanvasBackground />
+				<MainMenu.Separator />
+				<MainMenu.DefaultItems.SaveAsImage />
+				<MainMenu.DefaultItems.Export />
 			</MainMenu>
 		)
 	}
@@ -401,7 +389,6 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 							loadScene: false
 						}
 					}}
-					renderTopRightUI={renderTopRightUI}
 					onLinkOpen={onLinkOpen}
 					onPointerDown={onPointerDown}
 					onScrollChange={rerenderCommentIcons}

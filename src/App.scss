@@ -4,39 +4,38 @@
  */
 
 // https://github.com/excalidraw/excalidraw/blob/4dc4590f247a0a0d9c3f5d39fe09c00c5cef87bf/examples/excalidraw
+.excalidraw, .App .excalidraw {
+  --zIndex-modal: 100001;
+  --ui-font: var(--font-face);
+
+  --color-brand: var(--color-primary-element);
+  --color-brand-hover: var(--color-primary-element-hover);
+  --color-primary: var(--color-primary-element) !important;
+  --color-primary-darker: var(--color-primary-darker);
+  --color-primary-darkest: var(--color-primary-element);
+  --color-primary-light: var(--color-primary-element-light) !important;
+  --color-surface-primary-container: var(--color-primary-element-light);
+  --color-surface-low: var(--color-primary-element-light);
+  --color-surface-high: var(--color-primary-element-light-hover) !important;
+
+  .Stack button {
+    margin: 0;
+    min-width: var(--default-clickable-area);
+  }
+
+  .color-picker__top-picks {
+    gap: var(--default-grid-baseline);
+  }
+  .App-menu__left {
+    width: 270px;
+  }
+}
 
 .App {
-  font-family: sans-serif;
   text-align: center;
   position: relative;
   height: 100%;
   width: 100%;
-
-  .comment-avatar {
-    background: #faa2c1;
-    border-radius: 66px 67px 67px 0px;
-    width: 2rem;
-    height: 2rem;
-    padding: 4px;
-    margin: 4px;
-    img {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-    }
-  }
-}
-
-.button-wrapper button {
-  z-index: 1;
-  height: 40px;
-  max-width: 200px;
-  margin: 10px;
-  padding: 5px;
-}
-
-.excalidraw .App-menu_top .buttonList {
-  display: flex;
 }
 
 .excalidraw-wrapper {
@@ -63,23 +62,5 @@
 
   &__checkbox {
     display: flex;
-  }
-}
-
-.excalidraw {
-  --color-primary: #faa2c1;
-  --color-primary-darker: #f783ac;
-  --color-primary-darkest: #e64980;
-  --color-primary-light: #fcc2d7;
-
-  button.custom-element {
-    width: 2rem;
-    height: 2rem;
-    margin: 0 8px;
-  }
-
-  .custom-footer,
-  .custom-element {
-    padding: 0.1rem;
   }
 }
