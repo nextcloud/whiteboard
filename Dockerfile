@@ -24,4 +24,4 @@ COPY . .
 EXPOSE 3002
 
 # Run the application.
-CMD node websocket_server/index.js
+CMD node websocket_server/server.js
