@@ -66,7 +66,7 @@ const socketAuthenticateHandler = async (socket, next) => {
 
 		socket.decodedData = await verifyToken(token)
 
-		console.log(`User ${socket.decodedData.user.name} with permission ${socket.decodedData.permissions} connected`)
+		console.log(`[${socket.decodedData.fileId}] User ${socket.decodedData.user.id} with permission ${socket.decodedData.permissions} connected`)
 
 		if (isSocketReadOnly(socket)) {
 			socket.emit('read-only')
@@ -81,11 +81,11 @@ const socketAuthenticateHandler = async (socket, next) => {
 }
 
 const joinRoomHandler = async (socket, io, roomID) => {
-	console.log(`${socket.decodedData.user.name} has joined ${roomID}`)
+	console.log(`[${roomID}] ${socket.decodedData.user.id} has joined ${roomID}`)
 	await socket.join(roomID)
 
 	if (!roomDataStore[roomID]) {
-		console.log(`Data for room ${roomID} is not available, fetching from file ...`)
+		console.log(`[${roomID}] Data for room ${roomID} is not available, fetching from file ...`)
 		roomDataStore[roomID] = await getRoomDataFromFile(roomID, socket)
 	}
 
@@ -130,10 +130,10 @@ const serverVolatileBroadcastHandler = (socket, roomID, encryptedData) => {
 }
 
 const disconnectingHandler = async (socket, io) => {
-	console.log(`${socket.decodedData.user.name} has disconnected`)
+	console.log(`[${socket.decodedData.fileId}] ${socket.decodedData.user.name} has disconnected`)
 	for (const roomID of Array.from(socket.rooms)) {
 		if (roomID === socket.id) continue
-		console.log(`${socket.decodedData.user.name} has left ${roomID}`)
+		console.log(`[${roomID}] ${socket.decodedData.user.name} has left ${roomID}`)
 		const otherClients = (await io.in(roomID).fetchSockets()).filter((s) => s.id !== socket.id)
 
 		if (otherClients.length === 0 && roomDataStore[roomID]) {

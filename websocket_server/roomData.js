@@ -63,7 +63,7 @@ export const getRoomDataFromFile = async (roomID, socket) => {
 
 // Called when there's nobody in the room (No one keeping the latest data), BE to BE communication
 export const saveRoomDataToFile = async (roomID, data) => {
-	console.log(`Saving room data to file: ${roomID}`)
+	console.log(`[${roomID}] Saving room data to file: ${roomID}`)
 	const url = `${NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
 	const body = { data: { elements: data } }
 	const options = fetchOptions('PUT', '', body)
