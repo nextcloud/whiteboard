@@ -79,6 +79,12 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
 	if (collab && !collab.portal.socket) collab.startCollab()
 
+	useEffect(() => {
+		return () => {
+			if (collab) collab.portal.disconnectSocket()
+		}
+	}, [excalidrawAPI])
+
 	useHandleLibrary({ excalidrawAPI })
 
 	useEffect(() => {

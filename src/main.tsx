@@ -19,9 +19,9 @@ const Component = {
 		const randomId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10);
 		this.$nextTick(() => {
 			const rootElement = document.getElementById('whiteboard-' + randomId)
-			const root = createRoot(rootElement)
+			this.root = createRoot(rootElement)
 
-			root.render(
+			this.root.render(
 				<StrictMode>
 					<App fileId={this.fileid} isEmbedded={this.isEmbedded}/>
 				</StrictMode>,
@@ -33,6 +33,9 @@ const Component = {
 			},
 			class: ['whiteboard', { 'whiteboard-viewer__embedding': this.isEmbedded }],
 		}, 'Hello whiteboard')
+	},
+	beforeDestroy() {
+		this.root?.unmount()
 	},
 	props: {
 		filename: {
@@ -49,7 +52,9 @@ const Component = {
 		},
 	},
 	data() {
-		return {}
+		return {
+			root: null,
+		}
 	},
 }
 

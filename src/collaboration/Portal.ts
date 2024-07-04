@@ -44,6 +44,10 @@ export class Portal {
 		this.open(socket)
 	}
 
+	disconnectSocket = () => {
+		this.socket?.disconnect()
+	}
+
 	open(socket: Socket) {
 		this.socket = socket
 
