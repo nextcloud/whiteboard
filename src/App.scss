@@ -17,6 +17,8 @@
   --color-surface-primary-container: var(--color-primary-element-light);
   --color-surface-low: var(--color-primary-element-light);
   --color-surface-high: var(--color-primary-element-light-hover) !important;
+  --border-radius-lg: var(--border-radius-large);
+  --border-radius-md: var(--border-radius);
 
   .Stack button {
     margin: 0;
