@@ -89,7 +89,7 @@ final class JWTController extends Controller {
 			return new DataResponse(['message' => 'File not found'], Http::STATUS_NOT_FOUND);
 		}
 
-		$key = $this->config->getSystemValueString(self::JWT_CONFIG_KEY);
+		$key = $this->config->getSystemValueString(self::JWT_CONFIG_KEY, 'secret');
 		$issuedAt = time();
 		$expirationTime = $issuedAt + self::EXPIRATION_TIME;
 		$payload = [

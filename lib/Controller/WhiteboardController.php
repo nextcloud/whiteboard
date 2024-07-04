@@ -86,7 +86,7 @@ final class WhiteboardController extends ApiController {
 		}
 
 		try {
-			$key = $this->config->getSystemValueString('jwt_secret_key');
+			$key = $this->config->getSystemValueString('jwt_secret_key', 'secret');
 			$decoded = JWT::decode($jwt, new Key($key, 'HS256'));
 			$userId = $decoded->userid;
 		} catch (\Exception $e) {
