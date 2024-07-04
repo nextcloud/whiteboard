@@ -24,8 +24,9 @@ Both the server and the Nextcloud instance must be accessible from the same netw
 On the Nextcloud side, the server must be configured through:
 
 ```bash
-occ config:app:set whiteboard websocket_server_url --value="ws://websocket-server:3002"
-occ config:system:set whiteboard jwt_secret_key --value="some-random"
+occ config:app:set whiteboard collabBackendUrl --value="nextcloud.local:3003"
+occ config:app:set whiteboard jwt_secret_key --value="some-random"
+```
 
 #### Local node
 
@@ -71,3 +72,19 @@ services:
       
 ```
 
+### Reverse proxy
+
+#### Nginx
+
+```
+location /whiteboard/ {
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header Host $host;
+	
+	proxy_pass http://localhost:3002;
+	
+	proxy_http_version 1.1;
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "upgrade";
+}
+```

@@ -10,6 +10,7 @@ namespace OCA\Whiteboard\Controller;
 
 use Firebase\JWT\JWT;
 use OC\User\NoUserException;
+use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -17,7 +18,6 @@ use OCP\Files\InvalidPathException;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
-use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
@@ -28,15 +28,13 @@ use OCP\IUserSession;
 final class JWTController extends Controller {
 	private const EXPIRATION_TIME = 15 * 60;
 
-	private const JWT_CONFIG_KEY = 'jwt_secret_key';
-
-	private const JWT_ALGORITHM = 'HS256';
+	public const JWT_ALGORITHM = 'HS256';
 
 	public function __construct(
-		IRequest                      $request,
+		IRequest $request,
 		private IUserSession $userSession,
-		private IConfig      $config,
-		private IRootFolder  $rootFolder
+		private ConfigService $configService,
+		private IRootFolder $rootFolder
 	) {
 		parent::__construct('whiteboard', $request);
 	}
@@ -89,7 +87,7 @@ final class JWTController extends Controller {
 			return new DataResponse(['message' => 'File not found'], Http::STATUS_NOT_FOUND);
 		}
 
-		$key = $this->config->getSystemValueString(self::JWT_CONFIG_KEY, 'secret');
+		$key = $this->configService->getJwtSecretKey();
 		$issuedAt = time();
 		$expirationTime = $issuedAt + self::EXPIRATION_TIME;
 		$payload = [

@@ -11,18 +11,17 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Listener;
 
 use OCA\Viewer\Event\LoadViewer;
-use OCA\Whiteboard\AppInfo\Application;
+use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
-use OCP\IConfig;
 use OCP\Util;
 
 /** @template-implements IEventListener<LoadViewer|Event> */
 class LoadViewerListener implements IEventListener {
 	public function __construct(
 		private IInitialState $initialState,
-		private IConfig $config,
+		private ConfigService $configService,
 	) {
 	}
 
@@ -36,7 +35,7 @@ class LoadViewerListener implements IEventListener {
 
 		$this->initialState->provideInitialState(
 			'collabBackendUrl',
-			$this->config->getAppValue(Application::APP_ID, 'collabBackendUrl', '')
+			$this->configService->getCollabBackendUrl()
 		);
 	}
 }

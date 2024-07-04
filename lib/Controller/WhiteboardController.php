@@ -11,6 +11,7 @@ namespace OCA\Whiteboard\Controller;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use OC\User\NoUserException;
+use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -19,7 +20,6 @@ use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotPermittedException;
-use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
@@ -33,7 +33,7 @@ final class WhiteboardController extends ApiController {
 		IRequest $request,
 		private IUserSession $userSession,
 		private IRootFolder $rootFolder,
-		private IConfig $config
+		private ConfigService $configService
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -86,8 +86,8 @@ final class WhiteboardController extends ApiController {
 		}
 
 		try {
-			$key = $this->config->getSystemValueString('jwt_secret_key', 'secret');
-			$decoded = JWT::decode($jwt, new Key($key, 'HS256'));
+			$key = $this->configService->getJwtSecretKey();
+			$decoded = JWT::decode($jwt, new Key($key, JWTController::JWT_ALGORITHM));
 			$userId = $decoded->userid;
 		} catch (\Exception $e) {
 			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
