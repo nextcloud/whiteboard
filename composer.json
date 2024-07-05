@@ -15,7 +15,7 @@
 	},
 	"require-dev": {
 		"roave/security-advisories": "dev-latest",
-		"phpunit/phpunit": "^9.5",
+		"phpunit/phpunit": "^10.5",
 		"nextcloud/coding-standard": "^1.0",
 		"psalm/phar": "^5.2",
 		"sabre/dav": "^4.3",
