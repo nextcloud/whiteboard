@@ -4,6 +4,7 @@
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
+  "main": "src/main.tsx",
   "scripts": {
     "build": "vite --mode production build",
     "dev": "vite --mode development build",
@@ -40,7 +41,7 @@
     "@nextcloud/browserslist-config": "^3.0.1",
     "@nextcloud/eslint-config": "^8.4.1",
     "@nextcloud/stylelint-config": "^3.0.1",
-    "@nextcloud/vite-config": "^1.3.0",
+    "@nextcloud/vite-config": "^2.0.2",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "@vue/tsconfig": "^0.5.1",

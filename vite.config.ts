@@ -5,11 +5,22 @@ import { createAppConfig } from '@nextcloud/vite-config'
 import react from '@vitejs/plugin-react'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 import { defineConfig } from 'vite'
+import { join, resolve } from 'path'
 
 const AppConfig = createAppConfig({
-	main: 'src/main.tsx',
+	main: resolve(join('src', 'main.tsx')),
 }, {
 	config: defineConfig({
+		build: {
+			cssCodeSplit: true,
+			rollupOptions: {
+				output: {
+					manualChunks: {
+						vendor: ['react', 'react-dom'],
+					},
+				},
+			},
+		},
 		css: {
 			modules: {
 				localsConvention: 'camelCase',
