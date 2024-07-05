@@ -30,11 +30,14 @@ export class Portal {
 	}
 
 	connectSocket = () => {
-		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', 'nextcloud.local:3002')
+		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
 
 		const token = localStorage.getItem(`jwt-${this.roomId}`) || ''
 
-		const socket = io(collabBackendUrl, {
+		const url = new URL(collabBackendUrl)
+		const path = url.pathname.replace(/\/$/, '') + '/socket.io'
+		const socket = io(url.origin, {
+			path,
 			withCredentials: true,
 			auth: {
 				token,
