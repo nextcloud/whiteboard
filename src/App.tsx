@@ -10,33 +10,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	Excalidraw,
-	LiveCollaborationTrigger,
 	MainMenu,
-	sceneCoordsToViewportCoords,
 	useHandleLibrary,
-	viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
 import './App.scss'
-import { distance2d, resolvablePromise, withBatchedUpdates, withBatchedUpdatesThrottled } from './utils'
+import { resolvablePromise } from './utils'
 import type {
-	AppState,
 	ExcalidrawImperativeAPI,
 	ExcalidrawInitialDataState,
-	PointerDownState
 } from '@excalidraw/excalidraw/types/types'
 import { Collab } from './collaboration/collab'
 import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-
-type Comment = {
-	x: number;
-	y: number;
-	value: string;
-	id?: string;
-};
-
-const COMMENT_ICON_DIMENSION = 32
-
 interface WhiteboardAppProps {
 	fileId: number;
 	isEmbedded: boolean;
@@ -44,23 +29,13 @@ interface WhiteboardAppProps {
 
 export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
-	const appRef = useRef<any>(null)
-	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
-	const [zenModeEnabled, setZenModeEnabled] = useState(isEmbedded)
-	const [gridModeEnabled, setGridModeEnabled] = useState(false)
-	const [blobUrl, setBlobUrl] = useState<string>('')
-	const [canvasUrl, setCanvasUrl] = useState<string>('')
-	const [exportWithDarkMode, setExportWithDarkMode] = useState(false)
-	const [exportEmbedScene, setExportEmbedScene] = useState(false)
-	const [theme, setTheme] = useState(darkMode ? 'dark' : 'light')
-	const [isCollaborating, setIsCollaborating] = useState(false)
-	const [commentIcons, setCommentIcons] = useState<{ [id: string]: Comment }>(
-		{}
-	)
-	const [comment, setComment] = useState<Comment | null>(null)
+	const [viewModeEnabled] = useState(isEmbedded)
+	const [zenModeEnabled] = useState(isEmbedded)
+	const [gridModeEnabled] = useState(false)
+	const [theme] = useState(darkMode ? 'dark' : 'light')
 	const initialData = {
 		elements: [],
-		scrollToContent: true
+		scrollToContent: true,
 	}
 
 	const initialStatePromiseRef = useRef<{
@@ -72,7 +47,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 
 	const [
 		excalidrawAPI,
-		setExcalidrawAPI
+		setExcalidrawAPI,
 	] = useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
@@ -103,7 +78,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 			element: NonDeletedExcalidrawElement,
 			event: CustomEvent<{
 				nativeEvent: MouseEvent | React.PointerEvent<HTMLCanvasElement>;
-			}>
+			}>,
 		) => {
 			const link = element.link!
 			const { nativeEvent } = event.detail
@@ -118,18 +93,8 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 				// ...
 			}
 		},
-		[]
+		[],
 	)
-
-	const onPointerDown = (
-		activeTool: AppState['activeTool'],
-		pointerDownState: any
-	) => {
-		if (activeTool.type === 'custom' && activeTool.customType === 'comment') {
-			const { x, y } = pointerDownState.origin
-			setComment({ x, y, value: '' })
-		}
-	}
 
 	const renderMenu = () => {
 		return (
@@ -144,7 +109,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 	}
 
 	return (
-		<div className="App" ref={appRef}>
+		<div className="App">
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
@@ -153,9 +118,6 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 						setExcalidrawAPI(api)
 					}}
 					initialData={initialStatePromiseRef.current.promise}
-					onChange={(elements, state) => {
-
-					}}
 					onPointerUpdate={collab?.onPointerUpdate}
 					viewModeEnabled={viewModeEnabled}
 					zenModeEnabled={zenModeEnabled}
@@ -164,11 +126,10 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 					name="Custom name of drawing"
 					UIOptions={{
 						canvasActions: {
-							loadScene: false
-						}
+							loadScene: false,
+						},
 					}}
 					onLinkOpen={onLinkOpen}
-					onPointerDown={onPointerDown}
 				>
 					{renderMenu()}
 				</Excalidraw>

@@ -13,10 +13,11 @@ window.EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
 
 const Component = {
 	name: 'Whiteboard',
+	/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 	render(createElement: (arg0: string, arg1: { attrs: { id: string } }, arg2: string) => any) {
-		const App = React.lazy(() => import('./App'))
+		const App = lazy(() => import('./App'))
 		this.$emit('update:loaded', true)
-		const randomId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10);
+		const randomId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10)
 		this.$nextTick(() => {
 			const rootElement = document.getElementById('whiteboard-' + randomId)
 			this.root = createRoot(rootElement)
