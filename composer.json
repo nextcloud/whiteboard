@@ -14,12 +14,12 @@
 		"firebase/php-jwt": "^6.10"
 	},
 	"require-dev": {
-		"roave/security-advisories": "dev-latest",
-		"phpunit/phpunit": "^10.5",
 		"nextcloud/coding-standard": "^1.0",
+		"nextcloud/ocp": "dev-master",
+		"phpunit/phpunit": "^10.5",
 		"psalm/phar": "^5.2",
-		"sabre/dav": "^4.3",
-		"nextcloud/ocp": "dev-master"
+		"roave/security-advisories": "dev-latest",
+		"sabre/dav": "^4.3"
 	},
 	"scripts": {
 		"lint": "find . -name \\*.php -not -path './vendor/*' -print0 | xargs -0 -n1 php -l",
