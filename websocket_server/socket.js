@@ -6,6 +6,7 @@
  */
 
 import { Server as SocketIO } from 'socket.io'
+import prometheusMetrics from 'socket.io-prometheus'
 import jwt from 'jsonwebtoken'
 import { getRoomDataFromFile, roomDataStore, saveRoomDataToFile } from './roomData.js'
 import { convertArrayBufferToString, convertStringToArrayBuffer } from './utils.js'
@@ -41,6 +42,8 @@ export const initSocket = (server) => {
 	})
 
 	io.use(socketAuthenticateHandler)
+
+	prometheusMetrics(io)
 
 	io.on('connection', (socket) => {
 		setupSocketEvents(socket, io)
