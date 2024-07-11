@@ -28,11 +28,26 @@ interface WhiteboardAppProps {
 }
 
 export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
-	const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
 	const [viewModeEnabled] = useState(isEmbedded)
 	const [zenModeEnabled] = useState(isEmbedded)
 	const [gridModeEnabled] = useState(false)
-	const [theme] = useState(darkMode ? 'dark' : 'light')
+
+	const isDarkMode = () => {
+		const ncThemes = document.body.dataset?.themes
+		return (window.matchMedia('(prefers-color-scheme: dark)').matches && ncThemes?.indexOf('light') === -1)
+			|| ncThemes?.indexOf('dark') > -1
+	}
+	const [theme, setTheme] = useState(isDarkMode() ? 'dark' : 'light')
+
+	useEffect(() => {
+		const themeChangeListener = () => setTheme(isDarkMode() ? 'dark' : 'light')
+		const mq = window.matchMedia('(prefers-color-scheme: dark)')
+		mq.addEventListener('change', themeChangeListener)
+		return () => {
+			mq.removeEventListener('change', themeChangeListener)
+		}
+	}, [])
+
 	const initialData = {
 		elements: [],
 		scrollToContent: true,
