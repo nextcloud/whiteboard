@@ -103,7 +103,6 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 				<MainMenu.DefaultItems.ChangeCanvasBackground />
 				<MainMenu.Separator />
 				<MainMenu.DefaultItems.SaveAsImage />
-				<MainMenu.DefaultItems.Export />
 			</MainMenu>
 		)
 	}
