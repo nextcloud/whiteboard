@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: [ubuntu-latest, self-hosted]
+    runs-on: ubuntu-latest
 
     name: stylelint
 
