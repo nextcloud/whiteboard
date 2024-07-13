@@ -47,7 +47,7 @@ jobs:
               - '**.vue'
 
   lint:
-    runs-on: [ubuntu-latest, self-hosted]
+    runs-on: ubuntu-latest
 
     needs: changes
     if: needs.changes.outputs.src != 'false'
