@@ -31,36 +31,55 @@ export class Portal {
 
 	connectSocket = () => {
 		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
-
 		const token = localStorage.getItem(`jwt-${this.roomId}`) || ''
 
 		const url = new URL(collabBackendUrl)
 		const path = url.pathname.replace(/\/$/, '') + '/socket.io'
+
 		const socket = io(url.origin, {
 			path,
 			withCredentials: true,
 			auth: {
 				token,
 			},
+			transports: ['websocket', 'polling'],
+			timeout: 10000,
+		}).connect()
+
+		socket.on('connect_error', (error) => {
+			if (error && error.message && !error.message.includes('Authentication error')) {
+				this.handleConnectionError()
+			}
+		})
+
+		socket.on('connect_timeout', () => {
+			this.handleConnectionError()
 		})
 
 		this.open(socket)
 	}
 
+	handleConnectionError = () => {
+		alert('Failed to connect to the whiteboard server. Redirecting to Files app.')
+		window.location.href = '/index.php/apps/files/files'
+	}
+
 	disconnectSocket = () => {
-		this.socket?.disconnect()
+		if (this.socket) {
+			this.socket.disconnect()
+			localStorage.removeItem(`jwt-${this.roomId}`)
+			console.log(`Disconnected from room ${this.roomId} and cleared JWT token`)
+		}
 	}
 
 	open(socket: Socket) {
 		this.socket = socket
 
-		const eventsNeedingTokenRefresh = ['connect_error']
-		eventsNeedingTokenRefresh.forEach((event) =>
-			this.socket?.on(event, async () => {
+		this.socket?.on('connect_error', async (error) => {
+			if (error && error.message && error.message.includes('Authentication error')) {
 				await this.handleTokenRefresh()
-			}),
-		)
-
+			}
+		})
 		this.socket.on('read-only', () => this.handleReadOnlySocket())
 		this.socket.on('init-room', () => this.handleInitRoom())
 		this.socket.on('room-user-change', (users: {

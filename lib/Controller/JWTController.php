@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 /**
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -8,33 +9,25 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Controller;
 
-use Firebase\JWT\JWT;
-use OC\User\NoUserException;
-use OCA\Whiteboard\Service\ConfigService;
+use OCA\Whiteboard\Service\AuthenticationService;
+use OCA\Whiteboard\Service\ExceptionService;
+use OCA\Whiteboard\Service\FileService;
+use OCA\Whiteboard\Service\JWTService;
 use OCP\AppFramework\Controller;
-use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
-use OCP\Files\InvalidPathException;
-use OCP\Files\IRootFolder;
-use OCP\Files\NotFoundException;
-use OCP\Files\NotPermittedException;
 use OCP\IRequest;
-use OCP\IUserSession;
 
 /**
  * @psalm-suppress UndefinedClass
  * @psalm-suppress MissingDependency
  */
 final class JWTController extends Controller {
-	private const EXPIRATION_TIME = 15 * 60;
-
-	public const JWT_ALGORITHM = 'HS256';
-
 	public function __construct(
-		IRequest $request,
-		private IUserSession $userSession,
-		private ConfigService $configService,
-		private IRootFolder $rootFolder
+		IRequest                      $request,
+		private AuthenticationService $authService,
+		private FileService           $fileService,
+		private JWTService            $jwtService,
+		private ExceptionService      $exceptionService
 	) {
 		parent::__construct('whiteboard', $request);
 	}
@@ -44,66 +37,13 @@ final class JWTController extends Controller {
 	 * @NoAdminRequired
 	 */
 	public function getJWT(int $fileId): DataResponse {
-		if (!$this->userSession->isLoggedIn()) {
-			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
-		}
-
-		$user = $this->userSession->getUser();
-
-		if ($user === null) {
-			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
-		}
-
-		$userId = $user->getUID();
 		try {
-			$folder = $this->rootFolder->getUserFolder($userId);
-		} catch (NotPermittedException $e) {
-			return new DataResponse(['message' => 'Access denied'], Http::STATUS_FORBIDDEN);
-		} catch (NoUserException $e) {
-			return new DataResponse(['message' => 'Unauthorized'], Http::STATUS_UNAUTHORIZED);
+			$user = $this->authService->getAuthenticatedUser();
+			$file = $this->fileService->getUserFileById($user->getUID(), $fileId);
+			$jwt = $this->jwtService->generateJWT($user, $file, $fileId);
+			return new DataResponse(['token' => $jwt]);
+		} catch (\Exception $e) {
+			return $this->exceptionService->handleException($e);
 		}
-
-		$file = $folder->getById($fileId)[0] ?? null;
-
-		if ($file === null) {
-			return new DataResponse(['message' => 'File not found or access denied'], Http::STATUS_FORBIDDEN);
-		}
-
-		try {
-			$readable = $file->isReadable();
-		} catch (InvalidPathException|NotFoundException $e) {
-			return new DataResponse(['message' => 'Access denied'], Http::STATUS_FORBIDDEN);
-		}
-
-		if (!$readable) {
-			return new DataResponse(['message' => 'Access denied'], Http::STATUS_FORBIDDEN);
-		}
-
-		try {
-			$permissions = $file->getPermissions();
-		} catch (InvalidPathException $e) {
-			return new DataResponse(['message' => 'Access denied'], Http::STATUS_FORBIDDEN);
-		} catch (NotFoundException $e) {
-			return new DataResponse(['message' => 'File not found'], Http::STATUS_NOT_FOUND);
-		}
-
-		$key = $this->configService->getJwtSecretKey();
-		$issuedAt = time();
-		$expirationTime = $issuedAt + self::EXPIRATION_TIME;
-		$payload = [
-			'userid' => $userId,
-			'fileId' => $fileId,
-			'permissions' => $permissions,
-			'user' => [
-				'id' => $userId,
-				'name' => $user->getDisplayName()
-			],
-			'iat' => $issuedAt,
-			'exp' => $expirationTime
-		];
-
-		$jwt = JWT::encode($payload, $key, self::JWT_ALGORITHM);
-
-		return new DataResponse(['token' => $jwt]);
 	}
 }

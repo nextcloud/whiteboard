@@ -4,13 +4,13 @@
 		"autoloader-suffix": "Whiteboard",
 		"optimize-autoloader": true,
 		"platform": {
-			"php": "8.1"
+			"php": "8.0"
 		},
 		"sort-packages": true
 	},
 	"license": "AGPL",
 	"require": {
-		"php": "^8.1",
+		"php": "^8.0",
 		"firebase/php-jwt": "^6.10"
 	},
 	"require-dev": {
