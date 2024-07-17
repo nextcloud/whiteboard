@@ -20,6 +20,8 @@ import type {
 	ExcalidrawInitialDataState,
 } from '@excalidraw/excalidraw/types/types'
 import { Collab } from './collaboration/collab'
+import Embeddable from './Embeddable'
+import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 interface WhiteboardAppProps {
@@ -122,10 +124,16 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 		)
 	}
 
+	const renderEmbeddableTest = (element: NonDeletedExcalidrawElement) => {
+		return React.createElement(Embeddable,{react: React, url: element.link})
+	}
+
 	return (
 		<div className="App">
 			<div className="excalidraw-wrapper">
 				<Excalidraw
+					validateEmbeddable={()=>true}
+					renderEmbeddable={(element) => renderEmbeddableTest(element)}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
 						console.log(api)
 						console.log('Setting API')
