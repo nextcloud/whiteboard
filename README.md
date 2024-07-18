@@ -36,7 +36,7 @@ The server can be run locally using the following command:
 
 ```bash
 npm ci
-JWT_SECRET_KEY=secret NEXTCLOUD_URL=http://nextcloud.local npm run server:start
+JWT_SECRET_KEY="some-random" NEXTCLOUD_URL=http://nextcloud.local npm run server:start
 ```
 
 #### Docker
