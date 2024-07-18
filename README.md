@@ -26,7 +26,7 @@ Both the server and the Nextcloud instance must be accessible from the same netw
 On the Nextcloud side, the server must be configured through:
 
 ```bash
-occ config:app:set whiteboard collabBackendUrl --value="nextcloud.local:3003"
+occ config:app:set whiteboard collabBackendUrl --value="http://nextcloud.local:3002"
 occ config:app:set whiteboard jwt_secret_key --value="some-random"
 ```
 
@@ -36,7 +36,7 @@ The server can be run locally using the following command:
 
 ```bash
 npm ci
-npm server:start
+JWT_SECRET_KEY=secret NEXTCLOUD_URL=http://nextcloud.local npm run server:start
 ```
 
 #### Docker
