@@ -3,8 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import dotenv from 'dotenv'
 import express from 'express'
 import { register } from 'prom-client'
+
+dotenv.config()
 
 const METRICS_TOKEN = process.env.METRICS_TOKEN
 
