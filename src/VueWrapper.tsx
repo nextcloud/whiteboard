@@ -1,8 +1,11 @@
-import { NcReferenceList } from '@nextcloud/vue/dist/Components/NcRichText.js'
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 import Vue from 'vue'
 
 const VueWrapper = function(
-	{ componentProps }) {
+	{ componentProps, component }) {
 	const vueRef = React.useRef(null)
 	const [vueInstance, setVueInstance] = React.useState(undefined)
 
@@ -23,7 +26,7 @@ const VueWrapper = function(
 				}
 			},
 			render(h) {
-				return h(NcReferenceList, {
+				return h(component, {
 					props: this.props,
 				})
 			},
@@ -37,7 +40,7 @@ const VueWrapper = function(
 	React.useEffect(() => {
 		if (vueInstance) {
 			const keys = Object.keys(componentProps)
-			keys.forEach(key => vueInstance.props[key] = componentProps[key])
+			keys.forEach(key => { vueInstance.props[key] = componentProps[key] })
 		}
 	}, [Object.values(componentProps)])
 
