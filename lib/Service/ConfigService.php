@@ -11,17 +11,21 @@ namespace OCA\Whiteboard\Service;
 
 use OCP\AppFramework\Services\IAppConfig;
 
-class ConfigService {
+final class ConfigService {
 	public function __construct(
 		private IAppConfig $appConfig,
 	) {
 	}
 
 	public function getJwtSecretKey(): string {
-		return $this->appConfig->getAppValueString('jwt_secret_key', '');
+		return $this->appConfig->getAppValueString('jwt_secret_key');
 	}
 
 	public function getCollabBackendUrl(): string {
-		return $this->appConfig->getAppValueString('collabBackendUrl', '');
+		return $this->appConfig->getAppValueString('collabBackendUrl');
+	}
+
+	public function getWhiteboardSharedSecret(): string {
+		return $this->appConfig->getAppValueString('jwt_secret_key');
 	}
 }
