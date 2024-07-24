@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-ARG NODE_VERSION=20.0.0
+ARG NODE_VERSION=20
 
-FROM node:${NODE_VERSION}-alpine
+FROM node:${NODE_VERSION}
 
 ENV NODE_ENV production
 
