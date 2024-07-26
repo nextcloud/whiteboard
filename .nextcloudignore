@@ -4,7 +4,6 @@
 /docs/
 /tests
 /babel.config.js
-/.php-cs-fixer.dist.php
 /.editorconfig
 /.eslintrc.js
 /.nextcloudignore
@@ -27,4 +26,8 @@
 /package-lock.json
 /node_modules/
 /src/
-/vite.config.ts
+/websocket_server/
+/psalm.xml0i
+/tsconfig.json
+/Dockerfile
+/.stylelintrc.cjs
