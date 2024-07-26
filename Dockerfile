@@ -3,7 +3,7 @@
 
 ARG NODE_VERSION=20
 
-FROM node:${NODE_VERSION}
+FROM node:${NODE_VERSION}-alpine
 
 ENV NODE_ENV production
 
