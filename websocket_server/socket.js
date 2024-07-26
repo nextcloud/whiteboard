@@ -10,11 +10,12 @@ import prometheusMetrics from 'socket.io-prometheus'
 import jwt from 'jsonwebtoken'
 import {
 	addUserToRoom,
+	removeUserFromRoom,
+	updateLastEditedUser,
+	getRoomData,
+	setRoomData,
 	getRoomDataFromFile,
 	handleEmptyRoom,
-	removeUserFromRoom,
-	roomDataStore,
-	updateLastEditedUser,
 } from './roomData.js'
 import { convertArrayBufferToString, convertStringToArrayBuffer } from './utils.js'
 import dotenv from 'dotenv'
@@ -26,16 +27,24 @@ const {
 	JWT_SECRET_KEY,
 } = process.env
 
-const verifyToken = (token) =>
-	new Promise((resolve, reject) => {
+const tokenCache = new Map()
+
+const verifyToken = async (token) => {
+	if (tokenCache.has(token)) {
+		return tokenCache.get(token)
+	}
+
+	return new Promise((resolve, reject) => {
 		jwt.verify(token, JWT_SECRET_KEY, (err, decoded) => {
 			if (err) {
 				console.log(err.name === 'TokenExpiredError' ? 'Token expired' : 'Token verification failed')
 				return reject(new Error('Authentication error'))
 			}
+			tokenCache.set(token, decoded)
 			resolve(decoded)
 		})
 	})
+}
 
 export const initSocket = (server) => {
 	const io = new SocketIO(server, {
@@ -82,40 +91,27 @@ const joinRoomHandler = async (socket, io, roomID) => {
 	await socket.join(roomID)
 	addUserToRoom(roomID, socket.decodedData.user.id)
 
-	if (!roomDataStore[roomID]) {
+	let roomData = getRoomData(roomID)
+	if (!roomData) {
 		console.log(`[${roomID}] Data for room ${roomID} is not available, fetching from file ...`)
-		roomDataStore[roomID] = await getRoomDataFromFile(roomID, socket.handshake.auth.token)
+		roomData = await getRoomDataFromFile(roomID, socket.handshake.auth.token)
+		setRoomData(roomID, roomData)
 	}
 
-	socket.emit('joined-data', convertStringToArrayBuffer(JSON.stringify(roomDataStore[roomID])), [])
+	socket.emit('joined-data', convertStringToArrayBuffer(JSON.stringify(roomData)), [])
 
-	const sockets = await io.in(roomID).fetchSockets()
-	io.in(roomID).emit('room-user-change', sockets.map(s => ({
-		socketId: s.id,
-		user: s.decodedData.user,
-	})))
+	const userSockets = await getUserSockets(io, roomID, socket.id)
+	io.in(roomID).emit('room-user-change', userSockets)
 }
 
 const serverBroadcastHandler = (socket, io, roomID, encryptedData, iv) => {
-	// Check if the socket is part of the room, to avoid broadcasting with old socket
-	if (!socket.rooms.has(roomID)) {
-		console.log(`Socket ${socket.id} is not part of room ${roomID}, ignoring broadcast.`)
-		return
-	}
-
-	// Check if roomDataStore[roomID] is populated
-	if (!roomDataStore[roomID]) {
-		console.log(`Data for room ${roomID} is not available, ignoring broadcast.`)
-		return
-	}
-
-	if (isSocketReadOnly(socket)) return
+	if (!socket.rooms.has(roomID) || !getRoomData(roomID) || isSocketReadOnly(socket)) return
 
 	socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
 
 	setTimeout(() => {
 		const decryptedData = JSON.parse(convertArrayBufferToString(encryptedData))
-		roomDataStore[roomID] = decryptedData.payload.elements
+		setRoomData(roomID, decryptedData.payload.elements)
 		updateLastEditedUser(roomID, socket.decodedData.user.id)
 	})
 }
@@ -137,23 +133,31 @@ const serverVolatileBroadcastHandler = (socket, roomID, encryptedData) => {
 
 const disconnectingHandler = async (socket, io) => {
 	console.log(`[${socket.decodedData.fileId}] ${socket.decodedData.user.name} has disconnected`)
-	for (const roomID of Array.from(socket.rooms)) {
+	const rooms = new Set(socket.rooms)
+	for (const roomID of rooms) {
 		if (roomID === socket.id) continue
 		console.log(`[${roomID}] ${socket.decodedData.user.name} has left ${roomID}`)
 
-		const otherClients = (await io.in(roomID).fetchSockets()).filter(s => s.id !== socket.id)
+		const otherClients = await getUserSockets(io, roomID, socket.id)
 
 		if (otherClients.length === 0) {
 			await handleEmptyRoom(roomID)
 		} else {
-			socket.broadcast.to(roomID).emit('room-user-change', otherClients.map(s => ({
-				socketId: s.id,
-				user: s.decodedData.user,
-			})))
+			socket.broadcast.to(roomID).emit('room-user-change', otherClients)
 		}
 
 		removeUserFromRoom(roomID, socket.decodedData.user.id)
 	}
+}
+
+const getUserSockets = async (io, roomID, currentSocketId) => {
+	const sockets = await io.in(roomID).fetchSockets()
+	return sockets
+		.filter(s => s.id !== currentSocketId)
+		.map(s => ({
+			socketId: s.id,
+			user: s.decodedData.user,
+		}))
 }
 
 const isSocketReadOnly = (socket) => socket.decodedData.permissions === 1

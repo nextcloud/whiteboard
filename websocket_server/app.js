@@ -6,6 +6,8 @@
 import dotenv from 'dotenv'
 import express from 'express'
 import { register } from 'prom-client'
+import { getSystemOverview } from './monitoring.js'
+import { rooms } from './roomData.js'
 
 dotenv.config()
 
@@ -25,6 +27,10 @@ app.get('/metrics', async (req, res) => {
 	const metrics = await register.metrics()
 	res.set('Content-Type', register.contentType)
 	res.end(metrics)
+})
+
+app.get('/system-overview', (req, res) => {
+	res.json(getSystemOverview(rooms))
 })
 
 export default app
