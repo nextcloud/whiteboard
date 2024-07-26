@@ -25,6 +25,7 @@
 /package.json
 /package-lock.json
 /node_modules/
+/screenshots/
 /src/
 /websocket_server/
 /psalm.xml0i
