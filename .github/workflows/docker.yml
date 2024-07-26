@@ -65,6 +65,7 @@ jobs:
         id: vars
         run: |
           echo "version_channel=${{ github.event_name == 'release' && 'release' || 'daily' }}" >> $GITHUB_OUTPUT
+          echo "version_ref=${{ github.event_name == 'release' && github.ref_name || github.sha }}" >> $GITHUB_OUTPUT
           echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
 
       - name: Login to Github Container Registry
@@ -76,7 +77,7 @@ jobs:
 
       - name: Create GHCR manifest
         run: |
-          docker manifest create $GHCR_REPO:${{ steps.vars.outputs.version }} \
+          docker manifest create $GHCR_REPO:${{ steps.vars.outputs.version_ref }} \
             $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-amd64 \
             $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-arm64
 
@@ -86,5 +87,5 @@ jobs:
 
       - name: Push manifests
         run: |
-          docker manifest push $GHCR_REPO:${{ steps.vars.outputs.version }}
+          docker manifest push $GHCR_REPO:${{ steps.vars.outputs.version_ref }}
           docker manifest push $GHCR_REPO:${{ steps.vars.outputs.version_channel }}
