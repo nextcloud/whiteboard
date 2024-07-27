@@ -76,6 +76,16 @@ services:
 
 ### Reverse proxy
 
+#### Apache
+
+```
+ProxyPass /whiteboard http://localhost:3002/
+RewriteEngine on
+RewriteCond %{HTTP:Upgrade} websocket [NC]
+RewriteCond %{HTTP:Connection} upgrade [NC]
+RewriteRule ^/?whiteboard/(.*) "ws://localhost:3002/$1" [P,L]
+```
+
 #### Nginx
 
 ```
