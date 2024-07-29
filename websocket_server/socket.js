@@ -19,6 +19,7 @@ import {
 } from './roomData.js'
 import { convertArrayBufferToString, convertStringToArrayBuffer } from './utils.js'
 import dotenv from 'dotenv'
+import { LRUCache } from 'lru-cache'
 
 dotenv.config()
 
@@ -27,7 +28,16 @@ const {
 	JWT_SECRET_KEY,
 } = process.env
 
-const tokenCache = new Map()
+const TOKEN_CACHE_TTL = 10 * 60 * 1000 // 10 minutes, << JWT expiration time
+const tokenCache = new LRUCache({
+	ttl: TOKEN_CACHE_TTL,
+	updateAgeOnGet: false,
+	max: 1000,
+})
+
+export const removeTokenFromCache = (token) => {
+	tokenCache.delete(token)
+}
 
 const verifyToken = async (token) => {
 	if (tokenCache.has(token)) {

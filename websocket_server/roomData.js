@@ -69,20 +69,26 @@ export const rooms = new LRUCache({
 	ttl: INACTIVE_THRESHOLD,
 	updateAgeOnGet: true,
 	dispose: async (value, key) => {
-		if (value.data) {
-			await saveRoomDataToFile(key, value.data)
+		console.log('Disposing room', key)
+
+		if (value && value.data && value.lastEditedUser) {
+			try {
+				await saveRoomDataToFile(key, value.data, value.lastEditedUser)
+			} catch (error) {
+				console.error(`Failed to save room ${key} data:`, error)
+			}
 		}
 	},
 })
 
-const fetchOptions = (method, token, body = null, roomId = null) => ({
+const fetchOptions = (method, token, body = null, roomId = null, lastEditedUser = null) => ({
 	method,
 	headers: {
 		'Content-Type': 'application/json',
 		...(method === 'GET' && { Authorization: `Bearer ${token}` }),
 		...(method === 'PUT' && {
 			'X-Whiteboard-Auth': generateSharedToken(roomId),
-			'X-Whiteboard-User': getLastEditedUser(roomId),
+			'X-Whiteboard-User': lastEditedUser || 'unknown',
 		}),
 	},
 	...(body && { body: JSON.stringify(body) }),
@@ -135,6 +141,7 @@ export const updateLastEditedUser = (roomId, userId) => {
 }
 
 export const getRoomData = (roomId) => {
+	console.log('Getting data from memory for room', roomId)
 	const room = rooms.get(roomId)
 	return room ? room.data : null
 }
@@ -155,22 +162,18 @@ export const getRoomDataFromFile = async (roomID, jwtToken) => {
 	return elements || null
 }
 
-export const saveRoomDataToFile = async (roomID) => {
-	console.log(`[${roomID}] Saving room data to file: ${roomID} with:`)
+export const saveRoomDataToFile = async (roomID, roomData, lastEditedUser) => {
+	console.log('Saving room data to file', roomID)
 	const url = `${NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
-	const roomData = getRoomData(roomID)
 	const body = { data: { elements: roomData } }
-	const options = fetchOptions('PUT', null, body, roomID)
-	console.log(options)
+	const options = fetchOptions('PUT', null, body, roomID, lastEditedUser)
 	await fetchData(url, options)
 }
 
 export const handleEmptyRoom = async (roomID) => {
 	const roomData = getRoomData(roomID)
 	if (roomData) {
-		await saveRoomDataToFile(roomID)
-		console.log('Removing data for room', roomID)
-		rooms.delete(roomID)
+		rooms.delete(roomID) // This will trigger the dispose function so that the data is saved to file
 	}
 }
 
@@ -180,9 +183,4 @@ export const saveAllRoomsData = () =>
 
 export const removeAllRoomData = () => {
 	rooms.clear()
-}
-
-export const getLastEditedUser = (roomId) => {
-	const room = rooms.get(roomId)
-	return room ? room.lastEditedUser : null
 }
