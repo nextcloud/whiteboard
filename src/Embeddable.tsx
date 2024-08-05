@@ -11,6 +11,6 @@ import VueWrapper from './VueWrapper'
  * @param props componentProps and component to be rendered in Vue
  */
 export default function(props) {
-	const referenceProps = { text: props.link, limit: '1', interactive: true }
+	const referenceProps = { text: props.link, limit: 1, interactive: true }
 	return React.createElement(VueWrapper, { componentProps: referenceProps, component: NcReferenceList })
 }
