@@ -4,39 +4,52 @@
  */
 
 import { register, Gauge } from 'prom-client'
-import { getSystemOverview } from './monitoring.js'
+import { SystemMonitor } from './monitoring.js'
 
-const memoryUsageGauge = new Gauge({
-	name: 'whiteboard_memory_usage',
-	help: 'Memory usage of the server',
-	labelNames: ['type'],
-})
+export class PrometheusMetrics {
 
-const roomStatsGauge = new Gauge({
-	name: 'whiteboard_room_stats',
-	help: 'Room statistics',
-	labelNames: ['stat'],
-})
+	constructor(storageManager) {
+		this.systemMonitor = new SystemMonitor(storageManager)
+		this.initializeGauges()
+	}
 
-const cacheInfoGauge = new Gauge({
-	name: 'whiteboard_cache_info',
-	help: 'Cache information',
-	labelNames: ['info'],
-})
+	initializeGauges() {
+		this.memoryUsageGauge = new Gauge({
+			name: 'whiteboard_memory_usage',
+			help: 'Memory usage of the server',
+			labelNames: ['type'],
+		})
 
-export function updatePrometheusMetrics(rooms) {
-	const overview = getSystemOverview(rooms)
+		this.roomStatsGauge = new Gauge({
+			name: 'whiteboard_room_stats',
+			help: 'Room statistics',
+			labelNames: ['stat'],
+		})
 
-	Object.entries(overview.memoryUsage).forEach(([key, value]) => {
-		memoryUsageGauge.set({ type: key }, parseFloat(value) || 0)
-	})
+		this.cacheInfoGauge = new Gauge({
+			name: 'whiteboard_cache_info',
+			help: 'Cache information',
+			labelNames: ['info'],
+		})
+	}
 
-	roomStatsGauge.set({ stat: 'activeRooms' }, Number(overview.roomStats.activeRooms) || 0)
-	roomStatsGauge.set({ stat: 'totalUsers' }, Number(overview.roomStats.totalUsers) || 0)
-	roomStatsGauge.set({ stat: 'totalDataSize' }, parseFloat(overview.roomStats.totalDataSize) || 0)
+	updateMetrics() {
+		const overview = this.systemMonitor.getSystemOverview()
 
-	cacheInfoGauge.set({ info: 'size' }, Number(overview.cacheInfo.size) || 0)
-	cacheInfoGauge.set({ info: 'maxSize' }, Number(overview.cacheInfo.maxSize) || 0)
+		Object.entries(overview.memoryUsage).forEach(([key, value]) => {
+			this.memoryUsageGauge.set({ type: key }, parseFloat(value) || 0)
+		})
+
+		this.roomStatsGauge.set({ stat: 'activeRooms' }, Number(overview.roomStats.activeRooms) || 0)
+		this.roomStatsGauge.set({ stat: 'totalUsers' }, Number(overview.roomStats.totalUsers) || 0)
+		this.roomStatsGauge.set({ stat: 'totalDataSize' }, parseFloat(overview.roomStats.totalDataSize) || 0)
+
+		this.cacheInfoGauge.set({ info: 'size' }, Number(overview.cacheInfo.size) || 0)
+		this.cacheInfoGauge.set({ info: 'maxSize' }, Number(overview.cacheInfo.maxSize) || 0)
+	}
+
+	getRegister() {
+		return register
+	}
+
 }
-
-export { register }

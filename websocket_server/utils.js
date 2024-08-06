@@ -3,6 +3,20 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-export const convertStringToArrayBuffer = (string) => new TextEncoder().encode(string).buffer
-export const convertArrayBufferToString = (arrayBuffer) => new TextDecoder().decode(arrayBuffer)
-export const parseBooleanFromEnv = (value) => value === 'true'
+class Utils {
+
+	static convertStringToArrayBuffer(string) {
+		return new TextEncoder().encode(string).buffer
+	}
+
+	static convertArrayBufferToString(arrayBuffer) {
+		return new TextDecoder().decode(arrayBuffer)
+	}
+
+	static parseBooleanFromEnv(value) {
+		return value === 'true'
+	}
+
+}
+
+export default Utils
