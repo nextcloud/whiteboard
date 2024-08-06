@@ -13,7 +13,7 @@ The official whiteboard app for Nextcloud. It allows users to create and share w
 
 - 🎨 Drawing shapes, writing text, connecting elements
 - 📝 Real-time collaboration
-- 💪 Strong foundation: We use [excalidraw](https://github.com/excalidraw/excalidraw) as our base library
+- 💪 Strong foundation: We use [Excalidraw](https://github.com/excalidraw/excalidraw) as our base library
 
 ## Backend
 
