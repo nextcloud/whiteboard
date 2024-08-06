@@ -5,14 +5,15 @@
 
 // https://github.com/excalidraw/excalidraw/blob/4dc4590f247a0a0d9c3f5d39fe09c00c5cef87bf/examples/excalidraw
 .excalidraw, .App .excalidraw {
-  --zIndex-modal: 100001;
+  --zIndex-modal: 100010;
+  --zIndex-popup: 100020;
   --ui-font: var(--font-face);
 
-  --color-brand: var(--color-primary-element);
-  --color-brand-hover: var(--color-primary-element-hover);
+  --color-brand: var(--color-primary-element) !important;
+  --color-brand-hover: var(--color-primary-element-hover) !important;
   --color-primary: var(--color-primary-element) !important;
-  --color-primary-darker: var(--color-primary-darker);
-  --color-primary-darkest: var(--color-primary-element);
+  --color-primary-darker: var(--color-primary-element-hover) !important;
+  --color-primary-darkest: var(----color-primary-element-hover) !important;
   --color-primary-light: var(--color-primary-element-light) !important;
   --color-surface-primary-container: var(--color-primary-element-light);
   --color-surface-low: var(--color-primary-element-light);
@@ -96,4 +97,13 @@
 
 .layer-ui__wrapper__top-right label[title=Library] {
   display: none;
+}
+
+.ImageExportModal__preview__filename {
+  display: none;
+}
+
+.excalidraw .Switch input,
+.excalidraw .RadioGroup__choice input {
+  opacity: 0;
 }

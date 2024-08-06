@@ -25,10 +25,13 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 interface WhiteboardAppProps {
 	fileId: number;
+	fileName: string;
 	isEmbedded: boolean;
 }
 
-export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
+export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps) {
+	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
+
 	const [viewModeEnabled] = useState(isEmbedded)
 	const [zenModeEnabled] = useState(isEmbedded)
 	const [gridModeEnabled] = useState(false)
@@ -140,7 +143,7 @@ export default function App({ fileId, isEmbedded }: WhiteboardAppProps) {
 					zenModeEnabled={zenModeEnabled}
 					gridModeEnabled={gridModeEnabled}
 					theme={theme}
-					name="Custom name of drawing"
+					name={fileNameWithoutExtension}
 					UIOptions={{
 						canvasActions: {
 							loadScene: false,

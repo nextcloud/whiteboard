@@ -24,7 +24,7 @@ const Component = {
 
 			this.root.render(
 				<StrictMode>
-					<App fileId={this.fileid} isEmbedded={this.isEmbedded}/>
+					<App fileId={this.fileid} isEmbedded={this.isEmbedded} fileName={this.basename} />
 				</StrictMode>,
 			)
 		})
