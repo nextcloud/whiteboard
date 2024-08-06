@@ -33,8 +33,35 @@
   }
 }
 
+.widgets--list{
+  height: 100%;
+}
+
+.widgets--list > div{
+  height: 100% !important;
+}
+
+.widgets--list > div > div{
+  height: 100% !important;
+}
+
+.widget-custom {
+  height: 100%;
+  margin: 0 !important;
+}
+
+.widget-file--interactive{
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: unset !important;
+}
+
+.text-menubar--ready{
+  backdrop-filter: unset !important;
+  -webkit-backdrop-filter: unset !important;
+}
+
 .App {
-  text-align: center;
   position: relative;
   height: 100%;
   width: 100%;

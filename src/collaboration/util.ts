@@ -5,6 +5,7 @@
 
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { AppState } from '@excalidraw/excalidraw/types/types'
+import { isObject } from 'lodash'
 
 /**
  * Hashes elements' versionNonce (using djb2 algo). Order of elements matters.
@@ -14,6 +15,35 @@ export const hashElementsVersion = (
 	elements: readonly ExcalidrawElement[],
 ): number => {
 	return elements.reduce((acc, el) => acc + el.version, 0)
+}
+
+/**
+ *
+ * @param obj1 object 1 to compare
+ * @param obj2 object 2 to compare
+ * @param exceptions keys that are not required to be equal
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isDeepEqual(obj1:any, obj2: any, exceptions: Array<string>) {
+
+	const keys1 = Object.keys(obj1)
+	const keys2 = Object.keys(obj2)
+
+	if (keys1.length !== keys2.length) return false
+
+	for (const key of keys1) {
+		const val1 = obj1[key]
+		const val2 = obj2[key]
+
+		const areObjects = isObject(val1) && isObject(val2)
+
+		if ((areObjects && !isDeepEqual(val1, val2, exceptions)) || (!areObjects && val1 !== val2)) {
+			if (!exceptions.includes(key)) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 /**
@@ -36,6 +66,13 @@ export function shouldDiscardRemoteElement(localAppState: Readonly<AppState>, lo
           || (localElement.version === remoteElement.version
             && localElement.versionNonce < remoteElement.versionNonce))
 	) {
+		return true
+	}
+
+	// embeddables get updated a lot by the excalidraw library when collaboration is active
+	// we need to filter out useless updates to not rerender every millisecond.
+	// current master of the excalidraw library probably fixes this issue but it's not available in excalidraw@latest (0.17.6)
+	if (localElement && localElement.type === 'embeddable' && isDeepEqual(localElement, remoteElement, ['versionNonce', 'version', 'updated', 'validated'])) {
 		return true
 	}
 	return false
