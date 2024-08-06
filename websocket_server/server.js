@@ -9,11 +9,13 @@
 import http from 'http'
 import https from 'https'
 import fs from 'fs'
-import app from './app.js'
-import { initSocket } from './socket.js'
-import { removeAllRoomData, saveAllRoomsData } from './roomData.js'
+import AppManager from './app.js'
+import SocketManager from './socket.js'
+import { createRoomDataManager } from './roomData.js'
 import dotenv from 'dotenv'
-import { parseBooleanFromEnv } from './utils.js'
+import Utils from './utils.js'
+import AuthManager from './auth.js'
+import ApiService from './apiService.js'
 
 dotenv.config()
 
@@ -22,53 +24,66 @@ const {
 	TLS,
 	TLS_KEY: keyPath,
 	TLS_CERT: certPath,
+	STORAGE_STRATEGY = 'redis',
 } = process.env
 
 const FORCE_CLOSE_TIMEOUT = 60 * 60 * 1000
 
-const readTlsCredentials = (keyPath, certPath) => ({
-	key: keyPath ? fs.readFileSync(keyPath) : undefined,
-	cert: certPath ? fs.readFileSync(certPath) : undefined,
-})
+class ServerManager {
 
-const createConfiguredServer = (app) => {
-	const useTls = parseBooleanFromEnv(TLS)
-	const serverType = useTls ? https : http
-	const serverOptions = useTls ? readTlsCredentials(keyPath, certPath) : {}
+	constructor() {
+		const authManager = new AuthManager()
+		const apiService = new ApiService(authManager)
+		this.roomDataManager = createRoomDataManager(STORAGE_STRATEGY, apiService)
+		this.appManager = new AppManager(this.roomDataManager)
+		this.server = this.createConfiguredServer(this.appManager.getApp())
+		this.socketManager = new SocketManager(this.server, this.roomDataManager)
+	}
 
-	return serverType.createServer(serverOptions, app)
+	readTlsCredentials(keyPath, certPath) {
+		return {
+			key: keyPath ? fs.readFileSync(keyPath) : undefined,
+			cert: certPath ? fs.readFileSync(certPath) : undefined,
+		}
+	}
+
+	createConfiguredServer(app) {
+		const useTls = Utils.parseBooleanFromEnv(TLS)
+		const serverType = useTls ? https : http
+		const serverOptions = useTls ? this.readTlsCredentials(keyPath, certPath) : {}
+
+		return serverType.createServer(serverOptions, app)
+	}
+
+	start() {
+		this.server.listen(PORT, () => {
+			console.log(`Listening on port: ${PORT}`)
+		})
+
+		process.on('SIGTERM', this.shutdown.bind(this))
+		process.on('SIGINT', this.shutdown.bind(this))
+	}
+
+	async gracefulShutdown() {
+		console.log('Received shutdown signal, saving all data...')
+		await this.roomDataManager.removeAllRoomData()
+		console.log('Closing server...')
+		this.server.close(() => {
+			console.log('HTTP server closed.')
+			process.exit(0)
+		})
+
+		setTimeout(() => {
+			console.error('Force closing server after 1 hour')
+			process.exit(1)
+		}, FORCE_CLOSE_TIMEOUT)
+	}
+
+	async shutdown() {
+		await this.gracefulShutdown() // Perform graceful shutdown tasks
+	}
+
 }
 
-const server = createConfiguredServer(app)
-
-initSocket(server)
-
-server.listen(PORT, () => {
-	console.log(`Listening on port: ${PORT}`)
-})
-
-export const gracefulShutdown = async (server) => {
-	console.log('Received shutdown signal, saving all data...')
-	await saveAllRoomsData()
-
-	console.log('Clear all room data...')
-	await removeAllRoomData()
-
-	console.log('Closing server...')
-	server.close(() => {
-		console.log('HTTP server closed.')
-		process.exit(0)
-	})
-
-	setTimeout(() => {
-		console.error('Force closing server after 1 hour')
-		process.exit(1)
-	}, FORCE_CLOSE_TIMEOUT)
-}
-
-const shutdown = async () => {
-	await gracefulShutdown(server) // Perform graceful shutdown tasks
-}
-
-process.on('SIGTERM', shutdown)
-process.on('SIGINT', shutdown)
+const serverManager = new ServerManager()
+serverManager.start()

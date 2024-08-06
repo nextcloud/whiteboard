@@ -5,28 +5,44 @@
 
 import dotenv from 'dotenv'
 import express from 'express'
-import { register, updatePrometheusMetrics } from './prom-metrics.js'
-import { rooms } from './roomData.js'
+import { PrometheusMetrics } from './prom-metrics.js'
 
 dotenv.config()
 
-const METRICS_TOKEN = process.env.METRICS_TOKEN
+class AppManager {
 
-const app = express()
-
-app.get('/', (req, res) => {
-	res.send('Excalidraw collaboration server is up :)')
-})
-
-app.get('/metrics', async (req, res) => {
-	const token = req.headers.authorization?.split(' ')[1] || req.query.token
-	if (!METRICS_TOKEN || token !== METRICS_TOKEN) {
-		return res.status(403).send('Unauthorized')
+	constructor(storageManager) {
+		this.app = express()
+		this.storageManager = storageManager
+		this.metricsManager = new PrometheusMetrics(storageManager)
+		this.METRICS_TOKEN = process.env.METRICS_TOKEN
+		this.setupRoutes()
 	}
-	updatePrometheusMetrics(rooms)
-	const metrics = await register.metrics()
-	res.set('Content-Type', register.contentType)
-	res.end(metrics)
-})
 
-export default app
+	setupRoutes() {
+		this.app.get('/', this.homeHandler.bind(this))
+		this.app.get('/metrics', this.metricsHandler.bind(this))
+	}
+
+	homeHandler(req, res) {
+		res.send('Excalidraw collaboration server is up :)')
+	}
+
+	async metricsHandler(req, res) {
+		const token = req.headers.authorization?.split(' ')[1] || req.query.token
+		if (!this.METRICS_TOKEN || token !== this.METRICS_TOKEN) {
+			return res.status(403).send('Unauthorized')
+		}
+		this.metricsManager.updateMetrics()
+		const metrics = await this.metricsManager.getRegister().metrics()
+		res.set('Content-Type', this.metricsManager.getRegister().contentType)
+		res.end(metrics)
+	}
+
+	getApp() {
+		return this.app
+	}
+
+}
+
+export default AppManager
