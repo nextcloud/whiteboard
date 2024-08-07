@@ -7,13 +7,13 @@
 
 [![REUSE status](https://api.reuse.software/badge/github.com/nextcloud/whiteboard)](https://api.reuse.software/info/github.com/nextcloud/whiteboard)
 
-This is a whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.
+The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.
 
 ## Features
 
 - 🎨 Drawing shapes, writing text, connecting elements
 - 📝 Real-time collaboration
-- 💪 Strong foundation: We use [excalidraw](https://github.com/excalidraw/excalidraw) as our base library
+- 💪 Strong foundation: We use [Excalidraw](https://github.com/excalidraw/excalidraw) as our base library
 
 ## Backend
 
