@@ -8,6 +8,9 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Icon } from '@mdi/react'
+import { mdiShape } from '@mdi/js'
+
 import {
 	Excalidraw,
 	MainMenu,
@@ -23,6 +26,7 @@ import { Collab } from './collaboration/collab'
 import Embeddable from './Embeddable'
 import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 interface WhiteboardAppProps {
 	fileId: number;
 	fileName: string;
@@ -114,7 +118,43 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		},
 		[],
 	)
-
+	const addWebEmbed = (link:string) => {
+		const elements = excalidrawAPI?.getSceneElementsIncludingDeleted().slice()
+		elements?.push({
+			link,
+			id: (Math.random() + 1).toString(36).substring(7),
+			x: 0,
+			y: 0,
+			strokeColor: '#1e1e1e',
+			backgroundColor: 'transparent',
+			fillStyle: 'solid',
+			strokeWidth: 2,
+			strokeStyle: 'solid',
+			roundness: null,
+			roughness: 1,
+			opacity: 100,
+			width: 100,
+			height: 200,
+			angle: 0,
+			seed: 0,
+			version: 0,
+			versionNonce: 0,
+			isDeleted: false,
+			groupIds: [],
+			frameId: null,
+			boundElements: null,
+			updated: 0,
+			locked: false,
+			type: 'embeddable',
+			validated: true,
+		})
+		excalidrawAPI?.updateScene({ elements })
+	}
+	const pickFile = () => {
+		getLinkWithPicker(null, true).then((link: string) => {
+			addWebEmbed(link)
+		})
+	}
 	const renderMenu = () => {
 		return (
 			<MainMenu>
@@ -126,11 +166,28 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		)
 	}
 
+	const renderTopRightUI = () => {
+		return (
+			<label title='filepicker'>
+				<input className="ToolIcon_type_checkbox" type="checkbox" aria-label="Library" aria-keyshortcuts="0" onClick={pickFile}/>
+				<div className="sidebar-trigger default-sidebar-trigger">
+					<div>
+						<Icon path={mdiShape} size={1} />
+					</div>
+					<div className='sidegbar-trigger__label'>
+						Smart Picker
+					</div>
+				</div>
+			</label>
+		)
+	}
+
 	return (
 		<div className="App">
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
+					renderTopRightUI={renderTopRightUI}
 					renderEmbeddable={ Embeddable }
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
 						console.log(api)
