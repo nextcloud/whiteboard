@@ -8,6 +8,9 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Icon } from '@mdi/react'
+import { mdiShape } from '@mdi/js'
+import { createRoot } from 'react-dom'
 import {
 	Excalidraw,
 	MainMenu,
@@ -23,6 +26,7 @@ import { Collab } from './collaboration/collab'
 import Embeddable from './Embeddable'
 import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 interface WhiteboardAppProps {
 	fileId: number;
 	fileName: string;
@@ -72,6 +76,16 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 
 	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
 	if (collab && !collab.portal.socket) collab.startCollab()
+	useEffect(() => {
+		const extraTools = document.getElementsByClassName('App-toolbar__extra-tools-trigger')[0]
+		const smartPick = document.createElement('label')
+		smartPick.classList.add(...['ToolIcon', 'Shape'])
+		if (extraTools) {
+			extraTools.parentNode?.insertBefore(smartPick, extraTools.nextElementSibling)
+			const root = createRoot(smartPick)
+			root.render(renderSmartPicker())
+		}
+	})
 
 	useEffect(() => {
 		return () => {
@@ -114,7 +128,43 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		},
 		[],
 	)
-
+	const addWebEmbed = (link:string) => {
+		const elements = excalidrawAPI?.getSceneElementsIncludingDeleted().slice()
+		elements?.push({
+			link,
+			id: (Math.random() + 1).toString(36).substring(7),
+			x: 0,
+			y: 0,
+			strokeColor: '#1e1e1e',
+			backgroundColor: 'transparent',
+			fillStyle: 'solid',
+			strokeWidth: 2,
+			strokeStyle: 'solid',
+			roundness: null,
+			roughness: 1,
+			opacity: 100,
+			width: 100,
+			height: 200,
+			angle: 0,
+			seed: 0,
+			version: 0,
+			versionNonce: 0,
+			isDeleted: false,
+			groupIds: [],
+			frameId: null,
+			boundElements: null,
+			updated: 0,
+			locked: false,
+			type: 'embeddable',
+			validated: true,
+		})
+		excalidrawAPI?.updateScene({ elements })
+	}
+	const pickFile = () => {
+		getLinkWithPicker(null, true).then((link: string) => {
+			addWebEmbed(link)
+		})
+	}
 	const renderMenu = () => {
 		return (
 			<MainMenu>
@@ -123,6 +173,14 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 				<MainMenu.Separator />
 				<MainMenu.DefaultItems.SaveAsImage />
 			</MainMenu>
+		)
+	}
+
+	const renderSmartPicker = () => {
+		return (
+			<button className="dropdown-menu-button App-toolbar__extra-tools-trigger" aria-label="Library" aria-keyshortcuts="0" onClick={pickFile} title='Smart Picker'>
+				<Icon path={mdiShape} size={1} />
+			</button>
 		)
 	}
 
