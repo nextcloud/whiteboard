@@ -9,12 +9,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiShape } from '@mdi/js'
-
+import { mdiSlashForwardBox } from '@mdi/js'
+import { createRoot } from 'react-dom'
 import {
 	Excalidraw,
 	MainMenu,
 	useHandleLibrary,
+	viewportCoordsToSceneCoords,
 } from '@excalidraw/excalidraw'
 import './App.scss'
 import { resolvablePromise } from './utils'
@@ -76,6 +77,16 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 
 	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
 	if (collab && !collab.portal.socket) collab.startCollab()
+	useEffect(() => {
+		const extraTools = document.getElementsByClassName('App-toolbar__extra-tools-trigger')[0]
+		const smartPick = document.createElement('label')
+		smartPick.classList.add(...['ToolIcon', 'Shape'])
+		if (extraTools) {
+			extraTools.parentNode?.insertBefore(smartPick, extraTools.nextElementSibling)
+			const root = createRoot(smartPick)
+			root.render(renderSmartPicker())
+		}
+	})
 
 	useEffect(() => {
 		return () => {
@@ -119,12 +130,18 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		[],
 	)
 	const addWebEmbed = (link:string) => {
+		let cords: { x: any; y: any }
+		if (excalidrawAPI) {
+			cords = viewportCoordsToSceneCoords({ clientX: 100, clientY: 100 }, excalidrawAPI.getAppState())
+		} else {
+			cords = { x: 0, y: 0 }
+		}
 		const elements = excalidrawAPI?.getSceneElementsIncludingDeleted().slice()
 		elements?.push({
 			link,
 			id: (Math.random() + 1).toString(36).substring(7),
-			x: 0,
-			y: 0,
+			x: cords.x,
+			y: cords.y,
 			strokeColor: '#1e1e1e',
 			backgroundColor: 'transparent',
 			fillStyle: 'solid',
@@ -133,7 +150,7 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 			roundness: null,
 			roughness: 1,
 			opacity: 100,
-			width: 100,
+			width: 400,
 			height: 200,
 			angle: 0,
 			seed: 0,
@@ -166,19 +183,11 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		)
 	}
 
-	const renderTopRightUI = () => {
+	const renderSmartPicker = () => {
 		return (
-			<label title='filepicker'>
-				<input className="ToolIcon_type_checkbox" type="checkbox" aria-label="Library" aria-keyshortcuts="0" onClick={pickFile}/>
-				<div className="sidebar-trigger default-sidebar-trigger">
-					<div>
-						<Icon path={mdiShape} size={1} />
-					</div>
-					<div className='sidegbar-trigger__label'>
-						Smart Picker
-					</div>
-				</div>
-			</label>
+			<button className="dropdown-menu-button App-toolbar__extra-tools-trigger" aria-label="Smart picker" aria-keyshortcuts="0" onClick={pickFile} title='Smart picker'>
+				<Icon path={mdiSlashForwardBox} size={1} />
+			</button>
 		)
 	}
 
@@ -187,7 +196,6 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
-					renderTopRightUI={renderTopRightUI}
 					renderEmbeddable={ Embeddable }
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
 						console.log(api)
