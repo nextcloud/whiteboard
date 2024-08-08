@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
 import { mdiShape } from '@mdi/js'
-
+import { createRoot } from 'react-dom'
 import {
 	Excalidraw,
 	MainMenu,
@@ -76,6 +76,16 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 
 	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
 	if (collab && !collab.portal.socket) collab.startCollab()
+	useEffect(() => {
+		const extraTools = document.getElementsByClassName('App-toolbar__extra-tools-trigger')[0]
+		const smartPick = document.createElement('label')
+		smartPick.classList.add(...['ToolIcon', 'Shape'])
+		if (extraTools) {
+			extraTools.parentNode?.insertBefore(smartPick, extraTools.nextElementSibling)
+			const root = createRoot(smartPick)
+			root.render(renderSmartPicker())
+		}
+	})
 
 	useEffect(() => {
 		return () => {
@@ -166,19 +176,11 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		)
 	}
 
-	const renderTopRightUI = () => {
+	const renderSmartPicker = () => {
 		return (
-			<label title='filepicker'>
-				<input className="ToolIcon_type_checkbox" type="checkbox" aria-label="Library" aria-keyshortcuts="0" onClick={pickFile}/>
-				<div className="sidebar-trigger default-sidebar-trigger">
-					<div>
-						<Icon path={mdiShape} size={1} />
-					</div>
-					<div className='sidegbar-trigger__label'>
-						Smart Picker
-					</div>
-				</div>
-			</label>
+			<button className="dropdown-menu-button App-toolbar__extra-tools-trigger" aria-label="Library" aria-keyshortcuts="0" onClick={pickFile} title='Smart Picker'>
+				<Icon path={mdiShape} size={1} />
+			</button>
 		)
 	}
 
@@ -187,7 +189,6 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
-					renderTopRightUI={renderTopRightUI}
 					renderEmbeddable={ Embeddable }
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
 						console.log(api)
