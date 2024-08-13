@@ -8,16 +8,16 @@
 import fetch from 'node-fetch'
 import https from 'https'
 import dotenv from 'dotenv'
-import Utils from './utils.js'
+import Utils from './Utils.js'
 dotenv.config()
 
-class ApiService {
+export default class ApiService {
 
-	constructor(authManager) {
+	constructor(tokenGenerator) {
 		this.NEXTCLOUD_URL = process.env.NEXTCLOUD_URL
 		this.IS_DEV = Utils.parseBooleanFromEnv(process.env.IS_DEV)
 		this.agent = this.IS_DEV ? new https.Agent({ rejectUnauthorized: false }) : null
-		this.authManager = authManager
+		this.tokenGenerator = tokenGenerator
 	}
 
 	fetchOptions(method, token, body = null, roomId = null, lastEditedUser = null) {
@@ -27,7 +27,7 @@ class ApiService {
 				'Content-Type': 'application/json',
 				...(method === 'GET' && { Authorization: `Bearer ${token}` }),
 				...(method === 'PUT' && {
-					'X-Whiteboard-Auth': this.authManager.generateSharedToken(roomId),
+					'X-Whiteboard-Auth': this.tokenGenerator.handle(roomId),
 					'X-Whiteboard-User': lastEditedUser || 'unknown',
 				}),
 			},
@@ -65,5 +65,3 @@ class ApiService {
 	}
 
 }
-
-export default ApiService
