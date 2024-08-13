@@ -1,0 +1,28 @@
+memory optimization, introduce redis
+
+Signed-off-by: Hoang Pham <hoangmaths96@gmail.com>
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# interactive rebase in progress; onto 30da530
+# Last commands done (3 commands done):
+#    pick f79abbd memory optimization
+#    pick 6f1a310 memory optimization, introduce redis
+# Next command to do (1 remaining command):
+#    pick 5973d9a redis scaling
+# You are currently rebasing branch 'feat/memory-optimization' on '30da530'.
+#
+# Changes to be committed:
+#	modified:   package-lock.json
+#	modified:   package.json
+#	new file:   websocket_server/apiService.js
+#	modified:   websocket_server/app.js
+#	modified:   websocket_server/auth.js
+#	modified:   websocket_server/monitoring.js
+#	modified:   websocket_server/prom-metrics.js
+#	modified:   websocket_server/roomData.js
+#	modified:   websocket_server/server.js
+#	modified:   websocket_server/socket.js
+#	modified:   websocket_server/utils.js
+#
