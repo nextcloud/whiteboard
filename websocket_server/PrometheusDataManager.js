@@ -4,9 +4,9 @@
  */
 
 import { register, Gauge } from 'prom-client'
-import { SystemMonitor } from './monitoring.js'
+import SystemMonitor from './SystemMonitor.js'
 
-export class PrometheusMetrics {
+export default class PrometheusDataManager {
 
 	constructor(storageManager) {
 		this.systemMonitor = new SystemMonitor(storageManager)

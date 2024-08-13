@@ -8,13 +8,13 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-class AuthManager {
+export default class SharedTokenGenerator {
 
 	constructor() {
 		this.SHARED_SECRET = process.env.JWT_SECRET_KEY
 	}
 
-	generateSharedToken(roomId) {
+	handle(roomId) {
 		const timestamp = Date.now()
 		const payload = `${roomId}:${timestamp}`
 		const hmac = crypto.createHmac('sha256', this.SHARED_SECRET)
@@ -24,5 +24,3 @@ class AuthManager {
 	}
 
 }
-
-export default AuthManager

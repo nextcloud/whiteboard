@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-export class SystemMonitor {
+export default class SystemMonitor {
 
 	constructor(storageManager) {
 		this.storageManager = storageManager

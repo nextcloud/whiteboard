@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-class Utils {
+export default class Utils {
 
 	static convertStringToArrayBuffer(string) {
 		return new TextEncoder().encode(string).buffer
@@ -18,5 +18,3 @@ class Utils {
 	}
 
 }
-
-export default Utils
