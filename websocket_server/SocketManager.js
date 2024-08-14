@@ -54,9 +54,11 @@ export default class SocketManager {
 		console.log('Setting up Redis Streams adapter')
 		try {
 			const redisClient = this.storageManager.strategy.client
-			this.io.adapter(createAdapter(redisClient, {
-				maxLen: 10000,
-			}))
+			this.io.adapter(
+				createAdapter(redisClient, {
+					maxLen: 10000,
+				}),
+			)
 
 			console.log('Redis Streams adapter set up successfully')
 		} catch (error) {
@@ -73,7 +75,9 @@ export default class SocketManager {
 			const decodedData = await this.verifyToken(token)
 			await this.socketDataManager.setSocketData(socket.id, decodedData)
 
-			console.log(`[${decodedData.fileId}] User ${decodedData.user.id} with permission ${decodedData.permissions} connected`)
+			console.log(
+				`[${decodedData.fileId}] User ${decodedData.user.id} with permission ${decodedData.permissions} connected`,
+			)
 
 			if (decodedData.permissions === 1) {
 				socket.emit('read-only')
@@ -88,9 +92,16 @@ export default class SocketManager {
 	handleConnection(socket) {
 		socket.emit('init-room')
 		socket.on('join-room', (roomID) => this.joinRoomHandler(socket, roomID))
-		socket.on('server-broadcast', (roomID, encryptedData, iv) => this.serverBroadcastHandler(socket, roomID, encryptedData, iv))
-		socket.on('server-volatile-broadcast', (roomID, encryptedData) => this.serverVolatileBroadcastHandler(socket, roomID, encryptedData))
-		socket.on('disconnecting', () => this.disconnectingHandler(socket))
+		socket.on('server-broadcast', (roomID, encryptedData, iv) =>
+			this.serverBroadcastHandler(socket, roomID, encryptedData, iv),
+		)
+		socket.on('server-volatile-broadcast', (roomID, encryptedData) =>
+			this.serverVolatileBroadcastHandler(socket, roomID, encryptedData),
+		)
+		socket.on('disconnecting', () => {
+			const rooms = Array.from(socket.rooms).filter((room) => room !== socket.id)
+			this.disconnectingHandler(socket, rooms)
+		})
 		socket.on('disconnect', () => this.handleDisconnect(socket))
 	}
 
@@ -104,14 +115,22 @@ export default class SocketManager {
 		if (cachedToken) return cachedToken
 
 		return new Promise((resolve, reject) => {
-			jwt.verify(token, process.env.JWT_SECRET_KEY, async (err, decoded) => {
-				if (err) {
-					console.log(err.name === 'TokenExpiredError' ? 'Token expired' : 'Token verification failed')
-					return reject(new Error('Authentication error'))
-				}
-				await this.socketDataManager.setCachedToken(token, decoded)
-				resolve(decoded)
-			})
+			jwt.verify(
+				token,
+				process.env.JWT_SECRET_KEY,
+				async (err, decoded) => {
+					if (err) {
+						console.log(
+							err.name === 'TokenExpiredError'
+								? 'Token expired'
+								: 'Token verification failed',
+						)
+						return reject(new Error('Authentication error'))
+					}
+					await this.socketDataManager.setCachedToken(token, decoded)
+					resolve(decoded)
+				},
+			)
 		})
 	}
 
@@ -120,24 +139,41 @@ export default class SocketManager {
 		return socketData ? socketData.permissions === 1 : false
 	}
 
+	async getUserSocketsAndIds(roomID) {
+		const sockets = await this.io.in(roomID).fetchSockets()
+		return Promise.all(sockets.map(async (s) => {
+			const data = await this.socketDataManager.getSocketData(s.id)
+			return {
+				socketId: s.id,
+				user: data.user,
+				userId: data.user.id,
+			}
+		}))
+	}
+
 	async joinRoomHandler(socket, roomID) {
 		console.log(`[${roomID}] ${socket.id} has joined ${roomID}`)
 		await socket.join(roomID)
 
-		const userSockets = await this.getUserSockets(roomID)
-		const userIds = await Promise.all(userSockets.map(async s => {
-			const data = await this.socketDataManager.getSocketData(s.socketId)
-			return data.user.id
-		}))
+		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
+		const userIds = userSocketsAndIds.map(u => u.userId)
 
-		const socketData = await this.socketDataManager.getSocketData(socket.id)
-		const room = await this.roomDataManager.syncRoomData(roomID, null, userIds, null, socketData.token)
+		const room = await this.roomDataManager.syncRoomData(
+			roomID,
+			null,
+			userIds,
+			null,
+			socket.handshake.auth.token,
+		)
 
 		if (room) {
-			socket.emit('joined-data', Utils.convertStringToArrayBuffer(JSON.stringify(room.data)), [])
+			socket.emit(
+				'joined-data',
+				Utils.convertStringToArrayBuffer(JSON.stringify(room.data)),
+				[],
+			)
 
-			const otherUserSockets = await this.getOtherUserSockets(roomID, socket.id)
-			this.io.in(roomID).emit('room-user-change', otherUserSockets)
+			this.io.to(roomID).emit('room-user-change', userSocketsAndIds)
 		} else {
 			socket.emit('room-not-found')
 		}
@@ -151,21 +187,25 @@ export default class SocketManager {
 
 		const decryptedData = JSON.parse(Utils.convertArrayBufferToString(encryptedData))
 		const socketData = await this.socketDataManager.getSocketData(socket.id)
-		const userId = socketData.user.id
-		const userSockets = await this.getUserSockets(roomID)
-		const userIds = await Promise.all(userSockets.map(async s => {
-			const data = await this.socketDataManager.getSocketData(s.socketId)
-			return data.user.id
-		}))
+		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
 
-		await this.roomDataManager.syncRoomData(roomID, decryptedData.payload.elements, userIds, userId)
+		await this.roomDataManager.syncRoomData(
+			roomID,
+			decryptedData.payload.elements,
+			userSocketsAndIds.map(u => u.userId),
+			socketData.user.id,
+		)
 	}
 
 	async serverVolatileBroadcastHandler(socket, roomID, encryptedData) {
-		const payload = JSON.parse(Utils.convertArrayBufferToString(encryptedData))
+		const payload = JSON.parse(
+			Utils.convertArrayBufferToString(encryptedData),
+		)
 
 		if (payload.type === 'MOUSE_LOCATION') {
-			const socketData = await this.socketDataManager.getSocketData(socket.id)
+			const socketData = await this.socketDataManager.getSocketData(
+				socket.id,
+			)
 			const eventData = {
 				type: 'MOUSE_LOCATION',
 				payload: {
@@ -174,55 +214,32 @@ export default class SocketManager {
 				},
 			}
 
-			socket.volatile.broadcast.to(roomID).emit('client-broadcast', Utils.convertStringToArrayBuffer(JSON.stringify(eventData)))
+			socket.volatile.broadcast
+				.to(roomID)
+				.emit(
+					'client-broadcast',
+					Utils.convertStringToArrayBuffer(JSON.stringify(eventData)),
+				)
 		}
 	}
 
-	async disconnectingHandler(socket) {
+	async disconnectingHandler(socket, rooms) {
 		const socketData = await this.socketDataManager.getSocketData(socket.id)
 		console.log(`[${socketData.fileId}] ${socketData.user.name} has disconnected`)
-		for (const roomID of socket.rooms) {
-			if (roomID === socket.id) continue
+		console.log('socket rooms', rooms)
+
+		for (const roomID of rooms) {
 			console.log(`[${roomID}] ${socketData.user.name} has left ${roomID}`)
 
-			const otherUserSockets = await this.getOtherUserSockets(roomID, socket.id)
+			const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
+			const otherUserSockets = userSocketsAndIds.filter(u => u.socketId !== socket.id)
 
 			if (otherUserSockets.length > 0) {
-				socket.broadcast.to(roomID).emit('room-user-change', otherUserSockets)
+				this.io.to(roomID).emit('room-user-change', userSocketsAndIds)
 			}
 
-			const userSockets = await this.getUserSockets(roomID)
-			const userIds = await Promise.all(userSockets.map(async s => {
-				const data = await this.socketDataManager.getSocketData(s.socketId)
-				return data.user.id
-			}))
-
-			await this.roomDataManager.syncRoomData(roomID, null, userIds)
+			await this.roomDataManager.syncRoomData(roomID, null, userSocketsAndIds.map(u => u.userId))
 		}
-	}
-
-	async getUserSockets(roomID) {
-		const sockets = await this.io.in(roomID).fetchSockets()
-		return Promise.all(sockets.map(async s => {
-			const data = await this.socketDataManager.getSocketData(s.id)
-			return {
-				socketId: s.id,
-				user: data.user,
-			}
-		}))
-	}
-
-	async getOtherUserSockets(roomID, currentSocketId) {
-		const sockets = await this.io.in(roomID).fetchSockets()
-		return Promise.all(sockets
-			.filter(s => s.id !== currentSocketId)
-			.map(async s => {
-				const data = await this.socketDataManager.getSocketData(s.id)
-				return {
-					socketId: s.id,
-					user: data.user,
-				}
-			}))
 	}
 
 }
