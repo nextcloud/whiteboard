@@ -19,7 +19,7 @@
   "dependencies": {
     "@excalidraw/excalidraw": "^0.17.6",
     "@mdi/svg": "^7.4.47",
-    "@nextcloud/auth": "^2.3.0",
+    "@nextcloud/auth": "^2.4.0",
     "@nextcloud/axios": "^2.5.0",
     "@nextcloud/event-bus": "^3.3.1",
     "@nextcloud/files": "^3.8.0",
