@@ -18,9 +18,12 @@
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.17.6",
+    "@mdi/js": "^7.4.47",
+    "@mdi/react": "^1.6.1",
     "@mdi/svg": "^7.4.47",
     "@nextcloud/auth": "^2.4.0",
     "@nextcloud/axios": "^2.5.0",
+    "@nextcloud/dialogs": "^5.3.5",
     "@nextcloud/event-bus": "^3.3.1",
     "@nextcloud/files": "^3.8.0",
     "@nextcloud/initial-state": "^2.2.0",
