@@ -7,7 +7,7 @@ declare(strict_types=1);
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-namespace OCA\Whiteboard\Service;
+namespace OCA\Whiteboard\Service\File;
 
 use OC\User\NoUserException;
 use OCP\Constants;
@@ -23,9 +23,13 @@ use OCP\Files\NotPermittedException;
  * @psalm-suppress UndefinedClass
  * @psalm-suppress MissingDependency
  */
-final class FileService {
+final class GetFileFromIdService implements GetFileService {
+	private ?File $file = null;
+
 	public function __construct(
-		private IRootFolder $rootFolder
+		private IRootFolder $rootFolder,
+		private string      $userId,
+		private int         $fileId
 	) {
 	}
 
@@ -35,15 +39,17 @@ final class FileService {
 	 * @throws NoUserException
 	 * @throws InvalidPathException
 	 */
-	public function getUserFileById(string $userId, int $fileId): File {
-		$userFolder = $this->rootFolder->getUserFolder($userId);
+	public function getFile(): File {
+		$userFolder = $this->rootFolder->getUserFolder($this->userId);
 
-		$file = $userFolder->getFirstNodeById($fileId);
+		$file = $userFolder->getFirstNodeById($this->fileId);
 		if ($file instanceof File && $file->getPermissions() & Constants::PERMISSION_UPDATE) {
+			$this->file = $file;
+
 			return $file;
 		}
 
-		$files = $userFolder->getById($fileId);
+		$files = $userFolder->getById($this->fileId);
 		if (empty($files)) {
 			throw new NotFoundException('File not found');
 		}
@@ -61,6 +67,20 @@ final class FileService {
 			throw new NotPermittedException('No read permission');
 		}
 
-		return $file;
+		$this->file = $file;
+
+		return $this->file;
+	}
+
+	/**
+	 * @throws NotFoundException
+	 * @throws InvalidPathException
+	 */
+	public function isFileReadOnly(): bool {
+		if ($this->file === null) {
+			throw new NotFoundException('File not found');
+		}
+
+		return $this->file->getPermissions() === Constants::PERMISSION_READ;
 	}
 }

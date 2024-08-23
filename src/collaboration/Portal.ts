@@ -20,17 +20,18 @@ export class Portal {
 
 	socket: Socket | null = null
 	roomId: string
-	roomKey: string
 	collab: Collab
+	publicSharingToken: string | null
 
-	constructor(roomId: string, roomKey: string, collab: Collab) {
+	constructor(roomId: string, collab: Collab, publicSharingToken: string | null) {
 		this.roomId = roomId
-		this.roomKey = roomKey
 		this.collab = collab
+		this.publicSharingToken = publicSharingToken
 	}
 
-	connectSocket = () => {
+	connectSocket = async () => {
 		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
+		await this.refreshJWT()
 		const token = localStorage.getItem(`jwt-${this.roomId}`) || ''
 
 		const url = new URL(collabBackendUrl)
@@ -42,12 +43,16 @@ export class Portal {
 			auth: {
 				token,
 			},
-			transports: ['websocket', 'polling'],
+			transports: ['websocket'],
 			timeout: 10000,
 		}).connect()
 
 		socket.on('connect_error', (error) => {
-			if (error && error.message && !error.message.includes('Authentication error')) {
+			if (
+				error
+				&& error.message
+				&& !error.message.includes('Authentication error')
+			) {
 				this.handleConnectionError()
 			}
 		})
@@ -60,7 +65,9 @@ export class Portal {
 	}
 
 	handleConnectionError = () => {
-		alert('Failed to connect to the whiteboard server. Redirecting to Files app.')
+		alert(
+			'Failed to connect to the whiteboard server. Redirecting to Files app.',
+		)
 		window.location.href = '/index.php/apps/files/files'
 	}
 
@@ -68,7 +75,9 @@ export class Portal {
 		if (this.socket) {
 			this.socket.disconnect()
 			localStorage.removeItem(`jwt-${this.roomId}`)
-			console.log(`Disconnected from room ${this.roomId} and cleared JWT token`)
+			console.log(
+				`Disconnected from room ${this.roomId} and cleared JWT token`,
+			)
 		}
 	}
 
@@ -76,23 +85,34 @@ export class Portal {
 		this.socket = socket
 
 		this.socket?.on('connect_error', async (error) => {
-			if (error && error.message && error.message.includes('Authentication error')) {
+			if (
+				error
+				&& error.message
+				&& error.message.includes('Authentication error')
+			) {
 				await this.handleTokenRefresh()
 			}
 		})
 		this.socket.on('read-only', () => this.handleReadOnlySocket())
 		this.socket.on('init-room', () => this.handleInitRoom())
-		this.socket.on('room-user-change', (users: {
-			user: {
-				id: string,
-				name: string
-			},
-			socketId: string,
-			pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
-			button: 'down' | 'up',
-			selectedElementIds: AppState['selectedElementIds']
-		}[]) => this.collab.updateCollaborators(users))
-		this.socket.on('client-broadcast', (data) => this.handleClientBroadcast(data))
+		this.socket.on(
+			'room-user-change',
+			(
+				users: {
+					user: {
+						id: string
+						name: string
+					}
+					socketId: string
+					pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
+					button: 'down' | 'up'
+					selectedElementIds: AppState['selectedElementIds']
+				}[],
+			) => this.collab.updateCollaborators(users),
+		)
+		this.socket.on('client-broadcast', (data) =>
+			this.handleClientBroadcast(data),
+		)
 	}
 
 	async handleReadOnlySocket() {
@@ -111,7 +131,8 @@ export class Portal {
 		this.socket?.emit('join-room', this.roomId)
 		this.socket?.on('joined-data', (data) => {
 			const remoteElements = JSON.parse(new TextDecoder().decode(data))
-			const reconciledElements = this.collab._reconcileElements(remoteElements)
+			const reconciledElements
+				= this.collab._reconcileElements(remoteElements)
 			this.collab.handleRemoteSceneUpdate(reconciledElements)
 			this.collab.scrollToContent()
 		})
@@ -136,61 +157,82 @@ export class Portal {
 
 	async refreshJWT(): Promise<string | null> {
 		try {
-			const response = await axios.get(`/index.php/apps/whiteboard/${this.roomId}/token`, { withCredentials: true })
-			const token = response.data.token
-			if (!token) throw new Error('No token received')
+		  let url = `/index.php/apps/whiteboard/${this.roomId}/token`
+		  if (this.publicSharingToken) {
+				url += `?publicSharingToken=${encodeURIComponent(this.publicSharingToken)}`
+		  }
 
-			localStorage.setItem(`jwt-${this.roomId}`, token)
+		  const response = await axios.get(url, { withCredentials: true })
 
-			return token
+		  const token = response.data.token
+
+		  console.log('token', token)
+
+		  if (!token) throw new Error('No token received')
+
+		  localStorage.setItem(`jwt-${this.roomId}`, token)
+
+		  return token
 		} catch (error) {
-			console.error('Error refreshing JWT:', error)
-			window.location.href = '/index.php/apps/files/files'
-			return null
+		  console.error('Error refreshing JWT:', error)
+		  window.location.href = '/index.php/apps/files/files'
+		  return null
 		}
-	}
+	  }
 
-	async _broadcastSocketData(data: {
-		type: string;
-		payload: {
-			elements?: readonly ExcalidrawElement[];
-			socketId?: string;
-			pointer?: { x: number; y: number; tool: 'pointer' | 'laser' };
-			button?: 'down' | 'up';
-			selectedElementIds?: AppState['selectedElementIds'];
-			username?: string;
-		};
-	}, volatile: boolean = false, roomId?: string) {
-
+	async _broadcastSocketData(
+		data: {
+			type: string
+			payload: {
+				elements?: readonly ExcalidrawElement[]
+				socketId?: string
+				pointer?: { x: number; y: number; tool: 'pointer' | 'laser' }
+				button?: 'down' | 'up'
+				selectedElementIds?: AppState['selectedElementIds']
+				username?: string
+			}
+		},
+		volatile: boolean = false,
+		roomId?: string,
+	) {
 		const json = JSON.stringify(data)
 		const encryptedBuffer = new TextEncoder().encode(json)
-		this.socket?.emit(volatile ? 'server-volatile-broadcast' : 'server-broadcast', roomId ?? this.roomId, encryptedBuffer, [])
-
+		this.socket?.emit(
+			volatile ? 'server-volatile-broadcast' : 'server-broadcast',
+			roomId ?? this.roomId,
+			encryptedBuffer,
+			[],
+		)
 	}
 
-	async broadcastScene(updateType: string, elements: readonly ExcalidrawElement[]) {
-		await this._broadcastSocketData({ type: updateType, payload: { elements } })
+	async broadcastScene(
+		updateType: string,
+		elements: readonly ExcalidrawElement[],
+	) {
+		await this._broadcastSocketData({
+			type: updateType,
+			payload: { elements },
+		})
 	}
 
 	async broadcastMouseLocation(payload: {
-		pointer: { x: number; y: number; tool: 'pointer' | 'laser' };
-		button: 'down' | 'up';
-		pointersMap: Gesture['pointers'];
+		pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
+		button: 'down' | 'up'
+		pointersMap: Gesture['pointers']
 	}) {
-
 		const data = {
 			type: BroadcastType.MouseLocation,
 			payload: {
 				socketId: this.socket?.id,
 				pointer: payload.pointer,
 				button: payload.button || 'up',
-				selectedElementIds: this.collab.excalidrawAPI.getAppState().selectedElementIds,
+				selectedElementIds:
+					this.collab.excalidrawAPI.getAppState().selectedElementIds,
 				username: this.socket?.id,
 			},
 		}
 
 		await this._broadcastSocketData(data, true)
-
 	}
 
 }

@@ -32,9 +32,10 @@ interface WhiteboardAppProps {
 	fileId: number;
 	fileName: string;
 	isEmbedded: boolean;
+	publicSharingToken: string | null;
 }
 
-export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps) {
+export default function App({ fileId, isEmbedded, fileName, publicSharingToken }: WhiteboardAppProps) {
 	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
 
 	const [viewModeEnabled] = useState(isEmbedded)
@@ -59,6 +60,11 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 
 	const initialData = {
 		elements: [],
+		appState: {
+			currentItemFontFamily: 3,
+			currentItemStrokeWidth: 1,
+			currentItemRoughness: 0,
+		},
 		scrollToContent: true,
 	}
 
@@ -75,7 +81,7 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 	] = useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
-	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId))
+	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken))
 	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
 		const extraTools = document.getElementsByClassName('App-toolbar__extra-tools-trigger')[0]
@@ -93,6 +99,19 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 			if (collab) collab.portal.disconnectSocket()
 		}
 	}, [excalidrawAPI])
+
+	useEffect(() => {
+		const handleBeforeUnload = () => {
+			if (collab) collab.portal.disconnectSocket()
+		}
+
+		window.addEventListener('beforeunload', handleBeforeUnload)
+
+		return () => {
+			if (collab) collab.portal.disconnectSocket()
+			window.removeEventListener('beforeunload', handleBeforeUnload)
+		}
+	}, [collab])
 
 	useHandleLibrary({ excalidrawAPI })
 

@@ -73,13 +73,10 @@ export default class SocketManager {
 			if (!token) throw new Error('No token provided')
 
 			const decodedData = await this.verifyToken(token)
+			console.log('decodedData', decodedData)
 			await this.socketDataManager.setSocketData(socket.id, decodedData)
 
-			console.log(
-				`[${decodedData.fileId}] User ${decodedData.user.id} with permission ${decodedData.permissions} connected`,
-			)
-
-			if (decodedData.permissions === 1) {
+			if (decodedData.isFileReadOnly) {
 				socket.emit('read-only')
 			}
 			next()
@@ -136,7 +133,7 @@ export default class SocketManager {
 
 	async isSocketReadOnly(socketId) {
 		const socketData = await this.socketDataManager.getSocketData(socketId)
-		return socketData ? socketData.permissions === 1 : false
+		return socketData ? !!socketData.isFileReadOnly : false
 	}
 
 	async getUserSocketsAndIds(roomID) {
