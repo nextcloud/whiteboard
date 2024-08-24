@@ -27,7 +27,7 @@ class AddContentSecurityPolicyListener implements IEventListener {
 
 		$policy = new EmptyContentSecurityPolicy();
 
-		$policy->addAllowedConnectDomain("*");
+		$policy->addAllowedConnectDomain('*');
 		$event->addPolicy($policy);
 	}
 }
