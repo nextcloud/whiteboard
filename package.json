@@ -17,7 +17,7 @@
     "server:watch": "nodemon websocket_server/main.js"
   },
   "dependencies": {
-    "@excalidraw/excalidraw": "^0.17.6",
+    "@excalidraw/excalidraw": "^0.17.1-576bc0d",
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
     "@mdi/svg": "^7.4.47",
