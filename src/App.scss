@@ -35,7 +35,11 @@
   }
 }
 
-.widgets--list {
+:root{
+  --zIndex-popup: 100020 !important;
+}
+
+.widgets--list{
   height: 100%;
 }
 

@@ -18,7 +18,6 @@ import {
 	viewportCoordsToSceneCoords,
 } from '@excalidraw/excalidraw'
 import './App.scss'
-import '@excalidraw/excalidraw/index.css'
 import { resolvablePromise } from './utils'
 import type {
 	ExcalidrawImperativeAPI,
