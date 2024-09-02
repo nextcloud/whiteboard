@@ -8,9 +8,10 @@ import VueWrapper from './VueWrapper'
 
 /**
  *
- * @param props componentProps and component to be rendered in Vue
+ * @param props props
+ * @param props.link link to display in embedable
  */
-export default function(props) {
+export default function(props: { link: string }) {
 	const referenceProps = { text: props.link, limit: 1, interactive: true }
 	return React.createElement(VueWrapper, { componentProps: referenceProps, component: NcReferenceList })
 }

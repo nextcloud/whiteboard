@@ -82,7 +82,7 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		const smartPick = document.createElement('label')
 		smartPick.classList.add(...['ToolIcon', 'Shape'])
 		if (extraTools) {
-			extraTools.parentNode?.insertBefore(smartPick, extraTools.nextElementSibling)
+			extraTools.parentNode?.insertBefore(smartPick, extraTools.previousSibling)
 			const root = createRoot(smartPick)
 			root.render(renderSmartPicker())
 		}
@@ -129,7 +129,7 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 		},
 		[],
 	)
-	const addWebEmbed = (link:string) => {
+	const addWebEmbed = (link: string) => {
 		let cords: { x: any; y: any }
 		if (excalidrawAPI) {
 			cords = viewportCoordsToSceneCoords({ clientX: 100, clientY: 100 }, excalidrawAPI.getAppState())
@@ -196,7 +196,7 @@ export default function App({ fileId, isEmbedded, fileName }: WhiteboardAppProps
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
-					renderEmbeddable={ Embeddable }
+					renderEmbeddable={Embeddable}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
 						console.log(api)
 						console.log('Setting API')
