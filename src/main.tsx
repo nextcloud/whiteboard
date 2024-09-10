@@ -21,6 +21,11 @@ const Component = {
 		this.$nextTick(() => {
 			const rootElement = document.getElementById('whiteboard-' + randomId)
 			this.root = createRoot(rootElement)
+			rootElement.addEventListener('keydown', event => {
+				if (event.key === 'Escape') {
+					event.stopPropagation()
+				}
+			})
 
 			this.root.render(
 				<StrictMode>
@@ -70,6 +75,7 @@ if (typeof OCA.Viewer !== 'undefined') {
 		theme: 'default',
 		canCompare: true,
 	})
+
 } else {
 	alert('UNDEFINED')
 }
