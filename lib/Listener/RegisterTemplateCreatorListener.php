@@ -15,6 +15,10 @@ use OCP\Files\Template\TemplateFileCreator;
 use OCP\IL10N;
 
 /** @template-implements IEventListener<RegisterTemplateCreatorEvent|Event> */
+/**
+ * @psalm-suppress UndefinedClass
+ * @psalm-suppress MissingTemplateParam
+ */
 final class RegisterTemplateCreatorListener implements IEventListener {
 	public function __construct(
 		private IL10N $l10n
@@ -25,6 +29,7 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 		if (!($event instanceof RegisterTemplateCreatorEvent)) {
 			return;
 		}
+
 
 		$event->getTemplateManager()->registerTemplateFileCreator(function () {
 			$whiteboard = new TemplateFileCreator(Application::APP_ID, $this->l10n->t('New whiteboard'), '.whiteboard');

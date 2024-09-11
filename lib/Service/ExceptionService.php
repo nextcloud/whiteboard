@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Service;
 
 use Exception;
+use OCA\Whiteboard\Exception\InvalidUserException;
+use OCA\Whiteboard\Exception\UnauthorizedException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\NotFoundException;
@@ -27,23 +29,22 @@ final class ExceptionService {
 	}
 
 	private function getStatusCode(Exception $e): int {
-		if ($e instanceof NotFoundException) {
-			return Http::STATUS_NOT_FOUND;
-		}
-		if ($e instanceof NotPermittedException) {
-			return Http::STATUS_FORBIDDEN;
-		}
-
-		return (int)($e->getCode() ?: Http::STATUS_INTERNAL_SERVER_ERROR);
+		return match (true) {
+			$e instanceof NotFoundException => Http::STATUS_NOT_FOUND,
+			$e instanceof NotPermittedException => Http::STATUS_FORBIDDEN,
+			$e instanceof UnauthorizedException => Http::STATUS_UNAUTHORIZED,
+			$e instanceof InvalidUserException => Http::STATUS_BAD_REQUEST,
+			default => (int)($e->getCode() ?: Http::STATUS_INTERNAL_SERVER_ERROR),
+		};
 	}
 
 	private function getMessage(Exception $e): string {
-		if ($e instanceof NotFoundException) {
-			return 'File not found';
-		}
-		if ($e instanceof NotPermittedException) {
-			return 'Permission denied';
-		}
-		return $e->getMessage() ?: 'An error occurred';
+		return match (true) {
+			$e instanceof NotFoundException => 'File not found',
+			$e instanceof NotPermittedException => 'Permission denied',
+			$e instanceof UnauthorizedException => 'Unauthorized',
+			$e instanceof InvalidUserException => 'Invalid user',
+			default => $e->getMessage() ?: 'An error occurred',
+		};
 	}
 }

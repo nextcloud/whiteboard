@@ -13,13 +13,18 @@ import { hashElementsVersion, reconcileElements } from './util'
 export class Collab {
 
 	excalidrawAPI: ExcalidrawImperativeAPI
+	fileId: number
 	portal: Portal
+	publicSharingToken: string | null
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 
-	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number) {
+	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null) {
 		this.excalidrawAPI = excalidrawAPI
-		this.portal = new Portal(String(fileId), '1', this)
+		this.fileId = fileId
+		this.publicSharingToken = publicSharingToken
+
+		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
 	}
 
 	async startCollab() {
