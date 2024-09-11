@@ -55,13 +55,25 @@ export default class ApiService {
 		return this.fetchData(url, options)
 	}
 
-	async saveRoomDataToServer(roomID, roomData, lastEditedUser) {
-		console.log('Saving room data to file')
+	async saveRoomDataToServer(roomID, roomData, lastEditedUser, files) {
+		console.log(`[${roomID}] Saving room data to server: ${roomData.length} elements, ${Object.keys(files).length} files`)
 
 		const url = `${this.NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
-		const body = { data: { elements: roomData } }
+		const body = { data: { elements: roomData, files: this.cleanupFiles(roomData, files) } }
 		const options = this.fetchOptions('PUT', null, body, roomID, lastEditedUser)
 		return this.fetchData(url, options)
+	}
+
+	cleanupFiles(elements, files) {
+		const elementFileIds = elements.filter(e => e?.fileId && e?.isDeleted !== true).map((e) => e.fileId)
+		const fileIds = Object.keys(files)
+
+		const fileIdsToStore = fileIds.filter((fileId) => elementFileIds.includes(fileId))
+		const filesToStore = fileIdsToStore.reduce((acc, fileId) => {
+			acc[fileId] = files[fileId]
+			return acc
+		}, {})
+		return filesToStore
 	}
 
 }

@@ -18,13 +18,14 @@ export default class LRUCacheStrategy extends StorageStrategy {
 			ttl: 30 * 60 * 1000,
 			ttlAutopurge: true,
 			dispose: async (value, key) => {
-				console.log('Disposing room', key)
+				console.log(`[${key}] Disposing room`)
 				if (value?.data && value?.lastEditedUser) {
 					try {
 						await this.apiService.saveRoomDataToServer(
 							key,
 							value.data,
 							value.lastEditedUser,
+							value.files,
 						)
 					} catch (error) {
 						console.error(`Failed to save room ${key} data:`, error)

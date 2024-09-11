@@ -5,11 +5,12 @@
 
 export default class Room {
 
-	constructor(id, data = null, users = new Set(), lastEditedUser = null) {
+	constructor(id, data = null, users = new Set(), lastEditedUser = null, files = {}) {
 		this.id = id
 		this.data = data
 		this.users = new Set(users)
 		this.lastEditedUser = lastEditedUser
+		this.files = files
 	}
 
 	setUsers(users) {
@@ -24,6 +25,26 @@ export default class Room {
 		this.data = data
 	}
 
+	setFiles(files) {
+		this.files = files
+	}
+
+	getFiles() {
+		return this.files
+	}
+
+	addFile(id, file) {
+		this.files[id] = file
+	}
+
+	removeFile(id) {
+		delete this.files[id]
+	}
+
+	getFile(id) {
+		return this.files[id] ?? undefined
+	}
+
 	isEmpty() {
 		return this.users.size === 0
 	}
@@ -34,6 +55,7 @@ export default class Room {
 			data: this.data,
 			users: Array.from(this.users),
 			lastEditedUser: this.lastEditedUser,
+			files: this.files,
 		}
 	}
 
@@ -43,6 +65,7 @@ export default class Room {
 			json.data,
 			new Set(json.users),
 			json.lastEditedUser,
+			json.files,
 		)
 	}
 

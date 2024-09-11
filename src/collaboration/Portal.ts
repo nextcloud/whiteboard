@@ -7,7 +7,7 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { io, type Socket } from 'socket.io-client'
 import type { Collab } from './collab'
-import type { AppState, Gesture } from '@excalidraw/excalidraw/types/types'
+import type { AppState, BinaryFiles, Gesture } from '@excalidraw/excalidraw/types/types'
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 
@@ -136,6 +136,9 @@ export class Portal {
 			this.collab.handleRemoteSceneUpdate(reconciledElements)
 			this.collab.scrollToContent()
 		})
+		this.socket?.on('image-data', (file) => {
+			this.collab.addFile(file)
+		})
 	}
 
 	handleClientBroadcast(data: ArrayBuffer) {
@@ -234,6 +237,13 @@ export class Portal {
 		}
 
 		await this._broadcastSocketData(data, true)
+	}
+
+	async sendImageFiles(files: BinaryFiles) {
+		Object.values(files).forEach(file => {
+			this.collab.addFile(file)
+			this.socket?.emit('image-add', this.roomId, file.id, file)
+		})
 	}
 
 }
