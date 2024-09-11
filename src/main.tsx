@@ -7,6 +7,7 @@ import { linkTo } from '@nextcloud/router'
 import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom'
 import { loadState } from '@nextcloud/initial-state'
+import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 
 import './viewer.css'
 
@@ -33,20 +34,21 @@ const renderApp = (rootElement, props) => {
 
 window.EXCALIDRAW_ASSET_PATH = EXCALIDRAW_ASSET_PATH
 
-const publicSharingToken
-	= document.getElementById('sharingToken')?.value || null
+const publicSharingToken = getSharingToken()
 
-if (publicSharingToken) {
+if (isPublicShare()) {
 	handlePublicSharing(publicSharingToken)
-} else {
-	handleNonPublicSharing()
 }
+
+handleNonPublicSharing()
 
 // Handler functions
 function handlePublicSharing(token) {
-	const filesTable = document.querySelector('#preview table.files-filestable')
+	const filesTable = document.querySelector('.files-list__table') || document.querySelector('#preview table.files-filestable')
 
 	if (filesTable) {
+		const Component = createWhiteboardComponent()
+		registerViewerHandler(Component)
 		return
 	}
 
@@ -79,7 +81,7 @@ function handleNonPublicSharing() {
 	if (typeof OCA.Viewer !== 'undefined') {
 		registerViewerHandler(Component)
 	} else {
-		alert('UNDEFINED')
+		console.error('Could not register whiteboard handler for viewer')
 	}
 }
 
@@ -110,6 +112,7 @@ function createWhiteboardComponent() {
 					fileId: this.fileid,
 					isEmbedded: this.isEmbedded,
 					fileName: this.basename,
+					publicSharingToken: getSharingToken(),
 				})
 			})
 
