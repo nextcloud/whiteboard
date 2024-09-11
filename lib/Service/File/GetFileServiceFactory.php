@@ -34,7 +34,7 @@ final class GetFileServiceFactory {
 		}
 
 		if ($user instanceof PublicSharingUser) {
-			return new GetFileFromPublicSharingTokenService($this->shareManager, $user->getPublicSharingToken());
+			return new GetFileFromPublicSharingTokenService($this->shareManager, $user->getPublicSharingToken(), $fileId);
 		}
 
 		throw new InvalidUserException();

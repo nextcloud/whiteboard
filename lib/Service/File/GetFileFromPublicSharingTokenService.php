@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Service\File;
 
 use InvalidArgumentException;
+use OCP\Constants;
 use OCP\Files\File;
 use OCP\Files\NotFoundException;
 use OCP\Share\Exceptions\ShareNotFound;
@@ -26,7 +27,8 @@ final class GetFileFromPublicSharingTokenService implements GetFileService {
 
 	public function __construct(
 		private ShareManager $shareManager,
-		private string       $publicSharingToken
+		private string       $publicSharingToken,
+		private int          $fileId
 	) {
 	}
 
@@ -48,6 +50,12 @@ final class GetFileFromPublicSharingTokenService implements GetFileService {
 			return $node;
 		}
 
+		$node = $node->getFirstNodeById($this->fileId);
+
+		if ($node instanceof File) {
+			return $node;
+		}
+
 		throw new InvalidArgumentException('No proper share data');
 	}
 
@@ -56,6 +64,6 @@ final class GetFileFromPublicSharingTokenService implements GetFileService {
 			throw new InvalidArgumentException('No share data');
 		}
 
-		return $this->share->getPermissions() === 17;
+		return !($this->share->getPermissions() & Constants::PERMISSION_UPDATE);
 	}
 }

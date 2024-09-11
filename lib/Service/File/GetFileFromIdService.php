@@ -81,6 +81,6 @@ final class GetFileFromIdService implements GetFileService {
 			throw new NotFoundException('File not found');
 		}
 
-		return $this->file->getPermissions() === Constants::PERMISSION_READ;
+		return !($this->file->getPermissions() & Constants::PERMISSION_UPDATE);
 	}
 }
