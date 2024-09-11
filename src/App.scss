@@ -131,6 +131,10 @@
   background-color: var(--color-main-background) !important;
   cursor: default !important;
   border: none !important;
+
+  kbd:empty {
+	  display: none !important;
+  }
 }
 
 .excalidraw .context-menu-item-separator {
