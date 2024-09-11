@@ -66,9 +66,9 @@ export class Portal {
 
 	handleConnectionError = () => {
 		alert(
-			'Failed to connect to the whiteboard server. Redirecting to Files app.',
+			'Failed to connect to the whiteboard server.',
 		)
-		window.location.href = '/index.php/apps/files/files'
+		OCA.Viewer?.close()
 	}
 
 	disconnectSocket = () => {
@@ -175,7 +175,8 @@ export class Portal {
 		  return token
 		} catch (error) {
 		  console.error('Error refreshing JWT:', error)
-		  window.location.href = '/index.php/apps/files/files'
+		  alert(error.message)
+		  OCA.Viewer?.close()
 		  return null
 		}
 	  }
