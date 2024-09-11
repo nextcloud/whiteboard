@@ -19,7 +19,7 @@ const {
 	STORAGE_STRATEGY = 'lru',
 } = process.env
 
-const FORCE_CLOSE_TIMEOUT = 60 * 60 * 1000
+const FORCE_CLOSE_TIMEOUT = 60 * 1000
 
 async function main() {
 	try {
