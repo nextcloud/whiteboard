@@ -25,7 +25,15 @@ final class ConfigService {
 		return $this->appConfig->getAppValueString('collabBackendUrl');
 	}
 
+	public function setCollabBackendUrl(string $collabBackendUrl): void {
+		$this->appConfig->setAppValueString('collabBackendUrl', $collabBackendUrl);
+	}
+
 	public function getWhiteboardSharedSecret(): string {
 		return $this->appConfig->getAppValueString('jwt_secret_key');
+	}
+
+	public function setWhiteboardSharedSecret(string $jwtSecretKey): void {
+		$this->appConfig->setAppValueString('jwt_secret_key', $jwtSecretKey);
 	}
 }

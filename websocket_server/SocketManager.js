@@ -81,7 +81,19 @@ export default class SocketManager {
 			}
 			next()
 		} catch (error) {
-			console.error(error.message)
+			const { secret } = socket.handshake.auth
+
+			try {
+				jwt.verify(
+					secret,
+					process.env.JWT_SECRET_KEY,
+					{
+						algorithm: 'HS256',
+					},
+				)
+				next(new Error('Connection verified'))
+			} catch (e) {}
+
 			next(new Error('Authentication error'))
 		}
 	}

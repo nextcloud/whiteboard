@@ -9,6 +9,7 @@ import { join, resolve } from 'path'
 
 const AppConfig = createAppConfig({
 	main: resolve(join('src', 'main.tsx')),
+	settings: resolve(join('src', 'settings.js')),
 }, {
 	config: defineConfig({
 		build: {
