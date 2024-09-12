@@ -23,7 +23,7 @@ export default class SocketManager {
 		this.socketDataManager = new SocketDataManager(storageManager)
 
 		this.io = new SocketIO(server, {
-			transports: ['websocket'],
+			transports: ['websocket', 'polling'],
 			cors: {
 				origin: process.env.NEXTCLOUD_URL || 'http://nextcloud.local',
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
