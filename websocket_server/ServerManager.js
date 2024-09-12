@@ -26,7 +26,7 @@ export default class ServerManager {
 		this.apiService = new ApiService(this.tokenGenerator)
 		this.storageManager = StorageManager.create(this.config.storageStrategy, this.apiService)
 		this.roomDataManager = new RoomDataManager(this.storageManager, this.apiService)
-		this.appManager = new AppManager(this.roomDataManager)
+		this.appManager = new AppManager(this.storageManager)
 		this.server = this.createConfiguredServer(this.appManager.getApp())
 		this.socketManager = new SocketManager(this.server, this.roomDataManager, this.storageManager)
 	}
