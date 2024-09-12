@@ -9,31 +9,38 @@
 	<summary>Whiteboard app</summary>
 	<description><![CDATA[
 
-Collaborative whiteboard app for Nextcloud
+The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.
+
+**Whiteboard requires a separate collaboration server to work.** Please see the [documentation](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) on how to install it.
+
+- 🎨 Drawing shapes, writing text, connecting elements
+- 📝 Real-time collaboration
+- 🖼️ Add images with drag and drop
+- 📊 Easily add mermaid diagrams
+- ✨ Use the smartpicker to embed other elements from Nextcloud
+- 📦 Image export
+- 💪 Strong foundation: We use Excalidraw as our base library
 
 ]]>
 	</description>
-	<version>0.3.0-beta.1</version>
+	<version>1.0.0-rc.1</version>
 	<licence>agpl</licence>
 	<author>Julius Härtl</author>
 	<namespace>Whiteboard</namespace>
-	<types>
-		<filesystem/>
-		<dav/>
-	</types>
 	<documentation>
 		<admin>https://github.com/nextcloud/whiteboard/blob/main/README.md</admin>
 	</documentation>
 	<category>tools</category>
 	<category>files</category>
+	<category>office</category>
 
 	<website>https://github.com/nextcloud/whiteboard</website>
 	<bugs>https://github.com/nextcloud/whiteboard/issues</bugs>
 	<repository>https://github.com/nextcloud/whiteboard.git</repository>
-	<screenshot>https://raw.githubusercontent.com/nextcloud/whiteboard/main/screenshots/0.7.0.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/nextcloud/whiteboard/main/screenshots/screenshot1.png</screenshot>
 
 	<dependencies>
-		<nextcloud min-version="29" max-version="30"/>
+		<nextcloud min-version="28" max-version="30"/>
 	</dependencies>
 
 	<settings>
