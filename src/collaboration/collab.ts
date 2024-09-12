@@ -4,7 +4,7 @@
  */
 
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, Collaborator, ExcalidrawImperativeAPI, Gesture } from '@excalidraw/excalidraw/types/types'
+import type { AppState, BinaryFileData, BinaryFiles, Collaborator, ExcalidrawImperativeAPI, Gesture } from '@excalidraw/excalidraw/types/types'
 import { Portal } from './Portal'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
@@ -18,6 +18,7 @@ export class Collab {
 	publicSharingToken: string | null
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
+	private files = new Map<string, BinaryFileData>()
 
 	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null) {
 		this.excalidrawAPI = excalidrawAPI
@@ -59,12 +60,23 @@ export class Collab {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	private onChange = (elements: readonly ExcalidrawElement[], _state: AppState) => {
+	private onChange = (elements: readonly ExcalidrawElement[], _state: AppState, files: BinaryFiles) => {
 		if (hashElementsVersion(elements)
 			> this.getLastBroadcastedOrReceivedSceneVersion()
 		) {
 			this.lastBroadcastedOrReceivedSceneVersion = hashElementsVersion(elements)
-			throttle(() => this.portal.broadcastScene('SCENE_INIT', elements))()
+			throttle(() => {
+				this.portal.broadcastScene('SCENE_INIT', elements)
+
+				const syncedFiles = Array.from(this.files.keys())
+				const newFiles = Object.keys(files).filter((id) => !syncedFiles.includes(id)).reduce((acc, id) => {
+					acc[id] = files[id]
+					return acc
+				}, {} as BinaryFiles)
+				if (Object.keys(newFiles).length > 0) {
+					this.portal.sendImageFiles(newFiles)
+				}
+			})()
 		}
 	}
 
@@ -135,6 +147,11 @@ export class Collab {
 				viewModeEnabled: true,
 			},
 		})
+	}
+
+	addFile = (file: BinaryFileData) => {
+		this.files.set(file.id, file)
+		this.excalidrawAPI.addFiles([file])
 	}
 
 }

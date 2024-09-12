@@ -72,6 +72,7 @@ export default class RedisStrategy extends StorageStrategy {
 					key,
 					room.data,
 					room.lastEditedUser,
+					room.files,
 				)
 			}
 			await this.client.del(key)

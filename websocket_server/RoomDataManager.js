@@ -28,13 +28,16 @@ export default class RoomDataManager {
 			data = await this.fetchRoomDataFromServer(roomId, jwtToken)
 		}
 
-		if (data) room.setData(data)
+		const files = data?.files
+		const elements = data?.elements ?? data
+		if (elements) room.setData(elements)
 		if (lastEditedUser) room.updateLastEditedUser(lastEditedUser)
 		if (users) room.setUsers(users)
+		if (files) room.setFiles(files)
 
 		await this.storageManager.set(roomId, room)
 
-		console.log(`[${roomId}] Room data synced. Users: ${room.users.size}, Last edited by: ${room.lastEditedUser}`)
+		console.log(`[${roomId}] Room data synced. Users: ${room.users.size}, Last edited by: ${room.lastEditedUser}, files: ${Object.keys(room.files).length}`)
 
 		if (room.isEmpty()) {
 			await this.storageManager.delete(roomId)
@@ -49,10 +52,11 @@ export default class RoomDataManager {
 		console.log(`[${roomId}] No data provided or existing, fetching from server...`)
 		try {
 			const result = await this.apiService.getRoomDataFromServer(roomId, jwtToken)
-			return result?.data?.elements || { elements: [] }
+			console.log(`[${roomId}] Fetched data from server: \n`, result)
+			return result?.data || { elements: [], files: {} }
 		} catch (error) {
 			console.error(`[${roomId}] Failed to fetch data from server:`, error)
-			return { elements: [] }
+			return { elements: [], files: {} }
 		}
 	}
 

@@ -21,6 +21,7 @@ export default class ServerManager {
 
 	constructor(config) {
 		this.config = config
+		this.closing = false
 		this.tokenGenerator = new SharedTokenGenerator()
 		this.apiService = new ApiService(this.tokenGenerator)
 		this.storageManager = StorageManager.create(this.config.storageStrategy, this.apiService)
@@ -63,9 +64,12 @@ export default class ServerManager {
 	}
 
 	async gracefulShutdown() {
+		if (this.closing) return
+		this.closing = true
 		console.log('Received shutdown signal, saving all data...')
 		try {
 			await this.roomDataManager.removeAllRoomData()
+			this.socketManager.io.close()
 			console.log('Closing server...')
 			this.server.close(() => {
 				console.log('HTTP server closed.')

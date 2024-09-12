@@ -95,6 +95,9 @@ export default class SocketManager {
 		socket.on('server-volatile-broadcast', (roomID, encryptedData) =>
 			this.serverVolatileBroadcastHandler(socket, roomID, encryptedData),
 		)
+		socket.on('image-add', (roomID, id, data) => this.imageAddHandler(socket, roomID, id, data))
+		socket.on('image-remove', (roomID, id, data) => this.imageRemoveHandler(socket, roomID, id, data))
+		socket.on('image-get', (roomID, id, data) => this.imageGetHandler(socket, roomID, id, data))
 		socket.on('disconnecting', () => {
 			const rooms = Array.from(socket.rooms).filter((room) => room !== socket.id)
 			this.disconnectingHandler(socket, rooms)
@@ -170,6 +173,10 @@ export default class SocketManager {
 				[],
 			)
 
+			Object.values(room.getFiles()).forEach((file) => {
+				socket.emit('image-data', file)
+			})
+
 			this.io.to(roomID).emit('room-user-change', userSocketsAndIds)
 		} else {
 			socket.emit('room-not-found')
@@ -184,6 +191,7 @@ export default class SocketManager {
 
 		const decryptedData = JSON.parse(Utils.convertArrayBufferToString(encryptedData))
 		const socketData = await this.socketDataManager.getSocketData(socket.id)
+		if (!socketData) return
 		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
 
 		await this.roomDataManager.syncRoomData(
@@ -203,6 +211,7 @@ export default class SocketManager {
 			const socketData = await this.socketDataManager.getSocketData(
 				socket.id,
 			)
+			if (!socketData) return
 			const eventData = {
 				type: 'MOUSE_LOCATION',
 				payload: {
@@ -220,8 +229,45 @@ export default class SocketManager {
 		}
 	}
 
+	async imageAddHandler(socket, roomID, id, data) {
+		const isReadOnly = await this.isSocketReadOnly(socket.id)
+		if (!socket.rooms.has(roomID) || isReadOnly) return
+
+		socket.broadcast.to(roomID).emit('image-data', data)
+		const room = await this.storageManager.get(roomID)
+
+		console.log(`[${roomID}] ${socket.id} added image ${id}`)
+		room.addFile(id, data)
+	}
+
+	async imageRemoveHandler(socket, roomID, id) {
+		const isReadOnly = await this.isSocketReadOnly(socket.id)
+		if (!socket.rooms.has(roomID) || isReadOnly) return
+
+		socket.broadcast.to(roomID).emit('image-remove', id)
+		const room = await this.storageManager.get(roomID)
+		room.removeFile(id)
+	}
+
+	async imageGetHandler(socket, roomId, id) {
+		const isReadOnly = await this.isSocketReadOnly(socket.id)
+		if (!socket.rooms.has(roomId) || isReadOnly) return
+
+		console.log(`[${roomId}] ${socket.id} requested image ${id}`)
+		const room = await this.storageManager.get(roomId)
+		const file = room.getFile(id)
+
+		if (file) {
+			socket.emit('image-data', file)
+			console.log(`[${roomId}] ${socket.id} sent image data ${id}`)
+		} else {
+			console.warn(`[${roomId}] Image ${id} not found`)
+		}
+	}
+
 	async disconnectingHandler(socket, rooms) {
 		const socketData = await this.socketDataManager.getSocketData(socket.id)
+		if (!socketData) return
 		console.log(`[${socketData.fileId}] ${socketData.user.name} has disconnected`)
 		console.log('socket rooms', rooms)
 
