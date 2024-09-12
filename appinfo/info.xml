@@ -35,4 +35,9 @@ Collaborative whiteboard app for Nextcloud
 	<dependencies>
 		<nextcloud min-version="29" max-version="30"/>
 	</dependencies>
+
+	<settings>
+		<admin>OCA\Whiteboard\Settings\Admin</admin>
+		<admin-section>OCA\Whiteboard\Settings\Section</admin-section>
+	</settings>
 </info>

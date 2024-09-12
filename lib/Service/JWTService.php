@@ -30,7 +30,6 @@ final class JWTService {
 	 * @throws NotFoundException
 	 */
 	public function generateJWT(User $user, File $file, bool $isFileReadOnly = true): string {
-		$key = $this->configService->getJwtSecretKey();
 		$issuedAt = time();
 		$expirationTime = $issuedAt + JWTConsts::EXPIRATION_TIME;
 		$payload = [
@@ -45,6 +44,15 @@ final class JWTService {
 			'exp' => $expirationTime
 		];
 
+		return $this->generateJWTFromPayload($payload);
+	}
+
+	/**
+	 * @throws InvalidPathException
+	 * @throws NotFoundException
+	 */
+	public function generateJWTFromPayload(array $payload): string {
+		$key = $this->configService->getJwtSecretKey();
 		return JWT::encode($payload, $key, JWTConsts::JWT_ALGORITHM);
 	}
 

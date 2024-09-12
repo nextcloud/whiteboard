@@ -7,6 +7,8 @@ declare(strict_types=1);
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+use OCA\Whiteboard\Controller\JWTController;
+use OCA\Whiteboard\Controller\SettingsController;
 use OCA\Whiteboard\Controller\WhiteboardController;
 
 return [
@@ -17,5 +19,7 @@ return [
 		['name' => 'Whiteboard#update', 'url' => '{fileId}', 'verb' => 'PUT'],
 		/** @see WhiteboardController::show() */
 		['name' => 'Whiteboard#show', 'url' => '{fileId}', 'verb' => 'GET'],
+		/** @see SettingsController::update() */
+		['name' => 'Settings#update', 'url' => 'settings', 'verb' => 'POST'],
 	]
 ];
