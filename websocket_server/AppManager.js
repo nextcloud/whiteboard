@@ -21,7 +21,6 @@ export default class AppManager {
 
 	setupRoutes() {
 		this.app.get('/', this.homeHandler.bind(this))
-		this.app.get('/status', this.statusHandler.bind(this))
 		this.app.get('/metrics', this.metricsHandler.bind(this))
 	}
 
