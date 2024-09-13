@@ -12,6 +12,9 @@ updates:
     time: "03:00"
     timezone: Europe/Paris
   open-pull-requests-limit: 10
+  labels:
+  - 3. to review
+  - dependencies
   reviewers:
   - juliushaertl
   - hweihwang
@@ -25,6 +28,24 @@ updates:
     time: "03:00"
     timezone: Europe/Paris
   open-pull-requests-limit: 10
+  labels:
+  - 3. to review
+  - dependencies
+  reviewers:
+  - juliushaertl
+  - hweihwang
+  - grnd-alt
+
+- package-ecosystem: "docker"
+  schedule:
+    interval: "weekly"
+    day: saturday
+    time: "03:00"
+    timezone: Europe/Paris
+  open-pull-requests-limit: 10
+  labels:
+  - 3. to review
+  - dependencies
   reviewers:
   - juliushaertl
   - hweihwang
