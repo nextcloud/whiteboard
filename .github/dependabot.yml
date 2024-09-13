@@ -37,6 +37,7 @@ updates:
   - grnd-alt
 
 - package-ecosystem: "docker"
+  directory: "/"
   schedule:
     interval: "weekly"
     day: saturday
