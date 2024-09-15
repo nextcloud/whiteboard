@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+### Fixed
+
+- fix: Include composer dependencies in the release bundle @juliushaertl [#157](https://github.com/nextcloud/whiteboard/pull/157)
+
 ## 1.0.0
 
 Initial release
