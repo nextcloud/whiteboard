@@ -27,6 +27,7 @@ import { Collab } from './collaboration/collab'
 import Embeddable from './Embeddable'
 import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import '@excalidraw/excalidraw/index.css'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 interface WhiteboardAppProps {
 	fileId: number;
