@@ -81,8 +81,10 @@ export default {
 			await this.verifyConnection(data)
 		},
 		async verifyConnection(data) {
-			const path = '/socket.io'
-			const socket = io(this.serverUrl, {
+			const url = new URL(this.serverUrl)
+			const path = url.pathname.replace(/\/$/, '') + '/socket.io'
+
+			const socket = io(url.origin, {
 				path,
 				withCredentials: true,
 				auth: {
