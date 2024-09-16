@@ -32,6 +32,7 @@ occ config:app:set whiteboard jwt_secret_key --value="some-random"
 
 #### Local node
 
+This mode requires at least Node 20 and NPM 10 to be installed. You can clone this repository, checkout the release version matching your whiteboard app.
 The server can be run locally using the following command:
 
 ```bash
@@ -46,7 +47,7 @@ JWT_SECRET_KEY="some-random" NEXTCLOUD_URL=http://nextcloud.local npm run server
 The image can be built using the following command:
 
 ```bash
-docker build -t nextcloud-whiteboard-server -f Dockerfile ../
+docker build -t nextcloud-whiteboard-server
 ```
 
 ### Running the server
@@ -56,7 +57,7 @@ The server requires the `NEXTCLOUD_URL` environment variable to be set to the UR
 The server can be run in a container using the following command:
 
 ```bash
-docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --rm nextcloud-whiteboard-server
+docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --restart unless-stopped -d ghcr.io/nextcloud-releases/whiteboard:release
 ```
 
 Docker compose can also be used to run the server:
@@ -65,9 +66,10 @@ Docker compose can also be used to run the server:
 version: '3.7'
 services:
   nextcloud-whiteboard-server:
-    image: nextcloud-whiteboard-server
+    image: ghcr.io/nextcloud-releases/whiteboard:release
     ports:
       - 3002:3002
+    environment:
     environment:
       - NEXTCLOUD_URL=https://nextcloud.local
       - JWT_SECRET_KEY=some-random-key
@@ -100,3 +102,7 @@ location /whiteboard/ {
 	proxy_set_header Connection "upgrade";
 }
 ```
+
+### Known issues
+
+If the [integration_whiteboard](https://github.com/nextcloud/integration_whiteboard) app was previously installed there might be a leftover non-standard mimetype configured. In this case opening the whiteboard may fail and a file is downloaded instead. Make sure to remove any entry in config/mimetypealiases.json mentioning whiteboard and run `occ maintenance:mimetype:update-db` and `occ maintenance:mimetype:update-js`.
