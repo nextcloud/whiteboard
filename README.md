@@ -9,6 +9,8 @@
 
 The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.
 
+You can create whiteboards in the files app and share and collaborate on them.
+
 ## Features
 
 - 🎨 Drawing shapes, writing text, connecting elements
