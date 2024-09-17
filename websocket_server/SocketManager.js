@@ -250,6 +250,7 @@ export default class SocketManager {
 
 		console.log(`[${roomID}] ${socket.id} added image ${id}`)
 		room.addFile(id, data)
+		this.storageManager.set(roomID, room)
 	}
 
 	async imageRemoveHandler(socket, roomID, id) {
