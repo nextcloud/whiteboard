@@ -20,8 +20,11 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Files\Template\ITemplateManager;
 use OCP\Files\Template\RegisterTemplateCreatorEvent;
+use OCP\IL10N;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
+use OCP\Util;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -44,6 +47,13 @@ class Application extends App implements IBootstrap {
 	}
 
 	public function boot(IBootContext $context): void {
-
+		[$major] = Util::getVersion();
+		if ($major < 30) {
+			$context->injectFn(function (ITemplateManager $templateManager, IL10N $l10n) use ($major) {
+				$templateManager->registerTemplateFileCreator(function () use ($l10n) {
+					return RegisterTemplateCreatorListener::getTemplateFileCreator($l10n);
+				});
+			});
+		}
 	}
 }

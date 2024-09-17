@@ -32,11 +32,15 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 
 
 		$event->getTemplateManager()->registerTemplateFileCreator(function () {
-			$whiteboard = new TemplateFileCreator(Application::APP_ID, $this->l10n->t('New whiteboard'), '.whiteboard');
-			$whiteboard->addMimetype('application/vnd.excalidraw+json');
-			$whiteboard->setIconSvgInline(file_get_contents(__DIR__ . '/../../img/app-filetype.svg'));
-			$whiteboard->setActionLabel($this->l10n->t('Create new whiteboard'));
-			return $whiteboard;
+			return self::getTemplateFileCreator($this->l10n);
 		});
+	}
+
+	public static function getTemplateFileCreator(IL10N $l10n): TemplateFileCreator {
+		$whiteboard = new TemplateFileCreator(Application::APP_ID, $l10n->t('New whiteboard'), '.whiteboard');
+		$whiteboard->addMimetype('application/vnd.excalidraw+json');
+		$whiteboard->setIconSvgInline(file_get_contents(__DIR__ . '/../../img/app-filetype.svg'));
+		$whiteboard->setActionLabel($l10n->t('Create new whiteboard'));
+		return $whiteboard;
 	}
 }
