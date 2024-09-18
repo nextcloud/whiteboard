@@ -33,7 +33,7 @@ final class SettingsController extends Controller {
 
 	public function update(): DataResponse {
 		try {
-			$serverUrl = $this->request->getParam('server_url');
+			$serverUrl = $this->request->getParam('serverUrl');
 			$secret = $this->request->getParam('secret');
 
 			if ($serverUrl !== null) {
