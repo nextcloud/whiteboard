@@ -14,7 +14,8 @@
     "stylelint": "stylelint 'src/**/*.{css,scss,sass}'",
     "stylelint:fix": "stylelint 'src/**/*.{css,scss,sass}' --fix",
     "server:start": "node websocket_server/main.js",
-    "server:watch": "nodemon websocket_server/main.js"
+    "server:watch": "nodemon websocket_server/main.js",
+    "start:nextcloud": "node tests/e2e/start-nextcloud-server.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.17.6",
@@ -52,6 +53,8 @@
     "@nextcloud/eslint-config": "^8.4.1",
     "@nextcloud/stylelint-config": "^3.0.1",
     "@nextcloud/vite-config": "^1.4.2",
+    "@playwright/test": "^1.47.1",
+    "@types/node": "^22.5.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "@vue/tsconfig": "^0.5.1",
