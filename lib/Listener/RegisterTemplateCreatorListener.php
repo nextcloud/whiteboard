@@ -21,7 +21,7 @@ use OCP\IL10N;
  */
 final class RegisterTemplateCreatorListener implements IEventListener {
 	public function __construct(
-		private IL10N $l10n
+		private IL10N $l10n,
 	) {
 	}
 

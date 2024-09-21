@@ -17,7 +17,7 @@ final class GetUserFromIdServiceFactory {
 	public function __construct(
 		private ShareManager $shareManager,
 		private IUserManager $userManager,
-		private IUserSession $userSession
+		private IUserSession $userSession,
 	) {
 	}
 

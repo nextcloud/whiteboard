@@ -29,7 +29,7 @@ final class GetFileFromIdService implements GetFileService {
 	public function __construct(
 		private IRootFolder $rootFolder,
 		private string      $userId,
-		private int         $fileId
+		private int         $fileId,
 	) {
 	}
 

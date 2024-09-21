@@ -14,7 +14,9 @@ use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Model\User;
 
 final class ChainAuthenticateUserService implements AuthenticateUserService {
-	public function __construct(private array $strategies) {
+	public function __construct(
+		private array $strategies,
+	) {
 	}
 
 	public function authenticate(): User {

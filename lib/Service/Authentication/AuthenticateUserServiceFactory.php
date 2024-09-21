@@ -15,7 +15,7 @@ use OCP\Share\IManager as ShareManager;
 final class AuthenticateUserServiceFactory {
 	public function __construct(
 		private ShareManager $shareManager,
-		private IUserSession $userSession
+		private IUserSession $userSession,
 	) {
 	}
 

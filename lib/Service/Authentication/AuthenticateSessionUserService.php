@@ -16,7 +16,7 @@ use OCP\IUserSession;
 
 final class AuthenticateSessionUserService implements AuthenticateUserService {
 	public function __construct(
-		private IUserSession $userSession
+		private IUserSession $userSession,
 	) {
 	}
 

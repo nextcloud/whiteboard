@@ -28,7 +28,7 @@ final class JWTController extends Controller {
 		private GetFileServiceFactory          $getFileServiceFactory,
 		private JWTService                     $jwtService,
 		private ExceptionService               $exceptionService,
-		private AuthenticateUserServiceFactory $authenticateUserServiceFactory
+		private AuthenticateUserServiceFactory $authenticateUserServiceFactory,
 	) {
 		parent::__construct('whiteboard', $request);
 	}
