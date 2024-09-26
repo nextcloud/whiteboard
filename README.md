@@ -93,7 +93,7 @@ RewriteRule ^/?whiteboard/(.*) "ws://localhost:3002/$1" [P,L]
 #### Nginx
 
 ```
-location /whiteboard/ {
+location /socket.io/ {
 	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 	proxy_set_header Host $host;
 	
