@@ -1,3 +1,8 @@
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import { useState, useEffect } from 'react'
 import { getLanguage } from '@nextcloud/l10n'
 import { languages } from '@excalidraw/excalidraw'
