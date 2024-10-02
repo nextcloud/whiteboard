@@ -28,14 +28,21 @@ import Embeddable from './Embeddable'
 import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
+import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+
 interface WhiteboardAppProps {
-	fileId: number;
-	fileName: string;
-	isEmbedded: boolean;
-	publicSharingToken: string | null;
+	fileId: number
+	fileName: string
+	isEmbedded: boolean
+	publicSharingToken: string | null
 }
 
-export default function App({ fileId, isEmbedded, fileName, publicSharingToken }: WhiteboardAppProps) {
+export default function App({
+	fileId,
+	isEmbedded,
+	fileName,
+	publicSharingToken,
+}: WhiteboardAppProps) {
 	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
 
 	const [viewModeEnabled] = useState(isEmbedded)
@@ -44,13 +51,21 @@ export default function App({ fileId, isEmbedded, fileName, publicSharingToken }
 
 	const isDarkMode = () => {
 		const ncThemes = document.body.dataset?.themes
-		return (window.matchMedia('(prefers-color-scheme: dark)').matches && ncThemes?.indexOf('light') === -1)
+		return (
+			(window.matchMedia('(prefers-color-scheme: dark)').matches
+				&& ncThemes?.indexOf('light') === -1)
 			|| ncThemes?.indexOf('dark') > -1
+		)
 	}
 	const [theme, setTheme] = useState(isDarkMode() ? 'dark' : 'light')
 
+	const lang = useExcalidrawLang()
+
+	console.log('lang', lang)
+
 	useEffect(() => {
-		const themeChangeListener = () => setTheme(isDarkMode() ? 'dark' : 'light')
+		const themeChangeListener = () =>
+			setTheme(isDarkMode() ? 'dark' : 'light')
 		const mq = window.matchMedia('(prefers-color-scheme: dark)')
 		mq.addEventListener('change', themeChangeListener)
 		return () => {
@@ -69,26 +84,29 @@ export default function App({ fileId, isEmbedded, fileName, publicSharingToken }
 	}
 
 	const initialStatePromiseRef = useRef<{
-		promise: ResolvablePromise<ExcalidrawInitialDataState | null>;
+		promise: ResolvablePromise<ExcalidrawInitialDataState | null>
 	}>({ promise: null! })
 	if (!initialStatePromiseRef.current.promise) {
 		initialStatePromiseRef.current.promise = resolvablePromise()
 	}
 
-	const [
-		excalidrawAPI,
-		setExcalidrawAPI,
-	] = useState<ExcalidrawImperativeAPI | null>(null)
+	const [excalidrawAPI, setExcalidrawAPI]
+		= useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
-	if (excalidrawAPI && !collab) setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken))
+	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken)) }
 	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
-		const extraTools = document.getElementsByClassName('App-toolbar__extra-tools-trigger')[0]
+		const extraTools = document.getElementsByClassName(
+			'App-toolbar__extra-tools-trigger',
+		)[0]
 		const smartPick = document.createElement('label')
 		smartPick.classList.add(...['ToolIcon', 'Shape'])
 		if (extraTools) {
-			extraTools.parentNode?.insertBefore(smartPick, extraTools.previousSibling)
+			extraTools.parentNode?.insertBefore(
+				smartPick,
+				extraTools.previousSibling,
+			)
 			const root = createRoot(smartPick)
 			root.render(renderSmartPicker())
 		}
@@ -130,7 +148,7 @@ export default function App({ fileId, isEmbedded, fileName, publicSharingToken }
 		(
 			element: NonDeletedExcalidrawElement,
 			event: CustomEvent<{
-				nativeEvent: MouseEvent | React.PointerEvent<HTMLCanvasElement>;
+				nativeEvent: MouseEvent | React.PointerEvent<HTMLCanvasElement>
 			}>,
 		) => {
 			const link = element.link!
@@ -151,11 +169,16 @@ export default function App({ fileId, isEmbedded, fileName, publicSharingToken }
 	const addWebEmbed = (link: string) => {
 		let cords: { x: any; y: any }
 		if (excalidrawAPI) {
-			cords = viewportCoordsToSceneCoords({ clientX: 100, clientY: 100 }, excalidrawAPI.getAppState())
+			cords = viewportCoordsToSceneCoords(
+				{ clientX: 100, clientY: 100 },
+				excalidrawAPI.getAppState(),
+			)
 		} else {
 			cords = { x: 0, y: 0 }
 		}
-		const elements = excalidrawAPI?.getSceneElementsIncludingDeleted().slice()
+		const elements = excalidrawAPI
+			?.getSceneElementsIncludingDeleted()
+			.slice()
 		elements?.push({
 			link,
 			id: (Math.random() + 1).toString(36).substring(7),
@@ -204,7 +227,12 @@ export default function App({ fileId, isEmbedded, fileName, publicSharingToken }
 
 	const renderSmartPicker = () => {
 		return (
-			<button className="dropdown-menu-button App-toolbar__extra-tools-trigger" aria-label="Smart picker" aria-keyshortcuts="0" onClick={pickFile} title='Smart picker'>
+			<button
+				className="dropdown-menu-button App-toolbar__extra-tools-trigger"
+				aria-label="Smart picker"
+				aria-keyshortcuts="0"
+				onClick={pickFile}
+				title="Smart picker">
 				<Icon path={mdiSlashForwardBox} size={1} />
 			</button>
 		)
@@ -234,7 +262,7 @@ export default function App({ fileId, isEmbedded, fileName, publicSharingToken }
 						},
 					}}
 					onLinkOpen={onLinkOpen}
-				>
+					langCode={lang}>
 					{renderMenu()}
 				</Excalidraw>
 			</div>
