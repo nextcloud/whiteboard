@@ -1,0 +1,6 @@
+{ "translations": {
+    "Whiteboard" : "Valkotaulu",
+    "Shared secret" : "Jaettu salaisuus",
+    "Save settings" : "Tallenna asetukset"
+},"pluralForm" :"nplurals=2; plural=(n != 1);"
+}
