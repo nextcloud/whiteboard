@@ -60,6 +60,11 @@ function handlePublicSharing(token) {
 			console.error('#imgframe element not found')
 			return
 		}
+		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement
+		const isWhiteboard = mimetypeElmt && mimetypeElmt.value === 'application/vnd.excalidraw+json'
+		if (isPublicShare() && !isWhiteboard) {
+			return
+		}
 
 		imgframeElement.innerHTML = ''
 
