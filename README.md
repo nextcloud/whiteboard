@@ -105,6 +105,110 @@ location /whiteboard/ {
 }
 ```
 
+## Storage Strategies and Scaling
+
+The whiteboard application supports two storage strategies: LRU (Least Recently Used) cache and Redis. Each strategy has its own characteristics and is suitable for different deployment scenarios.
+
+### Storage Strategies
+
+#### 1. LRU (Least Recently Used) Cache
+
+The LRU cache strategy is an in-memory storage solution that keeps the most recently used items in memory while automatically removing the least recently used items when the cache reaches its capacity.
+
+**Advantages:**
+- Simple setup with no additional infrastructure required
+- Fast read and write operations
+- Suitable for single-node deployments
+
+**Limitations:**
+- Limited by available memory on the server
+- Data is not persistent across server restarts
+- Not suitable for multi-node deployments
+
+**Configuration:**
+To use the LRU cache strategy, set the following in your `.env` file:
+
+```
+STORAGE_STRATEGY=lru
+```
+
+**Resources:**
+- [LRU Cache in Node.js](https://www.npmjs.com/package/lru-cache)
+
+#### 2. Redis
+
+Redis is an in-memory data structure store that can be used as a database, cache, and message broker. It provides persistence and supports distributed setups.
+
+**Advantages:**
+- Persistent storage
+- Supports multi-node deployments
+- Allows for horizontal scaling
+
+**Limitations:**
+- Requires additional infrastructure setup and maintenance
+- Slightly higher latency compared to LRU cache for single-node setups
+
+**Configuration:**
+To use the Redis strategy, set the following in your `.env` file:
+
+```
+STORAGE_STRATEGY=redis
+REDIS_URL=redis://[username:password@]host[:port][/database_number]
+```
+
+Replace the `REDIS_URL` with your actual Redis server details.
+
+### Scaling and Deployment
+
+#### Single-Node Deployment
+
+For small to medium-sized deployments, a single-node setup can be sufficient:
+
+1. Choose either LRU or Redis strategy based on your persistence needs.
+2. Configure the `.env` file with the appropriate `STORAGE_STRATEGY`.
+3. If using Redis, ensure the Redis server is accessible and configure the `REDIS_URL`.
+4. Start the whiteboard server.
+
+#### Multi-Node Deployment (Clustered Setup)
+
+For larger deployments requiring high availability and scalability, a multi-node setup is recommended:
+
+1. Use the Redis storage strategy.
+2. Set up a Redis cluster or a managed Redis service.
+3. Configure each node's `.env` file with:
+   ```
+   STORAGE_STRATEGY=redis
+   REDIS_URL=redis://[username:password@]host[:port][/database_number]
+   ```
+4. Set up a load balancer to distribute traffic across the nodes.
+5. Ensure all nodes can access the same Redis instance or cluster.
+
+#### Scaling WebSocket Connections
+
+The whiteboard application uses the Redis Streams adapter for scaling WebSocket connections across multiple nodes. This adapter leverages Redis Streams, not the Redis Pub/Sub mechanism, for improved performance and scalability.
+
+When using the Redis strategy, the application automatically sets up the Redis Streams adapter for WebSocket scaling. This allows multiple server instances to share WebSocket connections and real-time updates.
+
+**Resources:**
+- [Socket.IO Redis Streams Adapter](https://socket.io/docs/v4/redis-streams-adapter/)
+
+#### Considerations for Multi-Node Setups
+
+- **Load Balancing:** Set up a load balancer to distribute incoming connections across your server nodes.
+- **Session Stickiness:** While not strictly required for WebSocket transport, it's recommended to configure your load balancer to use session stickiness. This ensures that requests from a client are routed to the same server for the duration of a session, which can be beneficial if falling back to long polling.
+- **WebSocket Support:** Ensure your load balancer is configured to support WebSocket connections and maintain long-lived connections.
+- **Redis Setup:** The current implementation does not configure Redis Cluster. So if you need to use a Redis Cluster for high availability, you'll need to set up your own load balancer in front of your Redis Cluster nodes.
+- **Redis Connection:** The application currently supports only one Redis connection for both the storage layer and streaming/scaling the WebSocket server.
+- **Redis Persistence:** Configure Redis with appropriate persistence settings (e.g., RDB snapshots or AOF logs) to prevent data loss in case of Redis server restarts.
+- **Monitoring:** Implement monitoring for both your application nodes and Redis servers to quickly identify and respond to issues.
+
+### Choosing the Right Strategy
+
+- **LRU Cache:** Ideal for small deployments, development environments, or scenarios where data persistence across restarts is not critical.
+- **Redis:** Recommended for production environments, especially when scaling horizontally or when data persistence is required.
+
+By carefully considering your deployment needs and choosing the appropriate storage strategy, you can ensure optimal performance and scalability for your whiteboard application.
+
 ### Known issues
 
 If the [integration_whiteboard](https://github.com/nextcloud/integration_whiteboard) app was previously installed there might be a leftover non-standard mimetype configured. In this case opening the whiteboard may fail and a file is downloaded instead. Make sure to remove any entry in config/mimetypealiases.json mentioning whiteboard and run `occ maintenance:mimetype:update-db` and `occ maintenance:mimetype:update-js`.
