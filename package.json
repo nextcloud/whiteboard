@@ -9,12 +9,14 @@
     "build": "vite --mode production build",
     "dev": "vite --mode development build",
     "watch": "vite --mode development build --watch",
-    "lint": "eslint --ext .js,.ts,.tsx,.vue src websocket_server",
-    "lint:fix": "eslint --ext .js,.ts,.tsx,.vue src websocket_server --fix",
+    "lint": "eslint --ext .js,.mjs,.ts,.tsx,.vue src websocket_server tests/integration ",
+    "lint:fix": "eslint --ext .js,.mjs,.ts,.tsx,.vue src websocket_server tests/integration --fix",
     "stylelint": "stylelint 'src/**/*.{css,scss,sass}'",
     "stylelint:fix": "stylelint 'src/**/*.{css,scss,sass}' --fix",
     "server:start": "node websocket_server/main.js",
-    "server:watch": "nodemon websocket_server/main.js"
+    "server:watch": "nodemon websocket_server/main.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.17.6",
@@ -32,6 +34,7 @@
     "@nextcloud/sharing": "^0.2.3",
     "@nextcloud/vue": "^8.19.0",
     "@socket.io/redis-streams-adapter": "^0.2.2",
+    "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "express": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
@@ -61,7 +64,8 @@
     "typescript": "^5.6.2",
     "typescript-plugin-css-modules": "^5.1.0",
     "vite": "^5.4.8",
-    "vite-plugin-static-copy": "^1.0.6"
+    "vite-plugin-static-copy": "^1.0.6",
+    "vitest": "^2.1.2"
   },
   "prettier": {
     "useTabs": true,
