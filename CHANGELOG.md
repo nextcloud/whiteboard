@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3
+
+- Start translating the app #202
+- public shares check for mimetype #201
+
 ## 1.0.2
 
 ### Fixed
@@ -29,5 +34,3 @@ Initial release
 ## 1.0.0-rc.1
 
 Initial release
-
-
