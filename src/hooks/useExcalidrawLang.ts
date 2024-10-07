@@ -7,29 +7,32 @@ import { useState, useEffect } from 'react'
 import { getLanguage } from '@nextcloud/l10n'
 import { languages } from '@excalidraw/excalidraw'
 
+const languageMap = new Map(languages.map(lang => [lang.code.toLowerCase(), lang.code]))
+
 function mapNextcloudToExcalidrawLang(nextcloudLang: string): string {
 	const lowerNextcloudLang = nextcloudLang.toLowerCase()
 
-	const exactMatch = languages.find(
-		(lang) =>
-			lang.code.toLowerCase() === lowerNextcloudLang
-			|| lang.code.toLowerCase().replace('-', '_') === lowerNextcloudLang,
-	)
-	if (exactMatch) return exactMatch.code
+	if (languageMap.has(lowerNextcloudLang)) {
+		return languageMap.get(lowerNextcloudLang)!
+	}
 
-	const partialMatch = languages.find((lang) =>
-		lang.code.toLowerCase().startsWith(lowerNextcloudLang.slice(0, 1)),
-	)
+	const hyphenatedLang = lowerNextcloudLang.replace('_', '-')
+	if (languageMap.has(hyphenatedLang)) {
+		return languageMap.get(hyphenatedLang)!
+	}
 
-	if (partialMatch) return partialMatch.code
+	for (const [excalidrawLang, originalCode] of languageMap) {
+		if (excalidrawLang.startsWith(lowerNextcloudLang)
+			|| lowerNextcloudLang.startsWith(excalidrawLang.split('-')[0])) {
+			return originalCode
+		}
+	}
 
 	return 'en'
 }
 
 export function useExcalidrawLang() {
-	const [lang, setLang] = useState(
-		mapNextcloudToExcalidrawLang(getLanguage()),
-	)
+	const [lang, setLang] = useState(() => mapNextcloudToExcalidrawLang(getLanguage()))
 
 	useEffect(() => {
 		const nextcloudLang = getLanguage()

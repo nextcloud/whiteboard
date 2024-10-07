@@ -61,8 +61,6 @@ export default function App({
 
 	const lang = useExcalidrawLang()
 
-	console.log('lang', lang)
-
 	useEffect(() => {
 		const themeChangeListener = () =>
 			setTheme(isDarkMode() ? 'dark' : 'light')
