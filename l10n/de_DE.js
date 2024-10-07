@@ -9,7 +9,7 @@ OC.L10N.register(
     "Whiteboard settings" : "Whiteboard-Einstellungen",
     "Whiteboard backend server is configured and connected." : "Whiteboard-Backend-Server ist konfiguriert und angeschlossen.",
     "Failed to verify the connection:" : "Fehler beim Überprüfen der Verbindung:",
-    "Verifying connection…" : "Verbindung überprüfen…",
+    "Verifying connection…" : "Überprüfe die Verbindung…",
     "Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Whiteboard erfordert einen separaten Collaboration-Server, der mit Nextcloud verbunden ist.",
     "See the documentation on how to install it." : "Lesen Sie die Dokumentation, wie die Installation erfolgt.",
     "Whiteboard server URL" : "Whiteboard-Server-URL",
