@@ -1,7 +1,12 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "New whiteboard" : "Nueva pizarra",
     "Whiteboard" : "Pizarra blanca",
+    "Whiteboard settings" : "Configuración de la pizarra",
+    "Failed to verify the connection:" : "No se pudo verificar la conexión:",
+    "Verifying connection…" : "Verificando conexión…",
+    "See the documentation on how to install it." : "Consulte la documentación sobre cómo instalarlo.",
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuración"
 },
