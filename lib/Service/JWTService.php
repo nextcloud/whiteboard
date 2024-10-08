@@ -21,7 +21,7 @@ use OCP\Files\NotFoundException;
 
 final class JWTService {
 	public function __construct(
-		private ConfigService $configService
+		private ConfigService $configService,
 	) {
 	}
 

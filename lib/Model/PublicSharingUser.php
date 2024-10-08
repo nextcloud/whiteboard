@@ -11,7 +11,7 @@ namespace OCA\Whiteboard\Model;
 
 final class PublicSharingUser implements User {
 	public function __construct(
-		private string $publicSharingToken
+		private string $publicSharingToken,
 	) {
 	}
 

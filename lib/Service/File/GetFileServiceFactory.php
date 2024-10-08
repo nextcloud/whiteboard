@@ -24,7 +24,7 @@ use OCP\Share\IManager as ShareManager;
 final class GetFileServiceFactory {
 	public function __construct(
 		private IRootFolder  $rootFolder,
-		private ShareManager $shareManager
+		private ShareManager $shareManager,
 	) {
 	}
 

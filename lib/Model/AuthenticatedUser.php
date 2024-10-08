@@ -12,7 +12,9 @@ namespace OCA\Whiteboard\Model;
 use OCP\IUser;
 
 final class AuthenticatedUser implements User {
-	public function __construct(private IUser $user) {
+	public function __construct(
+		private IUser $user,
+	) {
 	}
 
 	public function getUID(): string {

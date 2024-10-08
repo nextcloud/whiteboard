@@ -19,7 +19,7 @@ use OCP\Share\IManager as ShareManager;
 final class GetPublicSharingUserFromIdService implements GetUserFromIdService {
 	public function __construct(
 		private ShareManager $shareManager,
-		private string       $userId
+		private string       $userId,
 	) {
 	}
 
