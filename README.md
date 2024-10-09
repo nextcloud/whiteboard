@@ -21,9 +21,14 @@ You can create whiteboards in the files app and share and collaborate on them.
 
 ### Standalone websocket server for Nextcloud Whiteboard
 
-This is a standalone websocket server for the Nextcloud Whiteboard app. It is intended to be used as a standalone service that can be run in a container.
+Running the whiteboard server is required for the whiteboard to work. The server will handle real-time collaboration events and broadcast them to all connected clients, which means that the server must be accessible from the users browser, so exposing it for example throuhg a reverse proxy is necessary. It is intended to be used as a standalone service that can be run in a container.
 
-Both the server and the Nextcloud instance must be accessible from the same network and share a common secret key for JWT token generation.
+We require the following connectivity:
+
+- The whiteboard server needs to be able to reach the Nextcloud server over HTTP(S)
+- The Nextcloud server needs to be able to reach the whiteboard server over HTTP(S)
+- The user's browser needs to be able to reach the whiteboard server over HTTP(S) in the browser
+- Nextcloud and the whiteboard server share a secret key to sign and verify JWTs
 
 On the Nextcloud side, the server must be configured through:
 
