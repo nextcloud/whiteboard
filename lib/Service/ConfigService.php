@@ -18,14 +18,27 @@ final class ConfigService {
 	}
 
 	public function getJwtSecretKey(): string {
+		if (!method_exists($this->appConfig, 'getAppValueString')) {
+			return $this->appConfig->getAppValue('jwt_secret_key');
+		}
+
 		return $this->appConfig->getAppValueString('jwt_secret_key');
 	}
 
 	public function getCollabBackendUrl(): string {
+		if (!method_exists($this->appConfig, 'getAppValueString')) {
+			return $this->appConfig->getAppValue('collabBackendUrl');
+		}
+
 		return $this->appConfig->getAppValueString('collabBackendUrl');
 	}
 
 	public function setCollabBackendUrl(string $collabBackendUrl): void {
+		if (!method_exists($this->appConfig, 'setAppValueString')) {
+			$this->appConfig->setAppValue('collabBackendUrl', $collabBackendUrl);
+			return;
+		}
+
 		$this->appConfig->setAppValueString('collabBackendUrl', $collabBackendUrl);
 	}
 
@@ -34,6 +47,11 @@ final class ConfigService {
 	}
 
 	public function setWhiteboardSharedSecret(string $jwtSecretKey): void {
+		if (!method_exists($this->appConfig, 'setAppValueString')) {
+			$this->appConfig->setAppValue('jwt_secret_key', $jwtSecretKey);
+			return;
+		}
+
 		$this->appConfig->setAppValueString('jwt_secret_key', $jwtSecretKey);
 	}
 }
