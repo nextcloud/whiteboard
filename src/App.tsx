@@ -45,7 +45,7 @@ export default function App({
 }: WhiteboardAppProps) {
 	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
 
-	const [viewModeEnabled] = useState(isEmbedded)
+	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
 	const [zenModeEnabled] = useState(isEmbedded)
 	const [gridModeEnabled] = useState(false)
 
@@ -92,7 +92,7 @@ export default function App({
 		= useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
-	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken)) }
+	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
 	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
 		const extraTools = document.getElementsByClassName(

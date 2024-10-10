@@ -16,14 +16,16 @@ export class Collab {
 	fileId: number
 	portal: Portal
 	publicSharingToken: string | null
+	setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 	private files = new Map<string, BinaryFileData>()
 
-	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null) {
+	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
 		this.excalidrawAPI = excalidrawAPI
 		this.fileId = fileId
 		this.publicSharingToken = publicSharingToken
+		this.setViewModeEnabled = setViewModeEnabled
 
 		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
 	}
@@ -142,11 +144,7 @@ export class Collab {
 	}
 
 	makeBoardReadOnly = () => {
-		this.excalidrawAPI.updateScene({
-			appState: {
-				viewModeEnabled: true,
-			},
-		})
+		this.setViewModeEnabled(true)
 	}
 
 	addFile = (file: BinaryFileData) => {
