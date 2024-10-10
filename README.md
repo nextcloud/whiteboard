@@ -105,6 +105,14 @@ location /whiteboard/ {
 }
 ```
 
+#### Caddy v2
+
+```
+handle_path /whiteboard/* {
+    reverse_proxy http://127.0.0.1:3002
+}
+```
+
 ## Storage Strategies and Scaling
 
 The whiteboard application supports two storage strategies: LRU (Least Recently Used) cache and Redis. Each strategy has its own characteristics and is suitable for different deployment scenarios.
