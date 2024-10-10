@@ -10,6 +10,7 @@ import type { Collab } from './collab'
 import type { AppState, BinaryFiles, Gesture } from '@excalidraw/excalidraw/types/types'
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
+import { generateUrl } from '@nextcloud/router'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT',
@@ -160,7 +161,7 @@ export class Portal {
 
 	async refreshJWT(): Promise<string | null> {
 		try {
-		  let url = `/index.php/apps/whiteboard/${this.roomId}/token`
+		  let url = generateUrl(`apps/whiteboard/${this.roomId}/token`)
 		  if (this.publicSharingToken) {
 				url += `?publicSharingToken=${encodeURIComponent(this.publicSharingToken)}`
 		  }
