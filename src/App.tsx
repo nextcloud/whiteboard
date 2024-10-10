@@ -53,7 +53,7 @@ export default function App({
 		const ncThemes = document.body.dataset?.themes
 		return (
 			(window.matchMedia('(prefers-color-scheme: dark)').matches
-				&& ncThemes?.indexOf('light') === -1)
+				&& (ncThemes === undefined || ncThemes?.indexOf('light') === -1))
 			|| ncThemes?.indexOf('dark') > -1
 		)
 	}
