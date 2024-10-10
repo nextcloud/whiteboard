@@ -72,10 +72,8 @@ services:
     ports:
       - 3002:3002
     environment:
-    environment:
       - NEXTCLOUD_URL=https://nextcloud.local
       - JWT_SECRET_KEY=some-random-key
-      
 ```
 
 ### Reverse proxy
