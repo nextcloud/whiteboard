@@ -21,9 +21,14 @@ You can create whiteboards in the files app and share and collaborate on them.
 
 ### Standalone websocket server for Nextcloud Whiteboard
 
-This is a standalone websocket server for the Nextcloud Whiteboard app. It is intended to be used as a standalone service that can be run in a container.
+Running the whiteboard server is required for the whiteboard to work. The server will handle real-time collaboration events and broadcast them to all connected clients, which means that the server must be accessible from the users browser, so exposing it for example throuhg a reverse proxy is necessary. It is intended to be used as a standalone service that can be run in a container.
 
-Both the server and the Nextcloud instance must be accessible from the same network and share a common secret key for JWT token generation.
+We require the following connectivity:
+
+- The whiteboard server needs to be able to reach the Nextcloud server over HTTP(S)
+- The Nextcloud server needs to be able to reach the whiteboard server over HTTP(S)
+- The user's browser needs to be able to reach the whiteboard server over HTTP(S) in the browser
+- Nextcloud and the whiteboard server share a secret key to sign and verify JWTs
 
 On the Nextcloud side, the server must be configured through:
 
@@ -31,6 +36,8 @@ On the Nextcloud side, the server must be configured through:
 occ config:app:set whiteboard collabBackendUrl --value="http://nextcloud.local:3002"
 occ config:app:set whiteboard jwt_secret_key --value="some-random"
 ```
+
+### Running the server
 
 #### Local node
 
@@ -44,22 +51,12 @@ JWT_SECRET_KEY="some-random" NEXTCLOUD_URL=http://nextcloud.local npm run server
 
 #### Docker
 
-### Building the image
-
-The image can be built using the following command:
-
-```bash
-docker build -t nextcloud-whiteboard-server
-```
-
-### Running the server
-
 The server requires the `NEXTCLOUD_URL` environment variable to be set to the URL of the Nextcloud instance that the Whiteboard app is installed on. The server will connect to the Nextcloud instance and listen for whiteboard events.
 
 The server can be run in a container using the following command:
 
 ```bash
-docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --restart unless-stopped -d ghcr.io/nextcloud-releases/whiteboard:release
+docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --rm ghcr.io/nextcloud-releases/whiteboard:release
 ```
 
 Docker compose can also be used to run the server:
@@ -72,10 +69,17 @@ services:
     ports:
       - 3002:3002
     environment:
-    environment:
       - NEXTCLOUD_URL=https://nextcloud.local
       - JWT_SECRET_KEY=some-random-key
       
+```
+
+#### Building the image locally
+
+While we publish image on the GitHub container registry you can build the image locally using the following command:
+
+```bash
+docker build -t nextcloud-whiteboard-server -f Dockerfile .
 ```
 
 ### Reverse proxy
