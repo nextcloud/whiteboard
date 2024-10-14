@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.4
+
+### Fixed
+
+- support translation @hweihwang [#200](https://github.com/nextcloud/whiteboard/pull/200)
+- fix: use system theme if no ncTheme available @grnd-alt [#215](https://github.com/nextcloud/whiteboard/pull/215)
+- fix: Properly handle metrics aggregation with room data @juliushaertl [#224](https://github.com/nextcloud/whiteboard/pull/224)
+- fix: Generate proper URL for token endpoint @juliushaertl [#209](https://github.com/nextcloud/whiteboard/pull/209)
+- set viewmode if share is readonly @grnd-alt [#216](https://github.com/nextcloud/whiteboard/pull/216)
+- fix: Proper fallback for app config methods on Nextcloud 28 @juliushaertl [#206](https://github.com/nextcloud/whiteboard/pull/206)
+- fix: Color picker buttons too wide @konradmb [#211](https://github.com/nextcloud/whiteboard/pull/211)
+
+### Other
+
+- docs: Storage strategies & Scaling @hweihwang [#198](https://github.com/nextcloud/whiteboard/pull/198)
+- test: Add vitest and some basic integration tests @juliushaertl [#146](https://github.com/nextcloud/whiteboard/pull/146)
+- docs: Enhance setup documentation @juliushaertl [#210](https://github.com/nextcloud/whiteboard/pull/210)
+
 ## 1.0.3
 
 - Start translating the app #202
