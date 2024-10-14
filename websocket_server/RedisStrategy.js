@@ -95,7 +95,7 @@ export default class RedisStrategy extends StorageStrategy {
 			const rooms = new Map()
 			for (const key of keys) {
 				const room = await this.get(key)
-				if (room) rooms.set(key, room)
+				if (room && !key.startsWith('token:') && !key.startsWith('socket:')) rooms.set(key, room)
 			}
 			return rooms
 		} catch (error) {
