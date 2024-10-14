@@ -7,6 +7,7 @@
 
 import StorageStrategy from './StorageStrategy.js'
 import { LRUCache } from 'lru-cache'
+import Room from './Room.js'
 
 export default class LRUCacheStrategy extends StorageStrategy {
 
@@ -52,7 +53,9 @@ export default class LRUCacheStrategy extends StorageStrategy {
 	}
 
 	getRooms() {
-		return this.cache
+		const rooms = Array.from(this.cache.values()).filter((room) => room instanceof Room)
+
+		return rooms
 	}
 
 }

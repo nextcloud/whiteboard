@@ -33,17 +33,17 @@ export default class SystemMonitor {
 	getRoomStats(rooms) {
 		return {
 			activeRooms: rooms.size,
-			totalUsers: Array.from(rooms.values()).reduce((sum, room) => sum + Object.keys(room.users).length, 0),
+			totalUsers: Array.from(rooms.values()).reduce((sum, room) => sum + Object.keys(room?.users ?? {}).length, 0),
 			totalDataSize: this.formatBytes(Array.from(rooms.values()).reduce((sum, room) => sum + (room.data ? JSON.stringify(room.data).length : 0), 0)),
 		}
 	}
 
 	getRoomsData(rooms) {
-		return Array.from(rooms.entries()).map(([roomId, room]) => ({
-			id: roomId,
+		return Array.from(rooms).map((room) => ({
+			id: room.id,
 			users: Object.keys(room.users),
 			lastEditedUser: room.lastEditedUser,
-			lastActivity: new Date(room.lastActivity).toISOString(),
+			lastActivity: room.lastActivity ? new Date(room.lastActivity).toISOString() : null,
 			dataSize: this.formatBytes(JSON.stringify(room.data).length),
 			data: room.data, // Be cautious with this if the data is very large
 		}))
