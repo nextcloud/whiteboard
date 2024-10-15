@@ -8,6 +8,7 @@
 namespace OCA\Whiteboard\Settings;
 
 use OCA\Whiteboard\Service\ConfigService;
+use OCA\Whiteboard\Service\ExAppService;
 use OCA\Whiteboard\Service\JWTService;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\TemplateResponse;
@@ -19,6 +20,7 @@ class Admin implements ISettings {
 		private IInitialState $initialState,
 		private ConfigService $configService,
 		private JWTService $jwtService,
+		private ExAppService $exAppService,
 	) {
 	}
 
@@ -41,11 +43,15 @@ class Admin implements ISettings {
 		return $response;
 	}
 
-	public function getSection() {
+	public function getSection(): ?string {
+		if ($this->exAppService->isWhiteboardWebsocketEnabled()) {
+			return null;
+		}
+
 		return 'whiteboard';
 	}
 
-	public function getPriority() {
+	public function getPriority(): int {
 		return 0;
 	}
 }

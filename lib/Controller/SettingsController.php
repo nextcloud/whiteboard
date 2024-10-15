@@ -24,7 +24,7 @@ use OCP\IRequest;
  */
 final class SettingsController extends Controller {
 	public function __construct(
-		IRequest $request,
+		IRequest                 $request,
 		private ExceptionService $exceptionService,
 		private JWTService $jwtService,
 		private ConfigService $configService,
