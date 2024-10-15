@@ -1,5 +1,15 @@
 { "translations": {
+    "New whiteboard" : "Ny whiteboardtavle",
+    "Create new whiteboard" : "Opret ny whiteboardtavle",
     "Whiteboard" : "Whiteboard",
+    "Whiteboard app" : "Whiteboard app",
+    "Whiteboard settings" : "Whiteboard indstillinger",
+    "Whiteboard backend server is configured and connected." : "Whiteboard-backend-serveren er konfigureret og tilsluttet.",
+    "Failed to verify the connection:" : "Forbindelsen kunne ikke bekræftes:",
+    "Verifying connection…" : "Bekræfter forbindelsen...",
+    "Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Whiteboard kræver en separat samarbejdsserver, der er forbundet til Nextcloud.",
+    "See the documentation on how to install it." : "Se dokumentationen for, hvordan du installerer den.",
+    "Whiteboard server URL" : "Whiteboard server URL",
     "Shared secret" : "Delt hemmelighed",
     "Save settings" : "Gem indstillinger"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
