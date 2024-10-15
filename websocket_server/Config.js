@@ -1,0 +1,65 @@
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+/* eslint-disable no-console */
+
+import dotenv from 'dotenv'
+import crypto from 'crypto'
+import { DEFAULT_NEXTCLOUD_URL, DEFAULT_SETUP_TYPE, DEFAULT_PORT, DEFAULT_STORAGE_STRATEGY, DEFAULT_FORCE_CLOSE_TIMEOUT, DEFAULT_REDIS_URL } from './Constants.js'
+import Utils from './Utils.js'
+
+dotenv.config()
+
+const Config = {
+	IS_TEST_ENV: process.env.NODE_ENV === 'test',
+
+	IS_DEV: Utils.parseBooleanFromEnv(process.env.IS_DEV),
+
+	SETUP_TYPE: process.env.SETUP_TYPE || DEFAULT_SETUP_TYPE,
+
+	PORT: process.env.PORT || DEFAULT_PORT,
+
+	USE_TLS: Utils.parseBooleanFromEnv(process.env.TLS),
+
+	TLS_KEY_PATH: process.env.TLS_KEY || null,
+
+	TLS_CERT_PATH: process.env.TLS_CERT || null,
+
+	STORAGE_STRATEGY: process.env.STORAGE_STRATEGY || DEFAULT_STORAGE_STRATEGY,
+
+	REDIS_URL: process.env.REDIS_URL || DEFAULT_REDIS_URL,
+
+	FORCE_CLOSE_TIMEOUT: process.env.FORCE_CLOSE_TIMEOUT || DEFAULT_FORCE_CLOSE_TIMEOUT,
+
+	METRICS_TOKEN: process.env.METRICS_TOKEN || null,
+
+	get JWT_SECRET_KEY() {
+		if (!process.env.JWT_SECRET_KEY) {
+			const newSecret = crypto.randomBytes(32).toString('hex')
+			process.env.JWT_SECRET_KEY = newSecret
+			console.log('Generated new JWT_SECRET_KEY:', newSecret)
+		} else {
+			console.log('Using existing JWT_SECRET_KEY from environment')
+		}
+		return process.env.JWT_SECRET_KEY
+	},
+
+	get NEXTCLOUD_WEBSOCKET_URL() {
+		return Utils.getOriginFromUrl(process.env.NEXTCLOUD_URL || DEFAULT_NEXTCLOUD_URL)
+	},
+
+	get NEXTCLOUD_URL() {
+		return this.SETUP_TYPE === 'ex_app' ? process.env.NEXTCLOUD_EX_APP_URL : this.NEXTCLOUD_WEBSOCKET_URL
+	},
+
+	// EX APP
+	EX_APP_ID: process.env.APP_ID || null,
+
+	EX_APP_SECRET: process.env.APP_SECRET || null,
+
+	EX_APP_VERSION: process.env.APP_VERSION || null,
+}
+
+export default Config

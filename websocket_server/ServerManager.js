@@ -15,16 +15,15 @@ import StorageManager from './StorageManager.js'
 import RoomDataManager from './RoomDataManager.js'
 import AppManager from './AppManager.js'
 import SocketManager from './SocketManager.js'
-import Utils from './Utils.js'
+import Config from './Config.js'
 
 export default class ServerManager {
 
-	constructor(config) {
-		this.config = config
+	constructor() {
 		this.closing = false
 		this.tokenGenerator = new SharedTokenGenerator()
 		this.apiService = new ApiService(this.tokenGenerator)
-		this.storageManager = StorageManager.create(this.config.storageStrategy, this.apiService)
+		this.storageManager = StorageManager.create(Config.STORAGE_STRATEGY, this.apiService)
 		this.roomDataManager = new RoomDataManager(this.storageManager, this.apiService)
 		this.appManager = new AppManager(this.storageManager)
 		this.server = this.createConfiguredServer(this.appManager.getApp())
@@ -39,17 +38,17 @@ export default class ServerManager {
 	}
 
 	createConfiguredServer(app) {
-		const useTls = Utils.parseBooleanFromEnv(this.config.tls)
+		const useTls = Config.USE_TLS
 		const serverType = useTls ? https : http
-		const serverOptions = useTls ? this.readTlsCredentials(this.config.keyPath, this.config.certPath) : {}
+		const serverOptions = useTls ? this.readTlsCredentials(Config.TLS_KEY_PATH, Config.TLS_CERT_PATH) : {}
 
 		return serverType.createServer(serverOptions, app)
 	}
 
 	start() {
 		return new Promise((resolve, reject) => {
-			this.server.listen(this.config.port, () => {
-				console.log(`Listening on port: ${this.config.port}`)
+			this.server.listen(Config.PORT, () => {
+				console.log(`Listening on port: ${Config.PORT}`)
 				resolve()
 			})
 
@@ -71,18 +70,24 @@ export default class ServerManager {
 			await this.roomDataManager.removeAllRoomData()
 			this.socketManager.io.close()
 			console.log('Closing server...')
-			this.server.close(() => {
-				console.log('HTTP server closed.')
-				process.exit(0)
+
+			await new Promise((resolve) => {
+				this.server.close(() => {
+					console.log('HTTP server closed.')
+					resolve()
+				})
 			})
 
-			setTimeout(() => {
-				console.error('Force closing server after timeout')
-				process.exit(1)
-			}, this.config.forceCloseTimeout)
+			if (!Config.IS_TEST_ENV) {
+				process.exit(0)
+			}
 		} catch (error) {
 			console.error('Error during graceful shutdown:', error)
-			process.exit(1)
+			if (!Config.IS_TEST_ENV) {
+				process.exit(1)
+			} else {
+				throw error
+			}
 		}
 	}
 

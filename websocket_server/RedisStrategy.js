@@ -8,6 +8,7 @@
 import StorageStrategy from './StorageStrategy.js'
 import { createClient } from 'redis'
 import Room from './Room.js'
+import Config from './Config.js'
 
 export default class RedisStrategy extends StorageStrategy {
 
@@ -15,7 +16,7 @@ export default class RedisStrategy extends StorageStrategy {
 		super()
 		this.apiService = apiService
 		this.client = createClient({
-			url: process.env.REDIS_URL || 'redis://localhost:6379',
+			url: Config.REDIS_URL,
 			retry_strategy: (options) => {
 				if (options.error && options.error.code === 'ECONNREFUSED') {
 					return new Error('The server refused the connection')

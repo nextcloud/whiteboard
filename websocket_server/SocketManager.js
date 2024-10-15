@@ -8,12 +8,10 @@
 import { Server as SocketIO } from 'socket.io'
 import prometheusMetrics from 'socket.io-prometheus'
 import jwt from 'jsonwebtoken'
-import dotenv from 'dotenv'
 import Utils from './Utils.js'
+import Config from './Config.js'
 import { createAdapter } from '@socket.io/redis-streams-adapter'
 import SocketDataManager from './SocketDataManager.js'
-
-dotenv.config()
 
 export default class SocketManager {
 
@@ -25,7 +23,7 @@ export default class SocketManager {
 		this.io = new SocketIO(server, {
 			transports: ['websocket', 'polling'],
 			cors: {
-				origin: process.env.NEXTCLOUD_URL || 'http://nextcloud.local',
+				origin: Config.NEXTCLOUD_WEBSOCKET_URL,
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 				credentials: true,
 			},
@@ -86,7 +84,7 @@ export default class SocketManager {
 			try {
 				jwt.verify(
 					secret,
-					process.env.JWT_SECRET_KEY,
+					Config.JWT_SECRET_KEY,
 					{
 						algorithm: 'HS256',
 					},
@@ -129,7 +127,7 @@ export default class SocketManager {
 		return new Promise((resolve, reject) => {
 			jwt.verify(
 				token,
-				process.env.JWT_SECRET_KEY,
+				Config.JWT_SECRET_KEY,
 				async (err, decoded) => {
 					if (err) {
 						console.log(

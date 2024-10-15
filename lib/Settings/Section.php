@@ -1,4 +1,5 @@
 <?php
+
 /**
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,6 +7,7 @@
 
 namespace OCA\Whiteboard\Settings;
 
+use OCA\Whiteboard\Service\ExAppService;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\Settings\IIconSection;
@@ -14,6 +16,7 @@ class Section implements IIconSection {
 	public function __construct(
 		private IURLGenerator $url,
 		private IL10N $l10n,
+		private ExAppService $exAppService,
 	) {
 	}
 
