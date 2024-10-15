@@ -14,7 +14,7 @@ dotenv.config()
 export default class ApiService {
 
 	constructor(tokenGenerator) {
-		this.NEXTCLOUD_URL = process.env.NEXTCLOUD_URL
+		this.NEXTCLOUD_URL = 'http://nextcloud'
 		this.IS_DEV = Utils.parseBooleanFromEnv(process.env.IS_DEV)
 		this.agent = this.IS_DEV ? new https.Agent({ rejectUnauthorized: false }) : null
 		this.tokenGenerator = tokenGenerator

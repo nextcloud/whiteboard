@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\AppInfo;
 
+use OCA\AppAPI\Middleware\AppAPIAuthMiddleware;
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
@@ -44,6 +45,7 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
+		$context->registerMiddleware(AppAPIAuthMiddleware::class);
 	}
 
 	public function boot(IBootContext $context): void {
