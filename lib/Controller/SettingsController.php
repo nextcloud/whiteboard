@@ -10,10 +10,13 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Controller;
 
 use Exception;
+use OCA\AppAPI\Attribute\AppAPIAuth;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
 use OCA\Whiteboard\Service\JWTService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 
@@ -31,6 +34,9 @@ final class SettingsController extends Controller {
 		parent::__construct('whiteboard', $request);
 	}
 
+	#[AppAPIAuth]
+	#[PublicPage]
+	#[NoCSRFRequired]
 	public function update(): DataResponse {
 		try {
 			$serverUrl = $this->request->getParam('serverUrl');

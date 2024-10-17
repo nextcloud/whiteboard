@@ -5,13 +5,14 @@
 
 import crypto from 'crypto'
 import dotenv from 'dotenv'
+import getOrCreateJwtSecretKey from './JwtSecretManager.js'
 
 dotenv.config()
 
 export default class SharedTokenGenerator {
 
 	constructor() {
-		this.SHARED_SECRET = process.env.JWT_SECRET_KEY
+		this.SHARED_SECRET = getOrCreateJwtSecretKey()
 	}
 
 	handle(roomId) {

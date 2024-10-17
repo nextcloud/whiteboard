@@ -44,7 +44,7 @@ export class Portal {
 			auth: {
 				token,
 			},
-			transports: ['websocket'],
+			transports: ['polling'],
 			timeout: 10000,
 		}).connect()
 
