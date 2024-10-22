@@ -10,12 +10,14 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\AppInfo;
 
+use OCA\AppAPI\Middleware\AppAPIAuthMiddleware;
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
+use OCA\Whiteboard\Service\ExAppService;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -25,6 +27,9 @@ use OCP\Files\Template\RegisterTemplateCreatorEvent;
 use OCP\IL10N;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 use OCP\Util;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
+use Throwable;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -37,6 +42,10 @@ class Application extends App implements IBootstrap {
 		parent::__construct(self::APP_ID, $params);
 	}
 
+	/**
+	 * @throws ContainerExceptionInterface
+	 * @throws NotFoundExceptionInterface
+	 */
 	public function register(IRegistrationContext $context): void {
 		include_once __DIR__ . '/../../vendor/autoload.php';
 
@@ -44,8 +53,16 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
+
+		if (class_exists(AppAPIAuthMiddleware::class) && $this->getExAppService()->isWhiteboardWebsocketEnabled()) {
+			$context->registerMiddleware(AppAPIAuthMiddleware::class);
+		}
 	}
 
+	/**
+	 * @throws ContainerExceptionInterface
+	 * @throws Throwable
+	 */
 	public function boot(IBootContext $context): void {
 		[$major] = Util::getVersion();
 		if ($major < 30) {
@@ -55,5 +72,15 @@ class Application extends App implements IBootstrap {
 				});
 			});
 		}
+
+		$this->getExAppService()->initFrontendState();
+	}
+
+	/**
+	 * @throws ContainerExceptionInterface
+	 * @throws NotFoundExceptionInterface
+	 */
+	private function getExAppService(): ExAppService {
+		return $this->getContainer()->get(ExAppService::class);
 	}
 }

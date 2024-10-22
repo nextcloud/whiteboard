@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+/* eslint-disable no-console */
+
 export default class Utils {
 
 	static convertStringToArrayBuffer(string) {
@@ -15,6 +17,15 @@ export default class Utils {
 
 	static parseBooleanFromEnv(value) {
 		return value === 'true'
+	}
+
+	static getOriginFromUrl(url) {
+		try {
+			return new URL(url).origin
+		} catch (error) {
+			console.error('Invalid URL:', url)
+			return null
+		}
 	}
 
 }

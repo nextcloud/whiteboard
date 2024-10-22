@@ -1,0 +1,16 @@
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+export const DEFAULT_NEXTCLOUD_URL = 'http://nextcloud.local'
+
+export const DEFAULT_SETUP_TYPE = 'standalone'
+
+export const DEFAULT_PORT = 3002
+
+export const DEFAULT_STORAGE_STRATEGY = 'lru'
+
+export const DEFAULT_FORCE_CLOSE_TIMEOUT = 60 * 1000
+
+export const DEFAULT_REDIS_URL = 'redis://localhost:6379'
