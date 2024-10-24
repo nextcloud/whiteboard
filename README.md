@@ -87,7 +87,7 @@ docker build -t nextcloud-whiteboard-server -f Dockerfile .
 #### Apache
 
 ```
-ProxyPass /whiteboard http://localhost:3002
+ProxyPass /whiteboard http://localhost:3002/
 RewriteEngine on
 RewriteCond %{HTTP:Upgrade} websocket [NC]
 RewriteCond %{HTTP:Connection} upgrade [NC]
@@ -101,7 +101,7 @@ location /whiteboard/ {
 	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 	proxy_set_header Host $host;
 	
-	proxy_pass http://localhost:3002;
+	proxy_pass http://localhost:3002/;
 	
 	proxy_http_version 1.1;
 	proxy_set_header Upgrade $http_upgrade;
