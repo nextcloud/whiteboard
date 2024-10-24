@@ -19,7 +19,7 @@ final class GetSessionUserFromIdService implements GetUserFromIdService {
 	public function __construct(
 		private IUserManager $userManager,
 		private IUserSession $userSession,
-		private string       $userId,
+		private string $userId,
 	) {
 	}
 
