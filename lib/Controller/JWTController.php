@@ -24,10 +24,10 @@ use OCP\IRequest;
  */
 final class JWTController extends Controller {
 	public function __construct(
-		IRequest                               $request,
-		private GetFileServiceFactory          $getFileServiceFactory,
-		private JWTService                     $jwtService,
-		private ExceptionService               $exceptionService,
+		IRequest $request,
+		private GetFileServiceFactory $getFileServiceFactory,
+		private JWTService $jwtService,
+		private ExceptionService $exceptionService,
 		private AuthenticateUserServiceFactory $authenticateUserServiceFactory,
 	) {
 		parent::__construct('whiteboard', $request);
