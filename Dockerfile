@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-FROM node:22.9.0-alpine3.20 AS build
+FROM node:22.9.0-alpine AS build
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 ARG NODE_ENV=production
 COPY . /app
@@ -14,7 +14,7 @@ RUN apk upgrade --no-cache -a && \
     clean-modules --yes && \
     npm cache clean --force
 
-FROM node:22.9.0-alpine3.20
+FROM node:22.9.0-alpine
 COPY --from=build --chown=nobody:nobody /app /app
 WORKDIR /app
 RUN apk upgrade --no-cache -a && \
