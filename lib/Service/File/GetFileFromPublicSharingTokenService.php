@@ -27,8 +27,8 @@ final class GetFileFromPublicSharingTokenService implements GetFileService {
 
 	public function __construct(
 		private ShareManager $shareManager,
-		private string       $publicSharingToken,
-		private int          $fileId,
+		private string $publicSharingToken,
+		private int $fileId,
 	) {
 	}
 
