@@ -56,7 +56,7 @@
     "@nextcloud/stylelint-config": "^3.0.1",
     "@nextcloud/vite-config": "^1.4.2",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.2",
+    "@vitejs/plugin-react": "^4.3.3",
     "@vue/tsconfig": "^0.5.1",
     "nodemon": "^3.1.7",
     "prettier": "^3.3.3",
