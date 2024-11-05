@@ -12,13 +12,11 @@ import dotenv from 'dotenv'
 import Utils from './Utils.js'
 import { createAdapter } from '@socket.io/redis-streams-adapter'
 import SocketDataManager from './SocketDataManager.js'
-import StorageManager from './StorageManager.js'
 
 dotenv.config()
 
 export default class SocketManager {
 
-	/** @param {StorageManager} storageManager */
 	constructor(server, roomDataManager, storageManager) {
 		this.roomDataManager = roomDataManager
 		this.storageManager = storageManager
@@ -121,13 +119,13 @@ export default class SocketManager {
 	}
 
 	/**
-	 * @param {int} roomID
-	 * @param {Socket} socket
-	*/
+	 * @param {number} roomID roomID
+	 * @param {Socket} socket socket
+	 */
 	async storeToServerHandler(roomID, socket) {
 		this.storageManager.saveRoomDataToServer(roomID).then(() => {
-			socket.emit("room-data-saved", roomID)
-			socket.broadcast.to(roomID).emit("room-data-saved", roomID)
+			socket.emit('room-data-saved', roomID)
+			socket.broadcast.to(roomID).emit('room-data-saved', roomID)
 		})
 	}
 
@@ -227,9 +225,7 @@ export default class SocketManager {
 			socketData.user.id,
 		)
 	}
-	/**
-	 * @param {Socket} socket
-	*/
+
 	async serverVolatileBroadcastHandler(socket, roomID, encryptedData) {
 		const payload = JSON.parse(
 			Utils.convertArrayBufferToString(encryptedData),

@@ -5,6 +5,6 @@
 import SaveStatus from './SaveStatus.vue'
 import VueWrapper from './VueWrapper'
 
-export default function(props:{saving: Boolean}) {
+export default function(props:{saving: boolean}) {
 	return React.createElement(VueWrapper, { componentProps: props, component: SaveStatus })
 }

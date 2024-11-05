@@ -1,5 +1,9 @@
+/**
+* SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+* SPDX-License-Identifier: AGPL-3.0-or-later
+*/
 <template>
-	<NcButton type="tertiary" v-on:click="onClick">
+	<NcButton type="tertiary" @click="onClick">
 		<template #icon>
 			<NcSavingIndicatorIcon :saving="saving" />
 		</template>
@@ -9,7 +13,7 @@
 <script>
 import { NcButton, NcSavingIndicatorIcon } from '@nextcloud/vue'
 export default {
-	name: "SaveStatus",
+	name: 'SaveStatus',
 	components: {
 		NcButton,
 		NcSavingIndicatorIcon,
@@ -17,11 +21,12 @@ export default {
 	props: {
 		saving: {
 			type: Boolean,
-			default: false
+			default: false,
 		},
 		onClick: {
-			type: Function
-		}
+			type: Function,
+			default: () => { },
+		},
 	},
 }
 </script>

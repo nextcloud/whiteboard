@@ -6,13 +6,11 @@
 import dotenv from 'dotenv'
 import express from 'express'
 import PrometheusDataManager from './PrometheusDataManager.js'
-import StorageManager from './StorageManager.js'
 
 dotenv.config()
 
 export default class AppManager {
 
-	/** @param {StorageManager} storageManager*/
 	constructor(storageManager) {
 		this.app = express()
 		this.storageManager = storageManager
