@@ -29,6 +29,7 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import SaveStatus from './SaveStatus'
 
 interface WhiteboardAppProps {
 	fileId: number
@@ -46,6 +47,7 @@ export default function App({
 	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
 
 	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
+	const [roomDataSaved, setRoomDataSaved] = useState(true)
 	const [zenModeEnabled] = useState(isEmbedded)
 	const [gridModeEnabled] = useState(false)
 
@@ -91,10 +93,17 @@ export default function App({
 	const [excalidrawAPI, setExcalidrawAPI]
 		= useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
+	const [collabStarted, setCollabStarted] = useState(false)
 
-	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
-	if (collab && !collab.portal.socket) collab.startCollab()
+	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled, setRoomDataSaved)) }
+	if (collab && !collabStarted) {
+		setCollabStarted(true)
+		collab.startCollab()
+	}
+
+	const [isSmartPickerInserted, setIsSmartPickerInserted] = useState(false)
 	useEffect(() => {
+		if (isSmartPickerInserted) return
 		const extraTools = document.getElementsByClassName(
 			'App-toolbar__extra-tools-trigger',
 		)[0]
@@ -107,6 +116,7 @@ export default function App({
 			)
 			const root = createRoot(smartPick)
 			root.render(renderSmartPicker())
+			setIsSmartPickerInserted(true)
 		}
 	})
 
@@ -236,12 +246,26 @@ export default function App({
 		)
 	}
 
+	const renderTopRightUI = () => {
+		if (collab?.portal.socket) {
+			return (
+				<SaveStatus saving={!(roomDataSaved)} onClick={
+					() => {
+						collab?.portal.requestStoreToServer()
+					}
+				}
+				/>
+			)
+		}
+	}
+
 	return (
 		<div className="App">
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
+					renderTopRightUI={renderTopRightUI}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
 						console.log(api)
 						console.log('Setting API')

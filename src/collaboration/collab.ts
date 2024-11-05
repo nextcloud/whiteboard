@@ -17,15 +17,17 @@ export class Collab {
 	portal: Portal
 	publicSharingToken: string | null
 	setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>
+	setRoomDataSaved: React.Dispatch<React.SetStateAction<boolean>>
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 	private files = new Map<string, BinaryFileData>()
 
-	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
+	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>, setRoomDataSaved: React.Dispatch<React.SetStateAction<boolean>>) {
 		this.excalidrawAPI = excalidrawAPI
 		this.fileId = fileId
 		this.publicSharingToken = publicSharingToken
 		this.setViewModeEnabled = setViewModeEnabled
+		this.setRoomDataSaved = setRoomDataSaved
 
 		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
 	}
@@ -55,6 +57,7 @@ export class Collab {
 			elements,
 		},
 		)
+		this.setRoomDataSaved(false)
 	}
 
 	private getLastBroadcastedOrReceivedSceneVersion = () => {
@@ -69,6 +72,7 @@ export class Collab {
 			this.lastBroadcastedOrReceivedSceneVersion = hashElementsVersion(elements)
 			throttle(() => {
 				this.portal.broadcastScene('SCENE_INIT', elements)
+				this.setRoomDataSaved(false)
 
 				const syncedFiles = Array.from(this.files.keys())
 				const newFiles = Object.keys(files).filter((id) => !syncedFiles.includes(id)).reduce((acc, id) => {

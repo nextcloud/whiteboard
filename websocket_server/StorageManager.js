@@ -8,11 +8,16 @@
 import StorageStrategy from './StorageStrategy.js'
 import LRUCacheStrategy from './LRUCacheStrategy.js'
 import RedisStrategy from './RedisStrategy.js'
+import ApiService from './ApiService.js';
+import Room from './Room.js'
 
 export default class StorageManager {
-
-	constructor(strategy) {
+	/** @param {StorageStrategy} strategy
+	 * @param {ApiService} apiService
+	 */
+	constructor(strategy, apiService) {
 		this.setStrategy(strategy)
+		this.apiService = apiService
 	}
 
 	setStrategy(strategy) {
@@ -38,6 +43,11 @@ export default class StorageManager {
 	async clear() {
 		await this.strategy.clear()
 	}
+	/** @param { number }roomId */
+	async saveRoomDataToServer(roomId) {
+		const room = await this.get(roomId)
+		this.apiService.saveRoomDataToServer(roomId, room.data, room.lastEditedUser, room.files);
+	}
 
 	getRooms() {
 		return this.strategy.getRooms()
@@ -58,7 +68,7 @@ export default class StorageManager {
 			throw new Error('Invalid storage strategy type')
 		}
 
-		return new StorageManager(strategy)
+		return new StorageManager(strategy,apiService)
 	}
 
 }

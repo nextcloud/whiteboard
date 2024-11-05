@@ -5,18 +5,20 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { Server as SocketIO } from 'socket.io'
+import { Socket, Server as SocketIO } from 'socket.io'
 import prometheusMetrics from 'socket.io-prometheus'
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 import Utils from './Utils.js'
 import { createAdapter } from '@socket.io/redis-streams-adapter'
 import SocketDataManager from './SocketDataManager.js'
+import StorageManager from './StorageManager.js'
 
 dotenv.config()
 
 export default class SocketManager {
 
+	/** @param {StorageManager} storageManager */
 	constructor(server, roomDataManager, storageManager) {
 		this.roomDataManager = roomDataManager
 		this.storageManager = storageManager
@@ -92,7 +94,7 @@ export default class SocketManager {
 					},
 				)
 				next(new Error('Connection verified'))
-			} catch (e) {}
+			} catch (e) { }
 
 			next(new Error('Authentication error'))
 		}
@@ -107,6 +109,7 @@ export default class SocketManager {
 		socket.on('server-volatile-broadcast', (roomID, encryptedData) =>
 			this.serverVolatileBroadcastHandler(socket, roomID, encryptedData),
 		)
+		socket.on('store-to-server', (roomID) => this.storeToServerHandler(roomID, socket))
 		socket.on('image-add', (roomID, id, data) => this.imageAddHandler(socket, roomID, id, data))
 		socket.on('image-remove', (roomID, id, data) => this.imageRemoveHandler(socket, roomID, id, data))
 		socket.on('image-get', (roomID, id, data) => this.imageGetHandler(socket, roomID, id, data))
@@ -115,6 +118,17 @@ export default class SocketManager {
 			this.disconnectingHandler(socket, rooms)
 		})
 		socket.on('disconnect', () => this.handleDisconnect(socket))
+	}
+
+	/**
+	 * @param {int} roomID
+	 * @param {Socket} socket
+	*/
+	async storeToServerHandler(roomID, socket) {
+		this.storageManager.saveRoomDataToServer(roomID).then(() => {
+			socket.emit("room-data-saved", roomID)
+			socket.broadcast.to(roomID).emit("room-data-saved", roomID)
+		})
 	}
 
 	async handleDisconnect(socket) {
@@ -213,7 +227,9 @@ export default class SocketManager {
 			socketData.user.id,
 		)
 	}
-
+	/**
+	 * @param {Socket} socket
+	*/
 	async serverVolatileBroadcastHandler(socket, roomID, encryptedData) {
 		const payload = JSON.parse(
 			Utils.convertArrayBufferToString(encryptedData),
