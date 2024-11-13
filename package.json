@@ -6,7 +6,7 @@
   "type": "module",
   "main": "src/main.tsx",
   "scripts": {
-    "build": "vite --mode production build",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' vite --mode production build",
     "dev": "vite --mode development build",
     "watch": "vite --mode development build --watch",
     "lint": "eslint --ext .js,.mjs,.ts,.tsx,.vue src websocket_server tests/integration ",
