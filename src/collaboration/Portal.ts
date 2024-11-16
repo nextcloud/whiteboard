@@ -7,7 +7,11 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { io, type Socket } from 'socket.io-client'
 import type { Collab } from './collab'
-import type { AppState, BinaryFiles, Gesture } from '@excalidraw/excalidraw/types/types'
+import type {
+	AppState,
+	BinaryFiles,
+	Gesture,
+} from '@excalidraw/excalidraw/types/types'
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
@@ -24,7 +28,11 @@ export class Portal {
 	collab: Collab
 	publicSharingToken: string | null
 
-	constructor(roomId: string, collab: Collab, publicSharingToken: string | null) {
+	constructor(
+		roomId: string,
+		collab: Collab,
+		publicSharingToken: string | null,
+	) {
 		this.roomId = roomId
 		this.collab = collab
 		this.publicSharingToken = publicSharingToken
@@ -37,6 +45,7 @@ export class Portal {
 
 		const url = new URL(collabBackendUrl)
 		const path = url.pathname.replace(/\/$/, '') + '/socket.io'
+		const isWhiteboardWebsocketEnabled = loadState('whiteboard', 'isWhiteboardWebsocketEnabled', false)
 
 		const socket = io(url.origin, {
 			path,
@@ -44,7 +53,7 @@ export class Portal {
 			auth: {
 				token,
 			},
-			transports: ['websocket'],
+			transports: isWhiteboardWebsocketEnabled ? ['polling'] : ['websocket'],
 			timeout: 10000,
 		}).connect()
 
@@ -66,9 +75,7 @@ export class Portal {
 	}
 
 	handleConnectionError = () => {
-		alert(
-			'Failed to connect to the whiteboard server.',
-		)
+		alert('Failed to connect to the whiteboard server.')
 		OCA.Viewer?.close()
 	}
 
@@ -161,29 +168,29 @@ export class Portal {
 
 	async refreshJWT(): Promise<string | null> {
 		try {
-		  let url = generateUrl(`apps/whiteboard/${this.roomId}/token`)
-		  if (this.publicSharingToken) {
+			let url = generateUrl(`apps/whiteboard/${this.roomId}/token`)
+			if (this.publicSharingToken) {
 				url += `?publicSharingToken=${encodeURIComponent(this.publicSharingToken)}`
-		  }
+			}
 
-		  const response = await axios.get(url, { withCredentials: true })
+			const response = await axios.get(url, { withCredentials: true })
 
-		  const token = response.data.token
+			const token = response.data.token
 
-		  console.log('token', token)
+			console.log('token', token)
 
-		  if (!token) throw new Error('No token received')
+			if (!token) throw new Error('No token received')
 
-		  localStorage.setItem(`jwt-${this.roomId}`, token)
+			localStorage.setItem(`jwt-${this.roomId}`, token)
 
-		  return token
+			return token
 		} catch (error) {
-		  console.error('Error refreshing JWT:', error)
-		  alert(error.message)
-		  OCA.Viewer?.close()
-		  return null
+			console.error('Error refreshing JWT:', error)
+			alert(error.message)
+			OCA.Viewer?.close()
+			return null
 		}
-	  }
+	}
 
 	async _broadcastSocketData(
 		data: {
@@ -241,7 +248,7 @@ export class Portal {
 	}
 
 	async sendImageFiles(files: BinaryFiles) {
-		Object.values(files).forEach(file => {
+		Object.values(files).forEach((file) => {
 			this.collab.addFile(file)
 			this.socket?.emit('image-add', this.roomId, file.id, file)
 		})

@@ -10,28 +10,33 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Controller;
 
 use Exception;
+use OCA\AppAPI\Attribute\AppAPIAuth;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
-use OCA\Whiteboard\Service\JWTService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 
 /**
  * @psalm-suppress UndefinedClass
  * @psalm-suppress MissingDependency
+ * @psalm-suppress UndefinedAttributeClass
  */
-final class SettingsController extends Controller {
+final class ExAppController extends Controller {
 	public function __construct(
 		IRequest                 $request,
 		private ExceptionService $exceptionService,
-		private JWTService       $jwtService,
 		private ConfigService    $configService,
 	) {
 		parent::__construct('whiteboard', $request);
 	}
 
-	public function update(): DataResponse {
+	#[NoCSRFRequired]
+	#[PublicPage]
+	#[AppAPIAuth]
+	public function updateSettings(): DataResponse {
 		try {
 			$serverUrl = $this->request->getParam('serverUrl');
 			$secret = $this->request->getParam('secret');
@@ -45,7 +50,7 @@ final class SettingsController extends Controller {
 			}
 
 			return new DataResponse([
-				'jwt' => $this->jwtService->generateJWTFromPayload(['serverUrl' => $serverUrl])
+				'message' => 'Settings updated',
 			]);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);

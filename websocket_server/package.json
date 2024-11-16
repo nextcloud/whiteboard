@@ -1,0 +1,23 @@
+{
+  "name": "whiteboard-websocket",
+  "version": "0.0.1",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "start": "node ./main.js"
+  },
+  "dependencies": {
+    "@socket.io/redis-streams-adapter": "^0.2.2",
+    "dotenv": "^16.4.5",
+    "express": "^5.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2",
+    "prom-client": "^14.2.0",
+    "redis": "^4.7.0",
+    "socket.io": "^4.7.5",
+    "socket.io-prometheus": "^0.3.0",
+    "lru-cache": "^11.0.1"
+  }
+}

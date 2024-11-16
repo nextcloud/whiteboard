@@ -1,0 +1,39 @@
+const defaultMockValues = {
+	IS_TEST_ENV: true,
+	IS_DEV: false,
+	SETUP_TYPE: 'standalone',
+	USE_TLS: false,
+	TLS_KEY_PATH: null,
+	TLS_CERT_PATH: null,
+	STORAGE_STRATEGY: 'lru',
+	REDIS_URL: null,
+	FORCE_CLOSE_TIMEOUT: 60 * 1000,
+	METRICS_TOKEN: null,
+	JWT_SECRET_KEY: null,
+	EX_APP_ID: null,
+	EX_APP_SECRET: null,
+	EX_APP_VERSION: null,
+}
+
+export function createConfigMock(customValues = {}) {
+	const mockValues = { ...defaultMockValues, ...customValues }
+
+	const computedProperties = {
+		get JWT_SECRET_KEY() {
+			return mockValues.JWT_SECRET_KEY
+		},
+		get NEXTCLOUD_WEBSOCKET_URL() {
+			return mockValues.NEXTCLOUD_WEBSOCKET_URL
+		},
+		get NEXTCLOUD_URL() {
+			return mockValues.NEXTCLOUD_URL
+		},
+	}
+
+	const mockConfig = {
+		...mockValues,
+		...computedProperties,
+	}
+
+	return mockConfig
+}
