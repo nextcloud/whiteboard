@@ -10,7 +10,14 @@
 	top: 0;
 }
 
-.whiteboard-viewer__embedding {
-	min-height: min(200px, 50vh);
-	position: relative;
+.whiteboard-viewer__embedding .App {
+	min-height: max(400px, 50vh);
+
+	.excalidraw-wrapper {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 0;
+	}
 }
