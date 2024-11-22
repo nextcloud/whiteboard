@@ -29,6 +29,7 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import { registerFilesHandler } from './files/files'
 
 interface WhiteboardAppProps {
 	fileId: number
@@ -95,6 +96,10 @@ export default function App({
 	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
 	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
+		if (excalidrawAPI) {
+			registerFilesHandler(excalidrawAPI)
+		}
+
 		const extraTools = document.getElementsByClassName(
 			'App-toolbar__extra-tools-trigger',
 		)[0]
