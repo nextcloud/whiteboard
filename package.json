@@ -48,7 +48,7 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "socket.io-prometheus": "^0.3.0",
-    "vue": "^2.7.16"
+    "vue": "^3.0.0"
   },
   "devDependencies": {
     "@nextcloud/browserslist-config": "^3.0.1",
