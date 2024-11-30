@@ -59,7 +59,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "@vue/tsconfig": "^0.5.1",
     "nodemon": "^3.1.7",
-    "prettier": "^3.3.3",
+    "prettier": "^3.4.1",
     "stylelint-config-css-modules": "^4.4.0",
     "typescript": "^5.7.2",
     "typescript-plugin-css-modules": "^5.1.0",
