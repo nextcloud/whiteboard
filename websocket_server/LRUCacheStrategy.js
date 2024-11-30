@@ -20,6 +20,7 @@ export default class LRUCacheStrategy extends StorageStrategy {
 			ttlAutopurge: true,
 			dispose: async (value, key) => {
 				console.log(`[${key}] Disposing room`)
+
 				if (value?.data && value?.lastEditedUser) {
 					try {
 						await this.apiService.saveRoomDataToServer(
@@ -53,7 +54,9 @@ export default class LRUCacheStrategy extends StorageStrategy {
 	}
 
 	getRooms() {
-		const rooms = Array.from(this.cache.values()).filter((room) => room instanceof Room)
+		const rooms = Array.from(this.cache.values()).filter(
+			(room) => room instanceof Room,
+		)
 
 		return rooms
 	}
