@@ -96,10 +96,6 @@ export default function App({
 	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
 	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
-		if (excalidrawAPI) {
-			registerFilesHandler(excalidrawAPI)
-		}
-
 		const extraTools = document.getElementsByClassName(
 			'App-toolbar__extra-tools-trigger',
 		)[0]

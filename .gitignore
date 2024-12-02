@@ -2,6 +2,7 @@
 \.idea/
 
 /build/
+/backup/
 /js/
 /dist/
 /css/
