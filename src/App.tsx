@@ -29,7 +29,6 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawLang } from './hooks/useExcalidrawLang'
-import { registerFilesHandler } from './files/files'
 
 interface WhiteboardAppProps {
 	fileId: number
