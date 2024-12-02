@@ -1,3 +1,7 @@
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
 import type {
 	BinaryFileData,
@@ -5,9 +9,10 @@ import type {
 	ExcalidrawImperativeAPI,
 } from '@excalidraw/excalidraw/types/types'
 import { Collab } from '../collaboration/collab'
-import type { FileId } from '@excalidraw/excalidraw/types/element/types'
+import type { ExcalidrawElement, FileId } from '@excalidraw/excalidraw/types/element/types'
 
 export class FileHandle {
+
 	private collab: Collab
 	private excalidrawApi: ExcalidrawImperativeAPI
 	private types: string[]
@@ -22,7 +27,7 @@ export class FileHandle {
 		const containerRef = document.getElementsByClassName(
 			'excalidraw-container',
 		)[0]
-		let constructedFile: BinaryFileData = {
+		const constructedFile: BinaryFileData = {
 			mimeType: 'image/png',
 			created: 0o0,
 			id: 'placeholder_image' as FileId,
@@ -31,16 +36,43 @@ export class FileHandle {
 		this.collab.addFile(constructedFile)
 		if (containerRef) {
 			containerRef.addEventListener('drop', (ev) =>
-				this.filesDragEventListener(ev, excalidrawApi),
+				this.filesDragEventListener(ev),
 			)
 		}
-		this.excalidrawApi.onPointerDown((tool, state, event) => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		this.excalidrawApi.onPointerDown((activeTool, state, event) => {
+			const clickedElement = this.getElementAt(state.lastCoords.x, state.lastCoords.y)
+			if (!clickedElement) {
+				return
+			}
+			this.downloadFile(clickedElement.customData?.meta)
 		})
 	}
 
-	private filesDragEventListener(ev: Event, excalidrawApi: ExcalidrawImperativeAPI) {
+	private downloadFile(meta) {
+		const blob = new Blob([meta.dataurl], { type: meta.type })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = meta.name
+		a.click()
+		URL.revokeObjectURL(url)
+	}
+
+	private getElementAt(px: number, py: number): ExcalidrawElement | undefined {
+		const elements = this.excalidrawApi.getSceneElements()
+		return elements.find((element) => {
+			const { x, y, width, height } = element
+			return (
+				px >= x && px <= x + width
+				&& py >= y && py <= y + height
+			)
+		})
+	}
+
+	private filesDragEventListener(ev: Event) {
 		if (ev instanceof DragEvent) {
-			for (let file of Array.from(ev.dataTransfer?.files || [])) {
+			for (const file of Array.from(ev.dataTransfer?.files || [])) {
 				this.handleFileInsert(file, ev)
 			}
 		}
@@ -56,17 +88,20 @@ export class FileHandle {
 		const fr = new FileReader()
 		fr.readAsDataURL(file)
 		fr.onload = () => {
-			let constructedFile: BinaryFileData = {
+			const constructedFile: BinaryFileData = {
 				mimeType: 'image/png',
 				created: 0o0,
 				id: (Math.random() + 1).toString(36).substring(7) as FileId,
 				dataURL: fr.result as DataURL,
 			}
-			this.addCustomFileElement(constructedFile, file.name)
+			const meta = {
+				name: file.name, type: file.type, lastModified: file.lastModified, dataurl: fr.result,
+			}
+			this.addCustomFileElement(constructedFile, meta)
 		}
 	}
 
-	private addCustomFileElement(constructedFile: BinaryFileData, filename: string) {
+	private addCustomFileElement(constructedFile: BinaryFileData, meta) {
 		this.collab.addFile(constructedFile)
 		const elements = this.excalidrawApi
 			.getSceneElementsIncludingDeleted()
@@ -74,23 +109,27 @@ export class FileHandle {
 		const newElements = convertToExcalidrawElements([
 			{
 				type: 'text',
-				text: filename,
-				customData: { filedata: { constructedFile } },
+				text: meta.name,
+				customData: { meta },
 				groupIds: ['1'],
 				y: 0,
-				x: 0,
+				x: 50,
 			},
 			{
 				type: 'image',
 				fileId: 'placeholder_image' as FileId,
+				customData: { meta },
 				groupIds: ['1'],
-				y: 0,
-				x: 0,
-			}
+				y: -10,
+				x: -10,
+				width: 50,
+				height: 50,
+			},
 		])
 		elements.push(...newElements)
 		this.excalidrawApi.updateScene({ elements })
 	}
+
 }
 
 /**
@@ -98,6 +137,7 @@ export class FileHandle {
  * uploads file to nextcloud server, to be shared with all users
  * if filetype not supported by excalidraw inserts link to file
  * @param {ExcalidrawImperativeAPI} excalidrawApi excalidrawApi
+ * @param collab {Collab} collab
  */
 export function registerFilesHandler(
 	excalidrawApi: ExcalidrawImperativeAPI,
