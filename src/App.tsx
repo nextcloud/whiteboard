@@ -11,6 +11,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
 import { mdiSlashForwardBox } from '@mdi/js'
 import { createRoot } from 'react-dom'
+import { showError } from '@nextcloud/dialogs'
+import { translate as t } from '@nextcloud/l10n'
 import {
 	Excalidraw,
 	MainMenu,
@@ -29,6 +31,8 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import { useWhiteboardRecording } from './hooks/useWhiteboardRecording'
+import { RecordingControls } from './components/RecordingControls'
 
 interface WhiteboardAppProps {
 	fileId: number
@@ -236,17 +240,42 @@ export default function App({
 		)
 	}
 
+	const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null)
+	const {
+		recordingState,
+		startRecording,
+		stopRecording,
+		downloadRecording,
+	} = useWhiteboardRecording()
+
+	const handleStartRecording = useCallback(() => {
+		if (!excalidrawAPIRef.current) {
+			showError(t('whiteboard', 'Could not access whiteboard'))
+			return
+		}
+
+		const staticCanvas = document.querySelector('.excalidraw__canvas.static') as HTMLCanvasElement
+		const interactiveCanvas = document.querySelector('.excalidraw__canvas.interactive') as HTMLCanvasElement
+
+		if (!staticCanvas || !interactiveCanvas) {
+			showError(t('whiteboard', 'Could not find canvases to record'))
+			return
+		}
+
+		startRecording({ staticCanvas, interactiveCanvas })
+	}, [startRecording])
+
 	return (
 		<div className="App">
 			<div className="excalidraw-wrapper">
 				<Excalidraw
-					validateEmbeddable={() => true}
-					renderEmbeddable={Embeddable}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-						console.log(api)
-						console.log('Setting API')
+						console.log('Excalidraw API initialized')
+						excalidrawAPIRef.current = api
 						setExcalidrawAPI(api)
 					}}
+					validateEmbeddable={() => true}
+					renderEmbeddable={Embeddable}
 					initialData={initialStatePromiseRef.current.promise}
 					onPointerUpdate={collab?.onPointerUpdate}
 					viewModeEnabled={viewModeEnabled}
@@ -263,6 +292,12 @@ export default function App({
 					langCode={lang}>
 					{renderMenu()}
 				</Excalidraw>
+				<RecordingControls
+					recordingState={recordingState}
+					onStartRecording={handleStartRecording}
+					onStopRecording={stopRecording}
+					onDownloadRecording={downloadRecording}
+				/>
 			</div>
 		</div>
 	)
