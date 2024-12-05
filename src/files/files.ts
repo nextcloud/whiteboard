@@ -9,7 +9,15 @@ import type {
 	ExcalidrawImperativeAPI,
 } from '@excalidraw/excalidraw/types/types'
 import { Collab } from '../collaboration/collab'
-import type { ExcalidrawElement, FileId } from '@excalidraw/excalidraw/types/element/types'
+import type { FileId } from '@excalidraw/excalidraw/types/element/types'
+
+type Meta = {
+	name: string,
+	type: string,
+	lastModified: number,
+	dataurl: string,
+	fileId: string,
+}
 
 export class FileHandle {
 
@@ -39,35 +47,33 @@ export class FileHandle {
 				this.filesDragEventListener(ev),
 			)
 		}
+		let lastPointerDown = 0
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		this.excalidrawApi.onPointerDown((activeTool, state, event) => {
-			const clickedElement = this.getElementAt(state.lastCoords.x, state.lastCoords.y)
-			if (!clickedElement) {
+			const clickedElement = state.hit.element
+			if (!clickedElement || !clickedElement.customData) {
 				return
 			}
-			this.downloadFile(clickedElement.customData?.meta)
+			event.stopPropagation()
+			if (Date.now() - lastPointerDown > 200) {
+				lastPointerDown = Date.now()
+				return
+			} else {
+				lastPointerDown = Date.now()
+			}
+			this.downloadFile(clickedElement.customData.meta)
 		})
 	}
 
-	private downloadFile(meta) {
-		const blob = new Blob([meta.dataurl], { type: meta.type })
+	private downloadFile(meta: Meta) {
+		const file = this.excalidrawApi.getFiles()[meta.fileId]
+		const blob = new Blob([file.dataURL], { type: meta.type })
 		const url = URL.createObjectURL(blob)
 		const a = document.createElement('a')
 		a.href = url
 		a.download = meta.name
 		a.click()
 		URL.revokeObjectURL(url)
-	}
-
-	private getElementAt(px: number, py: number): ExcalidrawElement | undefined {
-		const elements = this.excalidrawApi.getSceneElements()
-		return elements.find((element) => {
-			const { x, y, width, height } = element
-			return (
-				px >= x && px <= x + width
-				&& py >= y && py <= y + height
-			)
-		})
 	}
 
 	private filesDragEventListener(ev: Event) {
@@ -89,41 +95,123 @@ export class FileHandle {
 		fr.readAsDataURL(file)
 		fr.onload = () => {
 			const constructedFile: BinaryFileData = {
-				mimeType: 'image/png',
-				created: 0o0,
+				mimeType: file.type,
+				created: Date.now(),
 				id: (Math.random() + 1).toString(36).substring(7) as FileId,
 				dataURL: fr.result as DataURL,
 			}
-			const meta = {
-				name: file.name, type: file.type, lastModified: file.lastModified, dataurl: fr.result,
+			if (typeof fr.result === 'string') {
+				const meta: Meta = {
+					name: file.name,
+					type: file.type,
+					lastModified: file.lastModified,
+					dataurl: fr.result,
+					fileId: constructedFile.id,
+				}
+				this.addCustomFileElement(constructedFile, meta)
 			}
-			this.addCustomFileElement(constructedFile, meta)
 		}
 	}
 
-	private addCustomFileElement(constructedFile: BinaryFileData, meta) {
-		this.collab.addFile(constructedFile)
+	private addCustomFileElement(constructedFile: BinaryFileData, meta: Meta) {
+		this.collab.portal.sendImageFiles({ [constructedFile.id]: constructedFile })
 		const elements = this.excalidrawApi
 			.getSceneElementsIncludingDeleted()
 			.slice()
 		const newElements = convertToExcalidrawElements([
 			{
-				type: 'text',
-				text: meta.name,
+				type: 'rectangle',
+				fillStyle: 'hachure',
 				customData: { meta },
-				groupIds: ['1'],
+				strokeWidth: 1,
+				strokeStyle: 'solid',
+				roughness: 0,
+				opacity: 30,
+				angle: 0,
+				x: 0,
 				y: 0,
-				x: 50,
+				strokeColor: '#1e1e1e',
+				backgroundColor: '#a5d8ff',
+				width: 252.62770075583379,
+				height: 81.57857850076135,
+				seed: 1641118746,
+				groupIds: [meta.fileId],
+				frameId: null,
+				roundness: {
+					type: 3,
+				},
+				boundElements: [],
 			},
+			// image to prevent excalidraw from removing file
 			{
 				type: 'image',
-				fileId: 'placeholder_image' as FileId,
+				fileId: meta.fileId as FileId,
+				x: 0,
+				y: 0,
+				height: 0,
+				width: 0,
+				opacity: 0,
+				locked: true,
+				groupIds: [meta.fileId],
+			},
+			{
+				type: 'text',
 				customData: { meta },
-				groupIds: ['1'],
-				y: -10,
-				x: -10,
-				width: 50,
-				height: 50,
+				version: 248,
+				versionNonce: 94933274,
+				isDeleted: false,
+				id: 'sdDa83JaYdFr_Aja2q_z7',
+				fillStyle: 'solid',
+				strokeWidth: 1,
+				strokeStyle: 'solid',
+				roughness: 0,
+				opacity: 100,
+				angle: 0,
+				x: 85.2856430662,
+				y: 28.8678679811,
+				strokeColor: '#1e1e1e',
+				backgroundColor: 'transparent',
+				width: 140.625,
+				height: 24,
+				seed: 2067517530,
+				groupIds: [meta.fileId],
+				frameId: null,
+				roundness: null,
+				boundElements: [],
+				updated: 1733306011391,
+				link: null,
+				locked: false,
+				fontSize: 20,
+				fontFamily: 3,
+				text: meta.name.length > 14 ? meta.name.slice(0, 11) + '...' : meta.name,
+				textAlign: 'left',
+				verticalAlign: 'top',
+				containerId: null,
+				baseline: 20,
+			},
+			{
+				type: 'ellipse',
+				customData: { meta },
+				id: 'AaRO1KGioMv4hDDaJcmaI',
+				fillStyle: 'solid',
+				strokeWidth: 1,
+				strokeStyle: 'dotted',
+				roughness: 0,
+				opacity: 100,
+				angle: 0,
+				x: 28.8678679811,
+				y: 16.3505845419,
+				strokeColor: '#1e1e1e',
+				backgroundColor: '#a5d8ff',
+				width: 48.880073102719564,
+				height: 48.880073102719564,
+				seed: 1847675994,
+				groupIds: [meta.fileId],
+				frameId: null,
+				roundness: {
+					type: 2,
+				},
+				boundElements: [],
 			},
 		])
 		elements.push(...newElements)
