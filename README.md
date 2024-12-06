@@ -84,7 +84,7 @@ docker build -t nextcloud-whiteboard-server -f Dockerfile .
 
 ### Reverse proxy
 
-#### Apache
+#### Apache < 2.4.47
 
 ```
 ProxyPass /whiteboard http://localhost:3002/
@@ -92,6 +92,12 @@ RewriteEngine on
 RewriteCond %{HTTP:Upgrade} websocket [NC]
 RewriteCond %{HTTP:Connection} upgrade [NC]
 RewriteRule ^/?whiteboard/(.*) "ws://localhost:3002/$1" [P,L]
+```
+
+#### Apache >= 2.4.47
+
+```
+ProxyPass /whiteboard http://localhost:3002/ upgrade=websocket
 ```
 
 #### Nginx
