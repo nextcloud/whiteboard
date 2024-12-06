@@ -13,6 +13,7 @@ use Exception;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
 use OCA\Whiteboard\Service\JWTService;
+use OCA\Whiteboard\Settings\SetupCheck;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
@@ -27,6 +28,7 @@ final class SettingsController extends Controller {
 		private ExceptionService $exceptionService,
 		private JWTService $jwtService,
 		private ConfigService $configService,
+		private SetupCheck $setupCheck,
 	) {
 		parent::__construct('whiteboard', $request);
 	}
@@ -44,8 +46,11 @@ final class SettingsController extends Controller {
 				$this->configService->setWhiteboardSharedSecret($secret);
 			}
 
+			$result = $this->setupCheck->run();
+
 			return new DataResponse([
-				'jwt' => $this->jwtService->generateJWTFromPayload([ 'serverUrl' => $serverUrl ])
+				'jwt' => $this->jwtService->generateJWTFromPayload([ 'serverUrl' => $serverUrl ?: $this->configService->getCollabBackendUrl() ]),
+				'check' => $result->jsonSerialize(),
 			]);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
