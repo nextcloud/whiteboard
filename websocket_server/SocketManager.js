@@ -202,13 +202,27 @@ export default class SocketManager {
 		socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
 
 		const decryptedData = JSON.parse(Utils.convertArrayBufferToString(encryptedData))
-		const socketData = await this.socketDataManager.getSocketData(socket.id)
+
+		this.queueRoomUpdate(roomID, {
+			elements: decryptedData.payload.elements,
+		}, socket.id)
+	}
+
+	async processRoomDataUpdate(roomID, updateData, socketId) {
+		const socketData = await this.socketDataManager.getSocketData(socketId)
 		if (!socketData) return
+
 		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
+		const currentRoom = await this.storageManager.get(roomID)
+
+		const roomData = {
+			elements: updateData.elements || currentRoom?.data || [],
+			files: updateData.files || currentRoom?.files || {},
+		}
 
 		await this.roomDataManager.syncRoomData(
 			roomID,
-			decryptedData.payload.elements,
+			roomData,
 			userSocketsAndIds.map(u => u.userId),
 			socketData.user.id,
 		)
@@ -246,11 +260,14 @@ export default class SocketManager {
 		if (!socket.rooms.has(roomID) || isReadOnly) return
 
 		socket.broadcast.to(roomID).emit('image-data', data)
-		const room = await this.storageManager.get(roomID)
 
-		console.log(`[${roomID}] ${socket.id} added image ${id}`)
-		room.addFile(id, data)
-		this.storageManager.set(roomID, room)
+		const room = await this.storageManager.get(roomID)
+		const currentFiles = { ...room.files, [id]: data }
+
+		this.queueRoomUpdate(roomID, {
+			elements: room.data,
+			files: currentFiles,
+		}, socket.id)
 	}
 
 	async imageRemoveHandler(socket, roomID, id) {
@@ -258,8 +275,15 @@ export default class SocketManager {
 		if (!socket.rooms.has(roomID) || isReadOnly) return
 
 		socket.broadcast.to(roomID).emit('image-remove', id)
+
 		const room = await this.storageManager.get(roomID)
-		room.removeFile(id)
+		const currentFiles = { ...room.files }
+		delete currentFiles[id]
+
+		this.queueRoomUpdate(roomID, {
+			elements: room.data,
+			files: currentFiles,
+		}, socket.id)
 	}
 
 	async imageGetHandler(socket, roomId, id) {
@@ -286,16 +310,23 @@ export default class SocketManager {
 
 		for (const roomID of rooms) {
 			console.log(`[${roomID}] ${socketData.user.name} has left ${roomID}`)
-
 			const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
 			const otherUserSockets = userSocketsAndIds.filter(u => u.socketId !== socket.id)
 
 			if (otherUserSockets.length > 0) {
-				this.io.to(roomID).emit('room-user-change', userSocketsAndIds)
+				this.io.to(roomID).emit('room-user-change', otherUserSockets)
+			} else {
+				this.roomDataManager.cleanupEmptyRoom(roomID)
 			}
 
-			await this.roomDataManager.syncRoomData(roomID, null, userSocketsAndIds.map(u => u.userId))
+			this.queueRoomUpdate(roomID, {}, socket.id)
 		}
+	}
+
+	async queueRoomUpdate(roomID, updateData, socketId) {
+		this.processRoomDataUpdate(roomID, updateData, socketId).catch(error => {
+			console.error(`Failed to process room update for ${roomID}:`, error)
+		})
 	}
 
 }

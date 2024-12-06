@@ -16,6 +16,7 @@ import RoomDataManager from './RoomDataManager.js'
 import AppManager from './AppManager.js'
 import SocketManager from './SocketManager.js'
 import Utils from './Utils.js'
+import BackupManager from './BackupManager.js'
 
 export default class ServerManager {
 
@@ -24,8 +25,9 @@ export default class ServerManager {
 		this.closing = false
 		this.tokenGenerator = new SharedTokenGenerator()
 		this.apiService = new ApiService(this.tokenGenerator)
+		this.backupManager = new BackupManager({})
 		this.storageManager = StorageManager.create(this.config.storageStrategy, this.apiService)
-		this.roomDataManager = new RoomDataManager(this.storageManager, this.apiService)
+		this.roomDataManager = new RoomDataManager(this.storageManager, this.apiService, this.backupManager)
 		this.appManager = new AppManager(this.storageManager)
 		this.server = this.createConfiguredServer(this.appManager.getApp())
 		this.socketManager = new SocketManager(this.server, this.roomDataManager, this.storageManager)
