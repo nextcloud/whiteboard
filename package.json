@@ -35,7 +35,7 @@
     "@nextcloud/vue": "^8.21.0",
     "@socket.io/redis-streams-adapter": "^0.2.2",
     "axios": "^1.7.8",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.4.7",
     "express": "^5.0.1",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
