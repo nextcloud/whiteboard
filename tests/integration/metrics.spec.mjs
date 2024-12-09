@@ -1,32 +1,37 @@
 import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest'
 import axios from 'axios'
-import ServerManager from '../../websocket_server/ServerManager.js'
+import { createConfigMock } from './configMock.js'
+import ServerManagerModule from '../../websocket_server/ServerManager.js'
+import ConfigModule from '../../websocket_server/Config.js'
 
-const SERVER_URL = 'http://localhost:3008'
-const SECRET = 'secret'
+vi.mock('../../websocket_server/Config.js', () => ({
+	default: createConfigMock({
+		NEXTCLOUD_URL: 'http://localhost:3008',
+		NEXTCLOUD_WEBSOCKET_URL: 'http://localhost:3008',
+		PORT: '3008',
+		METRICS_TOKEN: 'secret',
+	}),
+}))
 
-vi.stubEnv('METRICS_TOKEN', SECRET)
+const Config = ConfigModule
+const ServerManager = ServerManagerModule
 
 describe('Metrics endpoint', () => {
 	let serverManager
 
 	beforeAll(async () => {
-		serverManager = new ServerManager({
-			port: 3008,
-			storageStrategy: 'lru',
-		})
-
-		serverManager.start()
+		serverManager = new ServerManager()
+		await serverManager.start()
 	})
 
 	afterAll(async () => {
-		await serverManager.server.close()
+		await serverManager.gracefulShutdown()
 	})
 
 	it('should work with bearer auth', async () => {
-		const response = await axios.get(`${SERVER_URL}/metrics`, {
+		const response = await axios.get(`${Config.NEXTCLOUD_URL}/metrics`, {
 			headers: {
-				Authorization: `Bearer ${SECRET}`,
+				Authorization: `Bearer ${Config.METRICS_TOKEN}`,
 			},
 		})
 		expect(response.status).toBe(200)
@@ -39,14 +44,14 @@ describe('Metrics endpoint', () => {
 	})
 
 	it('should work with token param', async () => {
-		const response = await axios.get(`${SERVER_URL}/metrics?token=${SECRET}`)
+		const response = await axios.get(`${Config.NEXTCLOUD_URL}/metrics?token=${Config.METRICS_TOKEN}`)
 		expect(response.status).toBe(200)
 		expect(response.data).toContain('whiteboard_room_stats{stat="activeRooms"}')
 	})
 
 	it('Not return on invalid auth', async () => {
 		try {
-			await axios.get(`${SERVER_URL}/metrics`, {
+			await axios.get(`${Config.NEXTCLOUD_URL}/metrics`, {
 				headers: {
 					Authorization: 'Bearer wrongtoken',
 				},

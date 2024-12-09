@@ -8,16 +8,15 @@
 import StorageStrategy from './StorageStrategy.js'
 import { createClient } from 'redis'
 import Room from './Room.js'
+import Config from './Config.js'
 
 export default class RedisStrategy extends StorageStrategy {
 
-	constructor(apiService) {
-		super()
-		this.apiService = apiService
-		this.client = createClient({
-			url: process.env.REDIS_URL || 'redis://localhost:6379',
+	static createRedisClient() {
+		return createClient({
+			url: Config.REDIS_URL,
 			retry_strategy: (options) => {
-				if (options.error && options.error.code === 'ECONNREFUSED') {
+				if (options.error?.code === 'ECONNREFUSED') {
 					return new Error('The server refused the connection')
 				}
 				if (options.total_retry_time > 1000 * 60 * 60) {
@@ -29,26 +28,18 @@ export default class RedisStrategy extends StorageStrategy {
 				return Math.min(options.attempt * 100, 3000)
 			},
 		})
-		this.client.on('error', (err) =>
-			console.error('Redis Client Error', err),
-		)
-		this.connect()
 	}
 
-	async connect() {
-		try {
-			await this.client.connect()
-		} catch (error) {
-			console.error('Failed to connect to Redis:', error)
-			throw error
-		}
+	constructor(redisClient, apiService) {
+		super()
+		this.apiService = apiService
+		this.client = redisClient
 	}
 
 	async get(key) {
 		try {
 			const data = await this.client.get(key)
-			if (!data) return null
-			return this.deserialize(data)
+			return data ? this.deserialize(data) : null
 		} catch (error) {
 			console.error(`Error getting data for key ${key}:`, error)
 			return null
@@ -58,7 +49,9 @@ export default class RedisStrategy extends StorageStrategy {
 	async set(key, value) {
 		try {
 			const serializedData = this.serialize(value)
-			await this.client.set(key, serializedData, { EX: 30 * 60 })
+			await this.client.set(key, serializedData, {
+				EX: Config.ROOM_MAX_AGE / 1000,
+			})
 		} catch (error) {
 			console.error(`Error setting data for key ${key}:`, error)
 		}
@@ -83,7 +76,10 @@ export default class RedisStrategy extends StorageStrategy {
 
 	async clear() {
 		try {
-			await this.client.flushDb()
+			const rooms = await this.getRooms()
+			for (const [key] of rooms) {
+				await this.delete(key)
+			}
 		} catch (error) {
 			console.error('Error clearing Redis database:', error)
 		}
@@ -93,9 +89,15 @@ export default class RedisStrategy extends StorageStrategy {
 		try {
 			const keys = await this.client.keys('*')
 			const rooms = new Map()
+
 			for (const key of keys) {
+				if (key.startsWith('token_') || key.startsWith('socket_')) {
+					continue
+				}
 				const room = await this.get(key)
-				if (room && !key.startsWith('token:') && !key.startsWith('socket:')) rooms.set(key, room)
+				if (room) {
+					rooms.set(key, room)
+				}
 			}
 			return rooms
 		} catch (error) {
@@ -105,9 +107,9 @@ export default class RedisStrategy extends StorageStrategy {
 	}
 
 	serialize(value) {
-		return value instanceof Room
-			? JSON.stringify(value.toJSON())
-			: JSON.stringify(value)
+		return JSON.stringify(
+			value instanceof Room ? value.toJSON() : value,
+		)
 	}
 
 	deserialize(data) {
