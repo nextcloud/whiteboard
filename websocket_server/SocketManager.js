@@ -100,21 +100,55 @@ export default class SocketManager {
 
 	handleConnection(socket) {
 		socket.emit('init-room')
-		socket.on('join-room', (roomID) => this.joinRoomHandler(socket, roomID))
+
+		socket.on('join-room', (roomID) =>
+			this.safeSocketHandler(socket, async () => {
+				await this.joinRoomHandler(socket, roomID)
+			}),
+		)
+
 		socket.on('server-broadcast', (roomID, encryptedData, iv) =>
-			this.serverBroadcastHandler(socket, roomID, encryptedData, iv),
+			this.safeSocketHandler(socket, async () => {
+				await this.serverBroadcastHandler(socket, roomID, encryptedData, iv)
+			}),
 		)
+
 		socket.on('server-volatile-broadcast', (roomID, encryptedData) =>
-			this.serverVolatileBroadcastHandler(socket, roomID, encryptedData),
+			this.safeSocketHandler(socket, async () => {
+				await this.serverVolatileBroadcastHandler(socket, roomID, encryptedData)
+			}),
 		)
-		socket.on('image-add', (roomID, id, data) => this.imageAddHandler(socket, roomID, id, data))
-		socket.on('image-remove', (roomID, id, data) => this.imageRemoveHandler(socket, roomID, id, data))
-		socket.on('image-get', (roomID, id, data) => this.imageGetHandler(socket, roomID, id, data))
+
+		socket.on('image-add', (roomID, id, data) =>
+			this.safeSocketHandler(socket, async () => {
+				await this.imageAddHandler(socket, roomID, id, data)
+			}),
+		)
+
+		socket.on('image-remove', (roomID, id, data) =>
+			this.safeSocketHandler(socket, async () => {
+				await this.imageRemoveHandler(socket, roomID, id, data)
+			}),
+		)
+
+		socket.on('image-get', (roomID, id, data) =>
+			this.safeSocketHandler(socket, async () => {
+				await this.imageGetHandler(socket, roomID, id, data)
+			}),
+		)
+
 		socket.on('disconnecting', () => {
 			const rooms = Array.from(socket.rooms).filter((room) => room !== socket.id)
-			this.disconnectingHandler(socket, rooms)
+			this.safeSocketHandler(socket, async () => {
+				await this.disconnectingHandler(socket, rooms)
+			})
 		})
-		socket.on('disconnect', () => this.handleDisconnect(socket))
+
+		socket.on('disconnect', () =>
+			this.safeSocketHandler(socket, async () => {
+				await this.handleDisconnect(socket)
+			}),
+		)
 	}
 
 	async handleDisconnect(socket) {
@@ -155,16 +189,21 @@ export default class SocketManager {
 		const sockets = await this.io.in(roomID).fetchSockets()
 		return Promise.all(sockets.map(async (s) => {
 			const data = await this.socketDataManager.getSocketData(s.id)
+			if (!data?.user?.id) {
+				console.warn(`Invalid socket data for socket ${s.id}`)
+				return null
+			}
 			return {
 				socketId: s.id,
 				user: data.user,
 				userId: data.user.id,
 			}
-		}))
+		})).then(results => results.filter(Boolean))
 	}
 
 	async joinRoomHandler(socket, roomID) {
-		console.log(`[${roomID}] ${socket.id} has joined ${roomID}`)
+		const socketData = await this.socketDataManager.getSocketData(socket.id)
+		console.log(`[${roomID}] ${socketData.user.name} has joined ${roomID}`)
 		await socket.join(roomID)
 
 		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
@@ -327,6 +366,22 @@ export default class SocketManager {
 		this.processRoomDataUpdate(roomID, updateData, socketId).catch(error => {
 			console.error(`Failed to process room update for ${roomID}:`, error)
 		})
+	}
+
+	async safeSocketHandler(socket, handler) {
+		try {
+			const socketData = await this.socketDataManager.getSocketData(socket.id)
+			if (!socketData?.user) {
+				socket.emit('error', 'Invalid session')
+				socket.disconnect()
+				return false
+			}
+			return await handler()
+		} catch (error) {
+			console.error('Socket handler error:', error)
+			socket.emit('error', 'Internal server error')
+			return false
+		}
 	}
 
 }
