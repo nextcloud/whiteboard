@@ -299,24 +299,4 @@ export default class RoomDataManager {
 		return backupData
 	}
 
-	/**
-	 * Handles empty room cleanup
-	 * @param {string} roomId - Room identifier
-	 * @return {Promise<null>}
-	 */
-	async handleEmptyRoom(roomId) {
-		await this.cleanupEmptyRoom(roomId)
-		return null
-	}
-
-	/**
-	 * Removes empty room from storage
-	 * @param {string} roomId - Room identifier
-	 * @return {Promise<void>}
-	 */
-	async cleanupEmptyRoom(roomId) {
-		await this.storageManager.delete(roomId)
-		Utils.logOperation(roomId, 'Empty room removed from cache')
-	}
-
 }

@@ -21,22 +21,22 @@ export default class Utils {
 
 	/**
 	 * Logs operation details
-	 * @param {string} roomId - Room identifier
+	 * @param {string} context - Context identifier
 	 * @param {string} message - Log message
 	 * @param {object} [data] - Additional data to log
 	 */
-	static logOperation(roomId, message, data = {}) {
-		console.log(`[${roomId}] ${message}:`, data)
+	static logOperation(context, message, data = {}) {
+		console.log(`[${context}] ${message}:`, data)
 	}
 
 	/**
 	 * Logs error details
-	 * @param {string} roomId - Room identifier
+	 * @param {string} context - Context identifier
 	 * @param {string} message - Error message
 	 * @param {Error} error - Error object
 	 */
-	static logError(roomId, message, error) {
-		console.error(`[${roomId}] ${message}:`, error)
+	static logError(context, message, error) {
+		console.error(`[${context}] ${message}:`, error)
 	}
 
 }

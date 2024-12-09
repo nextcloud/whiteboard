@@ -42,12 +42,12 @@ export default class BackupManager {
 	 * @param {BackupOptions} [options] - Configuration options
 	 */
 	constructor(options = {}) {
-		const { backupDir = './backup', maxBackupsPerRoom = 5 } = options
+		const { backupDir = './backup', maxBackupsPerRoom = 5, lockTimeout = 5000, lockRetryInterval = 50 } = options
 		this.backupDir = backupDir
 		this.maxBackupsPerRoom = maxBackupsPerRoom
 		this.locks = new Map()
-		this.lockTimeout = options.lockTimeout || 5000 // 5 seconds
-		this.lockRetryInterval = options.lockRetryInterval || 50 // 50ms
+		this.lockTimeout = lockTimeout
+		this.lockRetryInterval = lockRetryInterval
 		this.init()
 	}
 

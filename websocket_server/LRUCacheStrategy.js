@@ -11,12 +11,12 @@ import Room from './Room.js'
 
 export default class LRUCacheStrategy extends StorageStrategy {
 
-	constructor(apiService) {
+	constructor(apiService, options = { maxRooms: 1000, roomDataMaxAge: 30 * 60 * 1000 }) {
 		super()
 		this.apiService = apiService
 		this.cache = new LRUCache({
-			max: 1000,
-			ttl: 30 * 60 * 1000,
+			max: options.maxRooms,
+			ttl: options.roomDataMaxAge,
 			ttlAutopurge: true,
 			dispose: async (value, key) => {
 				console.log(`[${key}] Disposing room`)

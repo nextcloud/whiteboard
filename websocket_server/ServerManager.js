@@ -17,20 +17,69 @@ import AppManager from './AppManager.js'
 import SocketManager from './SocketManager.js'
 import Utils from './Utils.js'
 import BackupManager from './BackupManager.js'
+import CleanupManager from './CleanupManager.js'
+import PrometheusDataManager from './PrometheusDataManager.js'
+import SystemMonitor from './SystemMonitor.js'
+import SocketDataManager from './SocketDataManager.js'
 
 export default class ServerManager {
 
 	constructor(config) {
 		this.config = config
 		this.closing = false
-		this.tokenGenerator = new SharedTokenGenerator()
-		this.apiService = new ApiService(this.tokenGenerator)
-		this.backupManager = new BackupManager({})
-		this.storageManager = StorageManager.create(this.config.storageStrategy, this.apiService)
-		this.roomDataManager = new RoomDataManager(this.storageManager, this.apiService, this.backupManager)
-		this.appManager = new AppManager(this.storageManager)
-		this.server = this.createConfiguredServer(this.appManager.getApp())
-		this.socketManager = new SocketManager(this.server, this.roomDataManager, this.storageManager)
+
+		this.tokenGenerator = new SharedTokenGenerator(config.sharedSecret)
+
+		this.apiService = new ApiService(this.tokenGenerator, {
+			nextcloudUrl: this.config.nextcloudUrl,
+			isDev: Utils.parseBooleanFromEnv(this.config.isDev),
+		})
+
+		this.backupManager = new BackupManager({
+			backupDir: this.config.backupDir,
+			maxBackupsPerRoom: this.config.maxBackupsPerRoom,
+			lockTimeout: this.config.lockTimeout,
+			lockRetryInterval: this.config.lockRetryInterval,
+		})
+
+		this.roomStorage = StorageManager.create(this.config.storageStrategy, this.apiService, {
+			maxRooms: this.config.maxRooms,
+			roomDataMaxAge: this.config.roomDataMaxAge,
+			redisUrl: this.config.redisUrl,
+		})
+
+		this.sessionStorage = this.config.storageStrategy === 'redis'
+			? StorageManager.create('redis', this.apiService, { redisUrl: this.config.redisUrl })
+			: StorageManager.create('in-mem')
+
+		this.roomDataManager = new RoomDataManager(this.roomStorage, this.apiService, this.backupManager, {
+			maxRooms: this.config.maxRooms,
+			roomDataMaxAge: this.config.roomDataMaxAge,
+		})
+
+		this.systemMonitor = new SystemMonitor(this.roomStorage)
+
+		this.metricsManager = new PrometheusDataManager(this.systemMonitor)
+
+		this.appManager = new AppManager(this.metricsManager, {
+			metricsToken: this.config.metricsToken,
+		})
+
+		this.server = this.createConfiguredServer(this.appManager.getApp(), Utils.parseBooleanFromEnv(this.config.tls))
+
+		this.socketDataManager = new SocketDataManager(this.sessionStorage)
+
+		this.socketManager = new SocketManager(this.server, this.roomDataManager, this.sessionStorage, this.socketDataManager, {
+			jwtSecretKey: this.config.jwtSecretKey,
+			nextcloudUrl: this.config.nextcloudUrl,
+		})
+
+		this.cleanupManager = new CleanupManager(
+			this.roomDataManager,
+			{ cleanupInterval: this.config.cleanupInterval },
+		)
+
+		this.cleanupManager.startPeriodicTasks()
 	}
 
 	readTlsCredentials(keyPath, certPath) {
@@ -40,8 +89,7 @@ export default class ServerManager {
 		}
 	}
 
-	createConfiguredServer(app) {
-		const useTls = Utils.parseBooleanFromEnv(this.config.tls)
+	createConfiguredServer(app, useTls = false) {
 		const serverType = useTls ? https : http
 		const serverOptions = useTls ? this.readTlsCredentials(this.config.keyPath, this.config.certPath) : {}
 
@@ -68,9 +116,16 @@ export default class ServerManager {
 	async gracefulShutdown() {
 		if (this.closing) return
 		this.closing = true
-		console.log('Received shutdown signal, saving all data...')
+		console.log('Received shutdown signal, performing cleanup...')
+
 		try {
-			await this.roomDataManager.removeAllRoomData()
+			// Stop periodic cleanup tasks
+			this.cleanupManager.stopPeriodicTasks()
+
+			// Run one final cleanup
+			await this.cleanupManager.cleanupRooms()
+
+			// Continue with existing shutdown logic
 			this.socketManager.io.close()
 			console.log('Closing server...')
 			this.server.close(() => {

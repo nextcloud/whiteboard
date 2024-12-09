@@ -10,8 +10,8 @@ dotenv.config()
 
 export default class SharedTokenGenerator {
 
-	constructor() {
-		this.SHARED_SECRET = process.env.JWT_SECRET_KEY
+	constructor(sharedSecret) {
+		this.SHARED_SECRET = sharedSecret
 	}
 
 	handle(roomId) {
