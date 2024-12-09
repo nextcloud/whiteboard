@@ -59,8 +59,18 @@ export default class ApiService {
 		console.log(`[${roomID}] Saving room data to server: ${roomData.length} elements, ${Object.keys(files).length} files`)
 
 		const url = `${this.NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
-		const body = { data: { type: 'excalidraw', elements: roomData, files: this.cleanupFiles(roomData, files) } }
+
+		const body = {
+			data: {
+				type: 'excalidraw',
+				elements: roomData,
+				files: this.cleanupFiles(roomData, files),
+				savedAt: Date.now(),
+			},
+		}
+
 		const options = this.fetchOptions('PUT', null, body, roomID, lastEditedUser)
+
 		return this.fetchData(url, options)
 	}
 
