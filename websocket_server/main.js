@@ -5,36 +5,16 @@
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-
-import dotenv from 'dotenv'
 import ServerManager from './ServerManager.js'
-
-dotenv.config()
-
-const {
-	PORT = 3002,
-	TLS,
-	TLS_KEY: keyPath,
-	TLS_CERT: certPath,
-	STORAGE_STRATEGY = 'lru',
-} = process.env
-
-const FORCE_CLOSE_TIMEOUT = 60 * 1000
+import Config from './Config.js'
 
 async function main() {
 	try {
-		const serverManager = new ServerManager({
-			port: PORT,
-			tls: TLS,
-			keyPath,
-			certPath,
-			storageStrategy: STORAGE_STRATEGY,
-			forceCloseTimeout: FORCE_CLOSE_TIMEOUT,
-		})
+		const serverManager = new ServerManager()
 
 		await serverManager.start()
 
-		console.log(`Server started successfully on port ${PORT}`)
+		console.log(`Server started successfully on port ${Config.PORT}`)
 
 		process.on('SIGTERM', () => serverManager.gracefulShutdown())
 		process.on('SIGINT', () => serverManager.gracefulShutdown())

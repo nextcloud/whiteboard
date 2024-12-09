@@ -10,17 +10,10 @@ import path from 'path'
 import crypto from 'crypto'
 import zlib from 'zlib'
 import { promisify } from 'util'
+import Config from './Config.js'
 
 const gzip = promisify(zlib.gzip)
 const gunzip = promisify(zlib.gunzip)
-
-/**
- * @typedef {object} BackupOptions
- * @property {string} [backupDir='./backup'] - Directory to store backups
- * @property {number} [maxBackupsPerRoom=5] - Maximum number of backups to keep per room
- * @property {number} [lockTimeout=5000] - Maximum time in ms to wait for a lock
- * @property {number} [lockRetryInterval=50] - Time in ms between lock retry attempts
- */
 
 /**
  * @typedef {object} BackupData
@@ -39,15 +32,9 @@ export default class BackupManager {
 
 	/**
 	 * Creates a new BackupManager instance
-	 * @param {BackupOptions} [options] - Configuration options
 	 */
-	constructor(options = {}) {
-		const { backupDir = './backup', maxBackupsPerRoom = 5 } = options
-		this.backupDir = backupDir
-		this.maxBackupsPerRoom = maxBackupsPerRoom
+	constructor() {
 		this.locks = new Map()
-		this.lockTimeout = options.lockTimeout || 5000 // 5 seconds
-		this.lockRetryInterval = options.lockRetryInterval || 50 // 50ms
 		this.init()
 	}
 
@@ -57,7 +44,7 @@ export default class BackupManager {
 	 */
 	async init() {
 		try {
-			await fs.mkdir(this.backupDir, { recursive: true })
+			await fs.mkdir(Config.BACKUP_DIR, { recursive: true })
 			await this.cleanupTemporaryFiles()
 		} catch (error) {
 			console.error('Failed to initialize BackupManager:', error)
@@ -70,12 +57,12 @@ export default class BackupManager {
 	 */
 	async cleanupTemporaryFiles() {
 		try {
-			const files = await fs.readdir(this.backupDir)
+			const files = await fs.readdir(Config.BACKUP_DIR)
 			const tmpFiles = files.filter((f) => f.endsWith('.tmp'))
 			await Promise.all(
 				tmpFiles.map((file) =>
 					fs
-						.unlink(path.join(this.backupDir, file))
+						.unlink(path.join(Config.BACKUP_DIR, file))
 						.catch(console.error),
 				),
 			)
@@ -92,11 +79,11 @@ export default class BackupManager {
 	async acquireLock(roomId) {
 		const startTime = Date.now()
 		while (this.locks.get(roomId)) {
-			if (Date.now() - startTime > this.lockTimeout) {
+			if (Date.now() - startTime > Config.LOCK_TIMEOUT) {
 				throw new Error(`Lock acquisition timeout for room ${roomId}`)
 			}
 			await new Promise((resolve) =>
-				setTimeout(resolve, this.lockRetryInterval),
+				setTimeout(resolve, Config.LOCK_RETRY_INTERVAL),
 			)
 		}
 		this.locks.set(roomId, Date.now())
@@ -187,7 +174,7 @@ export default class BackupManager {
 	 */
 	async writeBackupFile(roomId, backupData) {
 		const backupFile = path.join(
-			this.backupDir,
+			Config.BACKUP_DIR,
 			`${roomId}_${backupData.timestamp}.bak`,
 		)
 		const tempFile = `${backupFile}.tmp`
@@ -205,7 +192,7 @@ export default class BackupManager {
 	 */
 	async getLatestBackup(roomId) {
 		const sanitizedRoomId = this.sanitizeRoomId(roomId)
-		const files = await fs.readdir(this.backupDir)
+		const files = await fs.readdir(Config.BACKUP_DIR)
 		const roomBackups = files
 			.filter(
 				(f) =>
@@ -218,7 +205,7 @@ export default class BackupManager {
 
 		try {
 			const compressed = await fs.readFile(
-				path.join(this.backupDir, roomBackups[0]),
+				path.join(Config.BACKUP_DIR, roomBackups[0]),
 			)
 			const decompressed = await gunzip(compressed)
 			const backup = JSON.parse(decompressed.toString())
@@ -246,7 +233,7 @@ export default class BackupManager {
 		const sanitizedRoomId = this.sanitizeRoomId(roomId)
 
 		try {
-			const files = await fs.readdir(this.backupDir)
+			const files = await fs.readdir(Config.BACKUP_DIR)
 			const roomBackups = files
 				.filter(
 					(f) =>
@@ -256,15 +243,15 @@ export default class BackupManager {
 				.sort()
 				.reverse()
 
-			if (roomBackups.length <= this.maxBackupsPerRoom) {
+			if (roomBackups.length <= Config.MAX_BACKUPS_PER_ROOM) {
 				return
 			}
 
-			const filesToDelete = roomBackups.slice(this.maxBackupsPerRoom)
+			const filesToDelete = roomBackups.slice(Config.MAX_BACKUPS_PER_ROOM)
 			await Promise.all(
 				filesToDelete.map((file) =>
 					fs
-						.unlink(path.join(this.backupDir, file))
+						.unlink(path.join(Config.BACKUP_DIR, file))
 						.catch((error) => {
 							console.error(
 								`Failed to delete backup ${file}:`,
@@ -285,7 +272,7 @@ export default class BackupManager {
 	 */
 	async getAllBackups(roomId) {
 		const sanitizedRoomId = this.sanitizeRoomId(roomId)
-		const files = await fs.readdir(this.backupDir)
+		const files = await fs.readdir(Config.BACKUP_DIR)
 		return files
 			.filter(
 				(f) =>
