@@ -10,12 +10,12 @@ import type {
 } from '@excalidraw/excalidraw/types/types'
 import { Collab } from '../collaboration/collab'
 import type { FileId } from '@excalidraw/excalidraw/types/element/types'
+import axios from '@nextcloud/axios'
 
 type Meta = {
 	name: string,
 	type: string,
 	lastModified: number,
-	dataurl: string,
 	fileId: string,
 }
 
@@ -35,13 +35,6 @@ export class FileHandle {
 		const containerRef = document.getElementsByClassName(
 			'excalidraw-container',
 		)[0]
-		const constructedFile: BinaryFileData = {
-			mimeType: 'image/png',
-			created: 0o0,
-			id: 'placeholder_image' as FileId,
-			dataURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTE0LDJMMjAsOFYyMEEyLDIgMCAwLDEgMTgsMjJINkEyLDIgMCAwLDEgNCwyMFY0QTIsMiAwIDAsMSA2LDJIMTRNMTgsMjBWOUgxM1Y0SDZWMjBIMThNMTIsMTlMOCwxNUgxMC41VjEySDEzLjVWMTVIMTZMMTIsMTlaIiAvPjwvc3ZnPg==' as DataURL,
-		}
-		this.collab.addFile(constructedFile)
 		if (containerRef) {
 			containerRef.addEventListener('drop', (ev) =>
 				this.filesDragEventListener(ev),
@@ -105,7 +98,6 @@ export class FileHandle {
 					name: file.name,
 					type: file.type,
 					lastModified: file.lastModified,
-					dataurl: fr.result,
 					fileId: constructedFile.id,
 				}
 				this.addCustomFileElement(constructedFile, meta)
@@ -113,7 +105,35 @@ export class FileHandle {
 		}
 	}
 
-	private addCustomFileElement(constructedFile: BinaryFileData, meta: Meta) {
+	private async getMimeIcon(mimeType: string): Promise<FileId> {
+		let file = this.excalidrawApi.getFiles()[`filetype-icon-${mimeType}`]
+		if (!file) {
+			const iconUrl = window.OC.MimeType.getIconUrl(mimeType);
+			let response = await axios.get(iconUrl, { responseType: 'arraybuffer' })
+			const blob = new Blob([response.data], { type:'image/svg+xml' })
+
+			return new Promise((resolve, reject) => {
+				const reader = new FileReader();
+				reader.onloadend = () => {
+					if (typeof reader.result === "string") {
+						file = {
+							mimeType: blob.type,
+							id: `filetype-icon-${mimeType}` as FileId,
+							dataURL: reader.result as DataURL
+						}
+						this.collab.portal.sendImageFiles({[file.id]: file})
+						resolve(file.id)
+					}
+					console.log(`doing it ${reader.result} ${typeof reader.result}`)
+				}
+				reader.readAsDataURL(blob);
+			})
+		}
+		return file.id
+	}
+
+	private async addCustomFileElement(constructedFile: BinaryFileData, meta: Meta) {
+		const iconId = await this.getMimeIcon(meta.type)
 		this.collab.portal.sendImageFiles({ [constructedFile.id]: constructedFile })
 		const elements = this.excalidrawApi
 			.getSceneElementsIncludingDeleted()
@@ -125,48 +145,47 @@ export class FileHandle {
 				customData: { meta },
 				strokeWidth: 1,
 				strokeStyle: 'solid',
-				roughness: 0,
 				opacity: 30,
-				angle: 0,
 				x: 0,
 				y: 0,
 				strokeColor: '#1e1e1e',
 				backgroundColor: '#a5d8ff',
-				width: 252.62770075583379,
+				width: 260.62770075583379,
 				height: 81.57857850076135,
 				seed: 1641118746,
 				groupIds: [meta.fileId],
-				frameId: null,
 				roundness: {
 					type: 3,
 				},
-				boundElements: [],
 			},
-			// image to prevent excalidraw from removing file
 			{
 				type: 'image',
 				fileId: meta.fileId as FileId,
-				x: 0,
-				y: 0,
-				height: 0,
+				x: 28.8678679811,
+				y: 16.3505845419,
 				width: 0,
-				opacity: 0,
+				height: 0,
+				locked: true,
+				groupIds: [meta.fileId],
+			},
+			{
+				type: 'image',
+				fileId: iconId,
+				x: 28.8678679811,
+				y: 16.3505845419,
+				width: 48.880073102719564,
+				height: 48.880073102719564,
 				locked: true,
 				groupIds: [meta.fileId],
 			},
 			{
 				type: 'text',
 				customData: { meta },
-				version: 248,
-				versionNonce: 94933274,
 				isDeleted: false,
-				id: 'sdDa83JaYdFr_Aja2q_z7',
 				fillStyle: 'solid',
 				strokeWidth: 1,
 				strokeStyle: 'solid',
-				roughness: 0,
 				opacity: 100,
-				angle: 0,
 				x: 85.2856430662,
 				y: 28.8678679811,
 				strokeColor: '#1e1e1e',
@@ -175,43 +194,14 @@ export class FileHandle {
 				height: 24,
 				seed: 2067517530,
 				groupIds: [meta.fileId],
-				frameId: null,
-				roundness: null,
-				boundElements: [],
 				updated: 1733306011391,
-				link: null,
-				locked: false,
+				locked: true,
 				fontSize: 20,
 				fontFamily: 3,
 				text: meta.name.length > 14 ? meta.name.slice(0, 11) + '...' : meta.name,
 				textAlign: 'left',
 				verticalAlign: 'top',
-				containerId: null,
 				baseline: 20,
-			},
-			{
-				type: 'ellipse',
-				customData: { meta },
-				id: 'AaRO1KGioMv4hDDaJcmaI',
-				fillStyle: 'solid',
-				strokeWidth: 1,
-				strokeStyle: 'dotted',
-				roughness: 0,
-				opacity: 100,
-				angle: 0,
-				x: 28.8678679811,
-				y: 16.3505845419,
-				strokeColor: '#1e1e1e',
-				backgroundColor: '#a5d8ff',
-				width: 48.880073102719564,
-				height: 48.880073102719564,
-				seed: 1847675994,
-				groupIds: [meta.fileId],
-				frameId: null,
-				roundness: {
-					type: 2,
-				},
-				boundElements: [],
 			},
 		])
 		elements.push(...newElements)
