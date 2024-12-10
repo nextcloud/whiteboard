@@ -17,6 +17,7 @@ import AppManager from './AppManager.js'
 import SocketManager from './SocketManager.js'
 import Utils from './Utils.js'
 import BackupManager from './BackupManager.js'
+import CleanupManager from './CleanupManager.js'
 
 export default class ServerManager {
 
@@ -31,6 +32,13 @@ export default class ServerManager {
 		this.appManager = new AppManager(this.storageManager)
 		this.server = this.createConfiguredServer(this.appManager.getApp())
 		this.socketManager = new SocketManager(this.server, this.roomDataManager, this.storageManager)
+		this.cleanupManager = new CleanupManager(
+			this.socketManager.socketDataManager,
+			this.roomDataManager,
+		)
+
+		// Start periodic cleanup tasks when server starts
+		this.cleanupManager.startPeriodicTasks()
 	}
 
 	readTlsCredentials(keyPath, certPath) {
@@ -68,9 +76,16 @@ export default class ServerManager {
 	async gracefulShutdown() {
 		if (this.closing) return
 		this.closing = true
-		console.log('Received shutdown signal, saving all data...')
+		console.log('Received shutdown signal, performing cleanup...')
+
 		try {
-			await this.roomDataManager.removeAllRoomData()
+			// Stop periodic cleanup tasks
+			this.cleanupManager.stopPeriodicTasks()
+
+			// Run one final cleanup
+			await this.cleanupManager.cleanupRooms()
+
+			// Continue with existing shutdown logic
 			this.socketManager.io.close()
 			console.log('Closing server...')
 			this.server.close(() => {

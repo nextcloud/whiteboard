@@ -7,10 +7,17 @@ export default class SocketDataManager {
 
 	constructor(storageManager) {
 		this.storageManager = storageManager
+		this.activeTokens = new Set()
 	}
 
 	async setCachedToken(token, decodedData) {
+		this.activeTokens.add(token)
 		await this.storageManager.set(`token:${token}`, decodedData)
+	}
+
+	async invalidateToken(token) {
+		this.activeTokens.delete(token)
+		await this.storageManager.delete(`token:${token}`)
 	}
 
 	async getCachedToken(token) {
@@ -27,6 +34,16 @@ export default class SocketDataManager {
 
 	async deleteSocketData(socketId) {
 		await this.storageManager.delete(`socket:${socketId}`)
+	}
+
+	async cleanup() {
+		const tokens = Array.from(this.activeTokens)
+		for (const token of tokens) {
+			const data = await this.getCachedToken(token)
+			if (!data) {
+				this.activeTokens.delete(token)
+			}
+		}
 	}
 
 }

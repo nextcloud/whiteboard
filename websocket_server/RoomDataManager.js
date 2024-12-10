@@ -319,4 +319,30 @@ export default class RoomDataManager {
 		Utils.logOperation(roomId, 'Empty room removed from cache')
 	}
 
+	/**
+	 * Cleans up all rooms
+	 * @return {Promise<void>}
+	 */
+	async cleanupAllRooms() {
+		const rooms = await this.storageManager.getRooms()
+		for (const [roomId, room] of rooms.entries()) {
+			try {
+				await this.storageManager.delete(roomId)
+
+				Utils.logOperation(`[${roomId}] Auto-saved room data`)
+			} catch (error) {
+				Utils.logError(`Failed to auto-save room ${roomId}:`, error)
+				// Try to restore room in case of error during the save cycle
+				try {
+					await this.storageManager.set(roomId, room)
+				} catch (restoreError) {
+					Utils.logError(
+						`Failed to restore room ${roomId} after failed save:`,
+						restoreError,
+					)
+				}
+			}
+		}
+	}
+
 }
