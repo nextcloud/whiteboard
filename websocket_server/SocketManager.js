@@ -233,7 +233,8 @@ export default class SocketManager {
 			Utils.convertArrayBufferToString(encryptedData),
 		)
 
-		if (payload.type === 'MOUSE_LOCATION') {
+		switch (payload.type) {
+		case 'MOUSE_LOCATION': {
 			const socketData = await this.socketDataManager.getSocketData(
 				socket.id,
 			)
@@ -252,6 +253,28 @@ export default class SocketManager {
 					'client-broadcast',
 					Utils.convertStringToArrayBuffer(JSON.stringify(eventData)),
 				)
+			break
+		}
+
+		case 'VIEWPORT_UPDATE': {
+			const socketData = await this.socketDataManager.getSocketData(socket.id)
+			if (!socketData) return
+			const eventData = {
+				type: 'VIEWPORT_UPDATE',
+				payload: {
+					...payload.payload,
+					userId: socketData.user.id,
+				},
+			}
+
+			socket.volatile.broadcast
+				.to(roomID)
+				.emit(
+					'client-broadcast',
+					Utils.convertStringToArrayBuffer(JSON.stringify(eventData)),
+				)
+			break
+		}
 		}
 	}
 

@@ -154,3 +154,48 @@
   background-color: var(--color-background-hover) !important;
   border-radius: var(--border-radius-large) !important;
 }
+
+.recording-controls {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: var(--zIndex-popup);
+  background-color: var(--color-main-background-translucent);
+  backdrop-filter: blur(4px);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 4px;
+
+  .recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    
+    &.recording {
+      color: var(--color-error);
+      animation: pulse 2s infinite;
+
+      svg {
+        fill: currentColor;
+      }
+    }
+  }
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.recording-error {
+  color: var(--color-error);
+  padding: 8px;
+  margin: 8px 0;
+  border-radius: var(--border-radius);
+  background-color: var(--color-error-background);
+  font-size: 0.9em;
+}
