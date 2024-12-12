@@ -9,7 +9,7 @@ import { Portal } from './Portal'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
-import { registerFilesHandler, type FileHandle } from '../files/files'
+import { registerFilesHandler } from '../files/files.tsx'
 
 export class Collab {
 
@@ -21,7 +21,6 @@ export class Collab {
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 	private files = new Map<string, BinaryFileData>()
-	private fileHandle: FileHandle
 
 	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
 		this.excalidrawAPI = excalidrawAPI
@@ -30,7 +29,7 @@ export class Collab {
 		this.setViewModeEnabled = setViewModeEnabled
 
 		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
-		this.fileHandle = registerFilesHandler(this.excalidrawAPI, this)
+		registerFilesHandler(this.excalidrawAPI, this)
 	}
 
 	async startCollab() {
