@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
+import { showMessage, ToastType } from '@nextcloud/dialogs'
 import type {
 	BinaryFileData,
 	DataURL,
@@ -11,6 +12,9 @@ import type {
 import { Collab } from '../collaboration/collab'
 import type { FileId } from '@excalidraw/excalidraw/types/element/types'
 import axios from '@nextcloud/axios'
+import { createRoot } from 'react-dom'
+import { mdiDownloadBox } from '@mdi/js'
+import { Icon } from '@mdi/react'
 
 type Meta = {
 	name: string,
@@ -24,11 +28,13 @@ export class FileHandle {
 	private collab: Collab
 	private excalidrawApi: ExcalidrawImperativeAPI
 	private types: string[]
+	private openDownloadToasts: string[]
 	constructor(
 		excalidrawApi: ExcalidrawImperativeAPI,
 		collab: Collab,
 		types: string[],
 	) {
+		this.openDownloadToasts = []
 		this.collab = collab
 		this.excalidrawApi = excalidrawApi
 		this.types = types
@@ -40,33 +46,51 @@ export class FileHandle {
 				this.filesDragEventListener(ev),
 			)
 		}
-		let lastPointerDown = 0
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		this.excalidrawApi.onPointerDown((activeTool, state, event) => {
 			const clickedElement = state.hit.element
 			if (!clickedElement || !clickedElement.customData) {
 				return
 			}
-			event.stopPropagation()
-			if (Date.now() - lastPointerDown > 200) {
-				lastPointerDown = Date.now()
-				return
-			} else {
-				lastPointerDown = Date.now()
-			}
-			this.downloadFile(clickedElement.customData.meta)
+			this.downloadDialog(clickedElement.customData.meta)
+		})
+	}
+
+	private renderDownloadBox(meta: Meta) {
+		return (
+			<div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+				<span style={{ marginRight: '5px', cursor: 'pointer' }}>
+					{meta.name}
+				</span>
+				<Icon path={mdiDownloadBox} size={1} />
+			</div>
+		)
+	}
+
+	private downloadDialog(meta: Meta) {
+		if (this.openDownloadToasts.indexOf(meta.fileId) !== -1) return
+
+		const undoContent = document.createElement('div')
+		const root = createRoot(undoContent)
+		root.render(this.renderDownloadBox(meta))
+		this.openDownloadToasts.push(meta.fileId)
+		showMessage(undoContent, {
+			type: ToastType.INFO,
+			close: true,
+			onRemove: () => {
+				this.openDownloadToasts = this.openDownloadToasts.filter((val) => val !== meta.fileId)
+			},
+			onClick: () => { this.downloadFile(meta) },
 		})
 	}
 
 	private downloadFile(meta: Meta) {
 		const file = this.excalidrawApi.getFiles()[meta.fileId]
-		const blob = new Blob([file.dataURL], { type: meta.type })
-		const url = URL.createObjectURL(blob)
+		const url = file.dataURL
 		const a = document.createElement('a')
 		a.href = url
 		a.download = meta.name
 		a.click()
-		URL.revokeObjectURL(url)
 	}
 
 	private filesDragEventListener(ev: Event) {
@@ -108,25 +132,24 @@ export class FileHandle {
 	private async getMimeIcon(mimeType: string): Promise<FileId> {
 		let file = this.excalidrawApi.getFiles()[`filetype-icon-${mimeType}`]
 		if (!file) {
-			const iconUrl = window.OC.MimeType.getIconUrl(mimeType);
-			let response = await axios.get(iconUrl, { responseType: 'arraybuffer' })
-			const blob = new Blob([response.data], { type:'image/svg+xml' })
+			const iconUrl = window.OC.MimeType.getIconUrl(mimeType)
+			const response = await axios.get(iconUrl, { responseType: 'arraybuffer' })
+			const blob = new Blob([response.data], { type: 'image/svg+xml' })
 
-			return new Promise((resolve, reject) => {
-				const reader = new FileReader();
+			return new Promise((resolve) => {
+				const reader = new FileReader()
 				reader.onloadend = () => {
-					if (typeof reader.result === "string") {
+					if (typeof reader.result === 'string') {
 						file = {
 							mimeType: blob.type,
 							id: `filetype-icon-${mimeType}` as FileId,
-							dataURL: reader.result as DataURL
+							dataURL: reader.result as DataURL,
 						}
-						this.collab.portal.sendImageFiles({[file.id]: file})
+						this.collab.portal.sendImageFiles({ [file.id]: file })
 						resolve(file.id)
 					}
-					console.log(`doing it ${reader.result} ${typeof reader.result}`)
 				}
-				reader.readAsDataURL(blob);
+				reader.readAsDataURL(blob)
 			})
 		}
 		return file.id
@@ -150,8 +173,8 @@ export class FileHandle {
 				y: 0,
 				strokeColor: '#1e1e1e',
 				backgroundColor: '#a5d8ff',
-				width: 260.62770075583379,
-				height: 81.57857850076135,
+				width: 260.62,
+				height: 81.57,
 				seed: 1641118746,
 				groupIds: [meta.fileId],
 				roundness: {
@@ -163,8 +186,9 @@ export class FileHandle {
 				fileId: meta.fileId as FileId,
 				x: 28.8678679811,
 				y: 16.3505845419,
-				width: 0,
-				height: 0,
+				width: 1,
+				height: 1,
+				opacity: 0,
 				locked: true,
 				groupIds: [meta.fileId],
 			},
