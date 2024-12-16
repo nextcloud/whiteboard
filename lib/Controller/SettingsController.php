@@ -35,6 +35,7 @@ final class SettingsController extends Controller {
 		try {
 			$serverUrl = $this->request->getParam('serverUrl');
 			$secret = $this->request->getParam('secret');
+			$enableStatistics = $this->request->getParam('enableStatistics');
 
 			if ($serverUrl !== null) {
 				$this->configService->setCollabBackendUrl($serverUrl);
@@ -42,6 +43,10 @@ final class SettingsController extends Controller {
 
 			if ($secret !== null) {
 				$this->configService->setWhiteboardSharedSecret($secret);
+			}
+
+			if ($enableStatistics !== null) {
+				$this->configService->setWhiteboardEnableStatistics($enableStatistics);
 			}
 
 			return new DataResponse([

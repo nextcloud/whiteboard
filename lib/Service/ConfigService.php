@@ -54,4 +54,12 @@ final class ConfigService {
 
 		$this->appConfig->setAppValueString('jwt_secret_key', $jwtSecretKey);
 	}
+
+	public function getWhiteboardEnableStatistics(): bool {
+		return $this->appConfig->getAppValueBool('enable_statistics');
+	}
+
+	public function setWhiteboardEnableStatistics(bool $enableStatistics): void {
+		$this->appConfig->setAppValueBool('enable_statistics', $enableStatistics);
+	}
 }

@@ -34,6 +34,11 @@
 					:value.sync="secret" />
 			</p>
 			<p>
+				<NcCheckboxRadioSwitch v-model="enableStatistics" type="switch">
+					{{ t('whiteboard', 'Enable statistics') }}
+				</NcCheckboxRadioSwitch>
+			</p>
+			<p>
 				<NcButton type="submit"
 					:disabled="!serverUrl"
 					@click.prevent="submit">
@@ -50,6 +55,7 @@ import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 
@@ -60,6 +66,7 @@ export default {
 		NcButton,
 		NcLoadingIcon,
 		NcNoteCard,
+		NcCheckboxRadioSwitch,
 	},
 	data() {
 		return {
@@ -67,6 +74,7 @@ export default {
 			secret: loadState('whiteboard', 'secret', ''),
 			validConnection: undefined,
 			connectionError: undefined,
+			enableStatistics: loadState('whiteboard', 'enable_statistics', false),
 		}
 	},
 	mounted() {
@@ -77,6 +85,7 @@ export default {
 			const { data } = await axios.post(generateUrl('/apps/whiteboard/settings'), {
 				serverUrl: this.serverUrl,
 				secret: this.secret,
+				enableStatistics: this.enableStatistics,
 			})
 			await this.verifyConnection(data)
 		},

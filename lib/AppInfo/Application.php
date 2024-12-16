@@ -12,16 +12,22 @@ namespace OCA\Whiteboard\AppInfo;
 
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Viewer\Event\LoadViewer;
+use OCA\Whiteboard\Events\WhiteboardOpenedEvent;
+use OCA\Whiteboard\Events\WhiteboardUpdatedEvent;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
+use OCA\Whiteboard\Listener\FileCreatedListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
+use OCA\Whiteboard\Listener\WhiteboardOpenedListener;
+use OCA\Whiteboard\Listener\WhiteboardUpdatedListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\Files\Template\ITemplateManager;
 use OCP\Files\Template\RegisterTemplateCreatorEvent;
+use OCP\Files\Events\Node\NodeCreatedEvent;
 use OCP\IL10N;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 use OCP\Util;
@@ -44,6 +50,9 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
+		$context->registerEventListener(NodeCreatedEvent::class, FileCreatedListener::class);
+		$context->registerEventListener(WhiteboardOpenedEvent::class, WhiteboardOpenedListener::class);
+		$context->registerEventListener(WhiteboardUpdatedEvent::class, WhiteboardUpdatedListener::class);
 	}
 
 	public function boot(IBootContext $context): void {
