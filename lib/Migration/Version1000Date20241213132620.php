@@ -76,6 +76,25 @@ class Version1000Date20241213132620 extends SimpleMigrationStep {
 			$table->addIndex(['fileid'], 'fileid_index');
 		}
 
+		if (!$schema->hasTable('whiteboard_active_users')) {
+			$table = $schema->createTable('whiteboard_active_users');
+			$table->addColumn('id', Types::BIGINT, [
+				'autoincrement' => true,
+				'notnull' => true,
+				'length' => 20,
+			]);
+			$table->addColumn('total_users', Types::INTEGER, [
+				'notnull' => false,
+				'length' => 11,
+				'default' => 0,
+			]);
+			$table->addColumn('timestamp', Types::INTEGER, [
+				'notnull' => true,
+				'length' => 11,
+				'default' => 0,
+			]);
+		}
+
 		return $schema;
 	}
 

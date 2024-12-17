@@ -62,4 +62,21 @@ final class ConfigService {
 	public function setWhiteboardEnableStatistics(bool $enableStatistics): void {
 		$this->appConfig->setAppValueBool('enable_statistics', $enableStatistics);
 	}
+
+	public function getCollabBackendMetricsToken(): string {
+		if (!method_exists($this->appConfig, 'getAppValueString')) {
+			return $this->appConfig->getAppValue('collabBackendMetricsToken');
+		}
+
+		return $this->appConfig->getAppValueString('collabBackendMetricsToken');
+	}
+
+	public function setCollabBackendMetricsToken(string $collabBackendMetricsToken): void {
+		if (!method_exists($this->appConfig, 'setAppValueString')) {
+			$this->appConfig->setAppValue('collabBackendMetricsToken', $collabBackendMetricsToken);
+			return;
+		}
+
+		$this->appConfig->setAppValueString('collabBackendMetricsToken', $collabBackendMetricsToken);
+	}
 }

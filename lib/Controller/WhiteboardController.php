@@ -86,8 +86,8 @@ final class WhiteboardController extends ApiController {
 
 			$this->contentService->updateContent($file, $data);
 
-            $event = new WhiteboardUpdatedEvent($file, $user, $data);
-            $this->dispatcher->dispatchTyped($event);
+			$event = new WhiteboardUpdatedEvent($file, $user, $data);
+			$this->dispatcher->dispatchTyped($event);
 
 			return new DataResponse(['status' => 'success']);
 		} catch (Exception $e) {

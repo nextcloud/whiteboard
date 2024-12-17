@@ -1,15 +1,17 @@
 <?php
 
 declare(strict_types=1);
+
 /**
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+
 namespace OCA\Whiteboard\Listener;
 
 use OCA\Whiteboard\Events\WhiteboardOpenedEvent;
 use OCA\Whiteboard\Model\PublicSharingUser;
-use OCA\Whiteboard\Service\EventsService;
+use OCA\Whiteboard\Service\StatsService;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Files\Events\Node\NodeCreatedEvent;
@@ -21,7 +23,7 @@ use OCP\Files\Events\Node\NodeCreatedEvent;
  */
 final class WhiteboardOpenedListener implements IEventListener {
     public function __construct(
-        protected EventsService $eventsService,
+        protected StatsService $statsService,
     ) {
     }
 
@@ -34,7 +36,7 @@ final class WhiteboardOpenedListener implements IEventListener {
         $file = $event->getFile();
         $data = $event->getData();
 
-        $this->eventsService->insertEvent([
+        $this->statsService->insertEvent([
             'user' => $user->getUID(),
             'type' => 'opened',
             'share_token' => $user instanceof PublicSharingUser ? $user->getPublicSharingToken() : '',

@@ -7,7 +7,7 @@ declare(strict_types=1);
  */
 namespace OCA\Whiteboard\Listener;
 
-use OCA\Whiteboard\Service\EventsService;
+use OCA\Whiteboard\Service\StatsService;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Files\Events\Node\NodeCreatedEvent;
@@ -20,7 +20,7 @@ use OCP\IUserSession;
  */
 final class FileCreatedListener implements IEventListener {
 	public function __construct(
-		protected EventsService $eventsService,
+		protected StatsService $statsService,
 		protected IUserSession $userSession,
 	) {
 	}
@@ -38,7 +38,7 @@ final class FileCreatedListener implements IEventListener {
 
 		$currentUser = $this->userSession->getUser();
 
-		$this->eventsService->insertEvent([
+		$this->statsService->insertEvent([
 			'user' => $currentUser ? $currentUser->getUID() : $node->getOwner()->getUID(),
 			'type' => 'created',
 			'share_token' => '',

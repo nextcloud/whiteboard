@@ -26,6 +26,7 @@ class Admin implements ISettings {
 		$this->initialState->provideInitialState('secret', $this->configService->getWhiteboardSharedSecret());
 		$this->initialState->provideInitialState('jwt', $this->jwtService->generateJWTFromPayload([]));
 		$this->initialState->provideInitialState('enable_statistics', $this->configService->getWhiteboardEnableStatistics());
+		$this->initialState->provideInitialState('metrics_token', $this->configService->getCollabBackendMetricsToken());
 		$response = new TemplateResponse(
 			'whiteboard',
 			'admin',

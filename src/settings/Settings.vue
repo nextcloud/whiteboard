@@ -39,6 +39,10 @@
 				</NcCheckboxRadioSwitch>
 			</p>
 			<p>
+				<NcTextField :label="t('whiteboard', 'Whiteboard server metrics token')"
+					:value.sync="metricsToken" />
+			</p>
+			<p>
 				<NcButton type="submit"
 					:disabled="!serverUrl"
 					@click.prevent="submit">
@@ -75,6 +79,7 @@ export default {
 			validConnection: undefined,
 			connectionError: undefined,
 			enableStatistics: loadState('whiteboard', 'enable_statistics', false),
+			metricsToken: loadState('whiteboard', 'metrics_token', ''),
 		}
 	},
 	mounted() {
@@ -86,6 +91,7 @@ export default {
 				serverUrl: this.serverUrl,
 				secret: this.secret,
 				enableStatistics: this.enableStatistics,
+				metricsToken: this.metricsToken,
 			})
 			await this.verifyConnection(data)
 		},
