@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
-import { showMessage, ToastType } from '@nextcloud/dialogs'
 import type {
 	BinaryFileData,
 	DataURL,
@@ -12,15 +11,14 @@ import type {
 import { Collab } from '../collaboration/collab'
 import type { FileId } from '@excalidraw/excalidraw/types/element/types'
 import axios from '@nextcloud/axios'
-import { createRoot } from 'react-dom'
-import { mdiDownloadBox } from '@mdi/js'
-import { Icon } from '@mdi/react'
+import { downloadDialog } from './SideBarDownload'
 
-type Meta = {
-	name: string,
-	type: string,
-	lastModified: number,
-	fileId: string,
+export type Meta = {
+	name: string
+	type: string
+	lastModified: number
+	fileId: string
+	dataURL: string
 }
 
 export class FileHandle {
@@ -47,46 +45,19 @@ export class FileHandle {
 			)
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		this.excalidrawApi.onPointerDown((activeTool, state, event) => {
+		this.excalidrawApi.onPointerDown(async (activeTool, state, event) => {
 			const clickedElement = state.hit.element
 			if (!clickedElement || !clickedElement.customData) {
 				return
 			}
-			this.downloadDialog(clickedElement.customData.meta)
-		})
-	}
-
-	private renderDownloadBox(meta: Meta) {
-		return (
-			<div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-				<span style={{ marginRight: '5px', cursor: 'pointer' }}>
-					{meta.name}
-				</span>
-				<Icon path={mdiDownloadBox} size={1} />
-			</div>
-		)
-	}
-
-	private downloadDialog(meta: Meta) {
-		if (this.openDownloadToasts.indexOf(meta.fileId) !== -1) return
-
-		const undoContent = document.createElement('div')
-		const root = createRoot(undoContent)
-		root.render(this.renderDownloadBox(meta))
-		this.openDownloadToasts.push(meta.fileId)
-		showMessage(undoContent, {
-			type: ToastType.INFO,
-			close: true,
-			onRemove: () => {
-				this.openDownloadToasts = this.openDownloadToasts.filter((val) => val !== meta.fileId)
-			},
-			onClick: () => { this.downloadFile(meta) },
+			downloadDialog(clickedElement.customData.meta, () =>
+				this.downloadFile(clickedElement.customData!.meta),
+			)
 		})
 	}
 
 	private downloadFile(meta: Meta) {
-		const file = this.excalidrawApi.getFiles()[meta.fileId]
-		const url = file.dataURL
+		const url = meta.dataURL
 		const a = document.createElement('a')
 		a.href = url
 		a.download = meta.name
@@ -123,6 +94,7 @@ export class FileHandle {
 					type: file.type,
 					lastModified: file.lastModified,
 					fileId: constructedFile.id,
+					dataURL: fr.result,
 				}
 				this.addCustomFileElement(constructedFile, meta)
 			}
@@ -133,7 +105,9 @@ export class FileHandle {
 		let file = this.excalidrawApi.getFiles()[`filetype-icon-${mimeType}`]
 		if (!file) {
 			const iconUrl = window.OC.MimeType.getIconUrl(mimeType)
-			const response = await axios.get(iconUrl, { responseType: 'arraybuffer' })
+			const response = await axios.get(iconUrl, {
+				responseType: 'arraybuffer',
+			})
 			const blob = new Blob([response.data], { type: 'image/svg+xml' })
 
 			return new Promise((resolve) => {
@@ -155,9 +129,14 @@ export class FileHandle {
 		return file.id
 	}
 
-	private async addCustomFileElement(constructedFile: BinaryFileData, meta: Meta) {
+	private async addCustomFileElement(
+		constructedFile: BinaryFileData,
+		meta: Meta,
+	) {
 		const iconId = await this.getMimeIcon(meta.type)
-		this.collab.portal.sendImageFiles({ [constructedFile.id]: constructedFile })
+		this.collab.portal.sendImageFiles({
+			[constructedFile.id]: constructedFile,
+		})
 		const elements = this.excalidrawApi
 			.getSceneElementsIncludingDeleted()
 			.slice()
@@ -222,7 +201,10 @@ export class FileHandle {
 				locked: true,
 				fontSize: 20,
 				fontFamily: 3,
-				text: meta.name.length > 14 ? meta.name.slice(0, 11) + '...' : meta.name,
+				text:
+					meta.name.length > 14
+						? meta.name.slice(0, 11) + '...'
+						: meta.name,
 				textAlign: 'left',
 				verticalAlign: 'top',
 				baseline: 20,

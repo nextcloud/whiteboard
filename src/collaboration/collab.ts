@@ -9,7 +9,7 @@ import { Portal } from './Portal'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
-import { registerFilesHandler } from '../files/files.tsx'
+import { registerFilesHandler } from '../files/files.ts'
 
 export class Collab {
 
