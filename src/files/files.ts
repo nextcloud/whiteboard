@@ -11,7 +11,7 @@ import type {
 import { Collab } from '../collaboration/collab'
 import type { FileId } from '@excalidraw/excalidraw/types/element/types'
 import axios from '@nextcloud/axios'
-import { downloadDialog } from './SideBarDownload'
+import { InsertDownloadButton, ResetDownloadButton } from './SideBarDownload'
 
 export type Meta = {
 	name: string
@@ -48,9 +48,10 @@ export class FileHandle {
 		this.excalidrawApi.onPointerDown(async (activeTool, state, event) => {
 			const clickedElement = state.hit.element
 			if (!clickedElement || !clickedElement.customData) {
+			   ResetDownloadButton()
 				return
 			}
-			downloadDialog(clickedElement.customData.meta, () =>
+			InsertDownloadButton(clickedElement.customData.meta, () =>
 				this.downloadFile(clickedElement.customData!.meta),
 			)
 		})
