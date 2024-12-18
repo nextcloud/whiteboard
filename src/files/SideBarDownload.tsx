@@ -64,21 +64,12 @@ export function ResetDownloadButton() {
 	if (sideBar === undefined) {
 		return
 	}
-	const panelColumn = sideBar.querySelector('.panelColumn')
+	const panelColumn = sideBar.querySelector('.panelColumn') as HTMLElement
 	if (panelColumn) {
-		panelColumn.childNodes.forEach((node) => {
-			if (!node.ELEMENT_NODE) {
-				return
-			}
-			const element = node as HTMLElement
-			if (element.style.display === 'none') {
-				element.style.display = ''
-			}
-			if (element.classList.contains('nc-download')) {
-				panelColumn.removeChild(element)
-			}
-		})
+		panelColumn.style.display = ''
 	}
+	const downloadButton = document.getElementsByClassName('nc-download')[0]
+	sideBar.removeChild(downloadButton)
 }
 
 /**
@@ -88,7 +79,7 @@ export function ResetDownloadButton() {
  * @param onClick onClick callback
  */
 export function InsertDownloadButton(meta: Meta, onClick: () => void) {
-	const observer = new MutationObserver(() => {
+	const callback = () => {
 		const sideBar = document.getElementsByClassName('App-menu__left')[0]
 		if (sideBar === undefined) {
 			return
@@ -98,24 +89,22 @@ export function InsertDownloadButton(meta: Meta, onClick: () => void) {
 		newElement.classList.add('nc-download')
 		const root = createRoot(newElement)
 		root.render(renderDownloadButton(meta, onClick))
-		newElement.addEventListener('click', onClick)
 
-		const panelColumn = sideBar.querySelector('.panelColumn')
+		// hide all excalidraw settings
+		const panelColumn = sideBar.querySelector('.panelColumn') as HTMLElement
 		if (panelColumn) {
-			panelColumn.childNodes.forEach((node) => {
-				// hide all defautl excalidraw setting elements
-				if (!node.ELEMENT_NODE) {
-					return
-				}
-				const element = node as HTMLElement
-				element.style.display = 'none'
-			})
-			panelColumn.appendChild(newElement)
-		} else {
-			sideBar.appendChild(newElement)
+			panelColumn.style.display = 'none'
 		}
-	})
 
-	// wait until sidebar rendered by excalidraw
-	observer.observe(document.body, { childList: true, subtree: true })
+		sideBar.appendChild(newElement)
+	}
+
+	const observer = new MutationObserver(callback)
+
+	const sideBar = document.getElementsByClassName('App-menu__left')[0]
+	if (sideBar !== undefined) {
+		callback()
+	} else {
+		observer.observe(document.body, { childList: true, subtree: true })
+	}
 }
