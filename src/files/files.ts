@@ -2,7 +2,10 @@
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
+import {
+	convertToExcalidrawElements,
+	viewportCoordsToSceneCoords,
+} from '@excalidraw/excalidraw'
 import type {
 	BinaryFileData,
 	DataURL,
@@ -48,7 +51,7 @@ export class FileHandle {
 		this.excalidrawApi.onPointerDown(async (activeTool, state, event) => {
 			const clickedElement = state.hit.element
 			if (!clickedElement || !clickedElement.customData) {
-			   ResetDownloadButton()
+				ResetDownloadButton()
 				return
 			}
 			InsertDownloadButton(clickedElement.customData.meta, () =>
@@ -65,7 +68,7 @@ export class FileHandle {
 		a.click()
 	}
 
-	private filesDragEventListener(ev: Event) {
+	private filesDragEventListener(ev: DragEvent) {
 		if (ev instanceof DragEvent) {
 			for (const file of Array.from(ev.dataTransfer?.files || [])) {
 				this.handleFileInsert(file, ev)
@@ -97,7 +100,7 @@ export class FileHandle {
 					fileId: constructedFile.id,
 					dataURL: fr.result,
 				}
-				this.addCustomFileElement(constructedFile, meta)
+				this.addCustomFileElement(constructedFile, meta, ev.x, ev.y)
 			}
 		}
 	}
@@ -133,7 +136,13 @@ export class FileHandle {
 	private async addCustomFileElement(
 		constructedFile: BinaryFileData,
 		meta: Meta,
+		clientX: number,
+		clientY: number,
 	) {
+		const { x, y } = viewportCoordsToSceneCoords(
+			{ clientX, clientY },
+			this.excalidrawApi.getAppState(),
+		)
 		const iconId = await this.getMimeIcon(meta.type)
 		this.collab.portal.sendImageFiles({
 			[constructedFile.id]: constructedFile,
@@ -149,8 +158,8 @@ export class FileHandle {
 				strokeWidth: 1,
 				strokeStyle: 'solid',
 				opacity: 30,
-				x: 0,
-				y: 0,
+				x,
+				y,
 				strokeColor: '#1e1e1e',
 				backgroundColor: '#a5d8ff',
 				width: 260.62,
@@ -164,8 +173,8 @@ export class FileHandle {
 			{
 				type: 'image',
 				fileId: meta.fileId as FileId,
-				x: 28.8678679811,
-				y: 16.3505845419,
+				x: x + 28.8678679811,
+				y: y + 16.3505845419,
 				width: 1,
 				height: 1,
 				opacity: 0,
@@ -175,8 +184,8 @@ export class FileHandle {
 			{
 				type: 'image',
 				fileId: iconId,
-				x: 28.8678679811,
-				y: 16.3505845419,
+				x: x + 28.8678679811,
+				y: y + 16.3505845419,
 				width: 48.880073102719564,
 				height: 48.880073102719564,
 				locked: true,
@@ -190,8 +199,8 @@ export class FileHandle {
 				strokeWidth: 1,
 				strokeStyle: 'solid',
 				opacity: 100,
-				x: 85.2856430662,
-				y: 28.8678679811,
+				x: x + 85.2856430662,
+				y: y + 28.8678679811,
 				strokeColor: '#1e1e1e',
 				backgroundColor: 'transparent',
 				width: 140.625,
