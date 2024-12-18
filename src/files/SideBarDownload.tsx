@@ -1,43 +1,121 @@
-import type { Meta } from './files'
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 import { createRoot } from 'react-dom'
+import { type JSX } from 'react'
+import { type Meta } from './files'
 import { mdiDownloadBox } from '@mdi/js'
 import { Icon } from '@mdi/react'
 
-function renderDownloadBox(meta: Meta) {
+/**
+ * renders the html button for file downloads
+ * @param meta file data
+ * @param onClick onClick callback
+ * @return {JSX.Element} rendered Button JSX
+ */
+function renderDownloadButton(meta: Meta, onClick: () => void): JSX.Element {
+	const iconUrl = window.OC.MimeType.getIconUrl(meta.type)
 	return (
 		<div
 			style={{
 				display: 'flex',
+				flexDirection: 'column',
 				alignItems: 'center',
-				cursor: 'pointer',
+				padding: '10px',
 			}}>
-			<span style={{ marginRight: '5px', cursor: 'pointer' }}>
+			<img
+				src={iconUrl}
+				style={{
+					width: '50px',
+					height: '50px',
+					marginBottom: '10px',
+				}}
+			/>
+			<span
+				style={{
+					marginBottom: '5px',
+					textAlign: 'center',
+					fontWeight: 'bold',
+				}}>
 				{meta.name}
 			</span>
-			<Icon path={mdiDownloadBox} size={1} />
+			<button
+				onClick={onClick}
+				style={{ textAlign: 'center', fontWeight: 'bold' }}>
+				Download
+				<Icon
+					path={mdiDownloadBox}
+					size={1.5}
+					style={{ verticalAlign: 'middle' }}
+				/>
+			</button>
 		</div>
 	)
 }
 
-export async function downloadDialog(meta: Meta, onClick: () => void) {
+/**
+ * removes the download button from the sidebar
+ * makes all default excalidraw settings visible again
+ * @return {void}
+ */
+export function ResetDownloadButton() {
+	const sideBar = document.getElementsByClassName('App-menu__left')[0]
+	if (sideBar === undefined) {
+		return
+	}
+	const panelColumn = sideBar.querySelector('.panelColumn')
+	if (panelColumn) {
+		panelColumn.childNodes.forEach((node) => {
+			if (!node.ELEMENT_NODE) {
+				return
+			}
+			const element = node as HTMLElement
+			if (element.style.display === 'none') {
+				element.style.display = ''
+			}
+			if (element.classList.contains('nc-download')) {
+				panelColumn.removeChild(element)
+			}
+		})
+	}
+}
+
+/**
+ * clears the excalidraw sidebar as soon as it appears
+ * inserts a download button with the file name instead
+ * @param meta file data
+ * @param onClick onClick callback
+ */
+export function InsertDownloadButton(meta: Meta, onClick: () => void) {
 	const observer = new MutationObserver(() => {
 		const sideBar = document.getElementsByClassName('App-menu__left')[0]
-		if (sideBar !== undefined) {
-			observer.disconnect()
-		} else {
+		if (sideBar === undefined) {
 			return
 		}
+		observer.disconnect()
 		const newElement = document.createElement('div')
+		newElement.classList.add('nc-download')
 		const root = createRoot(newElement)
-		root.render(renderDownloadBox(meta))
+		root.render(renderDownloadButton(meta, onClick))
 		newElement.addEventListener('click', onClick)
 
 		const panelColumn = sideBar.querySelector('.panelColumn')
 		if (panelColumn) {
-			panelColumn.insertBefore(newElement, panelColumn.firstChild)
+			panelColumn.childNodes.forEach((node) => {
+				// hide all defautl excalidraw setting elements
+				if (!node.ELEMENT_NODE) {
+					return
+				}
+				const element = node as HTMLElement
+				element.style.display = 'none'
+			})
+			panelColumn.appendChild(newElement)
 		} else {
 			sideBar.appendChild(newElement)
 		}
 	})
+
+	// wait until sidebar rendered by excalidraw
 	observer.observe(document.body, { childList: true, subtree: true })
 }
