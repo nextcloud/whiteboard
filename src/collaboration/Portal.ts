@@ -15,6 +15,7 @@ import { generateUrl } from '@nextcloud/router'
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT',
 	MouseLocation = 'MOUSE_LOCATION',
+	ViewportUpdate = 'VIEWPORT_UPDATE',
 }
 
 export class Portal {
@@ -151,6 +152,14 @@ export class Portal {
 		case BroadcastType.MouseLocation:
 			this.collab.updateCursor(decoded.payload)
 			break
+		case BroadcastType.ViewportUpdate:
+			this.collab.updateCollaboratorViewport(
+				decoded.payload.userId,
+				decoded.payload.scrollX,
+				decoded.payload.scrollY,
+				decoded.payload.zoom,
+			)
+			break
 		}
 	}
 
@@ -245,6 +254,19 @@ export class Portal {
 			this.collab.addFile(file)
 			this.socket?.emit('image-add', this.roomId, file.id, file)
 		})
+	}
+
+	async broadcastViewport(scrollX: number, scrollY: number, zoom: number) {
+		const data = {
+			type: BroadcastType.ViewportUpdate,
+			payload: {
+				userId: this.socket?.id,
+				scrollX,
+				scrollY,
+				zoom,
+			},
+		}
+		await this._broadcastSocketData(data, true)
 	}
 
 }

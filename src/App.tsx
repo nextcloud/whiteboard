@@ -9,7 +9,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiSlashForwardBox } from '@mdi/js'
+import { mdiSlashForwardBox, mdiRecordCircle, mdiStopCircle } from '@mdi/js'
 import { createRoot } from 'react-dom'
 import {
 	Excalidraw,
@@ -212,6 +212,9 @@ export default function App({
 			addWebEmbed(link)
 		})
 	}
+	const [isRecording, setIsRecording] = useState(false)
+	const [recordingError, setRecordingError] = useState<string | null>(null)
+
 	const renderMenu = () => {
 		return (
 			<MainMenu>
@@ -219,6 +222,18 @@ export default function App({
 				<MainMenu.DefaultItems.ChangeCanvasBackground />
 				<MainMenu.Separator />
 				<MainMenu.DefaultItems.SaveAsImage />
+				<MainMenu.Separator />
+				<MainMenu.Item
+					icon={<Icon path={isRecording ? mdiStopCircle : mdiRecordCircle} size={1} />}
+					onSelect={() => isRecording ? stopRecording() : startRecording()}
+					shortcut="⌘+⇧+R">
+					{isRecording ? 'Stop Recording' : 'Start Recording'}
+				</MainMenu.Item>
+				{recordingError && (
+					<div className="recording-error">
+						{recordingError}
+					</div>
+				)}
 			</MainMenu>
 		)
 	}
@@ -236,8 +251,62 @@ export default function App({
 		)
 	}
 
+	const startRecording = async () => {
+		try {
+			const response = await fetch(`https://nextcloud.local:3002/${fileId}/record`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			})
+
+			if (!response.ok) {
+				throw new Error('Failed to start recording')
+			}
+
+			setIsRecording(true)
+			setRecordingError(null)
+		} catch (error) {
+			console.error('Recording error:', error)
+			setRecordingError('Failed to start recording')
+		}
+	}
+
+	const stopRecording = async () => {
+		try {
+			const response = await fetch(`https://nextcloud.local:3002/${fileId}/stop`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			})
+
+			if (!response.ok) {
+				throw new Error('Failed to stop recording')
+			}
+
+			const { path } = await response.json()
+			setIsRecording(false)
+			setRecordingError(null)
+			console.log('Recording saved:', path)
+		} catch (error) {
+			console.error('Recording error:', error)
+			setRecordingError('Failed to stop recording')
+		}
+	}
+
 	return (
 		<div className="App">
+			{isRecording && (
+				<div className="recording-controls">
+					<div className="recording-indicator recording">
+						<Icon path={mdiRecordCircle} size={1} />
+						Recording in progress...
+					</div>
+				</div>
+			)}
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
