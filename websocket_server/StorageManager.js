@@ -8,6 +8,7 @@
 import StorageStrategy from './StorageStrategy.js'
 import LRUCacheStrategy from './LRUCacheStrategy.js'
 import RedisStrategy from './RedisStrategy.js'
+import InMemoryStrategy from './InMemoryStrategy.js'
 
 export default class StorageManager {
 
@@ -43,16 +44,19 @@ export default class StorageManager {
 		return this.strategy.getRooms()
 	}
 
-	static create(strategyType, apiService) {
+	static create(strategyType, apiService, options) {
 
 		let strategy
 
 		switch (strategyType) {
 		case 'lru':
-			strategy = new LRUCacheStrategy(apiService)
+			strategy = new LRUCacheStrategy(apiService, options)
 			break
 		case 'redis':
-			strategy = new RedisStrategy(apiService)
+			strategy = new RedisStrategy(apiService, options)
+			break
+		case 'in-mem':
+			strategy = new InMemoryStrategy()
 			break
 		default:
 			throw new Error('Invalid storage strategy type')

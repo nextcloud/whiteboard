@@ -17,6 +17,17 @@ const {
 	TLS_KEY: keyPath,
 	TLS_CERT: certPath,
 	STORAGE_STRATEGY = 'lru',
+	BACKUP_DIR = './backup',
+	MAX_BACKUPS_PER_ROOM = 5,
+	LOCK_TIMEOUT = 5000,
+	LOCK_RETRY_INTERVAL = 50,
+	CLEANUP_INTERVAL = 300000,
+	MAX_ROOMS = 1000,
+	ROOM_DATA_MAX_AGE = 1800000,
+	JWT_SECRET_KEY,
+	METRICS_TOKEN,
+	NEXTCLOUD_URL,
+	IS_DEV = false,
 } = process.env
 
 const FORCE_CLOSE_TIMEOUT = 60 * 1000
@@ -30,6 +41,18 @@ async function main() {
 			certPath,
 			storageStrategy: STORAGE_STRATEGY,
 			forceCloseTimeout: FORCE_CLOSE_TIMEOUT,
+			backupDir: BACKUP_DIR,
+			maxBackupsPerRoom: MAX_BACKUPS_PER_ROOM,
+			lockTimeout: LOCK_TIMEOUT,
+			lockRetryInterval: LOCK_RETRY_INTERVAL,
+			cleanupInterval: CLEANUP_INTERVAL,
+			maxRooms: MAX_ROOMS,
+			roomDataMaxAge: ROOM_DATA_MAX_AGE,
+			jwtSecretKey: JWT_SECRET_KEY,
+			sharedSecret: JWT_SECRET_KEY,
+			metricsToken: METRICS_TOKEN,
+			nextcloudUrl: NEXTCLOUD_URL,
+			isDev: IS_DEV,
 		})
 
 		await serverManager.start()

@@ -11,11 +11,11 @@ import Room from './Room.js'
 
 export default class RedisStrategy extends StorageStrategy {
 
-	constructor(apiService) {
+	constructor(apiService, options = { redisUrl: 'redis://localhost:6379' }) {
 		super()
 		this.apiService = apiService
 		this.client = createClient({
-			url: process.env.REDIS_URL || 'redis://localhost:6379',
+			url: options.redisUrl,
 			retry_strategy: (options) => {
 				if (options.error && options.error.code === 'ECONNREFUSED') {
 					return new Error('The server refused the connection')

@@ -5,17 +5,15 @@
 
 import dotenv from 'dotenv'
 import express from 'express'
-import PrometheusDataManager from './PrometheusDataManager.js'
 
 dotenv.config()
 
 export default class AppManager {
 
-	constructor(storageManager) {
+	constructor(metricsManager, options = { metricsToken: '' }) {
 		this.app = express()
-		this.storageManager = storageManager
-		this.metricsManager = new PrometheusDataManager(storageManager)
-		this.METRICS_TOKEN = process.env.METRICS_TOKEN
+		this.metricsManager = metricsManager
+		this.METRICS_TOKEN = options.metricsToken
 		this.setupRoutes()
 	}
 

@@ -8,15 +8,14 @@
 import fetch from 'node-fetch'
 import https from 'https'
 import dotenv from 'dotenv'
-import Utils from './Utils.js'
+
 dotenv.config()
 
 export default class ApiService {
 
-	constructor(tokenGenerator) {
-		this.NEXTCLOUD_URL = process.env.NEXTCLOUD_URL
-		this.IS_DEV = Utils.parseBooleanFromEnv(process.env.IS_DEV)
-		this.agent = this.IS_DEV ? new https.Agent({ rejectUnauthorized: false }) : null
+	constructor(tokenGenerator, options = { nextcloudUrl: 'http://nextcloud.local', isDev: false, useTls: false }) {
+		this.NEXTCLOUD_URL = options.nextcloudUrl
+		this.agent = (options.isDev && options.useTls) ? new https.Agent({ rejectUnauthorized: false }) : null
 		this.tokenGenerator = tokenGenerator
 	}
 
