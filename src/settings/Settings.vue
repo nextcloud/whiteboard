@@ -6,6 +6,9 @@
 	<div class="section">
 		<h3>{{ t('whiteboard', 'Whiteboard settings') }}</h3>
 
+		<NcNoteCard v-if="savedAlert === true" type="success">
+			{{ t('whiteboard', 'Saved.') }}
+		</NcNoteCard>
 		<NcNoteCard v-if="validConnection === true" type="success">
 			{{ t('whiteboard', 'Whiteboard backend server is configured and connected.') }}
 		</NcNoteCard>
@@ -34,6 +37,19 @@
 					:value.sync="secret" />
 			</p>
 			<p>
+				<NcCheckboxRadioSwitch v-model="enableStatistics" type="switch">
+					{{ t('whiteboard', 'Enable statistics') }}
+				</NcCheckboxRadioSwitch>
+			</p>
+			<p>
+				<NcTextField :label="t('whiteboard', 'Statistics data lifetime (in days)')"
+					:value.sync="statisticsDataLifetime" />
+			</p>
+			<p>
+				<NcTextField :label="t('whiteboard', 'Whiteboard server metrics token')"
+					:value.sync="metricsToken" />
+			</p>
+			<p>
 				<NcButton type="submit"
 					:disabled="!serverUrl"
 					@click.prevent="submit">
@@ -50,6 +66,7 @@ import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 
@@ -60,6 +77,7 @@ export default {
 		NcButton,
 		NcLoadingIcon,
 		NcNoteCard,
+		NcCheckboxRadioSwitch,
 	},
 	data() {
 		return {
@@ -67,6 +85,10 @@ export default {
 			secret: loadState('whiteboard', 'secret', ''),
 			validConnection: undefined,
 			connectionError: undefined,
+			enableStatistics: loadState('whiteboard', 'enable_statistics', false),
+			statisticsDataLifetime: loadState('whiteboard', 'statistics_data_lifetime', ''),
+			metricsToken: loadState('whiteboard', 'metrics_token', ''),
+			savedAlert: false,
 		}
 	},
 	mounted() {
@@ -74,10 +96,15 @@ export default {
 	},
 	methods: {
 		async submit() {
+			this.hideSavedAlert()
 			const { data } = await axios.post(generateUrl('/apps/whiteboard/settings'), {
 				serverUrl: this.serverUrl,
 				secret: this.secret,
+				enableStatistics: this.enableStatistics,
+				metricsToken: this.metricsToken,
+				statisticsDataLifetime: this.statisticsDataLifetime,
 			})
+			this.showSavedAlert()
 			await this.verifyConnection(data)
 		},
 		async verifyConnection(data) {
@@ -103,6 +130,12 @@ export default {
 				socket.close()
 			})
 			socket.connect()
+		},
+		hideSavedAlert() {
+			this.savedAlert = false
+		},
+		showSavedAlert() {
+			this.savedAlert = true
 		},
 	},
 }
