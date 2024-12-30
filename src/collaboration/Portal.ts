@@ -114,6 +114,12 @@ export class Portal {
 		this.socket.on('client-broadcast', (data) =>
 			this.handleClientBroadcast(data),
 		)
+
+		this.socket.on('room-data-saved', () => this.handleRoomDataSaved())
+	}
+
+	async handleRoomDataSaved() {
+		this.collab.setRoomDataSaved(true)
 	}
 
 	async handleReadOnlySocket() {
@@ -238,6 +244,10 @@ export class Portal {
 		}
 
 		await this._broadcastSocketData(data, true)
+	}
+
+	async requestStoreToServer() {
+		this.socket?.emit('store-to-server', this.roomId)
 	}
 
 	async sendImageFiles(files: BinaryFiles) {
