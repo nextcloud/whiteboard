@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Controller;
 
 use Exception;
+use OCA\Whiteboard\Events\WhiteboardOpenedEvent;
+use OCA\Whiteboard\Events\WhiteboardUpdatedEvent;
 use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Exception\UnauthorizedException;
 use OCA\Whiteboard\Service\Authentication\GetUserFromIdServiceFactory;
@@ -23,6 +25,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IRequest;
 
 /**
@@ -39,6 +42,7 @@ final class WhiteboardController extends ApiController {
 		private WhiteboardContentService $contentService,
 		private ExceptionService $exceptionService,
 		private ConfigService $configService,
+		private IEventDispatcher $dispatcher,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -57,6 +61,9 @@ final class WhiteboardController extends ApiController {
 			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
 
 			$data = $this->contentService->getContent($file);
+
+			$event = new WhiteboardOpenedEvent($file, $user, $data);
+			$this->dispatcher->dispatchTyped($event);
 
 			return new DataResponse(['data' => $data]);
 		} catch (Exception $e) {
@@ -78,6 +85,9 @@ final class WhiteboardController extends ApiController {
 			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
 
 			$this->contentService->updateContent($file, $data);
+
+			$event = new WhiteboardUpdatedEvent($file, $user, $data);
+			$this->dispatcher->dispatchTyped($event);
 
 			return new DataResponse(['status' => 'success']);
 		} catch (Exception $e) {
