@@ -9,6 +9,7 @@
 import http from 'http'
 import https from 'https'
 import fs from 'fs'
+import cors from 'cors'
 import SharedTokenGenerator from './SharedTokenGenerator.js'
 import ApiService from './ApiService.js'
 import StorageManager from './StorageManager.js'
@@ -17,9 +18,9 @@ import AppManager from './AppManager.js'
 import SocketManager from './SocketManager.js'
 import Utils from './Utils.js'
 import BackupManager from './BackupManager.js'
+import { RecordingService } from './RecordingService.js'
 
 export default class ServerManager {
-
 	constructor(config) {
 		this.config = config
 		this.closing = false
@@ -31,6 +32,66 @@ export default class ServerManager {
 		this.appManager = new AppManager(this.storageManager)
 		this.server = this.createConfiguredServer(this.appManager.getApp())
 		this.socketManager = new SocketManager(this.server, this.roomDataManager, this.storageManager)
+		this.recordingServices = new Map()
+
+		// Setup CORS
+		const corsOptions = {
+			origin: process.env.NEXTCLOUD_URL || 'http://nextcloud.local',
+			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+			credentials: true,
+			optionsSuccessStatus: 200
+		}
+		this.appManager.getApp().use(cors(corsOptions))
+	}
+
+	setupRecordingRoutes() {
+		// Start recording
+		this.appManager.getApp().post('/:roomId/record', async (req, res) => {
+			try {
+				const { roomId } = req.params
+
+				if (this.recordingServices.has(roomId)) {
+					return res.status(400).json({ error: 'Already recording' })
+				}
+
+				const recorder = new RecordingService()
+				const boardUrl = `https://nextcloud.local/index.php/s/XJk9Kc4aLymGdAc`
+
+				const initialized = await recorder.init(boardUrl)
+				if (!initialized) {
+					throw new Error('Init failed')
+				}
+
+				await recorder.startRecording(roomId)
+				this.recordingServices.set(roomId, recorder)
+
+				res.json({ status: 'ok' })
+			} catch (error) {
+				console.error('Record start failed:', error)
+				res.status(500).json({ error: 'Failed to start' })
+			}
+		})
+
+		// Stop recording
+		this.appManager.getApp().post('/:roomId/stop', async (req, res) => {
+			try {
+				const { roomId } = req.params
+				const recorder = this.recordingServices.get(roomId)
+
+				if (!recorder) {
+					return res.status(404).json({ error: 'Not recording' })
+				}
+
+				const outputPath = await recorder.stopRecording()
+				await recorder.cleanup()
+				this.recordingServices.delete(roomId)
+
+				res.json({ status: 'ok', path: outputPath })
+			} catch (error) {
+				console.error('Record stop failed:', error)
+				res.status(500).json({ error: 'Failed to stop' })
+			}
+		})
 	}
 
 	readTlsCredentials(keyPath, certPath) {
@@ -48,8 +109,10 @@ export default class ServerManager {
 		return serverType.createServer(serverOptions, app)
 	}
 
-	start() {
+	async start() {
 		return new Promise((resolve, reject) => {
+			this.setupRecordingRoutes()
+
 			this.server.listen(this.config.port, () => {
 				console.log(`Listening on port: ${this.config.port}`)
 				resolve()
@@ -70,6 +133,17 @@ export default class ServerManager {
 		this.closing = true
 		console.log('Received shutdown signal, saving all data...')
 		try {
+			// Stop all recordings
+			for (const [roomId, recorder] of this.recordingServices) {
+				try {
+					await recorder.stopRecording()
+					await recorder.cleanup()
+				} catch (error) {
+					console.error(`Failed to stop recording for room ${roomId}:`, error)
+				}
+			}
+			this.recordingServices.clear()
+
 			await this.roomDataManager.removeAllRoomData()
 			this.socketManager.io.close()
 			console.log('Closing server...')
