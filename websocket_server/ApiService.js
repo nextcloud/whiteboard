@@ -12,7 +12,7 @@ import Config from './Config.js'
 export default class ApiService {
 
 	constructor(tokenGenerator) {
-		this.agent = (Config.USE_TLS && Config.BYPASS_SSL_VALIDATION) ? new https.Agent({ rejectUnauthorized: false }) : null
+		this.agent = (Config.USE_TLS) ? new https.Agent({ rejectUnauthorized: !Config.BYPASS_SSL_VALIDATION }) : null
 		this.tokenGenerator = tokenGenerator
 	}
 
