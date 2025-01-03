@@ -4,12 +4,11 @@
  */
 
 import { register, Gauge } from 'prom-client'
-import SystemMonitor from './SystemMonitor.js'
 
 export default class PrometheusDataManager {
 
-	constructor(storageManager) {
-		this.systemMonitor = new SystemMonitor(storageManager)
+	constructor(systemMonitor) {
+		this.systemMonitor = systemMonitor
 		this.initializeGauges()
 	}
 
