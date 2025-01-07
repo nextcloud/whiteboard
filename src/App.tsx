@@ -9,7 +9,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiSlashForwardBox } from '@mdi/js'
+import { mdiSlashForwardBox, mdiMonitorScreenshot } from '@mdi/js'
 import { createRoot } from 'react-dom'
 import {
 	Excalidraw,
@@ -212,6 +212,16 @@ export default function App({
 			addWebEmbed(link)
 		})
 	}
+
+	const takeScreenshot = () => {
+		const dataUrl = document.querySelector('.excalidraw__canvas').toDataURL('image/png')
+		const downloadLink = document.createElement('a')
+		downloadLink.href = dataUrl
+		downloadLink.download = `${fileNameWithoutExtension} Screenshot.png`
+		document.body.appendChild(downloadLink)
+		downloadLink.click()
+	}
+
 	const renderMenu = () => {
 		return (
 			<MainMenu>
@@ -219,6 +229,11 @@ export default function App({
 				<MainMenu.DefaultItems.ChangeCanvasBackground />
 				<MainMenu.Separator />
 				<MainMenu.DefaultItems.SaveAsImage />
+				<MainMenu.Item
+					icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
+					onSelect={() => takeScreenshot()}>
+					{ 'Download screenshot' }
+				</MainMenu.Item>
 			</MainMenu>
 		)
 	}
