@@ -37,5 +37,9 @@ class LoadViewerListener implements IEventListener {
 			'collabBackendUrl',
 			$this->configService->getCollabBackendUrl()
 		);
+		$this->initialState->provideInitialState(
+			'maxFileSize',
+			$this->configService->getMaxFileSize()
+		);
 	}
 }

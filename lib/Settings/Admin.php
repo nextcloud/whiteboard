@@ -25,6 +25,7 @@ class Admin implements ISettings {
 		$this->initialState->provideInitialState('url', $this->configService->getCollabBackendUrl());
 		$this->initialState->provideInitialState('secret', $this->configService->getWhiteboardSharedSecret());
 		$this->initialState->provideInitialState('jwt', $this->jwtService->generateJWTFromPayload([]));
+		$this->initialState->provideInitialState('maxFileSize', $this->configService->getMaxFileSize());
 		$response = new TemplateResponse(
 			'whiteboard',
 			'admin',

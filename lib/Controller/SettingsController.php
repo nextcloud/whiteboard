@@ -35,6 +35,7 @@ final class SettingsController extends Controller {
 		try {
 			$serverUrl = $this->request->getParam('serverUrl');
 			$secret = $this->request->getParam('secret');
+			$maxFileSize = $this->request->getParam('maxFileSize');
 
 			if ($serverUrl !== null) {
 				$this->configService->setCollabBackendUrl($serverUrl);
@@ -42,6 +43,10 @@ final class SettingsController extends Controller {
 
 			if ($secret !== null) {
 				$this->configService->setWhiteboardSharedSecret($secret);
+			}
+
+			if ($maxFileSize !== null) {
+				$this->configService->setMaxFileSize(intval($maxFileSize));
 			}
 
 			return new DataResponse([

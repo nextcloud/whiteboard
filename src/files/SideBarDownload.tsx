@@ -69,6 +69,9 @@ export function ResetDownloadButton() {
 		panelColumn.style.display = ''
 	}
 	const downloadButton = document.getElementsByClassName('nc-download')[0]
+	if (downloadButton === undefined) {
+	 return
+	}
 	sideBar.removeChild(downloadButton)
 }
 

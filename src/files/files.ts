@@ -15,6 +15,7 @@ import { Collab } from '../collaboration/collab'
 import type { FileId } from '@excalidraw/excalidraw/types/element/types'
 import axios from '@nextcloud/axios'
 import { InsertDownloadButton, ResetDownloadButton } from './SideBarDownload'
+import { loadState } from '@nextcloud/initial-state'
 
 export type Meta = {
 	name: string
@@ -50,8 +51,8 @@ export class FileHandle {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		this.excalidrawApi.onPointerDown(async (activeTool, state, event) => {
 			const clickedElement = state.hit.element
+			ResetDownloadButton()
 			if (!clickedElement || !clickedElement.customData) {
-				ResetDownloadButton()
 				return
 			}
 			InsertDownloadButton(clickedElement.customData.meta, () =>
@@ -77,6 +78,13 @@ export class FileHandle {
 	}
 
 	private handleFileInsert(file: File, ev: Event) {
+	  const maxFileSize = loadState('whiteboard', 'maxFileSize', 10)
+		if (file.size > maxFileSize * 1024 * 1024) {
+			ev.stopImmediatePropagation()
+			this.excalidrawApi.setToast({ message: `Max file size is: ${maxFileSize} MB`, closable: true, duration: 5000 })
+			return
+		}
+
 		// if excalidraw can handle it, do nothing
 		if (this.types.includes(file.type)) {
 			return
@@ -123,8 +131,9 @@ export class FileHandle {
 							id: `filetype-icon-${mimeType}` as FileId,
 							dataURL: reader.result as DataURL,
 						}
-						this.collab.portal.sendImageFiles({ [file.id]: file })
-						resolve(file.id)
+						this.collab.portal.sendImageFiles({ [file.id]: file }).then(() => {
+							resolve(file.id)
+						})
 					}
 				}
 				reader.readAsDataURL(blob)
@@ -144,9 +153,6 @@ export class FileHandle {
 			this.excalidrawApi.getAppState(),
 		)
 		const iconId = await this.getMimeIcon(meta.type)
-		this.collab.portal.sendImageFiles({
-			[constructedFile.id]: constructedFile,
-		})
 		const elements = this.excalidrawApi
 			.getSceneElementsIncludingDeleted()
 			.slice()
@@ -193,7 +199,6 @@ export class FileHandle {
 			},
 			{
 				type: 'text',
-				customData: { meta },
 				isDeleted: false,
 				fillStyle: 'solid',
 				strokeWidth: 1,
