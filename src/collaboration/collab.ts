@@ -9,6 +9,7 @@ import { Portal } from './Portal'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
+import { registerFilesHandler } from '../files/files.ts'
 
 export class Collab {
 
@@ -28,6 +29,7 @@ export class Collab {
 		this.setViewModeEnabled = setViewModeEnabled
 
 		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
+		registerFilesHandler(this.excalidrawAPI, this)
 	}
 
 	async startCollab() {

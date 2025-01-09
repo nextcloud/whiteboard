@@ -25,6 +25,14 @@ final class ConfigService {
 		return $this->appConfig->getAppValueString('jwt_secret_key');
 	}
 
+	public function getMaxFileSize(): int {
+		return $this->appConfig->getAppValueInt('max_file_size', 10);
+	}
+
+	public function setMaxFileSize(int $maxFileSize): void {
+		$this->appConfig->setAppValueInt('max_file_size', $maxFileSize);
+	}
+
 	public function getCollabBackendUrl(): string {
 		if (!method_exists($this->appConfig, 'getAppValueString')) {
 			return $this->appConfig->getAppValue('collabBackendUrl');

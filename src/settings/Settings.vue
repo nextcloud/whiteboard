@@ -34,6 +34,10 @@
 					:value.sync="secret" />
 			</p>
 			<p>
+				<NcTextField :label="t('whiteboard', 'Max file size')"
+					:value.sync="maxFileSize" />
+			</p>
+			<p>
 				<NcButton type="submit"
 					:disabled="!serverUrl"
 					@click.prevent="submit">
@@ -65,6 +69,7 @@ export default {
 		return {
 			serverUrl: loadState('whiteboard', 'url', ''),
 			secret: loadState('whiteboard', 'secret', ''),
+			maxFileSize: loadState('whiteboard', 'maxFileSize', 10),
 			validConnection: undefined,
 			connectionError: undefined,
 		}
@@ -77,6 +82,7 @@ export default {
 			const { data } = await axios.post(generateUrl('/apps/whiteboard/settings'), {
 				serverUrl: this.serverUrl,
 				secret: this.secret,
+				maxFileSize: this.maxFileSize,
 			})
 			await this.verifyConnection(data)
 		},
