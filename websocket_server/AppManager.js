@@ -3,19 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import dotenv from 'dotenv'
 import express from 'express'
-import PrometheusDataManager from './PrometheusDataManager.js'
-
-dotenv.config()
+import Config from './Config.js'
 
 export default class AppManager {
 
-	constructor(storageManager) {
+	constructor(metricsManager) {
 		this.app = express()
-		this.storageManager = storageManager
-		this.metricsManager = new PrometheusDataManager(storageManager)
-		this.METRICS_TOKEN = process.env.METRICS_TOKEN
+		this.metricsManager = metricsManager
 		this.setupRoutes()
 	}
 
@@ -30,7 +25,7 @@ export default class AppManager {
 
 	async metricsHandler(req, res) {
 		const token = req.headers.authorization?.split(' ')[1] || req.query.token
-		if (!this.METRICS_TOKEN || token !== this.METRICS_TOKEN) {
+		if (!Config.METRICS_TOKEN || token !== Config.METRICS_TOKEN) {
 			return res.status(403).send('Unauthorized')
 		}
 		this.metricsManager.updateMetrics()

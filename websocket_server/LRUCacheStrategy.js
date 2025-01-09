@@ -8,6 +8,7 @@
 import StorageStrategy from './StorageStrategy.js'
 import { LRUCache } from 'lru-cache'
 import Room from './Room.js'
+import Config from './Config.js'
 
 export default class LRUCacheStrategy extends StorageStrategy {
 
@@ -15,8 +16,8 @@ export default class LRUCacheStrategy extends StorageStrategy {
 		super()
 		this.apiService = apiService
 		this.cache = new LRUCache({
-			max: 1000,
-			ttl: 30 * 60 * 1000,
+			max: Config.MAX_ROOMS_IN_STORAGE,
+			ttl: Config.ROOM_MAX_AGE,
 			ttlAutopurge: true,
 			dispose: async (value, key) => {
 				console.log(`[${key}] Disposing room`)

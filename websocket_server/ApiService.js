@@ -7,16 +7,12 @@
 
 import fetch from 'node-fetch'
 import https from 'https'
-import dotenv from 'dotenv'
-import Utils from './Utils.js'
-dotenv.config()
+import Config from './Config.js'
 
 export default class ApiService {
 
 	constructor(tokenGenerator) {
-		this.NEXTCLOUD_URL = process.env.NEXTCLOUD_URL
-		this.IS_DEV = Utils.parseBooleanFromEnv(process.env.IS_DEV)
-		this.agent = this.IS_DEV ? new https.Agent({ rejectUnauthorized: false }) : null
+		this.agent = (Config.USE_TLS) ? new https.Agent({ rejectUnauthorized: !Config.BYPASS_SSL_VALIDATION }) : null
 		this.tokenGenerator = tokenGenerator
 	}
 
@@ -50,7 +46,7 @@ export default class ApiService {
 	}
 
 	async getRoomDataFromServer(roomID, jwtToken) {
-		const url = `${this.NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
+		const url = `${Config.NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
 		const options = this.fetchOptions('GET', jwtToken)
 		return this.fetchData(url, options)
 	}
@@ -58,7 +54,7 @@ export default class ApiService {
 	async saveRoomDataToServer(roomID, roomData, lastEditedUser, files) {
 		console.log(`[${roomID}] Saving room data to server: ${roomData.length} elements, ${Object.keys(files).length} files`)
 
-		const url = `${this.NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
+		const url = `${Config.NEXTCLOUD_URL}/index.php/apps/whiteboard/${roomID}`
 
 		const body = {
 			data: {

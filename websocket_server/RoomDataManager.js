@@ -8,6 +8,7 @@ import Utils from './Utils.js'
 import ApiService from './ApiService.js'
 import BackupManager from './BackupManager.js'
 import StorageManager from './StorageManager.js'
+import { DEFAULT_EMPTY_ROOM_DATA } from './Constants.js'
 
 /**
  * @typedef {object} RoomData
@@ -29,18 +30,6 @@ import StorageManager from './StorageManager.js'
  * @class
  */
 export default class RoomDataManager {
-
-	/**
-	 * Default configuration for room data
-	 * @static
-	 * @readonly
-	 */
-	static CONFIG = Object.freeze({
-		defaultData: {
-			elements: [],
-			files: {},
-		},
-	})
 
 	/**
 	 * @param {StorageManager} storageManager - Manager for room storage operations
@@ -133,7 +122,7 @@ export default class RoomDataManager {
 	normalizeRoomData(data) {
 		// Always return default data structure if input is null/undefined
 		if (!data) {
-			return RoomDataManager.CONFIG.defaultData
+			return DEFAULT_EMPTY_ROOM_DATA
 		}
 
 		const normalized = {
@@ -297,26 +286,6 @@ export default class RoomDataManager {
 			Utils.logOperation(roomId, 'Recovered from backup')
 		}
 		return backupData
-	}
-
-	/**
-	 * Handles empty room cleanup
-	 * @param {string} roomId - Room identifier
-	 * @return {Promise<null>}
-	 */
-	async handleEmptyRoom(roomId) {
-		await this.cleanupEmptyRoom(roomId)
-		return null
-	}
-
-	/**
-	 * Removes empty room from storage
-	 * @param {string} roomId - Room identifier
-	 * @return {Promise<void>}
-	 */
-	async cleanupEmptyRoom(roomId) {
-		await this.storageManager.delete(roomId)
-		Utils.logOperation(roomId, 'Empty room removed from cache')
 	}
 
 }
