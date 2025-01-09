@@ -6,10 +6,13 @@
 	<div class="section">
 		<h3>{{ t('whiteboard', 'Whiteboard settings') }}</h3>
 
-		<NcNoteCard v-if="validConnection === true" type="success">
+		<NcNoteCard v-if="!loading && setupCheck !== null" :type="setupCheck.severity">
+			{{ setupCheck.description }}
+		</NcNoteCard>
+		<NcNoteCard v-else-if="!loading && validConnection === true" type="success">
 			{{ t('whiteboard', 'Whiteboard backend server is configured and connected.') }}
 		</NcNoteCard>
-		<NcNoteCard v-else-if="validConnection === false" type="error">
+		<NcNoteCard v-else-if="!loading && validConnection === false" type="error">
 			{{ t('whiteboard', 'Failed to verify the connection:') }} {{ connectionError }}
 		</NcNoteCard>
 		<NcNoteCard v-else type="info" :text="t('whiteboard', 'Verifying connection…')">
@@ -17,6 +20,7 @@
 				<NcLoadingIcon />
 			</template>
 		</NcNoteCard>
+
 		<p>
 			{{ t('whiteboard', 'Whiteboard requires a separate collaboration server that is connected to Nextcloud.') }}
 			<a href="https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend"
@@ -35,7 +39,7 @@
 			</p>
 			<p>
 				<NcButton type="submit"
-					:disabled="!serverUrl"
+					:disabled="!serverUrl || loading"
 					@click.prevent="submit">
 					{{ t('whiteboard', 'Save settings') }}
 				</NcButton>
@@ -67,20 +71,32 @@ export default {
 			secret: loadState('whiteboard', 'secret', ''),
 			validConnection: undefined,
 			connectionError: undefined,
+			loading: false,
+			setupCheck: null,
 		}
 	},
 	mounted() {
+		this.callSettings()
 		this.verifyConnection({ jwt: loadState('whiteboard', 'jwt', '') })
 	},
 	methods: {
 		async submit() {
-			const { data } = await axios.post(generateUrl('/apps/whiteboard/settings'), {
+			const data = await this.callSettings({
 				serverUrl: this.serverUrl,
 				secret: this.secret,
 			})
 			await this.verifyConnection(data)
 		},
+		async callSettings(updateValues = {}) {
+			this.loading = true
+			const { data } = await axios.post(generateUrl('/apps/whiteboard/settings'), updateValues)
+			this.setupCheck = data.check.severity !== 'success' ? data.check : null
+			this.loading = false
+			return data
+		},
 		async verifyConnection(data) {
+			this.loading = true
+
 			const url = new URL(this.serverUrl)
 			const path = url.pathname.replace(/\/$/, '') + '/socket.io'
 
@@ -91,16 +107,18 @@ export default {
 					secret: data.jwt,
 				},
 				transports: ['websocket'],
-				timeout: 10000,
+				timeout: 5000,
 			})
 			socket.on('connect', () => {
 				this.validConnection = true
 				this.connectionError = undefined
+				this.loading = false
 			})
 			socket.on('connect_error', (error) => {
 				this.validConnection = error.message === 'Connection verified'
 				this.connectionError = this.validConnection === false ? error.message : undefined
 				socket.close()
+				this.loading = false
 			})
 			socket.connect()
 		},
