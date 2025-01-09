@@ -26,7 +26,7 @@ final class ConfigService {
 	}
 
 	public function getMaxFileSize(): int {
-		return $this->appConfig->getAppValueInt('max_file_size');
+		return $this->appConfig->getAppValueInt('max_file_size', 10);
 	}
 
 	public function setMaxFileSize(int $maxFileSize): void {
