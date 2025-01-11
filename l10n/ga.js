@@ -14,6 +14,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "Féach ar an doiciméadú ar conas é a shuiteáil.",
     "Whiteboard server URL" : "URL freastalaí an chláir bháin",
     "Shared secret" : "Rún comhroinnte",
+    "Max file size" : "Uasmhéid comhaid",
     "Save settings" : "Sábháil socruithe"
 },
 "nplurals=5; plural=(n==1 ? 0 : n==2 ? 1 : n<7 ? 2 : n<11 ? 3 : 4);");
