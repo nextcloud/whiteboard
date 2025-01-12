@@ -14,6 +14,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "有關如何安裝，請參閱用戶手冊。",
     "Whiteboard server URL" : "白板伺服器 URL",
     "Shared secret" : "分享了密碼",
+    "Max file size" : "最大檔案大小",
     "Save settings" : "保存設置"
 },
 "nplurals=1; plural=0;");
