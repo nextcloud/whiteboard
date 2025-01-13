@@ -1,7 +1,11 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "New whiteboard" : "Nauja rašymo lenta",
+    "Create new whiteboard" : "Sukurti naują rašymo lentą",
     "Whiteboard" : "Rašymo lenta",
+    "Whiteboard app" : "Rašymo lentos programėlė",
+    "Whiteboard settings" : "Rašymo lentos nustatymai",
     "Failed to verify the connection:" : "Nepavyko patikrinti ryšio:",
     "Verifying connection…" : "Tikrinamas ryšys…",
     "Save settings" : "Įrašyti nustatymus"

@@ -14,6 +14,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "Se dokumentationen om hur du installerar den.",
     "Whiteboard server URL" : "Whiteboard-serverns URL",
     "Shared secret" : "Delad hemlighet",
+    "Max file size" : "Max filstorlek",
     "Save settings" : "Spara inställningar"
 },
 "nplurals=2; plural=(n != 1);");
