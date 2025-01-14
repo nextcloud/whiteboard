@@ -14,6 +14,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "Kurulumun nasıl yapılacağı ile ilgili belgelere bakın.",
     "Whiteboard server URL" : "Beyaz tahta sunucusu adresi",
     "Shared secret" : "Paylaşılan parola",
+    "Max file size" : "En büyük dosya boyutu",
     "Save settings" : "Ayarları kaydet"
 },
 "nplurals=2; plural=(n > 1);");
