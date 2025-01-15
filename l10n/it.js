@@ -14,6 +14,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "Consultare la documentazione su come installarlo.",
     "Whiteboard server URL" : "URL del server della lavagna",
     "Shared secret" : "Segreto condiviso",
+    "Max file size" : "Dimensione massima del file",
     "Save settings" : "Salva impostazioni"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
