@@ -50,6 +50,7 @@ export default class SocketManager {
 	createSocketServer(server) {
 		return new SocketIO(server, {
 			transports: ['websocket', 'polling'],
+			maxHttpBufferSize: Config.MAX_UPLOAD_FILE_SIZE + 1e6,
 			cors: {
 				origin: Config.NEXTCLOUD_WEBSOCKET_URL,
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
