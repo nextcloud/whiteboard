@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.0.5
+
+### Features
+- Compatibility with Nextcloud 31
+- Upload other files then images to whiteboards @grnd-alt [#278](https://github.com/nextcloud/whiteboard/pull/278)
+- feat: Add option to take screenshot of the visible area @juliusknorr [#325](https://github.com/nextcloud/whiteboard/pull/325)
+- Data management improvements @hweihwang [#259](https://github.com/nextcloud/whiteboard/pull/259)
+- feat(Dockerfile): do not pin alpine version @szaimen [#241](https://github.com/nextcloud/whiteboard/pull/241)
+
+### Fixed
+- Fix server crashed, regular cleanups, improve configs, etc... @hweihwang [#306](https://github.com/nextcloud/whiteboard/pull/306)
+- fix: prevent preview div from collapsing to 0px height @pbirrer [#277](https://github.com/nextcloud/whiteboard/pull/277)
+- fix #183 typo in Readme for nginx reverse configuration @EricMeallier [#242](https://github.com/nextcloud/whiteboard/pull/242)
+- fix: failed to update nextcloud/ocp package on branch main @hweihwang [#240](https://github.com/nextcloud/whiteboard/pull/240)
+- add excalidraw type to whiteboard file @grnd-alt [#255](https://github.com/nextcloud/whiteboard/pull/255)
+
+### Other
+- add reverse proxy config example for Apache >= 2.4.47 @DanScharon [#282](https://github.com/nextcloud/whiteboard/pull/282)
+- chore(readme): add exemplary configuration for Caddy v2 @st3iny [#213](https://github.com/nextcloud/whiteboard/pull/213)
+
 ## 1.0.4
 
 ### Fixed
