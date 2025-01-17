@@ -8,9 +8,10 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRecording } from './hooks/useRecording'
 import { Icon } from '@mdi/react'
 import { mdiSlashForwardBox, mdiMonitorScreenshot } from '@mdi/js'
-import { createRoot } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import {
 	Excalidraw,
 	MainMenu,
@@ -29,12 +30,14 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import { Recording } from './components/Recording'
 
 interface WhiteboardAppProps {
 	fileId: number
 	fileName: string
 	isEmbedded: boolean
 	publicSharingToken: string | null
+	collabBackendUrl: string
 }
 
 export default function App({
@@ -42,6 +45,7 @@ export default function App({
 	isEmbedded,
 	fileName,
 	publicSharingToken,
+	collabBackendUrl,
 }: WhiteboardAppProps) {
 	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
 
@@ -50,14 +54,14 @@ export default function App({
 	const [gridModeEnabled] = useState(false)
 
 	const isDarkMode = () => {
-		const ncThemes = document.body.dataset?.themes
+		const ncThemes = document.body.dataset?.themes || ''
 		return (
 			(window.matchMedia('(prefers-color-scheme: dark)').matches
 				&& (ncThemes === undefined || ncThemes?.indexOf('light') === -1))
 			|| ncThemes?.indexOf('dark') > -1
 		)
 	}
-	const [theme, setTheme] = useState(isDarkMode() ? 'dark' : 'light')
+	const [theme, setTheme] = useState<'dark' | 'light'>(isDarkMode() ? 'dark' : 'light')
 
 	const lang = useExcalidrawLang()
 
@@ -92,29 +96,35 @@ export default function App({
 		= useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
-	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
+	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled, collabBackendUrl)) }
 	if (collab && !collab.portal.socket) collab.startCollab()
+
+	const smartPickerRef = useRef<HTMLLabelElement | null>(null)
 	useEffect(() => {
+		if (smartPickerRef.current) return // Already mounted
+
 		const extraTools = document.getElementsByClassName(
 			'App-toolbar__extra-tools-trigger',
 		)[0]
+		if (!extraTools) return
+
 		const smartPick = document.createElement('label')
 		smartPick.classList.add(...['ToolIcon', 'Shape'])
-		if (extraTools) {
-			extraTools.parentNode?.insertBefore(
-				smartPick,
-				extraTools.previousSibling,
-			)
-			const root = createRoot(smartPick)
-			root.render(renderSmartPicker())
-		}
-	})
+		extraTools.parentNode?.insertBefore(
+			smartPick,
+			extraTools.previousSibling,
+		)
+		const root = createRoot(smartPick)
+		root.render(renderSmartPicker())
+		smartPickerRef.current = smartPick
 
-	useEffect(() => {
 		return () => {
-			if (collab) collab.portal.disconnectSocket()
+			if (smartPickerRef.current) {
+				smartPickerRef.current.remove()
+				smartPickerRef.current = null
+			}
 		}
-	}, [excalidrawAPI])
+	}, []) // Empty dependency array since we only want this to run once
 
 	useEffect(() => {
 		const handleBeforeUnload = () => {
@@ -222,21 +232,22 @@ export default function App({
 		downloadLink.click()
 	}
 
-	const renderMenu = () => {
-		return (
-			<MainMenu>
-				<MainMenu.DefaultItems.ToggleTheme />
-				<MainMenu.DefaultItems.ChangeCanvasBackground />
-				<MainMenu.Separator />
-				<MainMenu.DefaultItems.SaveAsImage />
-				<MainMenu.Item
-					icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
-					onSelect={() => takeScreenshot()}>
-					{ 'Download screenshot' }
-				</MainMenu.Item>
-			</MainMenu>
-		)
-	}
+	const {
+		isRecording,
+		isStarting,
+		isStopping,
+		hasError,
+		error,
+		duration,
+		otherRecordingUsers,
+		hasOtherRecordingUsers,
+		startRecording,
+		stopRecording,
+		resetError,
+	} = useRecording({
+		collab: collab!,
+		fileId,
+	})
 
 	const renderSmartPicker = () => {
 		return (
@@ -251,15 +262,47 @@ export default function App({
 		)
 	}
 
+	const recording = Recording({
+		isStarting,
+		isStopping,
+		isRecording,
+		hasError,
+		error,
+		duration,
+		otherRecordingUsers,
+		hasOtherRecordingUsers,
+		startRecording,
+		stopRecording,
+		resetError,
+	})
+
+	const renderMenu = () => {
+		return (
+			<MainMenu>
+				<MainMenu.DefaultItems.ToggleTheme />
+				<MainMenu.DefaultItems.ChangeCanvasBackground />
+				<MainMenu.Separator />
+				<MainMenu.DefaultItems.SaveAsImage />
+				<MainMenu.Item
+					icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
+					onSelect={() => takeScreenshot()}>
+					{'Download screenshot'}
+				</MainMenu.Item>
+				{recording.renderRecordingMenuItem()}
+			</MainMenu>
+		)
+	}
+
 	return (
 		<div className="App">
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
-					renderEmbeddable={Embeddable}
+					renderEmbeddable={(element) => {
+						if (!element.link) return null
+						return <Embeddable link={element.link} />
+					}}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-						console.log(api)
-						console.log('Setting API')
 						setExcalidrawAPI(api)
 					}}
 					initialData={initialStatePromiseRef.current.promise}
@@ -278,6 +321,7 @@ export default function App({
 					langCode={lang}>
 					{renderMenu()}
 				</Excalidraw>
+				{recording.renderRecordingOverlay()}
 			</div>
 		</div>
 	)

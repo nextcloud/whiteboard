@@ -25,6 +25,8 @@ use OCP\Files\Template\RegisterTemplateCreatorEvent;
 use OCP\IL10N;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 use OCP\Util;
+use Psr\Container\ContainerExceptionInterface;
+use Throwable;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -46,6 +48,10 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 	}
 
+	/**
+	 * @throws ContainerExceptionInterface
+	 * @throws Throwable
+	 */
 	public function boot(IBootContext $context): void {
 		[$major] = Util::getVersion();
 		if ($major < 30) {

@@ -9,12 +9,12 @@ import { io, type Socket } from 'socket.io-client'
 import type { Collab } from './collab'
 import type { AppState, BinaryFiles, Gesture } from '@excalidraw/excalidraw/types/types'
 import axios from '@nextcloud/axios'
-import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT',
 	MouseLocation = 'MOUSE_LOCATION',
+	ViewportUpdate = 'VIEWPORT_UPDATE',
 }
 
 export class Portal {
@@ -23,19 +23,23 @@ export class Portal {
 	roomId: string
 	collab: Collab
 	publicSharingToken: string | null
+	collabBackendUrl: string
 
-	constructor(roomId: string, collab: Collab, publicSharingToken: string | null) {
+	constructor(roomId: string, collab: Collab, publicSharingToken: string | null, collabBackendUrl: string) {
 		this.roomId = roomId
 		this.collab = collab
 		this.publicSharingToken = publicSharingToken
+		this.collabBackendUrl = collabBackendUrl
 	}
 
 	connectSocket = async () => {
-		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
-		await this.refreshJWT()
 		const token = localStorage.getItem(`jwt-${this.roomId}`) || ''
 
-		const url = new URL(collabBackendUrl)
+		if (!token) {
+			await this.refreshJWT()
+		}
+
+		const url = new URL(this.collabBackendUrl)
 		const path = url.pathname.replace(/\/$/, '') + '/socket.io'
 
 		const socket = io(url.origin, {
@@ -151,6 +155,14 @@ export class Portal {
 		case BroadcastType.MouseLocation:
 			this.collab.updateCursor(decoded.payload)
 			break
+		case BroadcastType.ViewportUpdate:
+			this.collab.updateCollaboratorViewport(
+				decoded.payload.userId,
+				decoded.payload.scrollX,
+				decoded.payload.scrollY,
+				decoded.payload.zoom,
+			)
+			break
 		}
 	}
 
@@ -161,29 +173,29 @@ export class Portal {
 
 	async refreshJWT(): Promise<string | null> {
 		try {
-		  let url = generateUrl(`apps/whiteboard/${this.roomId}/token`)
-		  if (this.publicSharingToken) {
+			let url = generateUrl(`apps/whiteboard/${this.roomId}/token`)
+			if (this.publicSharingToken) {
 				url += `?publicSharingToken=${encodeURIComponent(this.publicSharingToken)}`
-		  }
+			}
 
-		  const response = await axios.get(url, { withCredentials: true })
+			const response = await axios.get(url, { withCredentials: true })
 
-		  const token = response.data.token
+			const token = response.data.token
 
-		  console.log('token', token)
+			console.log('token', token)
 
-		  if (!token) throw new Error('No token received')
+			if (!token) throw new Error('No token received')
 
-		  localStorage.setItem(`jwt-${this.roomId}`, token)
+			localStorage.setItem(`jwt-${this.roomId}`, token)
 
-		  return token
+			return token
 		} catch (error) {
-		  console.error('Error refreshing JWT:', error)
-		  alert(error.message)
-		  OCA.Viewer?.close()
-		  return null
+			console.error('Error refreshing JWT:', error)
+			alert(error.message)
+			OCA.Viewer?.close()
+			return null
 		}
-	  }
+	}
 
 	async _broadcastSocketData(
 		data: {
@@ -245,6 +257,19 @@ export class Portal {
 			this.collab.addFile(file)
 			this.socket?.emit('image-add', this.roomId, file.id, file)
 		})
+	}
+
+	async broadcastViewport(scrollX: number, scrollY: number, zoom: number) {
+		const data = {
+			type: BroadcastType.ViewportUpdate,
+			payload: {
+				userId: this.socket?.id,
+				scrollX,
+				scrollY,
+				zoom,
+			},
+		}
+		await this._broadcastSocketData(data, true)
 	}
 
 }
