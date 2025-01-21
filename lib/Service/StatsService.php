@@ -53,4 +53,53 @@ final class StatsService {
 			->where($queryBuilder->expr()->lt('timestamp', $queryBuilder->createNamedParameter($beforeTime)))
 			->executeStatement();
 	}
+
+    public function getTotalActiveUsers(): int {
+        $queryBuilder = $this->connection->getQueryBuilder();
+        $query = $queryBuilder->select('total_users')
+            ->from('whiteboard_active_users')
+            ->orderBy('timestamp', 'DESC')
+            ->setMaxResults(1)
+            ->executeQuery();
+        return (int) $query->fetchOne();
+    }
+
+    public function getTotalBoards(): int {
+        $queryBuilder = $this->connection->getQueryBuilder();
+        $query = $queryBuilder->select('COUNT(*)')
+            ->from('whiteboard_events')
+            ->where($queryBuilder->expr()->eq('type', $queryBuilder->createNamedParameter('created')))
+            ->executeQuery();
+        return (int) $query->fetchOne();
+    }
+
+    public function getTotalSize(): int {
+        $queryBuilder = $this->connection->getQueryBuilder();
+
+        // Sum size of all latest updated events of each file
+        $query = $queryBuilder->select('SUM(size)')
+            ->from('whiteboard_events')
+            ->where($queryBuilder->expr()->in('id', $queryBuilder->createNamedParameter(
+                $queryBuilder->select('MAX(id)')
+                    ->from('whiteboard_events')
+                    ->groupBy('fileid')
+            )))
+            ->executeQuery();
+        return (int) $query->fetchOne();
+    }
+
+    public function getTotalElements(): int {
+        $queryBuilder = $this->connection->getQueryBuilder();
+
+        // Sum elements of all latest updated events of each file
+        $query = $queryBuilder->select('SUM(elements)')
+            ->from('whiteboard_events')
+            ->where($queryBuilder->expr()->in('id', $queryBuilder->createNamedParameter(
+                $queryBuilder->select('MAX(id)')
+                    ->from('whiteboard_events')
+                    ->groupBy('fileid')
+            )))
+            ->executeQuery();
+        return (int) $query->fetchOne();
+    }
 }

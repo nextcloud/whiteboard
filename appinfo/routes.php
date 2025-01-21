@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use OCA\Whiteboard\Controller\JWTController;
 use OCA\Whiteboard\Controller\SettingsController;
+use OCA\Whiteboard\Controller\StatsController;
 use OCA\Whiteboard\Controller\WhiteboardController;
 
 return [
@@ -21,5 +22,7 @@ return [
 		['name' => 'Whiteboard#show', 'url' => '{fileId}', 'verb' => 'GET'],
 		/** @see SettingsController::update() */
 		['name' => 'Settings#update', 'url' => 'settings', 'verb' => 'POST'],
+        /** @see StatsController::summary() */
+		['name' => 'StatsController#summary', 'url' => 'stats/summary', 'verb' => 'GET'],
 	]
 ];
