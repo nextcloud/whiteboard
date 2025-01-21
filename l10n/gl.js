@@ -14,6 +14,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "Consulte a documentación sobre como instalalo.",
     "Whiteboard server URL" : "URL do servidor do encerado dixital",
     "Shared secret" : "Segredo compartido",
+    "Max file size" : "Tamaño máximo do ficheiro",
     "Save settings" : "Gardar os axustes"
 },
 "nplurals=2; plural=(n != 1);");
