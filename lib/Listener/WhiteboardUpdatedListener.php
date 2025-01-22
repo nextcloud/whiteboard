@@ -15,9 +15,8 @@ use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\StatsService;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
-use OCP\Files\Events\Node\NodeCreatedEvent;
 
-/** @template-implements IEventListener<NodeCreatedEvent|Event> */
+/** @template-implements IEventListener<WhiteboardUpdatedEvent|Event> */
 /**
  * @psalm-suppress UndefinedClass
  * @psalm-suppress MissingTemplateParam
