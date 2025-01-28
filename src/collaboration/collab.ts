@@ -4,7 +4,14 @@
  */
 
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, BinaryFileData, BinaryFiles, Collaborator, ExcalidrawImperativeAPI, Gesture } from '@excalidraw/excalidraw/types/types'
+import type {
+	AppState,
+	BinaryFileData,
+	BinaryFiles,
+	Collaborator,
+	ExcalidrawImperativeAPI,
+	Gesture,
+} from '@excalidraw/excalidraw/types/types'
 import { Portal } from './Portal'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
@@ -21,14 +28,26 @@ export class Collab {
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 	private files = new Map<string, BinaryFileData>()
+	private followedUserId: string | null = null
+	private lastBroadcastedViewport = {
+		scrollX: 0,
+		scrollY: 0,
+		zoom: 1,
+	}
 
-	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
+	constructor(
+		excalidrawAPI: ExcalidrawImperativeAPI,
+		fileId: number,
+		publicSharingToken: string | null,
+		setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>,
+		collabBackendUrl: string,
+	) {
 		this.excalidrawAPI = excalidrawAPI
 		this.fileId = fileId
 		this.publicSharingToken = publicSharingToken
 		this.setViewModeEnabled = setViewModeEnabled
 
-		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
+		this.portal = new Portal(`${fileId}`, this, publicSharingToken, collabBackendUrl)
 		registerFilesHandler(this.excalidrawAPI, this)
 	}
 
@@ -38,6 +57,8 @@ export class Collab {
 		this.portal.connectSocket()
 
 		this.excalidrawAPI.onChange(this.onChange)
+
+		window.collab = this
 	}
 
 	getSceneElementsIncludingDeleted = () => {
@@ -49,14 +70,17 @@ export class Collab {
 		const localElements = this.getSceneElementsIncludingDeleted()
 		const appState = this.excalidrawAPI.getAppState()
 
-		return reconcileElements(localElements, restoredRemoteElements, appState)
+		return reconcileElements(
+			localElements,
+			restoredRemoteElements,
+			appState,
+		)
 	}
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
 			elements,
-		},
-		)
+		})
 	}
 
 	private getLastBroadcastedOrReceivedSceneVersion = () => {
@@ -64,44 +88,74 @@ export class Collab {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	private onChange = (elements: readonly ExcalidrawElement[], _state: AppState, files: BinaryFiles) => {
-		if (hashElementsVersion(elements)
+	private onChange = (
+		elements: readonly ExcalidrawElement[],
+		state: AppState,
+		files: BinaryFiles,
+	) => {
+		if (
+			hashElementsVersion(elements)
 			> this.getLastBroadcastedOrReceivedSceneVersion()
 		) {
-			this.lastBroadcastedOrReceivedSceneVersion = hashElementsVersion(elements)
+			this.lastBroadcastedOrReceivedSceneVersion
+				= hashElementsVersion(elements)
 			throttle(() => {
 				this.portal.broadcastScene('SCENE_INIT', elements)
 
 				const syncedFiles = Array.from(this.files.keys())
-				const newFiles = Object.keys(files).filter((id) => !syncedFiles.includes(id)).reduce((acc, id) => {
-					acc[id] = files[id]
-					return acc
-				}, {} as BinaryFiles)
+				const newFiles = Object.keys(files)
+					.filter((id) => !syncedFiles.includes(id))
+					.reduce((acc, id) => {
+						acc[id] = files[id]
+						return acc
+					}, {} as BinaryFiles)
 				if (Object.keys(newFiles).length > 0) {
 					this.portal.sendImageFiles(newFiles)
 				}
 			})()
 		}
+
+		this.broadcastViewportIfChanged(state)
+	}
+
+	private broadcastViewportIfChanged(state: AppState) {
+		const { scrollX, scrollY, zoom } = state
+		if (
+			scrollX !== this.lastBroadcastedViewport.scrollX
+			|| scrollY !== this.lastBroadcastedViewport.scrollY
+			|| zoom.value !== this.lastBroadcastedViewport.zoom
+		) {
+			this.lastBroadcastedViewport = {
+				scrollX,
+				scrollY,
+				zoom: zoom.value,
+			}
+			this.portal.broadcastViewport(scrollX, scrollY, zoom.value)
+		}
 	}
 
 	onPointerUpdate = (payload: {
-		pointersMap: Gesture['pointers'],
-		pointer: { x: number; y: number; tool: 'laser' | 'pointer' },
+		pointersMap: Gesture['pointers']
+		pointer: { x: number; y: number; tool: 'laser' | 'pointer' }
 		button: 'down' | 'up'
 	}) => {
-		payload.pointersMap.size < 2 && this.portal.socket && this.portal.broadcastMouseLocation(payload)
+		payload.pointersMap.size < 2
+			&& this.portal.socket
+			&& this.portal.broadcastMouseLocation(payload)
 	}
 
-	updateCollaborators = (users: {
-		user: {
-			id: string,
-			name: string
-		},
-		socketId: string,
-		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
-		button: 'down' | 'up',
-		selectedElementIds: AppState['selectedElementIds']
-	}[]) => {
+	updateCollaborators = (
+		users: {
+			user: {
+				id: string
+				name: string
+			}
+			socketId: string
+			pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
+			button: 'down' | 'up'
+			selectedElementIds: AppState['selectedElementIds']
+		}[],
+	) => {
 		const collaborators = new Map<string, Collaborator>()
 
 		users.forEach((payload) => {
@@ -117,12 +171,12 @@ export class Collab {
 	}
 
 	updateCursor = (payload: {
-		socketId: string,
-		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
-		button: 'down' | 'up',
-		selectedElementIds: AppState['selectedElementIds'],
+		socketId: string
+		pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
+		button: 'down' | 'up'
+		selectedElementIds: AppState['selectedElementIds']
 		user: {
-			id: string,
+			id: string
 			name: string
 		}
 	}) => {
@@ -152,6 +206,60 @@ export class Collab {
 	addFile = (file: BinaryFileData) => {
 		this.files.set(file.id, file)
 		this.excalidrawAPI.addFiles([file])
+	}
+
+	followUser(userId: string) {
+		this.followedUserId = userId
+		const collabInfo = this.collaborators.get(userId)
+		if (collabInfo?.viewport) {
+			this.applyViewport(collabInfo.viewport)
+		}
+	}
+
+	unfollowUser() {
+		this.followedUserId = null
+	}
+
+	updateCollaboratorViewport = (
+		userId: string,
+		scrollX: number,
+		scrollY: number,
+		zoom: number,
+	) => {
+		const collaborator = this.collaborators.get(userId)
+		if (!collaborator) return
+
+		const updated = {
+			...collaborator,
+			viewport: { scrollX, scrollY, zoom },
+		}
+		this.collaborators.set(userId, updated)
+
+		if (this.followedUserId === userId) {
+			this.applyViewport({ scrollX, scrollY, zoom })
+		}
+
+		this.excalidrawAPI.updateScene({ collaborators: this.collaborators })
+	}
+
+	private applyViewport({
+		scrollX,
+		scrollY,
+		zoom,
+	}: {
+		scrollX: number
+		scrollY: number
+		zoom: number
+	}) {
+		const appState = this.excalidrawAPI.getAppState()
+		this.excalidrawAPI.updateScene({
+			appState: {
+				...appState,
+				scrollX,
+				scrollY,
+				zoom: { value: zoom },
+			},
+		})
 	}
 
 }

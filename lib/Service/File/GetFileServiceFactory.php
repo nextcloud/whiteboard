@@ -12,6 +12,7 @@ namespace OCA\Whiteboard\Service\File;
 use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Model\AuthenticatedUser;
 use OCA\Whiteboard\Model\PublicSharingUser;
+use OCA\Whiteboard\Model\RecordingAgent;
 use OCA\Whiteboard\Model\User;
 use OCP\Files\IRootFolder;
 use OCP\Share\IManager as ShareManager;
@@ -35,6 +36,10 @@ final class GetFileServiceFactory {
 
 		if ($user instanceof PublicSharingUser) {
 			return new GetFileFromPublicSharingTokenService($this->shareManager, $user->getPublicSharingToken(), $fileId);
+		}
+
+		if ($user instanceof RecordingAgent) {
+			return new GetFileFromIdService($this->rootFolder, $user->getNCUserId(), $fileId);
 		}
 
 		throw new InvalidUserException();
