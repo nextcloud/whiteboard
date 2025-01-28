@@ -13,7 +13,9 @@ use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use OCA\Whiteboard\Consts\JWTConsts;
+use OCA\Whiteboard\Consts\RecordingConsts;
 use OCA\Whiteboard\Exception\UnauthorizedException;
+use OCA\Whiteboard\Model\RecordingAgent;
 use OCA\Whiteboard\Model\User;
 use OCP\Files\File;
 use OCP\Files\InvalidPathException;
@@ -31,7 +33,8 @@ final class JWTService {
 	 */
 	public function generateJWT(User $user, File $file, bool $isFileReadOnly = true): string {
 		$issuedAt = time();
-		$expirationTime = $issuedAt + JWTConsts::EXPIRATION_TIME;
+		$expirationTime = $issuedAt + ($user instanceof RecordingAgent ? RecordingConsts::RECORDING_JWT_EXPIRATION_TIME : JWTConsts::EXPIRATION_TIME);
+
 		$payload = [
 			'userid' => $user->getUID(),
 			'fileId' => $file->getId(),
@@ -43,6 +46,11 @@ final class JWTService {
 			'iat' => $issuedAt,
 			'exp' => $expirationTime
 		];
+
+		if ($user instanceof RecordingAgent) {
+			$payload['isRecordingAgent'] = true;
+			$payload['ncUserId'] = $user->getNCUserId();
+		}
 
 		return $this->generateJWTFromPayload($payload);
 	}
@@ -59,7 +67,11 @@ final class JWTService {
 	public function getUserIdFromJWT(string $jwt): string {
 		try {
 			$key = $this->configService->getJwtSecretKey();
-			return JWT::decode($jwt, new Key($key, JWTConsts::JWT_ALGORITHM))->userid;
+			$decoded = JWT::decode($jwt, new Key($key, JWTConsts::JWT_ALGORITHM));
+			if (isset($decoded->isRecordingAgent)) {
+				return $decoded->ncUserId;
+			}
+			return $decoded->userid;
 		} catch (Exception) {
 			throw new UnauthorizedException();
 		}

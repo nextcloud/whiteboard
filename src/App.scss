@@ -30,8 +30,110 @@
   .color-picker__top-picks {
     gap: var(--default-grid-baseline);
   }
+
   .App-menu__left {
     width: 270px;
+
+    // Recording styles scoped to the menu
+    .recording-error {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin: 4px 8px;
+      background-color: var(--color-error);
+      color: var(--color-error-text);
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-size: 0.9em;
+
+      small {
+        opacity: 0.8;
+        margin-left: auto;
+      }
+    }
+
+    .recording-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin: 4px 8px;
+      background-color: var(--color-background-dark);
+      border-radius: var(--border-radius);
+      font-size: 0.9em;
+
+      &.recording {
+        background-color: var(--color-primary-element);
+        color: var(--color-primary-text);
+      }
+
+      .recording-spinner {
+        width: 10px;
+        height: 10px;
+        border: 2px solid var(--color-loading-light);
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      .recording-indicator {
+        width: 10px;
+        height: 10px;
+        background-color: var(--color-error);
+        border-radius: 50%;
+        animation: pulse 2s ease-in-out infinite;
+      }
+    }
+
+    .other-recording-users {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin: 4px 8px;
+      background-color: var(--color-background-dark);
+      border-radius: var(--border-radius);
+      font-size: 0.9em;
+      opacity: 0.8;
+
+      svg {
+        color: var(--color-error);
+      }
+    }
+  }
+
+  // Recording button style
+  .recording-button {
+    svg {
+      color: var(--color-error);
+    }
+
+    &.recording {
+      background-color: var(--color-error-background);
+      
+      svg {
+        animation: pulse 2s ease-in-out infinite;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
@@ -71,12 +173,83 @@
   position: relative;
   height: 100%;
   width: 100%;
-}
 
-.excalidraw-wrapper {
-  height: 100%;
-  position: relative;
-  overflow: hidden;
+  .excalidraw-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .recording-overlay {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+
+    .recording-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--color-main-background);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      pointer-events: auto;
+
+      &.recording {
+        color: var(--color-error);
+      }
+
+      .recording-spinner {
+        width: 10px;
+        height: 10px;
+        border: 2px solid var(--color-loading-light);
+        border-top-color: var(--color-loading-dark);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      .recording-indicator {
+        width: 10px;
+        height: 10px;
+        background: var(--color-error);
+        border-radius: 50%;
+        animation: pulse 2s ease-in-out infinite;
+      }
+    }
+
+    .recording-error {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--color-error);
+      color: var(--color-primary-text);
+      pointer-events: auto;
+      cursor: pointer;
+
+      small {
+        opacity: 0.8;
+        margin-left: 4px;
+      }
+    }
+
+    .other-recording-users {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--color-main-background);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      pointer-events: auto;
+    }
+  }
 }
 
 :root[dir='ltr']
@@ -153,4 +326,89 @@
 .excalidraw .context-menu-item:hover {
   background-color: var(--color-background-hover) !important;
   border-radius: var(--border-radius-large) !important;
+}
+
+.recording-success {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    animation: slideIn 0.3s ease-out;
+    
+    .recording-success-content {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        
+        span {
+            color: #2c3e50;
+        }
+        
+        .recording-success-link {
+            color: #0082c9;
+            text-decoration: none;
+            font-weight: 500;
+            
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+        
+        .recording-success-dismiss {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            margin-left: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            &:hover {
+                color: #333;
+            }
+        }
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+// Dark theme support
+[data-theme="dark"] .recording-success {
+	.recording-success-content {
+		background: #2c2c2c;
+		border-color: #404040;
+	}
+
+	.recording-success-title {
+		color: #e0e0e0;
+	}
+
+	.recording-success-link {
+		color: #00a2ff;
+	}
+
+	.recording-success-dismiss {
+		color: #999;
+		
+		&:hover {
+			color: #ccc;
+		}
+	}
 }

@@ -16,6 +16,8 @@ import { Server } from 'http'
 import { Server as HttpsServer } from 'https'
 import Config from './Config.js'
 import StorageStrategy from './StorageStrategy.js'
+import RecordingService from './RecordingService.js'
+import SharedTokenGenerator from './SharedTokenGenerator.js'
 
 /**
  * Manages WebSocket connections and room interactions
@@ -30,15 +32,22 @@ export default class SocketManager {
 	 * @param {StorageStrategy} socketDataStorage - Manager for socket data storage
 	 * @param {StorageStrategy} cachedTokenStorage - Manager for cached token storage
 	 * @param {object} redisClient - Shared Redis client
+	 * @param {SharedTokenGenerator} tokenGenerator - Token generator
 	 */
-	constructor(server, roomDataManager, storageManager, socketDataStorage, cachedTokenStorage, redisClient) {
+	constructor(server, roomDataManager, storageManager, socketDataStorage, cachedTokenStorage, redisClient, tokenGenerator) {
 		this.roomDataManager = roomDataManager
 		this.storageManager = storageManager
 		this.socketDataStorage = socketDataStorage
 		this.cachedTokenStorage = cachedTokenStorage
 		this.redisClient = redisClient
+		this.tokenGenerator = tokenGenerator
+		this.recordingServices = new Map()
 		this.io = this.createSocketServer(server)
 		this.init()
+	}
+
+	#getRecordingKey(roomId, userId) {
+		return `${roomId}_${userId}`
 	}
 
 	// SERVER SETUP METHODS
@@ -203,6 +212,8 @@ export default class SocketManager {
 			'image-add': this.imageAddHandler,
 			'image-remove': this.imageRemoveHandler,
 			'image-get': this.imageGetHandler,
+			'start-recording': this.startRecordingHandler,
+			'stop-recording': this.stopRecordingHandler,
 			disconnect: this.disconnectHandler,
 		}
 
@@ -292,7 +303,8 @@ export default class SocketManager {
 			Utils.convertArrayBufferToString(encryptedData),
 		)
 
-		if (payload.type === 'MOUSE_LOCATION') {
+		switch (payload.type) {
+		case 'MOUSE_LOCATION': {
 			const socketData = await this.socketDataStorage.get(socket.id)
 			if (!socketData) return
 			const eventData = {
@@ -309,6 +321,28 @@ export default class SocketManager {
 					'client-broadcast',
 					Utils.convertStringToArrayBuffer(JSON.stringify(eventData)),
 				)
+			break
+		}
+
+		case 'VIEWPORT_UPDATE': {
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData) return
+			const eventData = {
+				type: 'VIEWPORT_UPDATE',
+				payload: {
+					...payload.payload,
+					userId: socketData.user.id,
+				},
+			}
+
+			socket.volatile.broadcast
+				.to(roomID)
+				.emit(
+					'client-broadcast',
+					Utils.convertStringToArrayBuffer(JSON.stringify(eventData)),
+				)
+			break
+		}
 		}
 	}
 
@@ -377,6 +411,111 @@ export default class SocketManager {
 			console.log(`[${roomId}] ${socket.id} sent image data ${id}`)
 		} else {
 			console.warn(`[${roomId}] Image ${id} not found`)
+		}
+	}
+
+	/**
+	 * Handles recording start requests
+	 * @param {Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 */
+	async startRecordingHandler(socket, roomID) {
+		const sessionKey = `${roomID}_${socket.id}`
+		try {
+			// Validate input and permissions
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData?.user?.id) throw new Error('Unauthorized')
+
+			// Retrieve and verify room state
+			const room = await this.storageManager.get(String(roomID))
+			if (!room?.isReadyForRecording?.()) throw new Error('Room not ready for recording')
+
+			// Check existing recordings
+			if (this.recordingServices.has(sessionKey)) {
+				throw new Error('Recording already in progress')
+			}
+
+			// Initialize recording service
+			const recorder = new RecordingService(this.tokenGenerator)
+			const sharedToken = this.tokenGenerator.handle(roomID)
+			const boardUrl = `${Config.NEXTCLOUD_URL}/index.php/apps/whiteboard/recording/${roomID}/${socketData.user.id}?token=${sharedToken}`
+
+			console.log(`[${sessionKey}] Initializing recording at ${boardUrl}`)
+			if (!await recorder.init(boardUrl, roomID, socketData.user.id)) {
+				throw new Error('Recorder initialization failed')
+			}
+
+			// Start recording session
+			console.log(`[${sessionKey}] Starting recording`)
+			await recorder.startRecording(roomID, socketData.user.id)
+			this.recordingServices.set(sessionKey, recorder)
+
+			// Update room state
+			room.addRecordingUser(socketData.user.id)
+			await this.storageManager.set(roomID, room)
+
+			// Notify participants
+			socket.emit('recording-started')
+			socket.emit('follow-user', socketData.user.id)
+			socket.to(roomID).emit('user-started-recording', {
+				userId: socketData.user.id,
+				username: socketData.user.displayName,
+			})
+
+		} catch (error) {
+			console.error(`[${sessionKey}] Start recording failed:`, error)
+			socket.emit('recording-error', error.message)
+		}
+	}
+
+	/**
+	 * Handles recording stop requests
+	 * @param {Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 */
+	async stopRecordingHandler(socket, roomID) {
+		const sessionKey = `${roomID}_${socket.id}`
+		try {
+			// Validate session
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData?.user?.id) throw new Error('Unauthorized')
+
+			// Retrieve recording instance
+			const recorder = this.recordingServices.get(sessionKey)
+			if (!recorder) throw new Error('No active recording found')
+
+			// Stop recording and cleanup
+			console.log(`[${sessionKey}] Stopping recording`)
+			const result = await recorder.stopRecording(roomID, socketData.user.id)
+			await recorder.cleanup(roomID, socketData.user.id)
+			this.recordingServices.delete(sessionKey)
+
+			// Update room state
+			const room = await this.storageManager.get(roomID)
+			if (room) {
+				room.removeRecordingUser(socketData.user.id)
+				await this.storageManager.set(roomID, room)
+			}
+
+			// Notify participants
+			socket.emit('recording-stopped', {
+				filePath: result.localPath,
+				fileUrl: result.fileUrl,
+			})
+			socket.to(roomID).emit('user-stopped-recording', {
+				userId: socketData.user.id,
+				username: socketData.user.displayName,
+			})
+
+		} catch (error) {
+			console.error(`[${sessionKey}] Stop recording failed:`, error)
+			socket.emit('recording-error', error.message)
+		} finally {
+			// Ensure cleanup even if errors occur
+			if (this.recordingServices.has(sessionKey)) {
+				this.recordingServices.get(sessionKey)?.cleanup(roomID, socket.id)
+				this.recordingServices.delete(sessionKey)
+			}
 		}
 	}
 

@@ -75,6 +75,7 @@ export default class ServerManager {
 			this.socketDataStorage,
 			this.cachedTokenStorage,
 			this.redisClient,
+			this.tokenGenerator,
 		)
 	}
 
@@ -92,7 +93,7 @@ export default class ServerManager {
 		return serverType.createServer(serverOptions, app)
 	}
 
-	start() {
+	async start() {
 		return new Promise((resolve, reject) => {
 			this.server.listen(Config.PORT, () => {
 				console.log(`Listening on port: ${Config.PORT}`)
@@ -137,6 +138,15 @@ export default class ServerManager {
 			console.log('Stopped accepting new connections')
 
 			await Promise.all([
+				// Stop all recordings
+				(async () => {
+					for (const [, recorder] of this.socketManager.recordingServices) {
+						await recorder.stopRecording()
+						await recorder.cleanup()
+					}
+					this.socketManager.recordingServices.clear()
+				})(),
+
 				// Storage cleanup
 				(async () => {
 					await this.socketDataStorage.clear()

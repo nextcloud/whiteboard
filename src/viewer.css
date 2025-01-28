@@ -10,6 +10,10 @@
 	top: 0;
 }
 
+.whiteboard.recording {
+	height: 100%;
+}
+
 .whiteboard-viewer__embedding .App {
 	min-height: max(400px, 50vh);
 

@@ -9,6 +9,7 @@
 /vendor/
 /node_modules/
 /backup/
+/recordings/
 
 .php-cs-fixer.cache
 .phpunit.result.cache

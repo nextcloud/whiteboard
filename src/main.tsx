@@ -14,6 +14,38 @@ import './viewer.css'
 const EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
 const App = lazy(() => import('./App'))
 
+const isRecording = loadState('whiteboard', 'isRecording', false)
+const fileId = loadState('whiteboard', 'file_id', '')
+const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl')
+
+if (isRecording) {
+	const jwt = loadState('whiteboard', 'jwt')
+	localStorage.setItem(`jwt-${fileId}`, jwt)
+
+	document.addEventListener('DOMContentLoaded', () => {
+		document.body.removeAttribute('id')
+		document.body.innerHTML = ''
+		const whiteboardElement = createWhiteboardElement()
+		whiteboardElement.classList.add('recording')
+		document.body.appendChild(whiteboardElement)
+
+		renderApp(whiteboardElement, {
+			fileId,
+			isEmbedded: false,
+			fileName: '',
+			collabBackendUrl,
+		})
+	})
+} else {
+	const publicSharingToken = getSharingToken()
+
+	if (isPublicShare()) {
+		handlePublicSharing(publicSharingToken)
+	}
+
+	handleNonPublicSharing()
+}
+
 const generateRandomId = () =>
 	Math.random()
 		.toString(36)
@@ -33,14 +65,6 @@ const renderApp = (rootElement, props) => {
 }
 
 window.EXCALIDRAW_ASSET_PATH = EXCALIDRAW_ASSET_PATH
-
-const publicSharingToken = getSharingToken()
-
-if (isPublicShare()) {
-	handlePublicSharing(publicSharingToken)
-}
-
-handleNonPublicSharing()
 
 // Handler functions
 function handlePublicSharing(token) {
@@ -76,6 +100,7 @@ function handlePublicSharing(token) {
 			isEmbedded: false,
 			fileName: document.title,
 			publicSharingToken: token,
+			collabBackendUrl,
 		})
 	})
 }
@@ -118,6 +143,7 @@ function createWhiteboardComponent() {
 					isEmbedded: this.isEmbedded,
 					fileName: this.basename,
 					publicSharingToken: getSharingToken(),
+					collabBackendUrl,
 				})
 			})
 
