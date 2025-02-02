@@ -9,11 +9,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiSlashForwardBox, mdiMonitorScreenshot } from '@mdi/js'
+import { mdiSlashForwardBox, mdiMonitorScreenshot, mdiVote } from '@mdi/js'
 import { createRoot } from 'react-dom'
 import {
 	Excalidraw,
 	MainMenu,
+	Sidebar,
 	useHandleLibrary,
 	viewportCoordsToSceneCoords,
 } from '@excalidraw/excalidraw'
@@ -29,6 +30,9 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import { VotingSidebar } from './components/VotingSidebar'
+
+import '@nextcloud/dialogs/style.css'
 
 interface WhiteboardAppProps {
 	fileId: number
@@ -48,6 +52,8 @@ export default function App({
 	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
 	const [zenModeEnabled] = useState(isEmbedded)
 	const [gridModeEnabled] = useState(false)
+	const [docked, setDocked] = useState(true)
+	const [votings, setVotings] = useState<Array<Voting>>([])
 
 	const isDarkMode = () => {
 		const ncThemes = document.body.dataset?.themes
@@ -142,6 +148,15 @@ export default function App({
 		fetchData().then()
 	}, [excalidrawAPI])
 
+	useEffect(() => {
+		if (collab) {
+			setVotings(collab.getVotings())
+			collab.onVotingsChange = (newVotings) => {
+				setVotings(newVotings)
+			}
+		}
+	}, [collab])
+
 	const onLinkOpen = useCallback(
 		(
 			element: NonDeletedExcalidrawElement,
@@ -213,6 +228,10 @@ export default function App({
 		})
 	}
 
+	const showVotings = () => {
+		excalidrawAPI.toggleSidebar({ name: 'custom', tab: 'voting', force: true })
+	}
+
 	const takeScreenshot = () => {
 		const dataUrl = document.querySelector('.excalidraw__canvas').toDataURL('image/png')
 		const downloadLink = document.createElement('a')
@@ -233,6 +252,12 @@ export default function App({
 					icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
 					onSelect={() => takeScreenshot()}>
 					{ 'Download screenshot' }
+				</MainMenu.Item>
+				<MainMenu.Separator />
+				<MainMenu.Item
+					icon={<Icon path={mdiVote} size="16px" />}
+					onSelect={() => showVotings()}>
+					{ 'Votings' }
 				</MainMenu.Item>
 			</MainMenu>
 		)
@@ -276,6 +301,16 @@ export default function App({
 					}}
 					onLinkOpen={onLinkOpen}
 					langCode={lang}>
+					<Sidebar name="custom" docked={docked} onDock={setDocked}>
+						<Sidebar.Header>
+							Voting
+						</Sidebar.Header>
+						<Sidebar.Tabs style={{ padding: '0.5rem' }}>
+							<Sidebar.Tab tab="voting">
+								<VotingSidebar votings={votings} collab={collab}/>
+							</Sidebar.Tab>
+						</Sidebar.Tabs>
+					</Sidebar>
 					{renderMenu()}
 				</Excalidraw>
 			</div>

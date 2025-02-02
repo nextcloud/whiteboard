@@ -11,6 +11,21 @@ import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
 import { registerFilesHandler } from '../files/files.ts'
 
+interface VotingOption {
+	uuid: string;
+	type: 'answer';
+	title: string;
+	votes: string[];
+}
+
+interface Voting {
+	uuid: string;
+	question: string;
+	answers: VotingOption[];
+	state: string;
+	author: string;
+}
+
 export class Collab {
 
 	excalidrawAPI: ExcalidrawImperativeAPI
@@ -21,6 +36,8 @@ export class Collab {
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 	private files = new Map<string, BinaryFileData>()
+	private votings = new Map<string, Voting>()
+	public onVotingsChange: ((votings: Array<Voting>) => void) | null = null
 
 	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
 		this.excalidrawAPI = excalidrawAPI
@@ -152,6 +169,25 @@ export class Collab {
 	addFile = (file: BinaryFileData) => {
 		this.files.set(file.id, file)
 		this.excalidrawAPI.addFiles([file])
+	}
+
+	updateVoting(voting: Voting) {
+		this.votings.set(voting.uuid, voting)
+		if (this.onVotingsChange) {
+			this.onVotingsChange(Array.from(this.votings.values()))
+		}
+	}
+
+	vote(voting: Voting, option: VotingOption) {
+		this.portal.socket?.emit('voting-vote', this.portal.roomId, voting.uuid, option.uuid)
+	}
+
+	public getVotings() {
+		return Array.from(this.votings.values())
+	}
+
+	endVoting(voting: Voting) {
+		this.portal.socket?.emit('voting-end', this.portal.roomId, voting.uuid)
 	}
 
 }

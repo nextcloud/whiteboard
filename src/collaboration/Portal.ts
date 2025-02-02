@@ -11,6 +11,8 @@ import type { AppState, BinaryFiles, Gesture } from '@excalidraw/excalidraw/type
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
+import { showError } from '@nextcloud/dialogs'
+import { SOCKET_MSG } from '../shared/contants'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT',
@@ -66,9 +68,7 @@ export class Portal {
 	}
 
 	handleConnectionError = () => {
-		alert(
-			'Failed to connect to the whiteboard server.',
-		)
+		showError('Failed to connect to the whiteboard server.')
 		OCA.Viewer?.close()
 	}
 
@@ -114,6 +114,19 @@ export class Portal {
 		this.socket.on('client-broadcast', (data) =>
 			this.handleClientBroadcast(data),
 		)
+		this.socket.on(SOCKET_MSG.VOTING_STARTED, (data) => {
+			console.debug('Voting started', data)
+			this.collab.updateVoting(data)
+			this.collab.excalidrawAPI.toggleSidebar({ name: 'custom', tab: 'voting', force: true })
+		})
+		this.socket.on(SOCKET_MSG.VOTING_VOTED, (data) => {
+			console.debug('Voting voted', data)
+			this.collab.updateVoting(data)
+		})
+		this.socket.on(SOCKET_MSG.VOTING_ENDED, (data) => {
+			console.debug('Voting ended', data)
+			this.collab.updateVoting(data)
+		})
 	}
 
 	async handleReadOnlySocket() {
