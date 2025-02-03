@@ -9,7 +9,7 @@ import { Portal } from './Portal'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
-import { registerFilesHandler } from '../files/files.ts'
+import { registerFilesHandler } from '../files/files'
 
 interface VotingOption {
 	uuid: string;
@@ -38,6 +38,7 @@ export class Collab {
 	private files = new Map<string, BinaryFileData>()
 	private votings = new Map<string, Voting>()
 	public onVotingsChange: ((votings: Array<Voting>) => void) | null = null
+	private readOnly: boolean = false
 
 	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
 		this.excalidrawAPI = excalidrawAPI
@@ -164,6 +165,11 @@ export class Collab {
 
 	makeBoardReadOnly = () => {
 		this.setViewModeEnabled(true)
+		this.readOnly = true
+	}
+
+	isReadOnly = (): boolean => {
+		return this.readOnly
 	}
 
 	addFile = (file: BinaryFileData) => {

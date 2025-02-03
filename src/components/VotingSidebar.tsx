@@ -63,6 +63,8 @@ export function VotingSidebar({ votings, collab }: VotingSidebarProps) {
 		const frameY = centerY - frameHeight / 2
 		const frameId = `voting-frame-${Date.now()}`
 
+		console.debug('Generating excalidraw elements for voting', { ...voting })
+
 		elements.push({
 			type: 'frame',
 			x: frameX,
@@ -126,7 +128,7 @@ export function VotingSidebar({ votings, collab }: VotingSidebarProps) {
 				fontFamily: 3,
 				textAlign: 'left',
 				verticalAlign: 'middle',
-				id: `voting-label-${option.uuid}`,
+				id: `voting-${frameId}-label-${option.uuid}`,
 				version: 1,
 				versionNonce: 1,
 				isDeleted: false,
@@ -149,7 +151,7 @@ export function VotingSidebar({ votings, collab }: VotingSidebarProps) {
 				y,
 				width: Math.max(barWidth, 10), // minimum width for visibility
 				height: barHeight,
-				id: `voting-bar-${option.uuid}`,
+				id: `voting-${frameId}-bar-${option.uuid}`,
 				version: 1,
 				versionNonce: 1,
 				isDeleted: false,
@@ -177,7 +179,7 @@ export function VotingSidebar({ votings, collab }: VotingSidebarProps) {
 				fontFamily: 3,
 				textAlign: 'left',
 				verticalAlign: 'middle',
-				id: `voting-count-${option.uuid}`,
+				id: `voting-${frameId}-count-${option.uuid}`,
 				version: 1,
 				versionNonce: 1,
 				isDeleted: false,
@@ -210,7 +212,7 @@ export function VotingSidebar({ votings, collab }: VotingSidebarProps) {
 		})
 	}
 
-	const isReadOnly = collab.isReadOnly();
+	const isReadOnly = collab.isReadOnly()
 
 	return (
 		<div className="voting-list">
@@ -251,24 +253,28 @@ export function VotingSidebar({ votings, collab }: VotingSidebarProps) {
 						{voting.options.map((option) => (
 							<li key={option.uuid} className="voting-option">
 								<div className="option-content">
-									<span className="option-title">{option.title}</span>
-									<div className="vote-bar-container">
-										<div
-											className="vote-bar"
-											style={{ width: `${calculatePercentage(option, voting)}%` }}
-										/>
+									<div className="option-header">
+										<span className="option-title">{option.title}</span>
+										{canVote(voting) && (
+											<button
+												onClick={() => handleVote(voting, option)}
+												className="vote-button">
+												Vote
+											</button>
+										)}
+										{hasVoted(option) && (
+											<span className="voted-indicator">✓ Voted</span>
+										)}
 									</div>
-									<span className="vote-count">({option.votes.length} votes)</span>
-									{canVote(voting) && (
-										<button
-											onClick={() => handleVote(voting, option)}
-											className="vote-button">
-											Vote
-										</button>
-									)}
-									{hasVoted(option) && (
-										<span className="voted-indicator">✓ Voted</span>
-									)}
+									<div className="option-stats">
+										<div className="vote-bar-container">
+											<div
+												className="vote-bar"
+												style={{ width: `${calculatePercentage(option, voting)}%` }}
+											/>
+										</div>
+										<span className="vote-count">({option.votes.length} votes)</span>
+									</div>
 								</div>
 							</li>
 						))}
