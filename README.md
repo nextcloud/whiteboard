@@ -123,6 +123,17 @@ handle_path /whiteboard/* {
 }
 ```
 
+#### Traefik v3
+
+For Docker & Swarm:
+
+```
+- traefik.http.services.whiteboard.loadbalancer.server.port=3002
+- traefik.http.middlewares.strip-whiteboard.stripprefix.prefixes=/whiteboard
+- traefik.http.routers.whiteboard.rule=Host(`nextcloud.example.com`) && PathPrefix(`/whiteboard`)
+- traefik.http.routers.whiteboard.middlewares=strip-whiteboard
+```
+
 ## Storage Strategies and Scaling
 
 The whiteboard application supports two storage strategies: LRU (Least Recently Used) cache and Redis. Each strategy has its own characteristics and is suitable for different deployment scenarios.
