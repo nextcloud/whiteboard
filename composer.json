@@ -17,7 +17,7 @@
 		"nextcloud/coding-standard": "^1.0",
 		"nextcloud/ocp": "dev-master",
 		"phpunit/phpunit": "^9",
-		"psalm/phar": "^5.2",
+		"psalm/phar": "^6.5",
 		"psr/log": "^3.0.2",
 		"roave/security-advisories": "dev-latest",
 		"sabre/dav": "^4.3"
