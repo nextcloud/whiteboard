@@ -4,7 +4,7 @@
  */
 
 import { test as setup } from '@playwright/test'
-import { configureNextcloud } from '@nextcloud/e2e-test-server'
+import { configureNextcloud, runOcc } from '@nextcloud/e2e-test-server'
 
 /**
  * We use this to ensure Nextcloud is configured correctly before running our tests
@@ -13,6 +13,12 @@ import { configureNextcloud } from '@nextcloud/e2e-test-server'
  * as that only checks for the URL to be accessible which happens already before everything is configured.
  */
 setup('Configure Nextcloud', async () => {
-	const appsToInstall = []
+	setup.slow()
+	const appsToInstall = [
+		'whiteboard',
+		'viewer',
+	]
 	await configureNextcloud(appsToInstall)
+	await runOcc(['config:app:set', 'whiteboard', 'collabBackendUrl', '--value', 'http://localhost:3002'])
+	await runOcc(['config:app:set', 'whiteboard', 'jwt_secret_key', '--value', 'secret'])
 })

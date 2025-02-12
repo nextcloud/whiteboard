@@ -11,13 +11,24 @@ test.beforeEach(async ({ page }) => {
 	await page.waitForURL(/apps\/files/)
 })
 
-test('Random user is authenticated', async ({ page, user }) => {
-	await expect(page.getByLabel('Settings menu')).toBeVisible()
-	expect(user.userId).toEqual(user.password)
-})
-
-
-test('test whiteboard server', async ({ page }) => {
+test('test whiteboard server is reachable', async ({ page }) => {
 	await page.goto('http://localhost:3002')
 	await expect(page.locator('body')).toContainText('Excalidraw collaboration server is up :)')
+})
+
+test('open a whiteboard', async ({ page }) => {
+	await page.getByRole('button', { name: 'New' }).click()
+	await page.getByRole('menuitem', { name: 'New whiteboard' }).click()
+	await page.getByRole('button', { name: 'Create' }).click()
+	await expect(page.getByText('Drawing canvas')).toBeVisible()
+	await expect(page.getByRole('region', { name: 'Shapes' }).locator('rect')).toBeVisible()
+	await page.getByTitle('Rectangle — R or').locator('path').click()
+	await page.locator('.excalidraw').press('Enter')
+	await page.locator('textarea').fill('Test')
+	await page.getByText('Drawing canvas').click({
+		position: {
+			x: 877,
+			y: 287,
+		}
+	})
 })
