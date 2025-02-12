@@ -154,3 +154,7 @@
   background-color: var(--color-background-hover) !important;
   border-radius: var(--border-radius-large) !important;
 }
+
+.excalidraw .sidebar-tabs-root {
+  overflow: scroll;
+}

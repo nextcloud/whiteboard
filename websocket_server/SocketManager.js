@@ -16,6 +16,7 @@ import { Server } from 'http'
 import { Server as HttpsServer } from 'https'
 import Config from './Config.js'
 import StorageStrategy from './StorageStrategy.js'
+import VotingManager from './VotingManager.js'
 
 /**
  * Manages WebSocket connections and room interactions
@@ -38,6 +39,7 @@ export default class SocketManager {
 		this.cachedTokenStorage = cachedTokenStorage
 		this.redisClient = redisClient
 		this.io = this.createSocketServer(server)
+		this.votingManager = new VotingManager(roomDataManager)
 		this.init()
 	}
 
@@ -203,6 +205,9 @@ export default class SocketManager {
 			'image-add': this.imageAddHandler,
 			'image-remove': this.imageRemoveHandler,
 			'image-get': this.imageGetHandler,
+			'voting-start': this.votingStartHandler,
+			'voting-vote': this.votingVoteHandler,
+			'voting-end': this.votingEndHandler,
 			disconnect: this.disconnectHandler,
 		}
 
@@ -255,6 +260,12 @@ export default class SocketManager {
 			})
 
 			this.io.to(roomID).emit('room-user-change', userSocketsAndIds)
+			const votings = await this.votingManager.getAllVotings(roomID)
+			if (votings && Object.keys(votings).length > 0) {
+				Object.values(votings).forEach(voting => {
+					socket.emit('voting-started', voting)
+				})
+			}
 		} else {
 			socket.emit('room-not-found')
 		}
@@ -378,6 +389,65 @@ export default class SocketManager {
 		} else {
 			console.warn(`[${roomId}] Image ${id} not found`)
 		}
+	}
+
+	// VOTING HANDLERS
+	/**
+	 * Handles starting a voting
+	 * @param {Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {object} votingData - Voting data containing question and options
+	 */
+	async votingStartHandler(socket, roomID, votingData) {
+		const isReadOnly = await this.isSocketReadOnly(socket.id)
+		if (!socket.rooms.has(roomID) || isReadOnly) return
+
+		const { question, type, options } = votingData
+		const socketData = await this.socketDataStorage.get(socket.id)
+		const voting = await this.votingManager.createVoting(roomID, question, socketData.user.id, type, options)
+
+		Utils.logOperation(roomID, `Started voting: ${JSON.stringify(votingData)}`)
+
+		this.io.to(roomID).emit('voting-started', voting)
+	}
+
+	/**
+	 * Handles voting
+	 * @param {Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {object} voteData - Vote data containing the selected option
+	 * @param {string} votingId - Unique identifier of the voting
+	 * @param {string} optionId - Unique identifier of the option
+	 */
+	async votingVoteHandler(socket, roomID, votingId, optionId) {
+		const isReadOnly = await this.isSocketReadOnly(socket.id)
+		if (!socket.rooms.has(roomID) || isReadOnly) return
+
+		const socketData = await this.socketDataStorage.get(socket.id)
+		const voting = await this.votingManager.addVote(roomID, votingId, optionId, socketData.user.id)
+
+		Utils.logOperation(roomID, `${socketData.user.id} voted: ${JSON.stringify(voting)}`)
+
+		this.io.to(roomID).emit('voting-voted', voting)
+	}
+
+	/**
+	 * Handles ending a voting
+	 * @param {Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {string} votingId - Unique identifier of the voting to end
+	 */
+	async votingEndHandler(socket, roomID, votingId) {
+		const isReadOnly = await this.isSocketReadOnly(socket.id)
+		if (!socket.rooms.has(roomID) || isReadOnly) return
+
+		const socketData = await this.socketDataStorage.get(socket.id)
+
+		const voting = await this.votingManager.endVoting(roomID, votingId, socketData.user.id)
+
+		Utils.logOperation(roomID, `Voting closed: ${JSON.stringify(voting)}`)
+
+		this.io.to(roomID).emit('voting-ended', voting)
 	}
 
 	// DISCONNECTION HANDLERS
