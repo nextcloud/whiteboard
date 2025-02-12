@@ -15,3 +15,9 @@ test('Random user is authenticated', async ({ page, user }) => {
 	await expect(page.getByLabel('Settings menu')).toBeVisible()
 	expect(user.userId).toEqual(user.password)
 })
+
+
+test('test whiteboard server', async ({ page }) => {
+	await page.goto('http://localhost:3002')
+	await expect(page.locator('body')).toContainText('Excalidraw collaboration server is up :)')
+})
