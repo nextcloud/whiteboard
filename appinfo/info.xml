@@ -40,7 +40,7 @@ The official whiteboard app for Nextcloud. It allows users to create and share w
 	<screenshot>https://raw.githubusercontent.com/nextcloud/whiteboard/main/screenshots/screenshot1.png</screenshot>
 
 	<dependencies>
-		<nextcloud min-version="28" max-version="31"/>
+		<nextcloud min-version="28" max-version="32"/>
 	</dependencies>
 
 	<settings>
