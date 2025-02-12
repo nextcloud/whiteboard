@@ -16,7 +16,8 @@
     "server:start": "node websocket_server/main.js",
     "server:watch": "nodemon websocket_server/main.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "start:nextcloud": "node playwright/start-nextcloud-server.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.17.6",
@@ -52,9 +53,11 @@
   },
   "devDependencies": {
     "@nextcloud/browserslist-config": "^3.0.1",
+    "@nextcloud/e2e-test-server": "^0.2.1",
     "@nextcloud/eslint-config": "^8.4.1",
     "@nextcloud/stylelint-config": "^3.0.1",
     "@nextcloud/vite-config": "^1.5.1",
+    "@playwright/test": "^1.50.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "@vue/tsconfig": "^0.5.1",
