@@ -70,9 +70,8 @@ const Config = {
 			const newSecret = crypto.randomBytes(32).toString('hex')
 			process.env.JWT_SECRET_KEY = newSecret
 			console.log('Generated new JWT_SECRET_KEY:', newSecret)
-		} else {
-			console.log('Using existing JWT_SECRET_KEY from environment')
 		}
+
 		return process.env.JWT_SECRET_KEY
 	},
 
