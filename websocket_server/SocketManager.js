@@ -149,7 +149,6 @@ export default class SocketManager {
 	 */
 	async verifyToken(token) {
 		const cachedToken = await this.cachedTokenStorage.get(token)
-		console.log('cachedTokenStorage', this.cachedTokenStorage)
 		if (cachedToken) return cachedToken
 
 		return new Promise((resolve, reject) => {
