@@ -86,7 +86,7 @@ docker build -t nextcloud-whiteboard-server -f Dockerfile .
 
 #### Apache < 2.4.47
 
-```
+```apache
 ProxyPass /whiteboard http://localhost:3002/
 RewriteEngine on
 RewriteCond %{HTTP:Upgrade} websocket [NC]
@@ -96,13 +96,13 @@ RewriteRule ^/?whiteboard/(.*) "ws://localhost:3002/$1" [P,L]
 
 #### Apache >= 2.4.47
 
-```
+```apache
 ProxyPass /whiteboard http://localhost:3002/ upgrade=websocket
 ```
 
 #### Nginx
 
-```
+```nginx
 location /whiteboard/ {
 	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 	proxy_set_header Host $host;
@@ -117,10 +117,21 @@ location /whiteboard/ {
 
 #### Caddy v2
 
-```
+```caddy
 handle_path /whiteboard/* {
     reverse_proxy http://127.0.0.1:3002
 }
+```
+
+#### Traefik v3
+
+As lables for Docker & Swarm:
+
+```yaml
+- traefik.http.services.whiteboard.loadbalancer.server.port=3002
+- traefik.http.middlewares.strip-whiteboard.stripprefix.prefixes=/whiteboard
+- traefik.http.routers.whiteboard.rule=Host(`nextcloud.example.com`) && PathPrefix(`/whiteboard`)
+- traefik.http.routers.whiteboard.middlewares=strip-whiteboard
 ```
 
 ## Storage Strategies and Scaling
