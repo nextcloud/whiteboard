@@ -29,6 +29,8 @@ export const DEFAULT_CACHED_TOKEN_TTL = 10 * 60 * 1000
 
 export const DEFAULT_MAX_ROOMS_IN_STORAGE = 1000
 
+export const DEFAULT_AUTOSAVE_INTERVAL = 60
+
 export const DEFAULT_EMPTY_ROOM_DATA = Object.freeze({
 	elements: [],
 	files: {},

@@ -30,6 +30,7 @@ export default class LRUCacheStrategy extends StorageStrategy {
 							value.lastEditedUser,
 							value.files,
 						)
+						value.updateLastSavedAt()
 					} catch (error) {
 						console.error(`Failed to save room ${key} data:`, error)
 					}
