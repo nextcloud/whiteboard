@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Whiteboard" : "Bela tabla",
     "Shared secret" : "Skrivna koda",
-    "Save settings" : "Shrani nastavitve"
+    "Save settings" : "Shrani nastavitve",
+    "Advanced settings" : "Napredne nastavitve"
 },
 "nplurals=4; plural=(n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3);");

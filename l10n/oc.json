@@ -1,5 +1,6 @@
 { "translations": {
     "Shared secret" : "Secret partejat",
-    "Save settings" : "Salvar paramètres"
+    "Save settings" : "Salvar paramètres",
+    "Advanced settings" : "Paramètres avançats"
 },"pluralForm" :"nplurals=2; plural=(n > 1);"
 }

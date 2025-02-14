@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Whiteboard" : "Whiteboard",
     "Shared secret" : "Gedeeld geheim",
-    "Save settings" : "Opslaan instellingen"
+    "Save settings" : "Opslaan instellingen",
+    "Advanced settings" : "Geavanceerde instellingen"
 },
 "nplurals=2; plural=(n != 1);");

@@ -5,7 +5,6 @@ OC.L10N.register(
     "Create new whiteboard" : "Luo uusi valkotaulu",
     "Whiteboard" : "Valkotaulu",
     "Whiteboard app" : "Valkotaulusovellus",
-    "Whiteboard settings" : "Valkotaulun asetukset",
     "Whiteboard backend server is configured and connected." : "Valkotaulun taustaosan palvelin on määritetty ja yhteys muodostettu.",
     "Failed to verify the connection:" : "Yhteyden vahvistaminen epäonnistui:",
     "Verifying connection…" : "Vahvistetaan yhteyttä…",
@@ -13,6 +12,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "Lue dokumentaatiosta tietoa miten asentaa se.",
     "Whiteboard server URL" : "Valkotaulupalvelimen URL-osoite",
     "Shared secret" : "Jaettu salaisuus",
-    "Save settings" : "Tallenna asetukset"
+    "Save settings" : "Tallenna asetukset",
+    "Advanced settings" : "Lisäasetukset"
 },
 "nplurals=2; plural=(n != 1);");

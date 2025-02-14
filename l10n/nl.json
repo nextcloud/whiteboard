@@ -1,6 +1,7 @@
 { "translations": {
     "Whiteboard" : "Whiteboard",
     "Shared secret" : "Gedeeld geheim",
-    "Save settings" : "Opslaan instellingen"
+    "Save settings" : "Opslaan instellingen",
+    "Advanced settings" : "Geavanceerde instellingen"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

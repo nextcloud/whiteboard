@@ -5,7 +5,6 @@ OC.L10N.register(
     "Create new whiteboard" : "Opprett ny tavle",
     "Whiteboard" : "Tavle",
     "Whiteboard app" : "Whiteboard-app",
-    "Whiteboard settings" : "Innstillinger for Whiteboard",
     "Whiteboard backend server is configured and connected." : "Whiteboard-backendserveren er konfigurert og tilkoblet.",
     "Failed to verify the connection:" : "Verifisering av forbindelsen feilet:",
     "Verifying connection…" : "Verifiserer forbindelse...",
@@ -13,6 +12,7 @@ OC.L10N.register(
     "See the documentation on how to install it." : "Se dokumentasjonen for hvordan du installerer den.",
     "Whiteboard server URL" : "Whiteboard server URL",
     "Shared secret" : "Delt hemmelighet",
-    "Save settings" : "Lagre innstillinger"
+    "Save settings" : "Lagre innstillinger",
+    "Advanced settings" : "Avanserte innstillinger"
 },
 "nplurals=2; plural=(n != 1);");

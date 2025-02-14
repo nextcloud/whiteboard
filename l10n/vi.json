@@ -1,5 +1,6 @@
 { "translations": {
     "Whiteboard" : "Bảng viết",
-    "Shared secret" : "Chia sẽ mật khẩu"
+    "Shared secret" : "Chia sẽ mật khẩu",
+    "Advanced settings" : "Cài đặt nâng cao"
 },"pluralForm" :"nplurals=1; plural=0;"
 }

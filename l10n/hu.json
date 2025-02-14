@@ -1,6 +1,7 @@
 { "translations": {
     "Whiteboard" : "Tábla",
     "Shared secret" : "Megosztott titok",
-    "Save settings" : "Beállítások mentése"
+    "Save settings" : "Beállítások mentése",
+    "Advanced settings" : "Speciális beállítások"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

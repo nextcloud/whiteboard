@@ -1,6 +1,7 @@
 { "translations": {
     "Whiteboard" : "Pizarra",
     "Shared secret" : "Secreto compartido",
-    "Save settings" : "Guardar configuraciones"
+    "Save settings" : "Guardar configuraciones",
+    "Advanced settings" : "Configuraciones avanzados"
 },"pluralForm" :"nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;"
 }
