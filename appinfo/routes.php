@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use OCA\Whiteboard\Controller\JWTController;
 use OCA\Whiteboard\Controller\SettingsController;
+use OCA\Whiteboard\Controller\StatsController;
 use OCA\Whiteboard\Controller\WhiteboardController;
 
 return [
@@ -21,5 +22,17 @@ return [
 		['name' => 'Whiteboard#show', 'url' => '{fileId}', 'verb' => 'GET'],
 		/** @see SettingsController::update() */
 		['name' => 'Settings#update', 'url' => 'settings', 'verb' => 'POST'],
+		/** @see StatsController::summary() */
+		['name' => 'StatsController#summary', 'url' => 'stats/summary', 'verb' => 'GET'],
+		/** @see StatsController::getActiveUsersCount() */
+		['name' => 'StatsController#getActiveUsersCount', 'url' => 'stats/active-users-count', 'verb' => 'GET'],
+		/** @see StatsController::getStoredBoardsCount() */
+		['name' => 'StatsController#getStoredBoardsCount', 'url' => 'stats/boards-count', 'verb' => 'GET'],
+		/** @see StatsController::getUsersStoredBoards() */
+		['name' => 'StatsController#getUsersStoredBoards', 'url' => 'stats/user-boards', 'verb' => 'GET'],
+		/** @see StatsController::getBoardsInfo() */
+		['name' => 'StatsController#getBoardsInfo', 'url' => 'stats/boards-info', 'verb' => 'GET'],
+		/** @see StatsController::getActivities() */
+		['name' => 'StatsController#getActivities', 'url' => 'stats/activities', 'verb' => 'GET'],
 	]
 ];
