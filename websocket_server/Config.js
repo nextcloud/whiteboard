@@ -21,6 +21,7 @@ import {
 	DEFAULT_ROOM_MAX_AGE,
 	DEFAULT_MAX_ROOMS_IN_STORAGE,
 	DEFAULT_CACHED_TOKEN_TTL,
+	DEFAULT_AUTOSAVE_INTERVAL,
 } from './Constants.js'
 import Utils from './Utils.js'
 
@@ -65,14 +66,15 @@ const Config = {
 
 	CACHED_TOKEN_TTL: process.env.CACHED_TOKEN_TTL || DEFAULT_CACHED_TOKEN_TTL,
 
+	AUTOSAVE_INTERVAL: process.env.AUTOSAVE_INTERVAL || DEFAULT_AUTOSAVE_INTERVAL,
+
 	get JWT_SECRET_KEY() {
 		if (!process.env.JWT_SECRET_KEY) {
 			const newSecret = crypto.randomBytes(32).toString('hex')
 			process.env.JWT_SECRET_KEY = newSecret
 			console.log('Generated new JWT_SECRET_KEY:', newSecret)
-		} else {
-			console.log('Using existing JWT_SECRET_KEY from environment')
 		}
+
 		return process.env.JWT_SECRET_KEY
 	},
 
