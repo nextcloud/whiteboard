@@ -29,6 +29,9 @@ class Admin implements ISettings {
 		$this->initialState->provideInitialState('jwt', $this->jwtService->generateJWTFromPayload([]));
 		$this->initialState->provideInitialState('maxFileSize', $this->configService->getMaxFileSize());
 		$this->initialState->provideInitialState('skipTlsVerify', $this->configService->getSkipTlsVerify());
+		$this->initialState->provideInitialState('enable_statistics', $this->configService->getWhiteboardEnableStatistics());
+		$this->initialState->provideInitialState('metrics_token', $this->configService->getCollabBackendMetricsToken());
+		$this->initialState->provideInitialState('statistics_data_lifetime', $this->configService->getStatisticsDataLifetime());
 		$response = new TemplateResponse(
 			'whiteboard',
 			'admin',

@@ -20,5 +20,17 @@
 		<directory name="vendor" />
 	</extraFiles>
 	<issueHandlers>
+		<UndefinedClass>
+			<errorLevel type="suppress">
+				<referencedClass name="OCP\AppFramework\Bootstrap\IBootstrap" />
+				<referencedClass name="OCP\BackgroundJob\TimedJob" />
+				<referencedClass name="OCP\EventDispatcher\IEventListener" />
+			</errorLevel>
+		</UndefinedClass>
+		<UndefinedDocblockClass>
+			<errorLevel type="suppress">
+				<referencedClass name="Doctrine\DBAL\Schema\Table" />
+			</errorLevel>
+		</UndefinedDocblockClass>
 	</issueHandlers>
 </psalm>

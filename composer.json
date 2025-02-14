@@ -11,7 +11,8 @@
 	"license": "AGPL",
 	"require": {
 		"php": "^8.0",
-		"firebase/php-jwt": "^6.10"
+		"firebase/php-jwt": "^6.10",
+		"ext-curl": "*"
 	},
 	"require-dev": {
 		"nextcloud/coding-standard": "^1.0",
