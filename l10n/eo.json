@@ -1,4 +1,5 @@
 { "translations": {
-    "Save settings" : "Konservi agordojn"
+    "Save settings" : "Konservi agordojn",
+    "Advanced settings" : "Altanivela agordo"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

@@ -1,4 +1,5 @@
 { "translations": {
-    "Whiteboard" : "Pizarra"
+    "Whiteboard" : "Pizarra",
+    "Advanced settings" : "Configuración avanzada"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

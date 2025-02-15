@@ -1,6 +1,7 @@
 { "translations": {
     "Whiteboard" : "Pissarra blanca",
     "Shared secret" : "Clau secreta compartida",
-    "Save settings" : "Desa els paràmetres"
+    "Save settings" : "Desa els paràmetres",
+    "Advanced settings" : "Paràmetres avançats"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

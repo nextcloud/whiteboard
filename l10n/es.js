@@ -7,6 +7,7 @@ OC.L10N.register(
     "Verifying connection…" : "Verificando conexión…",
     "See the documentation on how to install it." : "Consulte la documentación sobre cómo instalarlo.",
     "Shared secret" : "Secreto compartido",
-    "Save settings" : "Guardar configuración"
+    "Save settings" : "Guardar configuración",
+    "Advanced settings" : "Configuración avanzada"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");

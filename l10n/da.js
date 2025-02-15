@@ -14,6 +14,7 @@ OC.L10N.register(
     "Whiteboard server URL" : "Whiteboard server URL",
     "Shared secret" : "Delt hemmelighed",
     "Save settings" : "Gem indstillinger",
+    "Advanced settings" : "Avancerede indstillinger",
     "Max file size" : "Maks filstørrelse"
 },
 "nplurals=2; plural=(n != 1);");

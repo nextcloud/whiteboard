@@ -14,6 +14,7 @@ OC.L10N.register(
     "Whiteboard server URL" : "عنوان URL لخادم السبورة البيضاء",
     "Shared secret" : "كلمة السر المشتركة",
     "Save settings" : "حفظ الإعدادات",
+    "Advanced settings" : "إعدادات متقدمة",
     "Max file size" : "أقصى حجم للملف"
 },
 "nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;");
