@@ -8,7 +8,7 @@ OC.L10N.register(
     "Nextcloud server could not connect to whiteboard server" : "Der Nextcloud-Server konnte keine Verbindung zum Whiteboard-Server herstellen",
     "No version provided by /status enpdoint" : "Keine Version vom /status-Endpunkt bereitgestellt",
     "Backend server is running a different version, make sure to upgrade both to the same version. App: %s Backend version: %s" : "Auf dem Backend-Server läuft eine andere Version. Sicherstellen, dass beide auf die gleiche Version aktualisiert werden. App: %s Backend-Version: %s",
-    "Whiteboard backend server could not reach Nextcloud: " : "Der Whiteboard-Backend-Server konnte Nextcloud nicht erreichen:",
+    "Whiteboard backend server could not reach Nextcloud: " : "ServerDer Whiteboard-Backend-Server konnte Nextcloud nicht erreichen:",
     "Failed to connect to whiteboard server server status endpoint" : "Verbindung zum Whiteboard-Server-Serverstatus-Endpunkt konnte nicht hergestellt werden",
     "Whiteboard server configured properly" : "Whiteboard-Server richtig eingerichtet",
     "Whiteboard app" : "Whiteboard-App",
