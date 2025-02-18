@@ -4,7 +4,7 @@ OC.L10N.register(
     "New whiteboard" : "Neues Whiteboard",
     "Create new whiteboard" : "Neues Whiteboard",
     "Whiteboard" : "Whiteboard",
-    "Whiteboard server URL is not configured. Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Die URL des Whiteboard-Servers ist nicht konfiguriert. Whiteboard erfordert einen separaten Collaborations-Server, der mit Nextcloud verbunden ist.",
+    "Whiteboard server URL is not configured. Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Die URL des Whiteboard-Servers ist nicht konfiguriert. Whiteboard erfordert einen separaten Collaboration-Server, der mit Nextcloud verbunden ist.",
     "Nextcloud server could not connect to whiteboard server" : "Der Nextcloud-Server konnte keine Verbindung zum Whiteboard-Server herstellen",
     "No version provided by /status enpdoint" : "Keine Version vom /status-Endpunkt bereitgestellt",
     "Backend server is running a different version, make sure to upgrade both to the same version. App: %s Backend version: %s" : "Auf dem Backend-Server läuft eine andere Version. Sicherstellen, dass beide auf die gleiche Version aktualisiert werden. App: %s Backend-Version: %s",
