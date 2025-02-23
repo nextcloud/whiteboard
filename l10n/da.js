@@ -22,7 +22,7 @@ OC.L10N.register(
     "This URL is used by the browser to connect to the whiteboard server." : "Denne URL anvendes af browsere for at forbinde til whiteboard serveren.",
     "Internal whiteboard server URL" : "Intern whiteboard server URL",
     "This URL is used by the Nextcloud server to connect to the whiteboard server." : "Denne URL anvendes af Nextcloud serveren for at forbinde til whiteboard serveren.",
-    "Skip TLS certificate validation (not recommended)" : "Spring over TLS-certifikatvalidering (anbefales ikke)",
+    "Skip TLS certificate validation (not recommended)" : "Spring over TLS certifikatvalidering (anbefales ikke)",
     "Shared secret" : "Delt hemmelighed",
     "Save settings" : "Gem indstillinger",
     "Advanced settings" : "Avancerede indstillinger",
