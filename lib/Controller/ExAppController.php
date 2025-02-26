@@ -26,9 +26,9 @@ use OCP\IRequest;
  */
 final class ExAppController extends Controller {
 	public function __construct(
-		IRequest                 $request,
+		IRequest $request,
 		private ExceptionService $exceptionService,
-		private ConfigService    $configService,
+		private ConfigService $configService,
 	) {
 		parent::__construct('whiteboard', $request);
 	}

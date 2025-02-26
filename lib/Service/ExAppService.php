@@ -25,10 +25,10 @@ final class ExAppService {
 	private ?AppAPIService $appAPIService = null;
 
 	public function __construct(
-		private IAppManager        $appManager,
+		private IAppManager $appManager,
 		private ContainerInterface $container,
-		private IInitialState      $initialState,
-		private LoggerInterface    $logger,
+		private IInitialState $initialState,
+		private LoggerInterface $logger,
 	) {
 		$this->initAppAPIService();
 	}
