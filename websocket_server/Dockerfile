@@ -29,4 +29,4 @@ ENV NEXTCLOUD_EX_APP_URL=http://nextcloud
 USER nobody
 EXPOSE 23000
 ENTRYPOINT ["npm", "run", "start"]
-HEALTHCHECK CMD nc -z 127.0.0.1 23000 || exit 1
+HEALTHCHECK CMD nc -z 127.0.0.1 $APP_PORT || exit 1

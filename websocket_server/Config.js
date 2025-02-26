@@ -36,7 +36,7 @@ const Config = {
 
 	SETUP_TYPE: process.env.SETUP_TYPE || DEFAULT_SETUP_TYPE,
 
-	PORT: process.env.PORT || DEFAULT_PORT,
+	PORT: process.env.APP_PORT || process.env.PORT || DEFAULT_PORT,
 
 	USE_TLS: Utils.parseBooleanFromEnv(process.env.TLS),
 
