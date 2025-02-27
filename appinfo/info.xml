@@ -43,6 +43,11 @@ The official whiteboard app for Nextcloud. It allows users to create and share w
 		<nextcloud min-version="28" max-version="32"/>
 	</dependencies>
 
+	<background-jobs>
+		<job>OCA\Whiteboard\BackgroundJob\WatchActiveUsers</job>
+		<job>OCA\Whiteboard\BackgroundJob\PruneOldStatisticsData</job>
+	</background-jobs>
+
 	<settings>
 		<admin>OCA\Whiteboard\Settings\Admin</admin>
 		<admin-section>OCA\Whiteboard\Settings\Section</admin-section>

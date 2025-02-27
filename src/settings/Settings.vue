@@ -5,6 +5,9 @@
 <template>
 	<div>
 		<NcSettingsSection :name="t('whiteboard', 'Whiteboard server')">
+			<NcNoteCard v-if="savedAlert === true" type="success">
+				{{ t('whiteboard', 'Saved.') }}
+			</NcNoteCard>
 			<NcNoteCard v-if="!loading && setupCheck !== null" :type="setupCheck.severity">
 				{{ setupCheck.description }}
 			</NcNoteCard>
@@ -50,6 +53,19 @@
 						:value.sync="secret" />
 				</p>
 				<p>
+					<NcCheckboxRadioSwitch v-model="enableStatistics" type="switch">
+						{{ t('whiteboard', 'Enable statistics') }}
+					</NcCheckboxRadioSwitch>
+				</p>
+				<p>
+					<NcTextField :label="t('whiteboard', 'Statistics data lifetime (in days)')"
+						:value.sync="statisticsDataLifetime" />
+				</p>
+				<p>
+					<NcTextField :label="t('whiteboard', 'Whiteboard server metrics token')"
+						:value.sync="metricsToken" />
+				</p>
+				<p>
 					<NcButton type="submit"
 						:disabled="!serverUrl || loading"
 						@click.prevent="submit">
@@ -65,6 +81,9 @@
 					@blur="saveMaxFileSize" />
 			</p>
 		</NcSettingsSection>
+		<NcSettingsSection v-if="showStatistics" :name="t('whiteboard', 'Whiteboard Statistics')">
+			<Statistics />
+		</NcSettingsSection>
 	</div>
 </template>
 <script>
@@ -78,6 +97,7 @@ import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadi
 import NcSettingsSection from '@nextcloud/vue/dist/Components/NcSettingsSection.js'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
+import Statistics from '../statistics/Statistics.vue'
 
 export default {
 	name: 'Settings',
@@ -88,6 +108,7 @@ export default {
 		NcNoteCard,
 		NcCheckboxRadioSwitch,
 		NcSettingsSection,
+		Statistics,
 	},
 	data() {
 		return {
@@ -101,6 +122,11 @@ export default {
 			loadingSettings: false,
 			loadingSocket: false,
 			setupCheck: null,
+			enableStatistics: loadState('whiteboard', 'enable_statistics', false),
+			statisticsDataLifetime: loadState('whiteboard', 'statistics_data_lifetime', ''),
+			metricsToken: loadState('whiteboard', 'metrics_token', ''),
+			savedAlert: false,
+			showStatistics: loadState('whiteboard', 'enable_statistics', false),
 		}
 	},
 	computed: {
@@ -116,14 +142,20 @@ export default {
 	},
 	methods: {
 		async submit() {
+			this.hideSavedAlert()
 			const data = await this.callSettings({
 				serverUrl: this.serverUrl,
 				serverUrlInternal: this.serverUrlInternal,
 				secret: this.secret,
 				maxFileSize: this.maxFileSize,
 				skipTlsVerify: this.skipTlsVerify,
+				enableStatistics: this.enableStatistics,
+				metricsToken: this.metricsToken,
+				statisticsDataLifetime: this.statisticsDataLifetime,
 			})
+			this.showSavedAlert()
 			await this.verifyConnection(data)
+			this.showStatistics = this.enableStatistics
 		},
 		async saveMaxFileSize() {
 			await this.callSettings({
@@ -169,6 +201,12 @@ export default {
 				this.loadingSocket = false
 			})
 			socket.connect()
+		},
+		hideSavedAlert() {
+			this.savedAlert = false
+		},
+		showSavedAlert() {
+			this.savedAlert = true
 		},
 	},
 }

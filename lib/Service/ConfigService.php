@@ -97,4 +97,37 @@ final class ConfigService {
 
 		$this->appConfig->setAppValueString('jwt_secret_key', $jwtSecretKey);
 	}
+
+	public function getWhiteboardEnableStatistics(): bool {
+		return $this->appConfig->getAppValueBool('enable_statistics');
+	}
+
+	public function setWhiteboardEnableStatistics(bool $enableStatistics): void {
+		$this->appConfig->setAppValueBool('enable_statistics', $enableStatistics);
+	}
+
+	public function getCollabBackendMetricsToken(): string {
+		if (!method_exists($this->appConfig, 'getAppValueString')) {
+			return $this->appConfig->getAppValue('collabBackendMetricsToken');
+		}
+
+		return $this->appConfig->getAppValueString('collabBackendMetricsToken');
+	}
+
+	public function setCollabBackendMetricsToken(string $collabBackendMetricsToken): void {
+		if (!method_exists($this->appConfig, 'setAppValueString')) {
+			$this->appConfig->setAppValue('collabBackendMetricsToken', $collabBackendMetricsToken);
+			return;
+		}
+
+		$this->appConfig->setAppValueString('collabBackendMetricsToken', $collabBackendMetricsToken);
+	}
+
+	public function getStatisticsDataLifetime(): int {
+		return $this->appConfig->getAppValueInt('statistics_data_lifetime');
+	}
+
+	public function setStatisticsDataLifetime(int $statisticsDataExpiration): void {
+		$this->appConfig->setAppValueInt('statistics_data_lifetime', $statisticsDataExpiration);
+	}
 }

@@ -40,6 +40,9 @@ final class SettingsController extends Controller {
 			$secret = $this->request->getParam('secret');
 			$maxFileSize = $this->request->getParam('maxFileSize');
 			$skipTlsVerify = $this->request->getParam('skipTlsVerify');
+			$enableStatistics = $this->request->getParam('enableStatistics');
+			$metricsToken = $this->request->getParam('metricsToken');
+			$statisticsDataLifetime = $this->request->getParam('statisticsDataLifetime');
 
 			if ($serverUrl !== null) {
 				$this->configService->setCollabBackendUrl($serverUrl);
@@ -64,6 +67,18 @@ final class SettingsController extends Controller {
 			$result = null;
 			if ($serverUrl !== null || $serverUrlInternal !== null || $secret !== null || $maxFileSize !== null || $skipTlsVerify !== null) {
 				$result = $this->setupCheck->run();
+			}
+
+			if ($enableStatistics !== null) {
+				$this->configService->setWhiteboardEnableStatistics($enableStatistics);
+			}
+
+			if ($metricsToken !== null) {
+				$this->configService->setCollabBackendMetricsToken($metricsToken);
+			}
+
+			if ($statisticsDataLifetime !== null) {
+				$this->configService->setStatisticsDataLifetime((int)$statisticsDataLifetime);
 			}
 
 			return new DataResponse([
