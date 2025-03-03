@@ -9,8 +9,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiSlashForwardBox, mdiMonitorScreenshot } from '@mdi/js'
-import { createRoot } from 'react-dom'
+import { mdiSlashForwardBox, mdiMonitorScreenshot, mdiWifiOff } from '@mdi/js'
+import ReactDOM from 'react-dom'
 import {
 	Excalidraw,
 	MainMenu,
@@ -22,6 +22,7 @@ import { resolvablePromise } from './utils'
 import type {
 	ExcalidrawImperativeAPI,
 	ExcalidrawInitialDataState,
+	Theme,
 } from '@excalidraw/excalidraw/types/types'
 import { Collab } from './collaboration/collab'
 import Embeddable from './Embeddable'
@@ -29,6 +30,8 @@ import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import { useNetworkStore } from './stores/networkStore'
+import { useWhiteboardData } from './hooks/useWhiteboardData'
 
 interface WhiteboardAppProps {
 	fileId: number
@@ -46,8 +49,34 @@ export default function App({
 	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
 
 	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
-	const [zenModeEnabled] = useState(isEmbedded)
+	const [zenModeEnabled] = useState(false)
 	const [gridModeEnabled] = useState(false)
+	const [theme, setTheme] = useState<Theme>('light')
+
+	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null)
+	const [collab, setCollab] = useState<Collab | null>(null)
+
+	useWhiteboardData(fileId, publicSharingToken, excalidrawAPI)
+
+	const initialData = {
+		appState: {
+			currentItemFontFamily: 3,
+			currentItemStrokeWidth: 1,
+			currentItemRoughness: 0,
+		},
+	}
+
+	const initialStatePromiseRef = useRef<{
+		promise: ResolvablePromise<ExcalidrawInitialDataState | null>
+	}>({ promise: null! })
+	if (!initialStatePromiseRef.current.promise) {
+		initialStatePromiseRef.current.promise = resolvablePromise()
+		// Resolve immediately with the initial data
+		initialStatePromiseRef.current.promise.resolve(initialData)
+	}
+
+	// Use the global network store instead of local state
+	const { isOfflineMode } = useNetworkStore()
 
 	const isDarkMode = () => {
 		const ncThemes = document.body.dataset?.themes
@@ -57,7 +86,11 @@ export default function App({
 			|| ncThemes?.indexOf('dark') > -1
 		)
 	}
-	const [theme, setTheme] = useState(isDarkMode() ? 'dark' : 'light')
+
+	// Initialize theme based on dark mode detection
+	useEffect(() => {
+		setTheme(isDarkMode() ? 'dark' : 'light')
+	}, [])
 
 	const lang = useExcalidrawLang()
 
@@ -71,41 +104,36 @@ export default function App({
 		}
 	}, [])
 
-	const initialData = {
-		elements: [],
-		appState: {
-			currentItemFontFamily: 3,
-			currentItemStrokeWidth: 1,
-			currentItemRoughness: 0,
-		},
-		scrollToContent: true,
-	}
+	useEffect(() => {
+		if (excalidrawAPI && !collab) {
+			const newCollab = new Collab(
+				excalidrawAPI,
+				fileId,
+				publicSharingToken,
+				setViewModeEnabled,
+			)
+			setCollab(newCollab)
+		}
+	}, [excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled])
 
-	const initialStatePromiseRef = useRef<{
-		promise: ResolvablePromise<ExcalidrawInitialDataState | null>
-	}>({ promise: null! })
-	if (!initialStatePromiseRef.current.promise) {
-		initialStatePromiseRef.current.promise = resolvablePromise()
-	}
+	useEffect(() => {
+		if (collab && !collab.portal.socket) {
+			collab.startCollab()
+		}
+	}, [collab])
 
-	const [excalidrawAPI, setExcalidrawAPI]
-		= useState<ExcalidrawImperativeAPI | null>(null)
-	const [collab, setCollab] = useState<Collab | null>(null)
-
-	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
-	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
 		const extraTools = document.getElementsByClassName(
 			'App-toolbar__extra-tools-trigger',
 		)[0]
-		const smartPick = document.createElement('label')
-		smartPick.classList.add(...['ToolIcon', 'Shape'])
 		if (extraTools) {
+			const smartPick = document.createElement('label')
+			smartPick.classList.add(...['ToolIcon', 'Shape'])
 			extraTools.parentNode?.insertBefore(
 				smartPick,
 				extraTools.previousSibling,
 			)
-			const root = createRoot(smartPick)
+			const root = ReactDOM.createRoot(smartPick)
 			root.render(renderSmartPicker())
 		}
 	})
@@ -116,31 +144,7 @@ export default function App({
 		}
 	}, [excalidrawAPI])
 
-	useEffect(() => {
-		const handleBeforeUnload = () => {
-			if (collab) collab.portal.disconnectSocket()
-		}
-
-		window.addEventListener('beforeunload', handleBeforeUnload)
-
-		return () => {
-			if (collab) collab.portal.disconnectSocket()
-			window.removeEventListener('beforeunload', handleBeforeUnload)
-		}
-	}, [collab])
-
 	useHandleLibrary({ excalidrawAPI })
-
-	useEffect(() => {
-		if (!excalidrawAPI) {
-			return
-		}
-		const fetchData = async () => {
-			initialStatePromiseRef.current.promise.resolve(initialData)
-		}
-
-		fetchData().then()
-	}, [excalidrawAPI])
 
 	const onLinkOpen = useCallback(
 		(
@@ -214,12 +218,15 @@ export default function App({
 	}
 
 	const takeScreenshot = () => {
-		const dataUrl = document.querySelector('.excalidraw__canvas').toDataURL('image/png')
-		const downloadLink = document.createElement('a')
-		downloadLink.href = dataUrl
-		downloadLink.download = `${fileNameWithoutExtension} Screenshot.png`
-		document.body.appendChild(downloadLink)
-		downloadLink.click()
+		const canvas = document.querySelector('.excalidraw__canvas') as HTMLCanvasElement
+		if (canvas) {
+			const dataUrl = canvas.toDataURL('image/png')
+			const downloadLink = document.createElement('a')
+			downloadLink.href = dataUrl
+			downloadLink.download = `${fileNameWithoutExtension} Screenshot.png`
+			document.body.appendChild(downloadLink)
+			downloadLink.click()
+		}
 	}
 
 	const renderMenu = () => {
@@ -232,7 +239,7 @@ export default function App({
 				<MainMenu.Item
 					icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
 					onSelect={() => takeScreenshot()}>
-					{ 'Download screenshot' }
+					{'Download screenshot'}
 				</MainMenu.Item>
 			</MainMenu>
 		)
@@ -253,13 +260,17 @@ export default function App({
 
 	return (
 		<div className="App">
+			{isOfflineMode && (
+				<div className="offline-indicator">
+					<Icon path={mdiWifiOff} size={1} />
+					<span>Offline Mode - Changes will be saved locally</span>
+				</div>
+			)}
 			<div className="excalidraw-wrapper">
 				<Excalidraw
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-						console.log(api)
-						console.log('Setting API')
 						setExcalidrawAPI(api)
 					}}
 					initialData={initialStatePromiseRef.current.promise}

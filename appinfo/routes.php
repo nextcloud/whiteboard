@@ -21,5 +21,7 @@ return [
 		['name' => 'Whiteboard#show', 'url' => '{fileId}', 'verb' => 'GET'],
 		/** @see SettingsController::update() */
 		['name' => 'Settings#update', 'url' => 'settings', 'verb' => 'POST'],
+		/** @see WhiteboardController::sync() */
+		['name' => 'whiteboard#sync', 'url' => '{fileId}/sync', 'verb' => 'PUT']
 	]
 ];

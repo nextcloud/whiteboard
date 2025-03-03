@@ -11,7 +11,11 @@ import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 
 import './viewer.css'
 
+console.log('Whiteboard main.tsx loaded')
+
 const EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
+console.log('EXCALIDRAW_ASSET_PATH:', EXCALIDRAW_ASSET_PATH)
+
 const App = lazy(() => import('./App'))
 
 const generateRandomId = () =>
@@ -21,6 +25,7 @@ const generateRandomId = () =>
 		.substr(2, 10)
 
 const renderApp = (rootElement, props) => {
+	console.log('renderApp called with props:', props)
 	const root = createRoot(rootElement)
 	root.render(
 		<StrictMode>
@@ -29,6 +34,7 @@ const renderApp = (rootElement, props) => {
 			</Suspense>
 		</StrictMode>,
 	)
+	console.log('App rendered')
 	return root
 }
 
@@ -44,6 +50,7 @@ handleNonPublicSharing()
 
 // Handler functions
 function handlePublicSharing(token) {
+	console.log('handlePublicSharing called with token:', token)
 	const filesTable = document.querySelector('.files-list__table') || document.querySelector('#preview table.files-filestable')
 
 	if (filesTable) {
@@ -81,6 +88,7 @@ function handlePublicSharing(token) {
 }
 
 function handleNonPublicSharing() {
+	console.log('handleNonPublicSharing called')
 	const Component = createWhiteboardComponent()
 
 	if (typeof OCA.Viewer !== 'undefined') {
@@ -91,23 +99,29 @@ function handleNonPublicSharing() {
 }
 
 function createWhiteboardElement() {
+	console.log('createWhiteboardElement called')
 	const element = document.createElement('div')
 	element.id = `whiteboard-${generateRandomId()}`
 	element.className = 'whiteboard'
+	console.log('Whiteboard element created:', element)
 	return element
 }
 
 function createWhiteboardComponent() {
+	console.log('createWhiteboardComponent called')
 	return {
 		name: 'Whiteboard',
 		render(createElement) {
+			console.log('Whiteboard component render called')
 			this.$emit('update:loaded', true)
 			const randomId = generateRandomId()
 
 			this.$nextTick(() => {
+				console.log('Whiteboard component nextTick')
 				const rootElement = document.getElementById(
 					`whiteboard-${randomId}`,
 				)
+				console.log('Root element found:', rootElement)
 				rootElement.addEventListener('keydown', event => {
 					if (event.key === 'Escape') {
 						event.stopPropagation()
@@ -146,6 +160,7 @@ function createWhiteboardComponent() {
 }
 
 function registerViewerHandler(Component) {
+	console.log('registerViewerHandler called with Component:', Component)
 	window.OCA.Viewer.registerHandler({
 		id: 'whiteboard',
 		mimes: ['application/vnd.excalidraw+json'],
@@ -154,4 +169,5 @@ function registerViewerHandler(Component) {
 		theme: 'default',
 		canCompare: true,
 	})
+	console.log('Viewer handler registered')
 }

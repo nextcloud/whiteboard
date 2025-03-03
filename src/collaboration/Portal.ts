@@ -7,10 +7,14 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { io, type Socket } from 'socket.io-client'
 import type { Collab } from './collab'
-import type { AppState, BinaryFiles, Gesture } from '@excalidraw/excalidraw/types/types'
-import axios from '@nextcloud/axios'
+import type {
+	AppState,
+	BinaryFiles,
+	Gesture,
+} from '@excalidraw/excalidraw/types/types'
 import { loadState } from '@nextcloud/initial-state'
-import { generateUrl } from '@nextcloud/router'
+import { useJWTStore } from '../stores/jwtStore'
+import { useNetworkStore } from '../stores/networkStore'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT',
@@ -23,59 +27,94 @@ export class Portal {
 	roomId: string
 	collab: Collab
 	publicSharingToken: string | null
+	private jwtStore = useJWTStore.getState()
+	private networkStore = useNetworkStore.getState()
 
-	constructor(roomId: string, collab: Collab, publicSharingToken: string | null) {
+	constructor(
+		roomId: string,
+		collab: Collab,
+		publicSharingToken: string | null,
+	) {
 		this.roomId = roomId
 		this.collab = collab
 		this.publicSharingToken = publicSharingToken
+
+		useJWTStore.subscribe((state) => {
+			this.jwtStore = state
+		})
+
+		useNetworkStore.subscribe((state) => {
+			this.networkStore = state
+		})
 	}
 
 	connectSocket = async () => {
-		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
-		await this.refreshJWT()
-		const token = localStorage.getItem(`jwt-${this.roomId}`) || ''
+		try {
+			const collabBackendUrl = loadState(
+				'whiteboard',
+				'collabBackendUrl',
+				'',
+			)
+			const token = await this.jwtStore.getJWT(
+				this.roomId,
+				this.roomId,
+				this.publicSharingToken,
+			)
 
-		const url = new URL(collabBackendUrl)
-		const path = url.pathname.replace(/\/$/, '') + '/socket.io'
-
-		const socket = io(url.origin, {
-			path,
-			withCredentials: true,
-			auth: {
-				token,
-			},
-			transports: ['websocket'],
-			timeout: 10000,
-		}).connect()
-
-		socket.on('connect_error', (error) => {
-			if (
-				error
-				&& error.message
-				&& !error.message.includes('Authentication error')
-			) {
-				this.handleConnectionError()
+			if (!token) {
+				console.warn(
+					'No JWT token available, operating in offline mode',
+				)
+				this.networkStore.setOfflineMode(true)
+				return
 			}
-		})
 
-		socket.on('connect_timeout', () => {
-			this.handleConnectionError()
-		})
+			const url = new URL(collabBackendUrl)
+			const path = url.pathname.replace(/\/$/, '') + '/socket.io'
 
-		this.open(socket)
+			const socket = io(url.origin, {
+				path,
+				withCredentials: true,
+				auth: {
+					token,
+				},
+				transports: ['websocket'],
+				timeout: 10000,
+			}).connect()
+
+			socket.on('connect_error', (error) => {
+				if (
+					error
+					&& error.message
+					&& !error.message.includes('Authentication error')
+				) {
+					this.handleConnectionError()
+				}
+			})
+
+			socket.on('connect_timeout', () => {
+				this.handleConnectionError()
+			})
+
+			this.open(socket)
+		} catch (error) {
+			console.error('Failed to connect to socket:', error)
+			this.networkStore.setOfflineMode(true)
+		}
 	}
 
 	handleConnectionError = () => {
-		alert(
-			'Failed to connect to the whiteboard server.',
+		console.warn(
+			'Failed to connect to the whiteboard server, switching to offline mode',
 		)
-		OCA.Viewer?.close()
+		this.networkStore.setOfflineMode(true)
+		// Don't close the viewer, allow user to continue in offline mode
 	}
 
 	disconnectSocket = () => {
 		if (this.socket) {
 			this.socket.disconnect()
-			localStorage.removeItem(`jwt-${this.roomId}`)
+			this.jwtStore.clearJWT(this.roomId)
 			console.log(
 				`Disconnected from room ${this.roomId} and cleared JWT token`,
 			)
@@ -84,6 +123,7 @@ export class Portal {
 
 	open(socket: Socket) {
 		this.socket = socket
+		this.networkStore.setOfflineMode(false)
 
 		this.socket?.on('connect_error', async (error) => {
 			if (
@@ -121,14 +161,24 @@ export class Portal {
 	}
 
 	async handleTokenRefresh() {
-		const newToken = await this.refreshJWT()
+		const newToken = await this.jwtStore.refreshJWT(
+			this.roomId,
+			this.roomId,
+			this.publicSharingToken,
+		)
+
 		if (this.socket && newToken) {
-			this.socket.auth.token = newToken
+			this.socket.auth = { token: newToken }
 			this.socket?.connect()
+		} else {
+			// If we can't refresh the token, switch to offline mode
+			this.networkStore.setOfflineMode(true)
 		}
 	}
 
 	handleInitRoom() {
+		if (this.networkStore.isOfflineMode) return
+
 		this.socket?.emit('join-room', this.roomId)
 		this.socket?.on('joined-data', (data) => {
 			const remoteElements = JSON.parse(new TextDecoder().decode(data))
@@ -143,6 +193,8 @@ export class Portal {
 	}
 
 	handleClientBroadcast(data: ArrayBuffer) {
+		if (this.networkStore.isOfflineMode) return
+
 		const decoded = JSON.parse(new TextDecoder().decode(data))
 		switch (decoded.type) {
 		case BroadcastType.SceneInit:
@@ -155,35 +207,11 @@ export class Portal {
 	}
 
 	handleSceneInit(elements: readonly ExcalidrawElement[]) {
+		if (this.networkStore.isOfflineMode) return
+
 		const reconciledElements = this.collab._reconcileElements(elements)
 		this.collab.handleRemoteSceneUpdate(reconciledElements)
 	}
-
-	async refreshJWT(): Promise<string | null> {
-		try {
-		  let url = generateUrl(`apps/whiteboard/${this.roomId}/token`)
-		  if (this.publicSharingToken) {
-				url += `?publicSharingToken=${encodeURIComponent(this.publicSharingToken)}`
-		  }
-
-		  const response = await axios.get(url, { withCredentials: true })
-
-		  const token = response.data.token
-
-		  console.log('token', token)
-
-		  if (!token) throw new Error('No token received')
-
-		  localStorage.setItem(`jwt-${this.roomId}`, token)
-
-		  return token
-		} catch (error) {
-		  console.error('Error refreshing JWT:', error)
-		  alert(error.message)
-		  OCA.Viewer?.close()
-		  return null
-		}
-	  }
 
 	async _broadcastSocketData(
 		data: {
@@ -200,6 +228,8 @@ export class Portal {
 		volatile: boolean = false,
 		roomId?: string,
 	) {
+		if (this.networkStore.isOfflineMode) return
+
 		const json = JSON.stringify(data)
 		const encryptedBuffer = new TextEncoder().encode(json)
 		this.socket?.emit(
@@ -214,6 +244,8 @@ export class Portal {
 		updateType: string,
 		elements: readonly ExcalidrawElement[],
 	) {
+		if (this.networkStore.isOfflineMode) return
+
 		await this._broadcastSocketData({
 			type: updateType,
 			payload: { elements },
@@ -225,6 +257,8 @@ export class Portal {
 		button: 'down' | 'up'
 		pointersMap: Gesture['pointers']
 	}) {
+		if (this.networkStore.isOfflineMode) return
+
 		const data = {
 			type: BroadcastType.MouseLocation,
 			payload: {
@@ -241,7 +275,15 @@ export class Portal {
 	}
 
 	async sendImageFiles(files: BinaryFiles) {
-		Object.values(files).forEach(file => {
+		if (this.networkStore.isOfflineMode) {
+			// In offline mode, just add files locally
+			Object.values(files).forEach((file) => {
+				this.collab.addFile(file)
+			})
+			return
+		}
+
+		Object.values(files).forEach((file) => {
 			this.collab.addFile(file)
 			this.socket?.emit('image-add', this.roomId, file.id, file)
 		})

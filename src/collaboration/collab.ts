@@ -4,12 +4,22 @@
  */
 
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, BinaryFileData, BinaryFiles, Collaborator, ExcalidrawImperativeAPI, Gesture } from '@excalidraw/excalidraw/types/types'
+import type {
+	AppState,
+	BinaryFileData,
+	BinaryFiles,
+	Collaborator,
+	ExcalidrawImperativeAPI,
+	Gesture,
+} from '@excalidraw/excalidraw/types/types'
 import { Portal } from './Portal'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { throttle } from 'lodash'
 import { hashElementsVersion, reconcileElements } from './util'
 import { registerFilesHandler } from '../files/files.ts'
+import axios from '@nextcloud/axios'
+import { generateUrl } from '@nextcloud/router'
+import { useNetworkStore } from '../stores/networkStore'
 
 export class Collab {
 
@@ -21,12 +31,22 @@ export class Collab {
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 	private files = new Map<string, BinaryFileData>()
+	private networkStore = useNetworkStore.getState()
 
-	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
+	constructor(
+		excalidrawAPI: ExcalidrawImperativeAPI,
+		fileId: number,
+		publicSharingToken: string | null,
+		setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>,
+	) {
 		this.excalidrawAPI = excalidrawAPI
 		this.fileId = fileId
 		this.publicSharingToken = publicSharingToken
 		this.setViewModeEnabled = setViewModeEnabled
+
+		useNetworkStore.subscribe((state) => {
+			this.networkStore = state
+		})
 
 		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
 		registerFilesHandler(this.excalidrawAPI, this)
@@ -49,14 +69,17 @@ export class Collab {
 		const localElements = this.getSceneElementsIncludingDeleted()
 		const appState = this.excalidrawAPI.getAppState()
 
-		return reconcileElements(localElements, restoredRemoteElements, appState)
+		return reconcileElements(
+			localElements,
+			restoredRemoteElements,
+			appState,
+		)
 	}
 
 	handleRemoteSceneUpdate = (elements: ExcalidrawElement[]) => {
 		this.excalidrawAPI.updateScene({
 			elements,
-		},
-		)
+		})
 	}
 
 	private getLastBroadcastedOrReceivedSceneVersion = () => {
@@ -64,44 +87,61 @@ export class Collab {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	private onChange = (elements: readonly ExcalidrawElement[], _state: AppState, files: BinaryFiles) => {
-		if (hashElementsVersion(elements)
+	private onChange = (
+		elements: readonly ExcalidrawElement[],
+		_state: AppState,
+		files: BinaryFiles,
+	) => {
+		if (
+			hashElementsVersion(elements)
 			> this.getLastBroadcastedOrReceivedSceneVersion()
 		) {
-			this.lastBroadcastedOrReceivedSceneVersion = hashElementsVersion(elements)
+			this.lastBroadcastedOrReceivedSceneVersion
+				= hashElementsVersion(elements)
 			throttle(() => {
-				this.portal.broadcastScene('SCENE_INIT', elements)
-
-				const syncedFiles = Array.from(this.files.keys())
-				const newFiles = Object.keys(files).filter((id) => !syncedFiles.includes(id)).reduce((acc, id) => {
-					acc[id] = files[id]
-					return acc
-				}, {} as BinaryFiles)
-				if (Object.keys(newFiles).length > 0) {
-					this.portal.sendImageFiles(newFiles)
+				// Only broadcast if we're not in offline mode
+				if (!this.networkStore.isOfflineMode) {
+					this.portal.broadcastScene(
+						'SCENE_UPDATE',
+						Object.values(
+							this.excalidrawAPI.getSceneElementsIncludingDeleted(),
+						),
+					)
 				}
-			})()
+			}, 300)()
+
+			// Sync any newly added files
+			this.syncFiles(files)
 		}
 	}
 
 	onPointerUpdate = (payload: {
-		pointersMap: Gesture['pointers'],
-		pointer: { x: number; y: number; tool: 'laser' | 'pointer' },
+		pointersMap: Gesture['pointers']
+		pointer: { x: number; y: number; tool: 'laser' | 'pointer' }
 		button: 'down' | 'up'
 	}) => {
-		payload.pointersMap.size < 2 && this.portal.socket && this.portal.broadcastMouseLocation(payload)
+		// Only broadcast mouse location if we're not in offline mode
+		if (
+			!this.networkStore.isOfflineMode
+			&& payload.pointersMap.size < 2
+			&& this.portal.socket
+		) {
+			this.portal.broadcastMouseLocation(payload)
+		}
 	}
 
-	updateCollaborators = (users: {
-		user: {
-			id: string,
-			name: string
-		},
-		socketId: string,
-		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
-		button: 'down' | 'up',
-		selectedElementIds: AppState['selectedElementIds']
-	}[]) => {
+	updateCollaborators = (
+		users: {
+			user: {
+				id: string
+				name: string
+			}
+			socketId: string
+			pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
+			button: 'down' | 'up'
+			selectedElementIds: AppState['selectedElementIds']
+		}[],
+	) => {
 		const collaborators = new Map<string, Collaborator>()
 
 		users.forEach((payload) => {
@@ -117,12 +157,12 @@ export class Collab {
 	}
 
 	updateCursor = (payload: {
-		socketId: string,
-		pointer: { x: number, y: number, tool: 'pointer' | 'laser' },
-		button: 'down' | 'up',
-		selectedElementIds: AppState['selectedElementIds'],
+		socketId: string
+		pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
+		button: 'down' | 'up'
+		selectedElementIds: AppState['selectedElementIds']
 		user: {
-			id: string,
+			id: string
 			name: string
 		}
 	}) => {
@@ -152,6 +192,19 @@ export class Collab {
 	addFile = (file: BinaryFileData) => {
 		this.files.set(file.id, file)
 		this.excalidrawAPI.addFiles([file])
+	}
+
+	private syncFiles = (files: BinaryFiles) => {
+		const syncedFiles = Array.from(this.files.keys())
+		const newFiles = Object.keys(files)
+			.filter((id) => !syncedFiles.includes(id))
+			.reduce((acc, id) => {
+				acc[id] = files[id]
+				return acc
+			}, {} as BinaryFiles)
+		if (Object.keys(newFiles).length > 0) {
+			this.portal.sendImageFiles(newFiles)
+		}
 	}
 
 }
