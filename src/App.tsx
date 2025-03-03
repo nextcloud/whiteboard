@@ -7,28 +7,39 @@
 
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Icon } from '@mdi/react'
-import { mdiSlashForwardBox, mdiMonitorScreenshot } from '@mdi/js'
-import { createRoot } from 'react-dom'
-import {
-	Excalidraw,
-	MainMenu,
-	useHandleLibrary,
-	viewportCoordsToSceneCoords,
-} from '@excalidraw/excalidraw'
+import { useCallback, useEffect, memo, useRef } from 'react'
+import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
 import './App.scss'
-import { resolvablePromise } from './utils'
-import type {
-	ExcalidrawImperativeAPI,
-	ExcalidrawInitialDataState,
-} from '@excalidraw/excalidraw/types/types'
-import { Collab } from './collaboration/collab'
-import Embeddable from './Embeddable'
-import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
+import './styles/image-fix.css'
+import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
 import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
-import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import { useExcalidrawStore } from './stores/useExcalidrawStore'
+import { useWhiteboardStore } from './stores/useWhiteboardStore'
+import { useThemeHandling } from './hooks/useThemeHandling'
+import { useCollaboration } from './hooks/useCollaboration'
+import { useSmartPicker } from './hooks/useSmartPicker'
+import { ExcalidrawMenu } from './components/ExcalidrawMenu'
+import Embeddable from './Embeddable'
+import { useLangStore } from './stores/useLangStore'
+import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
+import { useSync } from './hooks/useSync'
+import { db } from './database/db' // Import CSS fixes for image flickering
+
+// Memoize the Excalidraw component to prevent unnecessary re-renders
+const Excalidraw = memo(ExcalidrawComponent)
+
+export const initialDataState: ExcalidrawInitialDataState = {
+	elements: [],
+	appState: {
+		currentItemFontFamily: 3,
+		currentItemStrokeWidth: 1,
+		currentItemRoughness: 0,
+	},
+	files: {},
+}
+
+const MemoizedNetworkStatusIndicator = memo(NetworkStatusIndicator)
+const MemoizedExcalidrawMenu = memo(ExcalidrawMenu)
 
 interface WhiteboardAppProps {
 	fileId: number
@@ -45,103 +56,218 @@ export default function App({
 }: WhiteboardAppProps) {
 	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
 
-	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
-	const [zenModeEnabled] = useState(isEmbedded)
-	const [gridModeEnabled] = useState(false)
-
-	const isDarkMode = () => {
-		const ncThemes = document.body.dataset?.themes
-		return (
-			(window.matchMedia('(prefers-color-scheme: dark)').matches
-				&& (ncThemes === undefined || ncThemes?.indexOf('light') === -1))
-			|| ncThemes?.indexOf('dark') > -1
-		)
-	}
-	const [theme, setTheme] = useState(isDarkMode() ? 'dark' : 'light')
-
-	const lang = useExcalidrawLang()
+	const { excalidrawAPI, setExcalidrawAPI } = useExcalidrawStore()
+	const {
+		setConfig,
+		appStatus,
+		setAppStatus,
+		viewModeEnabled,
+		zenModeEnabled,
+		gridModeEnabled,
+		initialDataPromise,
+		resolveInitialData,
+	} = useWhiteboardStore()
+	const { lang, updateLang } = useLangStore()
+	const { theme } = useThemeHandling()
+	const { renderSmartPicker } = useSmartPicker()
+	const { onChange: onChangeSync } = useSync()
+	const { onPointerUpdate, onChange: onCollaborationChange }
+		= useCollaboration()
 
 	useEffect(() => {
-		const themeChangeListener = () =>
-			setTheme(isDarkMode() ? 'dark' : 'light')
-		const mq = window.matchMedia('(prefers-color-scheme: dark)')
-		mq.addEventListener('change', themeChangeListener)
-		return () => {
-			mq.removeEventListener('change', themeChangeListener)
-		}
-	}, [])
+		setConfig({
+			fileId,
+			fileName,
+			publicSharingToken,
+			isReadOnly: false,
+			isEmbedded,
+		})
 
-	const initialData = {
-		elements: [],
-		appState: {
-			currentItemFontFamily: 3,
-			currentItemStrokeWidth: 1,
-			currentItemRoughness: 0,
-		},
-		scrollToContent: true,
-	}
+		isFirstChangeRef.current = true
+	}, [fileId, fileName, publicSharingToken, isEmbedded, setConfig])
 
-	const initialStatePromiseRef = useRef<{
-		promise: ResolvablePromise<ExcalidrawInitialDataState | null>
-	}>({ promise: null! })
-	if (!initialStatePromiseRef.current.promise) {
-		initialStatePromiseRef.current.promise = resolvablePromise()
-	}
-
-	const [excalidrawAPI, setExcalidrawAPI]
-		= useState<ExcalidrawImperativeAPI | null>(null)
-	const [collab, setCollab] = useState<Collab | null>(null)
-
-	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
-	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
-		const extraTools = document.getElementsByClassName(
-			'App-toolbar__extra-tools-trigger',
-		)[0]
-		const smartPick = document.createElement('label')
-		smartPick.classList.add(...['ToolIcon', 'Shape'])
-		if (extraTools) {
-			extraTools.parentNode?.insertBefore(
-				smartPick,
-				extraTools.previousSibling,
-			)
-			const root = createRoot(smartPick)
-			root.render(renderSmartPicker())
+		const initApp = async () => {
+			console.log('[App] Starting app initialization')
+
+			renderSmartPicker()
+
+			updateLang()
+
+			if (excalidrawAPI && fileId) {
+				console.log(`[App] Loading data for fileId: ${fileId}, excalidrawAPI available:`, {
+					apiMethods: Object.keys(excalidrawAPI).join(', '),
+				})
+				try {
+					const localData = await db.get(fileId)
+
+					if (localData) {
+						console.log(`[App] Found local data for fileId ${fileId}:`, {
+							elementCount: localData.elements ? localData.elements.length : 0,
+							hasFiles: !!localData.files,
+							hasAppState: !!localData.appState,
+							savedAt: localData.savedAt ? new Date(localData.savedAt).toISOString() : 'unknown',
+						})
+
+						// Deep clone elements to avoid reference issues
+						let elements
+						try {
+							elements = JSON.parse(JSON.stringify(localData.elements))
+							console.log('[App] Successfully parsed elements:', {
+								count: elements.length,
+								firstElement: elements.length > 0 ? elements[0].type : 'none',
+							})
+						} catch (parseError) {
+							console.error('[App] Error parsing elements:', parseError)
+							elements = []
+						}
+
+						// Validate elements array
+						if (!Array.isArray(elements)) {
+							console.error('[App] Elements is not an array, using empty array')
+							elements = []
+						}
+
+						console.log('[App] Resolving initial data with local data')
+
+						// Prepare the data to load
+						const dataToLoad = {
+							elements,
+							appState:
+								localData.appState || initialDataState.appState,
+							files: localData.files || {},
+							scrollToContent: true,
+						}
+
+						// Resolve the promise with the data
+						resolveInitialData(dataToLoad)
+
+						// Also directly update the Excalidraw API to ensure data is loaded
+						try {
+							if (excalidrawAPI && elements.length > 0) {
+								console.log('[App] Directly updating Excalidraw API with elements')
+								// Update just the elements first to avoid type issues
+								excalidrawAPI.updateScene({
+									elements,
+								})
+
+								// Set the files separately
+								if (dataToLoad.files) {
+									const files = Object.values(dataToLoad.files)
+									if (files.length > 0) {
+										excalidrawAPI.addFiles(files)
+									}
+								}
+
+								// Apply the entire appState to ensure all settings are applied
+								if (dataToLoad.appState) {
+									console.log('[App] Applying font settings from loaded data')
+
+									// Extract the font settings and other essential properties
+									const fontSettings = {
+										currentItemFontFamily: dataToLoad.appState.currentItemFontFamily || 3,
+										currentItemStrokeWidth: dataToLoad.appState.currentItemStrokeWidth || 1,
+										currentItemRoughness: dataToLoad.appState.currentItemRoughness || 0,
+										viewBackgroundColor: dataToLoad.appState.viewBackgroundColor || '#ffffff',
+									}
+
+									console.log('[App] Font settings to apply:', fontSettings)
+
+									// Update the app state with the font settings
+									try {
+										// First update with just the elements
+										excalidrawAPI.updateScene({
+											elements,
+											appState: fontSettings,
+										})
+
+										// Force a refresh of the scene to ensure settings are applied
+										setTimeout(() => {
+											try {
+												// Get current elements
+												const currentElements = excalidrawAPI.getSceneElements()
+
+												// Update again to force a refresh
+												excalidrawAPI.updateScene({
+													elements: currentElements,
+													appState: fontSettings,
+												})
+
+												// Try to access any additional API methods that might help
+												try {
+													// Force a redraw by getting and setting the view mode
+													const currentViewMode = excalidrawAPI.getAppState().viewModeEnabled
+													excalidrawAPI.updateScene({
+														appState: {
+															viewModeEnabled: !currentViewMode,
+														},
+													})
+
+													// Toggle back after a short delay
+													setTimeout(() => {
+														excalidrawAPI.updateScene({
+															appState: {
+																viewModeEnabled: currentViewMode,
+																...fontSettings,
+															},
+														})
+														console.log('[App] Forced redraw by toggling view mode')
+													}, 50)
+												} catch (apiError) {
+													console.error('[App] Error using additional API methods:', apiError)
+												}
+
+												console.log('[App] Forced refresh of scene to apply settings')
+											} catch (refreshError) {
+												console.error('[App] Error during forced refresh:', refreshError)
+											}
+										}, 100) // Short delay to ensure first update is processed
+									} catch (appStateError) {
+										console.error('[App] Error updating appState:', appStateError)
+									}
+								}
+							}
+						} catch (updateError) {
+							console.error('[App] Error directly updating Excalidraw API:', updateError)
+						}
+					} else {
+						console.log('[App] No local data found, using empty initial data')
+						resolveInitialData(initialDataState)
+					}
+				} catch (error) {
+					console.error('[App] Error loading data:', error)
+					resolveInitialData(initialDataState)
+				}
+			} else {
+				// If no API or fileId, still resolve with empty data
+				console.log('[App] No excalidrawAPI or fileId available, using empty initial data')
+				resolveInitialData(initialDataState)
+			}
+
+			// Set app as ready after a short delay for smoother UX
+			setTimeout(() => {
+				console.log('[App] Setting app status to ready')
+				setAppStatus('ready')
+			}, 150)
 		}
+
+		// Start initialization process
+		initApp()
+	}, [
+		excalidrawAPI,
+		fileId,
+		renderSmartPicker,
+		resolveInitialData,
+		setAppStatus,
+		updateLang,
+	])
+
+	// Handle library
+	useHandleLibrary({
+		excalidrawAPI: useExcalidrawStore((state) => state.excalidrawAPI),
 	})
 
-	useEffect(() => {
-		return () => {
-			if (collab) collab.portal.disconnectSocket()
-		}
-	}, [excalidrawAPI])
-
-	useEffect(() => {
-		const handleBeforeUnload = () => {
-			if (collab) collab.portal.disconnectSocket()
-		}
-
-		window.addEventListener('beforeunload', handleBeforeUnload)
-
-		return () => {
-			if (collab) collab.portal.disconnectSocket()
-			window.removeEventListener('beforeunload', handleBeforeUnload)
-		}
-	}, [collab])
-
-	useHandleLibrary({ excalidrawAPI })
-
-	useEffect(() => {
-		if (!excalidrawAPI) {
-			return
-		}
-		const fetchData = async () => {
-			initialStatePromiseRef.current.promise.resolve(initialData)
-		}
-
-		fetchData().then()
-	}, [excalidrawAPI])
-
+	// Handle link opening
 	const onLinkOpen = useCallback(
 		(
 			element: NonDeletedExcalidrawElement,
@@ -156,129 +282,175 @@ export default function App({
 			const isInternalLink
 				= link.startsWith('/') || link.includes(window.location.origin)
 			if (isInternalLink && !isNewTab && !isNewWindow) {
-				// signal that we're handling the redirect ourselves
 				event.preventDefault()
-				// do a custom redirect, such as passing to react-router
-				// ...
 			}
 		},
 		[],
 	)
-	const addWebEmbed = (link: string) => {
-		let cords: { x: any; y: any }
-		if (excalidrawAPI) {
-			cords = viewportCoordsToSceneCoords(
-				{ clientX: 100, clientY: 100 },
-				excalidrawAPI.getAppState(),
-			)
-		} else {
-			cords = { x: 0, y: 0 }
+
+	// Track if this is the first change after loading
+	const isFirstChangeRef = useRef(true)
+
+	// Track if this is the first time the API is set
+	const isFirstAPISetRef = useRef(true)
+
+	// Handle when the excalidrawAPI is first set
+	useEffect(() => {
+		if (excalidrawAPI && isFirstAPISetRef.current) {
+			isFirstAPISetRef.current = false
+			console.log('[App] Excalidraw API first initialized, applying default font settings')
+
+			// Apply default font settings
+			try {
+				// Define default font settings
+				const defaultFontSettings = {
+					currentItemFontFamily: 3,
+					currentItemStrokeWidth: 1,
+					currentItemRoughness: 0,
+				}
+
+				// Apply font settings
+				excalidrawAPI.updateScene({
+					appState: defaultFontSettings,
+				})
+
+				// Force a refresh after a short delay
+				setTimeout(() => {
+					try {
+						// Get current elements
+						const currentElements = excalidrawAPI.getSceneElements()
+
+						// Try to force a redraw by toggling view mode
+						const currentViewMode = excalidrawAPI.getAppState().viewModeEnabled
+
+						// Toggle view mode
+						excalidrawAPI.updateScene({
+							appState: {
+								viewModeEnabled: !currentViewMode,
+							},
+						})
+
+						// Toggle back and apply font settings again
+						setTimeout(() => {
+							excalidrawAPI.updateScene({
+								elements: currentElements,
+								appState: {
+									viewModeEnabled: currentViewMode,
+									...defaultFontSettings,
+								},
+							})
+							console.log('[App] Forced refresh of scene to apply default settings')
+						}, 50)
+					} catch (refreshError) {
+						console.error('[App] Error during forced refresh of default settings:', refreshError)
+					}
+				}, 200) // Slightly longer delay for initial setup
+			} catch (error) {
+				console.error('[App] Error applying default font settings:', error)
+			}
 		}
-		const elements = excalidrawAPI
-			?.getSceneElementsIncludingDeleted()
-			.slice()
-		elements?.push({
-			link,
-			id: (Math.random() + 1).toString(36).substring(7),
-			x: cords.x,
-			y: cords.y,
-			strokeColor: '#1e1e1e',
-			backgroundColor: 'transparent',
-			fillStyle: 'solid',
-			strokeWidth: 2,
-			strokeStyle: 'solid',
-			roundness: null,
-			roughness: 1,
-			opacity: 100,
-			width: 400,
-			height: 200,
-			angle: 0,
-			seed: 0,
-			version: 0,
-			versionNonce: 0,
-			isDeleted: false,
-			groupIds: [],
-			frameId: null,
-			boundElements: null,
-			updated: 0,
-			locked: false,
-			type: 'embeddable',
-			validated: true,
-		})
-		excalidrawAPI?.updateScene({ elements })
-	}
-	const pickFile = () => {
-		getLinkWithPicker(null, true).then((link: string) => {
-			addWebEmbed(link)
-		})
-	}
+	}, [excalidrawAPI])
 
-	const takeScreenshot = () => {
-		const dataUrl = document.querySelector('.excalidraw__canvas').toDataURL('image/png')
-		const downloadLink = document.createElement('a')
-		downloadLink.href = dataUrl
-		downloadLink.download = `${fileNameWithoutExtension} Screenshot.png`
-		document.body.appendChild(downloadLink)
-		downloadLink.click()
-	}
+	// Track previous elements and files to detect real changes
+	const lastElementsRef = useRef<any[]>([])
+	const lastFilesRef = useRef<any>({})
 
-	const renderMenu = () => {
-		return (
-			<MainMenu>
-				<MainMenu.DefaultItems.ToggleTheme />
-				<MainMenu.DefaultItems.ChangeCanvasBackground />
-				<MainMenu.Separator />
-				<MainMenu.DefaultItems.SaveAsImage />
-				<MainMenu.Item
-					icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
-					onSelect={() => takeScreenshot()}>
-					{ 'Download screenshot' }
-				</MainMenu.Item>
-			</MainMenu>
-		)
-	}
+	// Handle changes to whiteboard content with optimized change detection
+	const handleOnChange = useCallback(
+		(elements: any, appState: any, files: any) => {
+			if (excalidrawAPI && fileId && appStatus === 'ready') {
+				// Skip the first change event after loading to prevent immediate sync
+				if (isFirstChangeRef.current) {
+					console.log('[App] Skipping first onChange event to prevent immediate sync')
+					isFirstChangeRef.current = false
 
-	const renderSmartPicker = () => {
-		return (
-			<button
-				className="dropdown-menu-button App-toolbar__extra-tools-trigger"
-				aria-label="Smart picker"
-				aria-keyshortcuts="0"
-				onClick={pickFile}
-				title="Smart picker">
-				<Icon path={mdiSlashForwardBox} size={1} />
-			</button>
-		)
-	}
+					// Store initial state
+					lastElementsRef.current = [...elements]
+					lastFilesRef.current = { ...files }
+					return
+				}
+
+				// Check if elements have actually changed
+				const elementsChanged = elements.length !== lastElementsRef.current.length
+					|| elements.some((el: any, i: number) => el.id !== lastElementsRef.current[i]?.id
+										|| el.version !== lastElementsRef.current[i]?.version)
+
+				// Check if files have changed
+				const filesChanged = Object.keys(files).length !== Object.keys(lastFilesRef.current).length
+					|| Object.keys(files).some(key => !lastFilesRef.current[key])
+
+				// Only process changes if something actually changed
+				if (elementsChanged || filesChanged) {
+					console.log('[App] Detected real changes, processing updates')
+
+					// Always handle collaboration changes
+					onCollaborationChange(elements, appState, files)
+
+					// Handle sync for subsequent changes
+					onChangeSync()
+
+					// Update our references
+					lastElementsRef.current = [...elements]
+					lastFilesRef.current = { ...files }
+				} else {
+					console.log('[App] No real changes detected, skipping updates')
+				}
+			}
+		},
+		[onChangeSync, onCollaborationChange, excalidrawAPI, fileId, appStatus],
+	)
 
 	return (
-		<div className="App">
-			<div className="excalidraw-wrapper">
-				<Excalidraw
-					validateEmbeddable={() => true}
-					renderEmbeddable={Embeddable}
-					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-						console.log(api)
-						console.log('Setting API')
-						setExcalidrawAPI(api)
-					}}
-					initialData={initialStatePromiseRef.current.promise}
-					onPointerUpdate={collab?.onPointerUpdate}
-					viewModeEnabled={viewModeEnabled}
-					zenModeEnabled={zenModeEnabled}
-					gridModeEnabled={gridModeEnabled}
-					theme={theme}
-					name={fileNameWithoutExtension}
-					UIOptions={{
-						canvasActions: {
-							loadScene: false,
-						},
-					}}
-					onLinkOpen={onLinkOpen}
-					langCode={lang}>
-					{renderMenu()}
-				</Excalidraw>
-			</div>
+		<div
+			className="App"
+			style={{ display: 'flex', flexDirection: 'column' }}>
+			{appStatus === 'loading'
+				? (
+					<div
+						className="App-loading"
+						style={{
+							flex: 1,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+						}}>
+					Loading whiteboard...
+					</div>
+				)
+				: (
+					<>
+						<MemoizedNetworkStatusIndicator />
+						<div
+							className="excalidraw-wrapper"
+							style={{ flex: 1, height: '100%' }}>
+							<Excalidraw
+								validateEmbeddable={() => true}
+								renderEmbeddable={Embeddable}
+								excalidrawAPI={(api) => setExcalidrawAPI(api)}
+								initialData={initialDataPromise}
+								onPointerUpdate={onPointerUpdate}
+								onChange={handleOnChange}
+								viewModeEnabled={viewModeEnabled}
+								zenModeEnabled={zenModeEnabled}
+								gridModeEnabled={gridModeEnabled}
+								theme={theme}
+								name={fileNameWithoutExtension}
+								UIOptions={{
+									canvasActions: {
+										loadScene: false,
+									},
+								}}
+								onLinkOpen={onLinkOpen}
+								langCode={lang}>
+								<MemoizedExcalidrawMenu
+									fileNameWithoutExtension={
+										fileNameWithoutExtension
+									}
+								/>
+							</Excalidraw>
+						</div>
+					</>
+				)}
 		</div>
 	)
 }

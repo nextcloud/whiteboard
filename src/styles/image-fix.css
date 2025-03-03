@@ -1,0 +1,35 @@
+/*
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+/* Prevent image flickering during re-renders */
+.excalidraw .layer-ui__wrapper .Image {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* Add hardware acceleration for images */
+.excalidraw__canvas img {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* Optimize rendering for image elements */
+.excalidraw-element-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+/* Prevent flickering during transitions */
+.excalidraw__canvas {
+    transition: none !important;
+}
+
+/* Optimize rendering for all canvas elements */
+canvas {
+    will-change: transform;
+    transform: translateZ(0);
+}

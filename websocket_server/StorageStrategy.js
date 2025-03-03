@@ -23,8 +23,4 @@ export default class StorageStrategy {
 		throw new Error('Method not implemented.')
 	}
 
-	getRooms() {
-		throw new Error('Method not implemented.')
-	}
-
 }
