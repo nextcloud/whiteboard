@@ -30,6 +30,7 @@ class BeforeTemplateRenderedListener implements IEventListener {
 	/**
 	 * @throws NotFoundException
 	 */
+	#[\Override]
 	public function handle(Event $event): void {
 		if (!($event instanceof BeforeTemplateRenderedEvent)) {
 			return;

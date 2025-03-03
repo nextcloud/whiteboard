@@ -52,7 +52,8 @@ final class ConfigService {
 
 	public function getInternalCollabBackendUrl(bool $fallback = true): string {
 		if (!method_exists($this->appConfig, 'getAppValueString')) {
-			$internalUrl = $this->appConfig->getAppValue('collabBackendUrlInternal');
+			// Get internal URL from app config
+			$this->appConfig->getAppValue('collabBackendUrlInternal');
 		}
 
 		$internalUrl = $this->appConfig->getAppValueString('collabBackendUrlInternal');

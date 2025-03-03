@@ -9,28 +9,18 @@
 import http from 'http'
 import https from 'https'
 import fs from 'fs'
-import SharedTokenGenerator from './SharedTokenGenerator.js'
-import ApiService from './ApiService.js'
 import StorageManager from './StorageManager.js'
-import RoomDataManager from './RoomDataManager.js'
 import AppManager from './AppManager.js'
 import SocketManager from './SocketManager.js'
-import BackupManager from './BackupManager.js'
-import PrometheusDataManager from './PrometheusDataManager.js'
-import SystemMonitor from './SystemMonitor.js'
 import Config from './Config.js'
 import RedisStrategy from './RedisStrategy.js'
+import SystemMonitor from './SystemMonitor.js'
+import PrometheusDataManager from './PrometheusDataManager.js'
 
 export default class ServerManager {
 
 	constructor() {
 		this.closing = false
-
-		this.tokenGenerator = new SharedTokenGenerator()
-
-		this.apiService = new ApiService(this.tokenGenerator)
-
-		this.backupManager = new BackupManager()
 
 		this.redisClient = Config.STORAGE_STRATEGY === 'redis'
 			? RedisStrategy.createRedisClient()
@@ -43,39 +33,37 @@ export default class ServerManager {
 			})
 		}
 
-		this.roomStorage = StorageManager.create(
-			Config.STORAGE_STRATEGY,
-			this.redisClient,
-			this.apiService,
-			null,
-		)
-
-		this.roomDataManager = new RoomDataManager(this.roomStorage, this.apiService, this.backupManager)
-
-		this.systemMonitor = new SystemMonitor(this.roomStorage)
-
-		this.metricsManager = new PrometheusDataManager(this.systemMonitor)
-
-		this.appManager = new AppManager(this.metricsManager)
-
-		this.server = this.createConfiguredServer(this.appManager.getApp())
-
 		this.socketDataStorage = Config.STORAGE_STRATEGY === 'redis'
-			? StorageManager.create('general-redis', this.redisClient, null, { prefix: 'socket_' })
+			? StorageManager.create('redis', this.redisClient, { prefix: 'socket_' })
 			: StorageManager.create('in-mem')
 
 		this.cachedTokenStorage = Config.STORAGE_STRATEGY === 'redis'
-			? StorageManager.create('general-redis', this.redisClient, null, { prefix: 'token_', ttl: Config.CACHED_TOKEN_TTL / 1000 })
-			: StorageManager.create('general-lru', null, null, { ttl: Config.CACHED_TOKEN_TTL })
+			? StorageManager.create('redis', this.redisClient, { prefix: 'token_' })
+			: StorageManager.create('lru', null)
+
+		// Initialize monitoring components
+		this.systemMonitor = new SystemMonitor(null, this.cachedTokenStorage)
+		this.metricsManager = Config.METRICS_TOKEN
+			? new PrometheusDataManager(this.systemMonitor)
+			: null
+
+		// Initialize app manager with both system monitor and metrics manager
+		this.appManager = new AppManager(this.systemMonitor, this.metricsManager)
+
+		this.server = this.createConfiguredServer(this.appManager.getApp())
 
 		this.socketManager = new SocketManager(
 			this.server,
-			this.roomDataManager,
-			this.roomStorage,
 			this.socketDataStorage,
 			this.cachedTokenStorage,
 			this.redisClient,
 		)
+
+		// Update system monitor with socket manager reference
+		this.systemMonitor.socketManager = this.socketManager
+
+		console.log(`Server initialized with ${Config.STORAGE_STRATEGY} storage strategy`)
+		console.log(`Metrics ${this.metricsManager ? 'enabled' : 'disabled'}`)
 	}
 
 	readTlsCredentials(keyPath, certPath) {
@@ -133,25 +121,28 @@ export default class ServerManager {
 		console.log('Starting graceful shutdown...')
 
 		const cleanup = async () => {
-			await this.socketManager.io.close()
-			console.log('Stopped accepting new connections')
+
+			// Close socket connections
+			if (this.socketManager && this.socketManager.io) {
+				await this.socketManager.io.close()
+				console.log('Stopped accepting new connections')
+			}
 
 			await Promise.all([
-				// Storage cleanup
+				// Clear storage
 				(async () => {
-					await this.socketDataStorage.clear()
-					await this.cachedTokenStorage.clear()
-					await this.roomStorage.clear()
+					if (this.socketDataStorage) await this.socketDataStorage.clear()
+					if (this.cachedTokenStorage) await this.cachedTokenStorage.clear()
 					console.log('Storage cleared')
 				})(),
 
-				// Redis cleanup if needed
+				// Close Redis client if it exists
 				this.redisClient && (async () => {
 					await this.redisClient.quit()
 					console.log('Redis client closed')
 				})(),
 
-				// Server cleanup with timeout
+				// Close HTTP server
 				new Promise((resolve, reject) => {
 					const timeout = setTimeout(() => {
 						reject(new Error('Server close timeout'))

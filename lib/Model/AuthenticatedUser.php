@@ -17,10 +17,12 @@ final class AuthenticatedUser implements User {
 	) {
 	}
 
+	#[\Override]
 	public function getUID(): string {
 		return $this->user->getUID();
 	}
 
+	#[\Override]
 	public function getDisplayName(): string {
 		return $this->user->getDisplayName();
 	}

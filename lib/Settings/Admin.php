@@ -22,6 +22,7 @@ class Admin implements ISettings {
 	) {
 	}
 
+	#[\Override]
 	public function getForm(): TemplateResponse {
 		$this->initialState->provideInitialState('url', $this->configService->getCollabBackendUrl());
 		$this->initialState->provideInitialState('urlInternal', $this->configService->getInternalCollabBackendUrl(false));
@@ -41,10 +42,12 @@ class Admin implements ISettings {
 		return $response;
 	}
 
+	#[\Override]
 	public function getSection() {
 		return 'whiteboard';
 	}
 
+	#[\Override]
 	public function getPriority() {
 		return 0;
 	}

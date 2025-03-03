@@ -23,6 +23,7 @@ final class GetSessionUserFromIdService implements GetUserFromIdService {
 	) {
 	}
 
+	#[\Override]
 	public function getUser(): User {
 		$user = $this->userManager->get($this->userId);
 		if (!$user) {

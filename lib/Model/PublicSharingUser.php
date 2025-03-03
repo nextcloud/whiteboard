@@ -15,10 +15,12 @@ final class PublicSharingUser implements User {
 	) {
 	}
 
+	#[\Override]
 	public function getUID(): string {
 		return $this->generateRandomUID();
 	}
 
+	#[\Override]
 	public function getDisplayName(): string {
 		return $this->generateRandomDisplayName();
 	}

@@ -20,6 +20,7 @@ final class AuthenticateSessionUserService implements AuthenticateUserService {
 	) {
 	}
 
+	#[\Override]
 	public function authenticate(): User {
 		if (!$this->userSession->isLoggedIn()) {
 			throw new UnauthorizedException('User not logged in');

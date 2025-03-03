@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test('test whiteboard server is reachable', async ({ page }) => {
 	await page.goto('http://localhost:3002')
-	await expect(page.locator('body')).toContainText('Excalidraw collaboration server is up :)')
+	await expect(page.locator('body')).toContainText('Nextcloud Whiteboard Collaboration Server')
 })
 
 test('open a whiteboard', async ({ page }) => {

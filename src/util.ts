@@ -8,13 +8,40 @@ import type { AppState } from '@excalidraw/excalidraw/types/types'
 import { isObject } from 'lodash'
 
 /**
- * Hashes elements' versionNonce (using djb2 algo). Order of elements matters.
- * @param elements all Elements
+ * Hashes elements' version and isDeleted status (using djb2 algo principle). Order of elements matters.
+ * @param elements all Elements, potentially including deleted ones
  */
 export const hashElementsVersion = (
 	elements: readonly ExcalidrawElement[],
 ): number => {
-	return elements.reduce((acc, el) => acc + el.version, 0)
+	let hash = 5381 // djb2 starting point
+
+	// Special case: empty elements array should have a unique hash
+	// This ensures that when all elements are deleted, the hash changes
+	if (elements.length === 0) {
+		return 1 // Special hash for empty array
+	}
+
+	// Count deleted elements to ensure hash changes when elements are deleted
+	let deletedCount = 0
+
+	for (const el of elements) {
+		// Combine version, nonce, and deletion status into the hash
+		// Using prime numbers helps distribute values
+		hash = (hash * 33) ^ (el.version || 0)
+		hash = (hash * 33) ^ (el.versionNonce || 0)
+
+		// Track deletion status
+		if (el.isDeleted) {
+			deletedCount++
+			hash = (hash * 33) ^ 1 // Include isDeleted status
+		}
+	}
+
+	// Include deleted count in the hash to ensure it changes when elements are deleted
+	hash = (hash * 33) ^ deletedCount
+
+	return hash >>> 0 // Ensure positive integer
 }
 
 /**

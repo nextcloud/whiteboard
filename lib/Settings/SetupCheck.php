@@ -25,6 +25,7 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 		private IAppManager $appManager,
 	) {
 	}
+	#[\Override]
 	public function getCategory(): string {
 		return 'system';
 	}
@@ -32,6 +33,7 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getName(): string {
 		return 'Whiteboard server';
 	}
@@ -39,6 +41,7 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function run(): \OCP\SetupCheck\SetupResult {
 		if ($this->configService->getCollabBackendUrl() === '') {
 			return SetupResult::error($this->l10n->t('Whiteboard server URL is not configured. Whiteboard requires a separate collaboration server that is connected to Nextcloud.'), 'https://github.com/nextcloud/whiteboard?tab=readme-ov-file#running-the-server');
@@ -50,7 +53,7 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 			if ($this->configService->getSkipTlsVerify()) {
 				$options['verify'] = false;
 			}
-			$result = $client->get($this->configService->getInternalCollabBackendUrl(), $options);
+			$client->get($this->configService->getInternalCollabBackendUrl(), $options);
 		} catch (\Exception $e) {
 			$this->logger->error('Nextcloud server could not connect to whiteboard server', ['exception' => $e]);
 

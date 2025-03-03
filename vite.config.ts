@@ -14,11 +14,23 @@ const AppConfig = createAppConfig({
 	config: defineConfig({
 		build: {
 			cssCodeSplit: true,
+			chunkSizeWarningLimit: 3000,
+			minify: 'esbuild',
+			target: 'es2020',
 			rollupOptions: {
 				output: {
 					manualChunks: {
 						vendor: ['react', 'react-dom'],
 					},
+					// assetFileNames: 'js/[name]-[hash].[ext]',
+				},
+			},
+		},
+		worker: {
+			format: 'es',
+			rollupOptions: {
+				output: {
+					entryFileNames: 'js/[name]-[hash].js',
 				},
 			},
 		},
@@ -48,6 +60,11 @@ const AppConfig = createAppConfig({
 				],
 			}),
 		],
+		resolve: {
+			alias: {
+				'@excalidraw/excalidraw/types': resolve(__dirname, 'node_modules/@excalidraw/excalidraw/types'),
+			},
+		},
 	}),
 })
 

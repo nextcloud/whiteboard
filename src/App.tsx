@@ -3,38 +3,50 @@
  * SPDX-License-Identifier: MIT
  */
 
-// https://github.com/excalidraw/excalidraw/blob/4dc4590f247a0a0d9c3f5d39fe09c00c5cef87bf/examples/excalidraw
-
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Icon } from '@mdi/react'
-import { mdiSlashForwardBox, mdiMonitorScreenshot } from '@mdi/js'
-import { createRoot } from 'react-dom'
-import {
-	Excalidraw,
-	MainMenu,
-	useHandleLibrary,
-	viewportCoordsToSceneCoords,
-} from '@excalidraw/excalidraw'
+
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
+import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
 import './App.scss'
-import { resolvablePromise } from './utils'
-import type {
-	ExcalidrawImperativeAPI,
-	ExcalidrawInitialDataState,
-} from '@excalidraw/excalidraw/types/types'
-import { Collab } from './collaboration/collab'
+import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
+import { useExcalidrawStore } from './stores/useExcalidrawStore'
+import { useWhiteboardStore } from './stores/useWhiteboardStore'
+import { useThemeHandling } from './hooks/useThemeHandling'
+import { useCollaboration } from './hooks/useCollaboration'
+import { useSmartPicker } from './hooks/useSmartPicker'
+import { useReadOnlyState } from './hooks/useReadOnlyState'
+import { ExcalidrawMenu } from './components/ExcalidrawMenu'
 import Embeddable from './Embeddable'
-import type { ResolvablePromise } from '@excalidraw/excalidraw/types/utils'
-import type { NonDeletedExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
-import { useExcalidrawLang } from './hooks/useExcalidrawLang'
+import { useLangStore } from './stores/useLangStore'
+import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
+import { useSync } from './hooks/useSync'
+import { useSyncStore } from './stores/useSyncStore'
+import { useShallow } from 'zustand/react/shallow'
+
+import { db } from './database/db'
+
+const Excalidraw = memo(ExcalidrawComponent)
+
+export const initialDataState: ExcalidrawInitialDataState = {
+	elements: [],
+	appState: {
+		currentItemFontFamily: 3,
+		currentItemStrokeWidth: 1,
+		currentItemRoughness: 0,
+	},
+	files: {},
+}
+
+const MemoizedNetworkStatusIndicator = memo(NetworkStatusIndicator)
+const MemoizedExcalidrawMenu = memo(ExcalidrawMenu)
 
 interface WhiteboardAppProps {
 	fileId: number
 	fileName: string
 	isEmbedded: boolean
 	publicSharingToken: string | null
+	collabBackendUrl: string
 }
 
 export default function App({
@@ -42,208 +54,269 @@ export default function App({
 	isEmbedded,
 	fileName,
 	publicSharingToken,
+	collabBackendUrl,
 }: WhiteboardAppProps) {
-	const fileNameWithoutExtension = fileName.split('.').slice(0, -1).join('.')
+	if (!fileId) {
+		console.warn('[App] Invalid fileId during initialization:', fileId)
 
-	const [viewModeEnabled, setViewModeEnabled] = useState(isEmbedded)
-	const [zenModeEnabled] = useState(isEmbedded)
-	const [gridModeEnabled] = useState(false)
-
-	const isDarkMode = () => {
-		const ncThemes = document.body.dataset?.themes
-		return (
-			(window.matchMedia('(prefers-color-scheme: dark)').matches
-				&& (ncThemes === undefined || ncThemes?.indexOf('light') === -1))
-			|| ncThemes?.indexOf('dark') > -1
-		)
-	}
-	const [theme, setTheme] = useState(isDarkMode() ? 'dark' : 'light')
-
-	const lang = useExcalidrawLang()
-
-	useEffect(() => {
-		const themeChangeListener = () =>
-			setTheme(isDarkMode() ? 'dark' : 'light')
-		const mq = window.matchMedia('(prefers-color-scheme: dark)')
-		mq.addEventListener('change', themeChangeListener)
-		return () => {
-			mq.removeEventListener('change', themeChangeListener)
-		}
-	}, [])
-
-	const initialStatePromiseRef = useRef<{
-		promise: ResolvablePromise<ExcalidrawInitialDataState | null>
-	}>({ promise: null! })
-	if (!initialStatePromiseRef.current.promise) {
-		initialStatePromiseRef.current.promise = resolvablePromise()
+		return <div className="App-error">Invalid whiteboard ID. Please try again.</div>
 	}
 
-	const [excalidrawAPI, setExcalidrawAPI]
-		= useState<ExcalidrawImperativeAPI | null>(null)
-	const [collab, setCollab] = useState<Collab | null>(null)
+	const fileNameWithoutExtension = useMemo(() => fileName.split('.').slice(0, -1).join('.'), [fileName])
 
-	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled, initialStatePromiseRef)) }
-	if (collab && !collab.portal.socket) collab.startCollab()
-	useEffect(() => {
-		const extraTools = document.getElementsByClassName(
-			'App-toolbar__extra-tools-trigger',
-		)[0]
-		const smartPick = document.createElement('label')
-		smartPick.classList.add(...['ToolIcon', 'Shape'])
-		if (extraTools) {
-			extraTools.parentNode?.insertBefore(
-				smartPick,
-				extraTools.previousSibling,
-			)
-			const root = createRoot(smartPick)
-			root.render(renderSmartPicker())
-		}
+	const { excalidrawAPI, setExcalidrawAPI, resetExcalidrawAPI } = useExcalidrawStore(useShallow(state => ({
+		excalidrawAPI: state.excalidrawAPI,
+		setExcalidrawAPI: state.setExcalidrawAPI,
+		resetExcalidrawAPI: state.resetExcalidrawAPI,
+	})))
+
+	const {
+		setConfig,
+		zenModeEnabled,
+		gridModeEnabled,
+		initialDataPromise,
+		resolveInitialData,
+		isInitializing,
+		setIsInitializing,
+		resetInitialDataPromise,
+		resetStore,
+	} = useWhiteboardStore(useShallow(state => ({
+		setConfig: state.setConfig,
+		zenModeEnabled: state.zenModeEnabled,
+		gridModeEnabled: state.gridModeEnabled,
+		initialDataPromise: state.initialDataPromise,
+		resolveInitialData: state.resolveInitialData,
+		isInitializing: state.isInitializing,
+		setIsInitializing: state.setIsInitializing,
+		resetInitialDataPromise: state.resetInitialDataPromise,
+		resetStore: state.resetStore,
+	})))
+
+	const { lang, updateLang } = useLangStore(useShallow(state => ({
+		lang: state.lang,
+		updateLang: state.updateLang,
+	})))
+
+	const { terminateWorker } = useSyncStore(useShallow(state => ({
+		terminateWorker: state.terminateWorker,
+	})))
+
+	const { theme } = useThemeHandling()
+	const { renderSmartPicker } = useSmartPicker()
+	const { onChange: onChangeSync, onPointerUpdate } = useSync()
+	useCollaboration()
+	const { isReadOnly } = useReadOnlyState()
+
+	useHandleLibrary({
+		excalidrawAPI,
 	})
 
 	useEffect(() => {
+		resetInitialDataPromise()
+
+		console.log('[App] Reset initialDataPromise on mount')
+
+		// On unmount: Clean up all stores to prevent stale state
 		return () => {
-			if (collab) collab.portal.disconnectSocket()
-		}
-	}, [excalidrawAPI])
+			// Save any pending changes before resetting stores
+			const api = useExcalidrawStore.getState().excalidrawAPI
+			const currentIsReadOnly = useWhiteboardStore.getState().isReadOnly
 
-	useEffect(() => {
-		const handleBeforeUnload = () => {
-			if (collab) collab.portal.disconnectSocket()
-		}
+			if (api && !currentIsReadOnly) {
+				console.log('[App] Saving final state on unmount')
+				// We can't use the hook's doSyncToLocal directly, so we'll replicate its logic
+				const currentFileId = useWhiteboardStore.getState().fileId
+				const currentWorker = useSyncStore.getState().worker
+				const currentIsWorkerReady = useSyncStore.getState().isWorkerReady
 
-		window.addEventListener('beforeunload', handleBeforeUnload)
+				if (currentIsWorkerReady && currentWorker && currentFileId) {
+					try {
+						const elements = api.getSceneElementsIncludingDeleted()
+						const appState = api.getAppState()
+						const files = api.getFiles()
+						// Create a new object without the properties we want to exclude
+						const filteredAppState = {
+							...appState,
+							collaborators: undefined,
+							selectedElementIds: undefined,
+						}
 
-		return () => {
-			if (collab) collab.portal.disconnectSocket()
-			window.removeEventListener('beforeunload', handleBeforeUnload)
-		}
-	}, [collab])
+						console.log(`[App] Sending final sync with ${elements.length} elements before unmount`)
 
-	useHandleLibrary({ excalidrawAPI })
+						// Set up a one-time message handler to detect when sync is complete
+						const messageHandler = (event: MessageEvent) => {
+							if (event.data.type === 'LOCAL_SYNC_COMPLETE') {
+								console.log('[App] Final sync completed successfully')
+								currentWorker.removeEventListener('message', messageHandler)
+							} else if (event.data.type === 'LOCAL_SYNC_ERROR') {
+								console.error('[App] Final sync failed:', event.data.error)
+								currentWorker.removeEventListener('message', messageHandler)
+							}
+						}
 
-	const onLinkOpen = useCallback(
-		(
-			element: NonDeletedExcalidrawElement,
-			event: CustomEvent<{
-				nativeEvent: MouseEvent | React.PointerEvent<HTMLCanvasElement>
-			}>,
-		) => {
-			const link = element.link!
-			const { nativeEvent } = event.detail
-			const isNewTab = nativeEvent.ctrlKey || nativeEvent.metaKey
-			const isNewWindow = nativeEvent.shiftKey
-			const isInternalLink
-				= link.startsWith('/') || link.includes(window.location.origin)
-			if (isInternalLink && !isNewTab && !isNewWindow) {
-				// signal that we're handling the redirect ourselves
-				event.preventDefault()
-				// do a custom redirect, such as passing to react-router
-				// ...
+						// Add the message handler
+						currentWorker.addEventListener('message', messageHandler)
+
+						// Send the sync message
+						currentWorker.postMessage({
+							type: 'SYNC_TO_LOCAL',
+							fileId: currentFileId,
+							elements,
+							files,
+							appState: filteredAppState,
+						})
+
+						// Set a timeout to remove the handler after 500ms in case we don't get a response
+						setTimeout(() => {
+							currentWorker.removeEventListener('message', messageHandler)
+						}, 500)
+					} catch (error) {
+						console.error('[App] Error during final sync on unmount:', error)
+					}
+				}
 			}
-		},
-		[],
-	)
-	const addWebEmbed = (link: string) => {
-		let cords: { x: any; y: any }
-		if (excalidrawAPI) {
-			cords = viewportCoordsToSceneCoords(
-				{ clientX: 100, clientY: 100 },
-				excalidrawAPI.getAppState(),
-			)
-		} else {
-			cords = { x: 0, y: 0 }
+
+			// Reset all stores
+			console.log('[App] Resetting all stores on unmount')
+			resetStore()
+			resetExcalidrawAPI()
+
+			// Terminate the worker
+			terminateWorker()
 		}
-		const elements = excalidrawAPI
-			?.getSceneElementsIncludingDeleted()
-			.slice()
-		elements?.push({
-			link,
-			id: (Math.random() + 1).toString(36).substring(7),
-			x: cords.x,
-			y: cords.y,
-			strokeColor: '#1e1e1e',
-			backgroundColor: 'transparent',
-			fillStyle: 'solid',
-			strokeWidth: 2,
-			strokeStyle: 'solid',
-			roundness: null,
-			roughness: 1,
-			opacity: 100,
-			width: 400,
-			height: 200,
-			angle: 0,
-			seed: 0,
-			version: 0,
-			versionNonce: 0,
-			isDeleted: false,
-			groupIds: [],
-			frameId: null,
-			boundElements: null,
-			updated: 0,
-			locked: false,
-			type: 'embeddable',
-			validated: true,
-		})
-		excalidrawAPI?.updateScene({ elements })
-	}
-	const pickFile = () => {
-		getLinkWithPicker(null, true).then((link: string) => {
-			addWebEmbed(link)
-		})
-	}
+	}, [resetInitialDataPromise, resetStore, resetExcalidrawAPI, terminateWorker]) // Include the useShallow dependencies
 
-	const takeScreenshot = () => {
-		const dataUrl = document.querySelector('.excalidraw__canvas').toDataURL('image/png')
-		const downloadLink = document.createElement('a')
-		downloadLink.href = dataUrl
-		downloadLink.download = `${fileNameWithoutExtension} Screenshot.png`
-		document.body.appendChild(downloadLink)
-		downloadLink.click()
-	}
+	useLayoutEffect(() => {
+		setConfig({ fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl })
+		console.log('[App] Configuration set')
+	}, [setConfig, fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl])
 
-	const renderMenu = () => {
+	// UI Initialization Effect
+	useEffect(() => {
+		console.log('[App] Initializing UI components')
+		updateLang()
+		renderSmartPicker()
+	}, [updateLang, renderSmartPicker])
+
+	// Data Loading Effect
+	useEffect(() => {
+		const loadInitialData = async () => {
+			console.log('[App] Loading initial data for fileId:', fileId)
+			try {
+				const defaultSettings = {
+					currentItemFontFamily: 3,
+					currentItemStrokeWidth: 1,
+					currentItemRoughness: 0,
+				}
+
+				// Get local data from IndexedDB
+				const localData = await db.get(fileId)
+
+				if (localData) {
+					console.log('[App] Local data retrieved:', {
+						elementCount: localData.elements?.length || 0,
+						savedAt: localData.savedAt ? new Date(localData.savedAt).toISOString() : 'unknown',
+						fileId: localData.id,
+					})
+				} else {
+					console.log('[App] No local data found for fileId:', fileId)
+				}
+
+				// If we have local data with elements, use it
+				if (localData && localData.elements && Array.isArray(localData.elements)) {
+					// Even if there are no elements, we should still use the local data
+					// This handles the case where the user has deleted all elements
+					const elements = localData.elements
+					const finalAppState = { ...defaultSettings, ...(localData.appState || {}) }
+					const files = localData.files || {}
+
+					console.log(`[App] Loading data from local storage: ${elements.length} elements, ${Object.keys(files).length} files`)
+
+					// Force a small delay to ensure the component is ready to receive the data
+					setTimeout(() => {
+						resolveInitialData({
+							elements,
+							appState: finalAppState,
+							files,
+							scrollToContent: true,
+						})
+						console.log('[App] Loaded data from local storage with merged settings')
+					}, 50)
+				} else {
+					console.log('[App] No valid elements found in local data, using defaults')
+					// Force a small delay to ensure the component is ready to receive the data
+					setTimeout(() => {
+						resolveInitialData(initialDataState)
+					}, 50)
+				}
+			} catch (error) {
+				console.error('[App] Error loading data:', error)
+				// Force a small delay to ensure the component is ready to receive the data
+				setTimeout(() => {
+					resolveInitialData(initialDataState)
+				}, 50)
+			} finally {
+				// Delay setting isInitializing to false to ensure data is loaded
+				setTimeout(() => {
+					setIsInitializing(false)
+				}, 100)
+			}
+		}
+
+		// Only load data if we have a valid fileId
+		if (fileId) {
+			loadInitialData()
+		} else {
+			console.warn('[App] No fileId provided, cannot load data')
+			resolveInitialData(initialDataState)
+			setIsInitializing(false)
+		}
+	}, [fileId, resolveInitialData, setIsInitializing])
+
+	const onLinkOpen = useCallback((element: any, event: any) => {
+		const link = element.link
+		const { nativeEvent } = event.detail
+		const isNewTab = nativeEvent.ctrlKey || nativeEvent.metaKey
+		const isNewWindow = nativeEvent.shiftKey
+		const isInternalLink = link.startsWith('/') || link.includes(window.location.origin)
+
+		if (isInternalLink && !isNewTab && !isNewWindow) {
+			event.preventDefault()
+		}
+	}, [])
+
+	const handleOnChange = useCallback(() => {
+		if (!excalidrawAPI || !fileId || isInitializing) return
+		onChangeSync()
+	}, [excalidrawAPI, fileId, isInitializing, onChangeSync])
+
+	if (isInitializing) {
 		return (
-			<MainMenu>
-				<MainMenu.DefaultItems.ToggleTheme />
-				<MainMenu.DefaultItems.ChangeCanvasBackground />
-				<MainMenu.Separator />
-				<MainMenu.DefaultItems.SaveAsImage />
-				<MainMenu.Item
-					icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
-					onSelect={() => takeScreenshot()}>
-					{ 'Download screenshot' }
-				</MainMenu.Item>
-			</MainMenu>
-		)
-	}
-
-	const renderSmartPicker = () => {
-		return (
-			<button
-				className="dropdown-menu-button App-toolbar__extra-tools-trigger"
-				aria-label="Smart picker"
-				aria-keyshortcuts="0"
-				onClick={pickFile}
-				title="Smart picker">
-				<Icon path={mdiSlashForwardBox} size={1} />
-			</button>
+			<div className="App" style={{ display: 'flex', flexDirection: 'column' }}>
+				<div className="App-loading" style={{
+					flex: 1,
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+				}}>
+					Loading whiteboard...
+				</div>
+			</div>
 		)
 	}
 
 	return (
-		<div className="App">
-			<div className="excalidraw-wrapper">
+		<div className="App" style={{ display: 'flex', flexDirection: 'column' }}>
+			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
+				<MemoizedNetworkStatusIndicator />
 				<Excalidraw
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
-					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-						console.log(api)
-						console.log('Setting API')
-						setExcalidrawAPI(api)
-					}}
-					initialData={initialStatePromiseRef.current.promise}
-					onPointerUpdate={collab?.onPointerUpdate}
-					viewModeEnabled={viewModeEnabled}
+					excalidrawAPI={setExcalidrawAPI}
+					initialData={initialDataPromise}
+					onPointerUpdate={onPointerUpdate}
+					onChange={handleOnChange}
+					viewModeEnabled={isReadOnly}
 					zenModeEnabled={zenModeEnabled}
 					gridModeEnabled={gridModeEnabled}
 					theme={theme}
@@ -254,8 +327,11 @@ export default function App({
 						},
 					}}
 					onLinkOpen={onLinkOpen}
-					langCode={lang}>
-					{renderMenu()}
+					langCode={lang}
+				>
+					<MemoizedExcalidrawMenu
+						fileNameWithoutExtension={fileNameWithoutExtension}
+					/>
 				</Excalidraw>
 			</div>
 		</div>
