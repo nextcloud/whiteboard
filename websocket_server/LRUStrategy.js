@@ -8,7 +8,7 @@
 import { LRUCache } from 'lru-cache'
 import StorageStrategy from './StorageStrategy.js'
 
-export default class GeneralLRUStrategy extends StorageStrategy {
+export default class LRUStrategy extends StorageStrategy {
 
 	constructor(options = {}) {
 		const { max = 1000, ttl = 1000 * 60 * 60 * 24, ttlAutopurge = true } = options
