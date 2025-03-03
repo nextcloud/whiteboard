@@ -5,48 +5,24 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { Server as SocketIO, Socket } from 'socket.io'
+import { Server as SocketIO } from 'socket.io'
 import prometheusMetrics from 'socket.io-prometheus'
 import jwt from 'jsonwebtoken'
 import Utils from './Utils.js'
 import { createAdapter } from '@socket.io/redis-streams-adapter'
-import RoomDataManager from './RoomDataManager.js'
-import StorageManager from './StorageManager.js'
-import { Server } from 'http'
-import { Server as HttpsServer } from 'https'
 import Config from './Config.js'
-import StorageStrategy from './StorageStrategy.js'
 
-/**
- * Manages WebSocket connections and room interactions
- */
 export default class SocketManager {
 
-	/**
-	 * Creates a new SocketManager instance
-	 * @param {Server|HttpsServer} server - HTTP/HTTPS server instance
-	 * @param {RoomDataManager} roomDataManager - Manager for room data
-	 * @param {StorageManager} storageManager - Manager for room data storage
-	 * @param {StorageStrategy} socketDataStorage - Manager for socket data storage
-	 * @param {StorageStrategy} cachedTokenStorage - Manager for cached token storage
-	 * @param {object} redisClient - Shared Redis client
-	 */
-	constructor(server, roomDataManager, storageManager, socketDataStorage, cachedTokenStorage, redisClient) {
-		this.roomDataManager = roomDataManager
-		this.storageManager = storageManager
+	constructor(server, socketDataStorage, cachedTokenStorage, redisClient) {
 		this.socketDataStorage = socketDataStorage
 		this.cachedTokenStorage = cachedTokenStorage
 		this.redisClient = redisClient
 		this.io = this.createSocketServer(server)
 		this.init()
+		this.roomSyncers = new Map() // Map to track room syncers by user ID
 	}
 
-	// SERVER SETUP METHODS
-	/**
-	 * Creates and configures the Socket.IO server
-	 * @param {Server|HttpsServer} server - HTTP/HTTPS server instance
-	 * @return {SocketIO.Server} Configured Socket.IO server instance
-	 */
 	createSocketServer(server) {
 		return new SocketIO(server, {
 			transports: ['websocket', 'polling'],
@@ -59,19 +35,11 @@ export default class SocketManager {
 		})
 	}
 
-	/**
-	 * Initializes the socket server and sets up necessary configurations
-	 * @return {Promise<void>}
-	 */
 	async init() {
 		await this.setupAdapter()
 		this.setupEventHandlers()
 	}
 
-	/**
-	 * Sets up the appropriate adapter (Redis or in-memory)
-	 * @return {Promise<void>}
-	 */
 	async setupAdapter() {
 		if (this.shouldUseRedis()) {
 			await this.setupRedisStreamsAdapter()
@@ -80,10 +48,6 @@ export default class SocketManager {
 		}
 	}
 
-	/**
-	 * Configures Redis Streams adapter for Socket.IO
-	 * @return {Promise<void>}
-	 */
 	async setupRedisStreamsAdapter() {
 		console.log('Setting up Redis Streams adapter')
 		try {
@@ -95,21 +59,10 @@ export default class SocketManager {
 		}
 	}
 
-	/**
-	 * Determines if Redis should be used as the adapter
-	 * @return {boolean}
-	 */
 	shouldUseRedis() {
 		return !!this.redisClient
 	}
 
-	// AUTHENTICATION METHODS
-	/**
-	 * Handles socket authentication
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {Function} next - Next middleware function
-	 * @return {Promise<void>}
-	 */
 	async socketAuthenticateHandler(socket, next) {
 		try {
 			const { token } = socket.handshake.auth
@@ -127,11 +80,6 @@ export default class SocketManager {
 		}
 	}
 
-	/**
-	 * Handles authentication errors
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {Function} next - Next middleware function
-	 */
 	async handleAuthError(socket, next) {
 		const { secret } = socket.handshake.auth
 		try {
@@ -142,59 +90,38 @@ export default class SocketManager {
 		}
 	}
 
-	/**
-	 * Verifies JWT token
-	 * @param {string} token - JWT token to verify
-	 * @return {Promise<object>} Decoded token data
-	 */
 	async verifyToken(token) {
 		const cachedToken = await this.cachedTokenStorage.get(token)
-		console.log('cachedTokenStorage', this.cachedTokenStorage)
+
 		if (cachedToken) return cachedToken
 
 		return new Promise((resolve, reject) => {
-			jwt.verify(
-				token,
-				Config.JWT_SECRET_KEY,
-				async (err, decoded) => {
-					if (err) {
-						console.log(
-							err.name === 'TokenExpiredError'
-								? 'Token expired'
-								: 'Token verification failed',
-						)
-						return reject(new Error('Authentication error'))
-					}
-					await this.cachedTokenStorage.set(token, decoded)
-					resolve(decoded)
-				},
-			)
+			jwt.verify(token, Config.JWT_SECRET_KEY, async (err, decoded) => {
+				if (err) {
+					console.log(
+						err.name === 'TokenExpiredError'
+							? 'Token expired'
+							: 'Token verification failed',
+					)
+					return reject(new Error('Authentication error'))
+				}
+				await this.cachedTokenStorage.set(token, decoded)
+				resolve(decoded)
+			})
 		})
 	}
 
-	// EVENT SETUP METHODS
-	/**
-	 * Sets up all event handlers for the socket server
-	 */
 	setupEventHandlers() {
 		this.io.use(this.socketAuthenticateHandler.bind(this))
 		prometheusMetrics(this.io)
 		this.io.on('connection', this.handleConnection.bind(this))
 	}
 
-	/**
-	 * Handles new socket connections
-	 * @param {Socket} socket - Socket.IO socket instance
-	 */
 	handleConnection(socket) {
 		socket.emit('init-room')
 		this.setupSocketEventListeners(socket)
 	}
 
-	/**
-	 * Sets up event listeners for a specific socket
-	 * @param {Socket} socket - Socket.IO socket instance
-	 */
 	setupSocketEventListeners(socket) {
 		const events = {
 			'join-room': this.joinRoomHandler,
@@ -209,84 +136,85 @@ export default class SocketManager {
 		// Handle regular events
 		Object.entries(events).forEach(([event, handler]) => {
 			socket.on(event, (...args) =>
-				this.safeSocketHandler(socket, () => handler.apply(this, [socket, ...args])),
+				this.safeSocketHandler(socket, () =>
+					handler.apply(this, [socket, ...args]),
+				),
 			)
 		})
 
 		// Handle disconnecting separately to ensure correct room capture
 		socket.on('disconnecting', () => {
-			const rooms = Array.from(socket.rooms).filter((room) => room !== socket.id)
-			this.safeSocketHandler(socket, () => this.disconnectingHandler(socket, rooms))
+			const rooms = Array.from(socket.rooms).filter(
+				(room) => room !== socket.id,
+			)
+			this.safeSocketHandler(socket, () =>
+				this.disconnectingHandler(socket, rooms),
+			)
 		})
 	}
 
-	// ROOM EVENT HANDLERS
-	/**
-	 * Handles room join requests
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {string} roomID - Room identifier
-	 * @return {Promise<void>}
-	 */
 	async joinRoomHandler(socket, roomID) {
 		const socketData = await this.socketDataStorage.get(socket.id)
-		console.log(`[${roomID}] ${socketData.user.name} has joined ${roomID}`)
+		const userId = socketData.user.id
+		const userName = socketData.user.name
+
+		console.log(`[${roomID}] ${userName} joined room`)
+
 		await socket.join(roomID)
 
-		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
-		const userIds = userSocketsAndIds.map(u => u.userId)
+		// Check if this user is already the syncer for this room
+		const currentSyncerUserId = this.roomSyncers.get(roomID)
+		const isReadOnly = await this.isSocketReadOnly(socket.id)
+		const userSockets = await this.getUserSocketsInRoom(roomID)
+		const uniqueUserIds = new Set(userSockets.map(s => s.userId))
 
-		const room = await this.roomDataManager.syncRoomData(
-			roomID,
-			null,
-			userIds,
-			null,
-			socket.handshake.auth.token,
-		)
+		// If this is the first unique user and not read-only, designate as syncer
+		if (uniqueUserIds.size === 1 && !isReadOnly && !currentSyncerUserId) {
+			this.roomSyncers.set(roomID, userId)
 
-		if (room) {
-			socket.emit(
-				'joined-data',
-				Utils.convertStringToArrayBuffer(JSON.stringify(room.data)),
-				[],
-			)
-
-			Object.values(room.getFiles()).forEach((file) => {
-				socket.emit('image-data', file)
+			await this.socketDataStorage.set(socket.id, {
+				...socketData,
+				isSyncer: true,
+				syncerFor: roomID,
 			})
 
-			this.io.to(roomID).emit('room-user-change', userSocketsAndIds)
+			socket.emit('sync-designate', { isSyncer: true })
+			console.log(
+				`[${roomID}] Designated initial syncer: ${userName}`,
+			)
+		} else if (currentSyncerUserId === userId) {
+			// This user is already the syncer, maintain status
+			await this.socketDataStorage.set(socket.id, {
+				...socketData,
+				isSyncer: true,
+				syncerFor: roomID,
+			})
+
+			socket.emit('sync-designate', { isSyncer: true })
+			console.log(
+				`[${roomID}] User ${userName} reconnected as existing syncer`,
+			)
 		} else {
-			socket.emit('room-not-found')
+			// Not the syncer
+			await this.socketDataStorage.set(socket.id, {
+				...socketData,
+				isSyncer: false,
+			})
+
+			socket.emit('sync-designate', { isSyncer: false })
 		}
+
+		const roomUsers = await this.getUserSocketsAndIds(roomID)
+		this.io.to(roomID).emit('room-user-change', roomUsers)
 	}
 
-	/**
-	 * Handles broadcast messages to room
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {string} roomID - Room identifier
-	 * @param {ArrayBuffer} encryptedData - Encrypted message data
-	 * @param {string} iv - Initialization vector
-	 * @return {Promise<void>}
-	 */
 	async serverBroadcastHandler(socket, roomID, encryptedData, iv) {
 		const isReadOnly = await this.isSocketReadOnly(socket.id)
 		if (!socket.rooms.has(roomID) || isReadOnly) return
 
 		socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
-
-		const decryptedData = JSON.parse(Utils.convertArrayBufferToString(encryptedData))
-
-		this.queueRoomUpdate(roomID, {
-			elements: decryptedData.payload.elements,
-		}, socket.id)
 	}
 
-	/**
-	 * Handles volatile broadcasts (e.g., mouse movements)
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {string} roomID - Room identifier
-	 * @param {ArrayBuffer} encryptedData - Encrypted message data
-	 */
 	async serverVolatileBroadcastHandler(socket, roomID, encryptedData) {
 		const payload = JSON.parse(
 			Utils.convertArrayBufferToString(encryptedData),
@@ -294,7 +222,9 @@ export default class SocketManager {
 
 		if (payload.type === 'MOUSE_LOCATION') {
 			const socketData = await this.socketDataStorage.get(socket.id)
+
 			if (!socketData) return
+
 			const eventData = {
 				type: 'MOUSE_LOCATION',
 				payload: {
@@ -312,58 +242,20 @@ export default class SocketManager {
 		}
 	}
 
-	// IMAGE HANDLING METHODS
-	/**
-	 * Handles image addition to room
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {string} roomID - Room identifier
-	 * @param {string} id - Image identifier
-	 * @param {object} data - Image data
-	 * @return {Promise<void>}
-	 */
 	async imageAddHandler(socket, roomID, id, data) {
 		const isReadOnly = await this.isSocketReadOnly(socket.id)
 		if (!socket.rooms.has(roomID) || isReadOnly) return
 
 		socket.broadcast.to(roomID).emit('image-data', data)
-
-		const room = await this.storageManager.get(roomID)
-		const currentFiles = { ...room.files, [id]: data }
-
-		this.queueRoomUpdate(roomID, {
-			elements: room.data,
-			files: currentFiles,
-		}, socket.id)
 	}
 
-	/**
-	 * Handles image removal from room
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {string} roomID - Room identifier
-	 * @param {string} id - Image identifier
-	 */
 	async imageRemoveHandler(socket, roomID, id) {
 		const isReadOnly = await this.isSocketReadOnly(socket.id)
 		if (!socket.rooms.has(roomID) || isReadOnly) return
 
 		socket.broadcast.to(roomID).emit('image-remove', id)
-
-		const room = await this.storageManager.get(roomID)
-		const currentFiles = { ...room.files }
-		delete currentFiles[id]
-
-		this.queueRoomUpdate(roomID, {
-			elements: room.data,
-			files: currentFiles,
-		}, socket.id)
 	}
 
-	/**
-	 * Handles image retrieval requests
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {string} roomId - Room identifier
-	 * @param {string} id - Image identifier
-	 */
 	async imageGetHandler(socket, roomId, id) {
 		const isReadOnly = await this.isSocketReadOnly(socket.id)
 		if (!socket.rooms.has(roomId) || isReadOnly) return
@@ -380,103 +272,116 @@ export default class SocketManager {
 		}
 	}
 
-	// DISCONNECTION HANDLERS
-	/**
-	 * Handles socket disconnection
-	 * @param {Socket} socket - Socket.IO socket instance
-	 */
 	async disconnectHandler(socket) {
 		try {
-			// Clean up socket data first
 			await this.socketDataStorage.delete(socket.id)
 
-			// Remove all listeners
 			socket.removeAllListeners()
 
-			// Force disconnect if still connected
 			if (socket.connected) {
 				socket.disconnect(true)
 			}
 
 			Utils.logOperation('SOCKET', `Cleaned up socket: ${socket.id}`)
 		} catch (error) {
-			Utils.logError('SOCKET', `Failed to cleanup socket: ${socket.id}`, error)
+			Utils.logError(
+				'SOCKET',
+				`Failed to cleanup socket: ${socket.id}`,
+				error,
+			)
 		}
 	}
 
-	/**
-	 * Handles socket disconnecting event
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {string[]} rooms - Array of room IDs
-	 */
 	async disconnectingHandler(socket, rooms) {
-		const socketData = await this.socketDataStorage.get(socket.id)
-		if (!socketData) return
-		console.log(`[${socketData.fileId}] ${socketData.user.name} has disconnected`)
-		console.log('socket rooms', rooms)
-
 		for (const roomID of rooms) {
-			console.log(`[${roomID}] ${socketData.user.name} has left ${roomID}`)
-			const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
-			const otherUserSockets = userSocketsAndIds.filter(u => u.socketId !== socket.id)
+			if (roomID === socket.id) continue
 
-			if (otherUserSockets.length > 0) {
-				this.io.to(roomID).emit('room-user-change', otherUserSockets)
-			} else {
-				await this.storageManager.delete(roomID)
+			const socketData = await this.socketDataStorage.get(socket.id)
+			const userId = socketData?.user?.id
+
+			// Check if user was syncer and if they have other active connections in the room
+			const wasSyncer = this.roomSyncers.get(roomID) === userId
+
+			if (wasSyncer) {
+				// Check if the user has other connections in the room before finding a new syncer
+				const userSockets = await this.getUserSocketsInRoom(roomID)
+				const userStillConnected = userSockets
+					.filter(s => s.socketId !== socket.id)
+					.some(s => s.userId === userId)
+
+				if (!userStillConnected) {
+					console.log(
+						`[${roomID}] Syncer disconnected (all sessions), finding new syncer`,
+					)
+					await this.findNewSyncer(roomID)
+				} else {
+					console.log(
+						`[${roomID}] Syncer disconnected but has other active connections, maintaining syncer status`,
+					)
+				}
 			}
 
-			this.queueRoomUpdate(roomID, {}, socket.id)
+			const roomUsers = await this.getUserSocketsAndIds(roomID)
+			socket.to(roomID).emit('room-user-change', roomUsers)
 		}
 	}
 
-	// ROOM DATA MANAGEMENT
-	/**
-	 * Processes room data updates
-	 * @param {string} roomID - Room identifier
-	 * @param {object} updateData - Data to update
-	 * @param {string} socketId - Socket identifier
-	 * @return {Promise<void>}
-	 */
-	async processRoomDataUpdate(roomID, updateData, socketId) {
-		const socketData = await this.socketDataStorage.get(socketId)
-		if (!socketData) return
+	async findNewSyncer(roomID) {
+		const userSockets = await this.getUserSocketsInRoom(roomID)
 
-		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
-		const currentRoom = await this.storageManager.get(roomID)
-
-		const roomData = {
-			elements: updateData.elements || currentRoom?.data || [],
-			files: updateData.files || currentRoom?.files || {},
-		}
-
-		await this.roomDataManager.syncRoomData(
-			roomID,
-			roomData,
-			userSocketsAndIds.map(u => u.userId),
-			socketData.user.id,
-		)
-	}
-
-	/**
-	 * Queues room updates for processing
-	 * @param {string} roomID - Room identifier
-	 * @param {object} updateData - Data to update
-	 * @param {string} socketId - Socket identifier
-	 */
-	async queueRoomUpdate(roomID, updateData, socketId) {
-		this.processRoomDataUpdate(roomID, updateData, socketId).catch(error => {
-			console.error(`Failed to process room update for ${roomID}:`, error)
+		// Group sockets by user ID
+		const userMap = new Map()
+		userSockets.forEach(s => {
+			if (!userMap.has(s.userId)) {
+				userMap.set(s.userId, [])
+			}
+			userMap.get(s.userId).push(s)
 		})
+
+		if (userMap.size === 0) {
+			console.log(`[${roomID}] No users left in room, no syncer needed`)
+			this.roomSyncers.delete(roomID)
+			return
+		}
+
+		// Try to find a non-readonly user to become syncer
+		for (const [userId, sockets] of userMap.entries()) {
+			// Check if any of the user's sockets is not read-only
+			for (const socketInfo of sockets) {
+				const isReadOnly = await this.isSocketReadOnly(socketInfo.socketId)
+
+				if (!isReadOnly) {
+					// Found an eligible user, make them the syncer
+					this.roomSyncers.set(roomID, userId)
+
+					// Update all sockets for this user
+					for (const s of sockets) {
+						const socketData = await this.socketDataStorage.get(s.socketId)
+						await this.socketDataStorage.set(s.socketId, {
+							...socketData,
+							isSyncer: true,
+							syncerFor: roomID,
+						})
+
+						// Get the actual socket instance to emit to it
+						const socket = this.io.sockets.sockets.get(s.socketId)
+						if (socket) {
+							socket.emit('sync-designate', { isSyncer: true })
+						}
+					}
+
+					console.log(
+						`[${roomID}] Promoted new syncer: ${sockets[0].userName}`,
+					)
+					return
+				}
+			}
+		}
+
+		console.log(`[${roomID}] No eligible users found for syncer role`)
+		this.roomSyncers.delete(roomID)
 	}
 
-	// UTILITY METHODS
-	/**
-	 * Safely executes socket handlers with error handling
-	 * @param {Socket} socket - Socket.IO socket instance
-	 * @param {Function} handler - Handler function to execute
-	 * @return {Promise<boolean>} Success status
-	 */
 	async safeSocketHandler(socket, handler) {
 		try {
 			const socketData = await this.socketDataStorage.get(socket.id)
@@ -493,11 +398,6 @@ export default class SocketManager {
 		}
 	}
 
-	/**
-	 * Checks if a socket is in read-only mode
-	 * @param {string} socketId - Socket identifier
-	 * @return {Promise<boolean>} Read-only status
-	 */
 	async isSocketReadOnly(socketId) {
 		const socketData = await this.socketDataStorage.get(socketId)
 		return socketData ? !!socketData.isFileReadOnly : false
@@ -510,18 +410,43 @@ export default class SocketManager {
 	 */
 	async getUserSocketsAndIds(roomID) {
 		const sockets = await this.io.in(roomID).fetchSockets()
-		return Promise.all(sockets.map(async (s) => {
-			const data = await this.socketDataStorage.get(s.id)
-			if (!data?.user?.id) {
-				console.warn(`Invalid socket data for socket ${s.id}`)
-				return null
-			}
-			return {
-				socketId: s.id,
-				user: data.user,
-				userId: data.user.id,
-			}
-		})).then(results => results.filter(Boolean))
+		return Promise.all(
+			sockets.map(async (s) => {
+				const data = await this.socketDataStorage.get(s.id)
+				if (!data?.user?.id) {
+					console.warn(`Invalid socket data for socket ${s.id}`)
+					return null
+				}
+				return {
+					socketId: s.id,
+					user: data.user,
+					userId: data.user.id,
+				}
+			}),
+		).then((results) => results.filter(Boolean))
+	}
+
+	/**
+	 * Gets detailed socket information for users in a room
+	 * @param {string} roomID - Room identifier
+	 * @return {Promise<Array<{socketId: string, userId: string, userName: string}>>}
+	 */
+	async getUserSocketsInRoom(roomID) {
+		const sockets = await this.io.in(roomID).fetchSockets()
+		return Promise.all(
+			sockets.map(async (s) => {
+				const data = await this.socketDataStorage.get(s.id)
+				if (!data?.user?.id) {
+					console.warn(`Invalid socket data for socket ${s.id}`)
+					return null
+				}
+				return {
+					socketId: s.id,
+					userId: data.user.id,
+					userName: data.user.name,
+				}
+			}),
+		).then((results) => results.filter(Boolean))
 	}
 
 }

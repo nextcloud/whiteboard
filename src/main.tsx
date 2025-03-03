@@ -12,6 +12,7 @@ import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 import './viewer.css'
 
 const EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
+
 const App = lazy(() => import('./App'))
 
 const generateRandomId = () =>
