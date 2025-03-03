@@ -7,7 +7,6 @@
 
 import StorageStrategy from './StorageStrategy.js'
 import { createClient } from 'redis'
-import Room from './Room.js'
 import Config from './Config.js'
 
 export default class RedisStrategy extends StorageStrategy {
@@ -39,7 +38,7 @@ export default class RedisStrategy extends StorageStrategy {
 	async get(key) {
 		try {
 			const data = await this.client.get(key)
-			return data ? this.deserialize(data) : null
+			return data ? JSON.parse(data) : null
 		} catch (error) {
 			console.error(`Error getting data for key ${key}:`, error)
 			return null
@@ -48,7 +47,7 @@ export default class RedisStrategy extends StorageStrategy {
 
 	async set(key, value) {
 		try {
-			const serializedData = this.serialize(value)
+			const serializedData = JSON.stringify(value)
 			await this.client.set(key, serializedData, {
 				EX: Config.ROOM_MAX_AGE / 1000,
 			})
@@ -59,15 +58,6 @@ export default class RedisStrategy extends StorageStrategy {
 
 	async delete(key) {
 		try {
-			const room = await this.get(key)
-			if (room?.data && room?.lastEditedUser) {
-				await this.apiService.saveRoomDataToServer(
-					key,
-					room.data,
-					room.lastEditedUser,
-					room.files,
-				)
-			}
 			await this.client.del(key)
 		} catch (error) {
 			console.error(`Error deleting key ${key}:`, error)
@@ -76,47 +66,13 @@ export default class RedisStrategy extends StorageStrategy {
 
 	async clear() {
 		try {
-			const rooms = await this.getRooms()
-			for (const [key] of rooms) {
+			const keys = await this.client.keys('*')
+			for (const key of keys) {
 				await this.delete(key)
 			}
 		} catch (error) {
 			console.error('Error clearing Redis database:', error)
 		}
-	}
-
-	async getRooms() {
-		try {
-			const keys = await this.client.keys('*')
-			const rooms = new Map()
-
-			for (const key of keys) {
-				if (key.startsWith('token_') || key.startsWith('socket_')) {
-					continue
-				}
-				const room = await this.get(key)
-				if (room) {
-					rooms.set(key, room)
-				}
-			}
-			return rooms
-		} catch (error) {
-			console.error('Error getting rooms:', error)
-			return new Map()
-		}
-	}
-
-	serialize(value) {
-		return JSON.stringify(
-			value instanceof Room ? value.toJSON() : value,
-		)
-	}
-
-	deserialize(data) {
-		const parsedData = JSON.parse(data)
-		return parsedData.id && parsedData.users
-			? Room.fromJSON(parsedData)
-			: parsedData
 	}
 
 }
