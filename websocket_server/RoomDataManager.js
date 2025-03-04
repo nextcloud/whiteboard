@@ -6,40 +6,28 @@
 import Room from './Room.js'
 import Utils from './Utils.js'
 import ApiService from './ApiService.js'
-import BackupManager from './BackupManager.js'
-import StorageManager from './StorageManager.js'
 import { DEFAULT_EMPTY_ROOM_DATA } from './Constants.js'
 
 /**
  * @typedef {object} RoomData
  * @property {Array} [elements] - Array of room elements
  * @property {object} [files] - Object containing file information
- * @property {number} [savedAt] - Timestamp of when the data was saved
  */
 
 /**
- * @typedef {{
- * inputData: RoomData,
- * currentData: RoomData,
- * jwtToken: string,
- * }} SyncOptions
- */
-
-/**
- * Manages room data synchronization, backup, and storage operations
+ * Manages room data for active collaboration sessions
+ * Simplified version that only handles temporary in-memory data for active sessions
+ * Persistence is handled by clients via the NextCloud API
  * @class
  */
 export default class RoomDataManager {
 
 	/**
-	 * @param {StorageManager} storageManager - Manager for room storage operations
 	 * @param {ApiService} apiService - Service for API communications
-	 * @param {BackupManager} backupManager - Manager for backup operations
 	 */
-	constructor(storageManager, apiService, backupManager) {
-		this.storageManager = storageManager
+	constructor(apiService) {
 		this.apiService = apiService
-		this.backupManager = backupManager
+		this.rooms = new Map()
 	}
 
 	/**
