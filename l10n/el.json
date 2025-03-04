@@ -1,7 +1,30 @@
 { "translations": {
+    "New whiteboard" : "Νέος λευκός πίνακας",
+    "Create new whiteboard" : "Δημιουργία νέου λευκού πίνακα",
     "Whiteboard" : "Λευκός πίνακας",
+    "Whiteboard server URL is not configured. Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Η διεύθυνση URL του διακομιστή λευκού πίνακα δεν έχει ρυθμιστεί. Ο λευκός πίνακας απαιτεί έναν ξεχωριστό διακομιστή συνεργασίας που είναι συνδεδεμένος με το Nextcloud.",
+    "Nextcloud server could not connect to whiteboard server" : "Ο διακομιστής Nextcloud δεν μπόρεσε να συνδεθεί με τον διακομιστή λευκού πίνακα",
+    "No version provided by /status enpdoint" : "Δεν παρέχεται έκδοση από το /status endpoint",
+    "Backend server is running a different version, make sure to upgrade both to the same version. App: %s Backend version: %s" : "Ο διακομιστής backend εκτελεί διαφορετική έκδοση, βεβαιωθείτε ότι αναβαθμίζετε και τα δύο στην ίδια έκδοση. Εφαρμογή: %s Έκδοση backend: %s",
+    "Whiteboard backend server could not reach Nextcloud: " : "Ο διακομιστής backend λευκού πίνακα δεν μπόρεσε να φτάσει στο Nextcloud: ",
+    "Failed to connect to whiteboard server server status endpoint" : "Αποτυχία σύνδεσης με το endpoint κατάστασης του διακομιστή λευκού πίνακα",
+    "Whiteboard server configured properly" : "Ο διακομιστής λευκού πίνακα έχει ρυθμιστεί σωστά",
+    "Whiteboard app" : "Εφαρμογή λευκού πίνακα",
+    "The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.\n\n**Whiteboard requires a separate collaboration server to work.** Please see the [documentation](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) on how to install it.\n\n- 🎨 Drawing shapes, writing text, connecting elements\n- 📝 Real-time collaboration\n- 🖼️ Add images with drag and drop\n- 📊 Easily add mermaid diagrams\n- ✨ Use the Smart Picker to embed other elements from Nextcloud\n- 📦 Image export\n- 💪 Strong foundation: We use Excalidraw as our base library" : "Η επίσημη εφαρμογή λευκού πίνακα για το Nextcloud. Επιτρέπει στους χρήστες να δημιουργούν και να μοιράζονται λευκούς πίνακες με άλλους χρήστες και να συνεργάζονται σε πραγματικό χρόνο.\n\n**Ο λευκός πίνακας απαιτεί έναν ξεχωριστό διακομιστή συνεργασίας για να λειτουργήσει.** Παρακαλώ δείτε την [τεκμηρίωση](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) για το πώς να τον εγκαταστήσετε.\n\n- 🎨 Σχεδίαση σχημάτων, γραφή κειμένου, σύνδεση στοιχείων\n- 📝 Συνεργασία σε πραγματικό χρόνο\n- 🖼️ Προσθήκη εικόνων με drag and drop\n- 📊 Εύκολη προσθήκη διαγραμμάτων mermaid\n- ✨ Χρησιμοποιήστε το Smart Picker για ενσωμάτωση άλλων στοιχείων από το Nextcloud\n- 📦 Εξαγωγή εικόνας\n- 💪 Ισχυρό θεμέλιο: Χρησιμοποιούμε την Excalidraw ως βασική μας βιβλιοθήκη",
+    "Whiteboard server" : "Διακομιστής λευκού πίνακα",
+    "Whiteboard backend server is configured and connected." : "Ο διακομιστής backend λευκού πίνακα έχει ρυθμιστεί και είναι συνδεδεμένος.",
+    "Failed to verify the connection:" : "Αποτυχία επαλήθευσης της σύνδεσης:",
+    "Verifying connection…" : "Επαλήθευση σύνδεσης…",
+    "Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Ο λευκός πίνακας απαιτεί έναν ξεχωριστό διακομιστή συνεργασίας που είναι συνδεδεμένος με το Nextcloud.",
+    "See the documentation on how to install it." : "Δείτε την τεκμηρίωση για το πώς να τον εγκαταστήσετε.",
+    "Whiteboard server URL" : "Διεύθυνση URL διακομιστή λευκού πίνακα",
+    "This URL is used by the browser to connect to the whiteboard server." : "Αυτή η διεύθυνση URL χρησιμοποιείται από το πρόγραμμα περιήγησης για να συνδεθεί με τον διακομιστή λευκού πίνακα.",
+    "Internal whiteboard server URL" : "Εσωτερική διεύθυνση URL διακομιστή λευκού πίνακα",
+    "This URL is used by the Nextcloud server to connect to the whiteboard server." : "Αυτή η διεύθυνση URL χρησιμοποιείται από τον διακομιστή Nextcloud για να συνδεθεί με τον διακομιστή λευκού πίνακα.",
+    "Skip TLS certificate validation (not recommended)" : "Παράλειψη επαλήθευσης πιστοποιητικού TLS (δεν συνιστάται)",
     "Shared secret" : "Διαμοιρασμένο μυστικό",
     "Save settings" : "Αποθήκευση ρυθμίσεων",
-    "Advanced settings" : "Ρυθμίσεις για προχωρημένους"
+    "Advanced settings" : "Ρυθμίσεις για προχωρημένους",
+    "Max file size" : "Μέγιστο μέγεθος αρχείου"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }
