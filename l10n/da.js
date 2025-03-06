@@ -7,6 +7,7 @@ OC.L10N.register(
     "Whiteboard server URL is not configured. Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Whiteboard server URL er ikke konfigureret. Whiteboard kræver en separat samarbejdsserver som er forbundet til Nextcloud.",
     "Nextcloud server could not connect to whiteboard server" : "Nextcloud server kunne ikke forbinde til whiteboard server",
     "No version provided by /status enpdoint" : "Ingen version leveret af/status endpoint",
+    "Backend server is running a different version, make sure to upgrade both to the same version. App: %s Backend version: %s" : "Backend server kører en anden version. Vær sikker på at du opgraderer begge til samme version. App: %s backend version: %s",
     "Whiteboard backend server could not reach Nextcloud: " : "Whiteboard backend server kunne ikke nå Nextcloud: ",
     "Failed to connect to whiteboard server server status endpoint" : "Kunne ikke forbinde til whiteboard server serverstatus endpoint",
     "Whiteboard server configured properly" : "Whiteboard server konfigureret korrekt",
