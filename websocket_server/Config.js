@@ -10,6 +10,7 @@ import crypto from 'crypto'
 import {
 	DEFAULT_NEXTCLOUD_URL,
 	DEFAULT_PORT,
+	DEFAULT_SETUP_TYPE,
 	DEFAULT_STORAGE_STRATEGY,
 	DEFAULT_FORCE_CLOSE_TIMEOUT,
 	DEFAULT_REDIS_URL,
@@ -31,7 +32,11 @@ const Config = {
 
 	BYPASS_SSL_VALIDATION: Utils.parseBooleanFromEnv(process.env.BYPASS_SSL_VALIDATION),
 
-	PORT: process.env.PORT || DEFAULT_PORT,
+	IS_DEV: Utils.parseBooleanFromEnv(process.env.IS_DEV),
+
+	SETUP_TYPE: process.env.SETUP_TYPE || DEFAULT_SETUP_TYPE,
+
+	PORT: process.env.APP_PORT || process.env.PORT || DEFAULT_PORT,
 
 	USE_TLS: Utils.parseBooleanFromEnv(process.env.TLS),
 
@@ -81,8 +86,15 @@ const Config = {
 	},
 
 	get NEXTCLOUD_URL() {
-		return this.NEXTCLOUD_WEBSOCKET_URL
+		return this.SETUP_TYPE === 'ex_app' ? process.env.NEXTCLOUD_EX_APP_URL : this.NEXTCLOUD_WEBSOCKET_URL
 	},
+
+	// EX APP
+	EX_APP_ID: process.env.APP_ID || null,
+
+	EX_APP_SECRET: process.env.APP_SECRET || null,
+
+	EX_APP_VERSION: process.env.APP_VERSION || null,
 }
 
 export default Config
