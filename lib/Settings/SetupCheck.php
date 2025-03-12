@@ -53,13 +53,15 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 			$result = $client->get($this->configService->getInternalCollabBackendUrl(), $options);
 		} catch (\Exception $e) {
 			$this->logger->error('Nextcloud server could not connect to whiteboard server', ['exception' => $e]);
-			return SetupResult::error($this->l10n->t('Nextcloud server could not connect to whiteboard server') . ': ' . $e->getMessage());
+
+			return SetupResult::error($this->l10n->t('Nextcloud server could not connect to whiteboard server: %s', [$e->getMessage()]));
 		}
 
 		try {
 			$result = $client->get($this->configService->getInternalCollabBackendUrl() . '/status', $options);
 			$resultObject = json_decode((string)$result->getBody(), false, 512, JSON_THROW_ON_ERROR);
 			$backendVersion = $resultObject?->version ?? null;
+
 			if ($backendVersion === null) {
 				return SetupResult::error($this->l10n->t('No version provided by /status enpdoint'));
 			}
@@ -73,12 +75,12 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 
 			if ($resultObject->connectBack !== true) {
 				return SetupResult::error(
-					$this->l10n->t('Whiteboard backend server could not reach Nextcloud: ' . $resultObject->connectBack)
+					$this->l10n->t('Whiteboard backend server could not reach Nextcloud: %s', [$resultObject->connectBack])
 				);
 			}
 		} catch (\Exception $e) {
 			$this->logger->error('Failed to connect to whiteboard server status endpoint', ['exception' => $e]);
-			return SetupResult::error($this->l10n->t('Failed to connect to whiteboard server server status endpoint') . ': ' . $e->getMessage());
+			return SetupResult::error($this->l10n->t('Failed to connect to whiteboard server status endpoint: %s', [$e->getMessage()]));
 		}
 
 		return SetupResult::success($this->l10n->t('Whiteboard server configured properly'));
