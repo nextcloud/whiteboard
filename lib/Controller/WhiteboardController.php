@@ -24,6 +24,7 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -39,6 +40,7 @@ final class WhiteboardController extends ApiController {
 		private WhiteboardContentService $contentService,
 		private ExceptionService $exceptionService,
 		private ConfigService $configService,
+		private LoggerInterface $logger,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -48,15 +50,60 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function show(int $fileId): DataResponse {
 		try {
+			$this->logger->warning('WhiteboardController::show - Request for fileId: ' . $fileId, [
+				'file_id' => $fileId,
+				'request_params' => $this->request->getParams()
+			]);
+
 			$jwt = $this->getJwtFromRequest();
+
+			$this->logger->warning('JWT token retrieved, attempting to extract user ID');
 
 			$userId = $this->jwtService->getUserIdFromJWT($jwt);
 
-			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
+			$this->logger->warning('User ID extracted from JWT: ' . $userId);
 
-			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
+			try {
+				$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
+			} catch (Exception $e) {
+				$this->logger->error('Failed to create user object for: ' . $userId, [
+					'error' => $e->getMessage()
+				]);
+				throw $e;
+			}
 
-			$data = $this->contentService->getContent($file);
+			$this->logger->warning('User object created for: ' . $userId);
+
+			try {
+				$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
+			} catch (Exception $e) {
+				$this->logger->error('Failed to retrieve file for fileId: ' . $fileId, [
+					'error' => $e->getMessage()
+				]);
+				throw $e;
+			}
+
+			$this->logger->warning('File retrieved for fileId: ' . $fileId);
+
+			try {
+				$data = $this->contentService->getContent($file);
+			} catch (Exception $e) {
+				$this->logger->error('Failed to retrieve content for file', [
+					'file_id' => $fileId,
+					'error' => $e->getMessage()
+				]);
+				throw $e;
+			}
+
+			$this->logger->warning('Content retrieved for file', [
+				'file_id' => $fileId,
+				'data_size' => is_array($data) ? count($data) : 'not array'
+			]);
+
+			$this->logger->warning('Content retrieved for file', [
+				'file_id' => $fileId,
+				'data_size' => is_array($data) ? count($data) : 'not array'
+			]);
 
 			return new DataResponse(['data' => $data]);
 		} catch (Exception $e) {
@@ -69,15 +116,55 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
 		try {
+			$this->logger->warning('WhiteboardController::update - Request for fileId: ' . $fileId, [
+				'file_id' => $fileId,
+				'request_params' => json_encode(substr(json_encode($this->request->getParams()), 0, 500)) . '...'
+			]);
+
 			$this->validateBackendSharedToken($fileId);
+
+			$this->logger->warning('Backend shared token validated for fileId: ' . $fileId);
 
 			$userId = $this->getUserIdFromRequest();
 
-			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
+			$this->logger->warning('User ID extracted from request: ' . $userId);
 
-			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
+			try {
+				$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
+			} catch (Exception $e) {
+				$this->logger->error('Failed to create user object for: ' . $userId, [
+					'error' => $e->getMessage()
+				]);
+				throw $e;
+			}
 
-			$this->contentService->updateContent($file, $data);
+			$this->logger->warning('User object created for: ' . $userId);
+
+			try {
+				$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
+			} catch (Exception $e) {
+				$this->logger->error('Failed to retrieve file for fileId: ' . $fileId, [
+					'error' => $e->getMessage()
+				]);
+				throw $e;
+			}
+
+			$this->logger->warning('File retrieved for fileId: ' . $fileId);
+
+			try {
+				$this->contentService->updateContent($file, $data);
+			} catch (Exception $e) {
+				$this->logger->error('Failed to update content for file', [
+					'file_id' => $fileId,
+					'error' => $e->getMessage()
+				]);
+				throw $e;
+			}
+
+			$this->logger->warning('Content updated for file', [
+				'file_id' => $fileId,
+				'data_size' => count($data)
+			]);
 
 			return new DataResponse(['status' => 'success']);
 		} catch (Exception $e) {
@@ -88,6 +175,7 @@ final class WhiteboardController extends ApiController {
 	private function getJwtFromRequest(): string {
 		$authHeader = $this->request->getHeader('Authorization');
 		if (sscanf($authHeader, 'Bearer %s', $jwt) !== 1) {
+			$this->logger->error('Invalid JWT format in Authorization header');
 			throw new UnauthorizedException();
 		}
 		return (string)$jwt;
@@ -100,8 +188,16 @@ final class WhiteboardController extends ApiController {
 	private function validateBackendSharedToken(int $fileId): void {
 		$backendSharedToken = $this->request->getHeader('X-Whiteboard-Auth');
 		if (!$backendSharedToken || !$this->verifySharedToken($backendSharedToken, $fileId)) {
+			$this->logger->error('Invalid backend shared token', [
+				'file_id' => $fileId,
+				'token_present' => !empty($backendSharedToken),
+				'token_length' => strlen((string)$backendSharedToken)
+			]);
+
 			throw new InvalidUserException('Invalid backend shared token');
 		}
+
+		$this->logger->warning('Backend shared token validated successfully for fileId: ' . $fileId);
 	}
 
 	private function verifySharedToken(string $token, int $fileId): bool {
@@ -109,11 +205,20 @@ final class WhiteboardController extends ApiController {
 
 		if ($roomId !== (string)$fileId) {
 			return false;
+		} else {
+			$this->logger->warning('Room ID matches file ID: ' . $fileId);
 		}
 
 		$sharedSecret = $this->configService->getWhiteboardSharedSecret();
+
+		$this->logger->warning('Shared secret retrieved, length: ' . strlen($sharedSecret));
+
 		$payload = "$roomId:$timestamp";
 		$expectedSignature = hash_hmac('sha256', $payload, $sharedSecret);
+
+		$this->logger->warning('Token validation', [
+			'token_valid' => hash_equals($expectedSignature, $signature)
+		]);
 
 		return hash_equals($expectedSignature, $signature);
 	}
