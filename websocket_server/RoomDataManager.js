@@ -8,6 +8,7 @@ import Utils from './Utils.js'
 import ApiService from './ApiService.js'
 import BackupManager from './BackupManager.js'
 import StorageManager from './StorageManager.js'
+import Config from './Config.js'
 import { DEFAULT_EMPTY_ROOM_DATA } from './Constants.js'
 
 /**
@@ -74,6 +75,20 @@ export default class RoomDataManager {
 					users,
 					lastEditedUser,
 				)
+
+				const AUTOSAVE_INTERVAL = Config.AUTOSAVE_INTERVAL * 1000
+				if (room.lastEditedUser && room.lastSavedAt && room.lastSavedAt < (Date.now() - AUTOSAVE_INTERVAL)) {
+					// Set before saving to server to avoid multiple autosaves from different update messages
+					room.updateLastSavedAt()
+					this.storageManager.set(room.id, room)
+					await this.apiService.saveRoomDataToServer(
+						roomId,
+						room.data,
+						room.lastEditedUser,
+						room.files,
+					)
+					Utils.logOperation(roomId, 'Room auto-saved to server')
+				}
 
 				this.createRoomBackup(room.id, room)
 			}
