@@ -1,6 +1,8 @@
 const defaultMockValues = {
 	IS_TEST_ENV: true,
 	BYPASS_SSL_VALIDATION: false,
+	IS_DEV: false,
+	SETUP_TYPE: 'standalone',
 	USE_TLS: false,
 	TLS_KEY_PATH: null,
 	TLS_CERT_PATH: null,
@@ -16,6 +18,9 @@ const defaultMockValues = {
 	MAX_BACKUPS_PER_ROOM: 10,
 	ROOM_MAX_AGE: 1000,
 	MAX_ROOMS_IN_STORAGE: 1000,
+	EX_APP_ID: null,
+	EX_APP_SECRET: null,
+	EX_APP_VERSION: null,
 }
 
 export function createConfigMock(customValues = {}) {
