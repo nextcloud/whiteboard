@@ -9,7 +9,6 @@ import ConfigModule from '../../websocket_server/Config.js'
 vi.mock('../../websocket_server/Config.js', () => ({
 	default: createConfigMock({
 		NEXTCLOUD_URL: 'http://localhost:3009',
-		NEXTCLOUD_WEBSOCKET_URL: 'http://localhost:3009',
 		PORT: '3009',
 		JWT_SECRET_KEY: 'secret',
 	}),
@@ -25,6 +24,10 @@ function waitFor(socket, event) {
 	})
 }
 
+function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 describe('Socket handling', () => {
 	let serverManager, socket
 
@@ -32,9 +35,12 @@ describe('Socket handling', () => {
 		serverManager = new ServerManager()
 		await serverManager.start()
 
-		socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' } }, Config.JWT_SECRET_KEY),
+				token: jwt.sign(
+					{ roomID: 123, user: { name: 'Admin' } },
+					Config.JWT_SECRET_KEY,
+				),
 			},
 		})
 
@@ -49,9 +55,12 @@ describe('Socket handling', () => {
 	})
 
 	it('socket invalid jwt', async () => {
-		const socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		const socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' } }, 'wrongsecret'),
+				token: jwt.sign(
+					{ roomID: 123, user: { name: 'Admin' } },
+					'wrongsecret',
+				),
 			},
 		})
 		return new Promise((resolve) => {
@@ -62,9 +71,12 @@ describe('Socket handling', () => {
 	})
 
 	it('socket valid jwt', async () => {
-		const socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		const socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' } }, Config.JWT_SECRET_KEY),
+				token: jwt.sign(
+					{ roomID: 123, user: { name: 'Admin' } },
+					Config.JWT_SECRET_KEY,
+				),
 			},
 		})
 		return new Promise((resolve) => {
@@ -84,17 +96,63 @@ describe('Socket handling', () => {
 	})
 
 	it('read only socket', async () => {
-		const socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		const socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' }, isFileReadOnly: true }, Config.JWT_SECRET_KEY),
+				token: jwt.sign(
+					{
+						roomID: 123,
+						user: { name: 'Admin' },
+						isFileReadOnly: true,
+					},
+					Config.JWT_SECRET_KEY,
+				),
 			},
 		})
-		return new Promise((resolve) => {
-			const readOnlyMessage = waitFor(socket, 'read-only')
-			socket.on('connect', async () => {
-				await readOnlyMessage
-				resolve()
-			})
+		const readOnlyMessage = waitFor(socket, 'read-only')
+		await readOnlyMessage
+		socket.close()
+	})
+
+	it('should support room join', async () => {
+		socket.emit('join-room', 'roomX')
+		await sleep(500)
+	})
+
+	it('should allow to verify the connection with secret', async () => {
+		const socket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				secret: Config.JWT_SECRET_KEY,
+			},
 		})
+		await sleep(100)
+		socket.close()
+	})
+
+	it('should decline bad secret', async () => {
+		const socket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				secret: 'gibberish',
+			},
+		})
+		await sleep(100)
+		socket.close()
+	})
+
+	it('should be able to rejoin the room and get joined-data', async () => {
+		// Create a new socket
+		const socket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{ roomID: 123, user: { name: 'Admin' } },
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+		const joinedDataMessage = waitFor(socket, 'joined-data')
+		socket.emit('join-room', 123)
+		const result = await joinedDataMessage
+		const roomData = JSON.parse(Utils.convertArrayBufferToString(result))
+
+		expect(roomData).toEqual([])
 	})
 })
