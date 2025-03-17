@@ -31,7 +31,14 @@ export default class SocketManager {
 	 * @param {StorageStrategy} cachedTokenStorage - Manager for cached token storage
 	 * @param {object} redisClient - Shared Redis client
 	 */
-	constructor(server, roomDataManager, storageManager, socketDataStorage, cachedTokenStorage, redisClient) {
+	constructor(
+		server,
+		roomDataManager,
+		storageManager,
+		socketDataStorage,
+		cachedTokenStorage,
+		redisClient,
+	) {
 		this.roomDataManager = roomDataManager
 		this.storageManager = storageManager
 		this.socketDataStorage = socketDataStorage
@@ -52,7 +59,7 @@ export default class SocketManager {
 			transports: ['websocket', 'polling'],
 			maxHttpBufferSize: Config.MAX_UPLOAD_FILE_SIZE + 1e6,
 			cors: {
-				origin: Config.NEXTCLOUD_WEBSOCKET_URL,
+				origin: Config.CORS_ORIGINS,
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 				credentials: true,
 			},
@@ -149,26 +156,22 @@ export default class SocketManager {
 	 */
 	async verifyToken(token) {
 		const cachedToken = await this.cachedTokenStorage.get(token)
-		console.log('cachedTokenStorage', this.cachedTokenStorage)
+
 		if (cachedToken) return cachedToken
 
 		return new Promise((resolve, reject) => {
-			jwt.verify(
-				token,
-				Config.JWT_SECRET_KEY,
-				async (err, decoded) => {
-					if (err) {
-						console.log(
-							err.name === 'TokenExpiredError'
-								? 'Token expired'
-								: 'Token verification failed',
-						)
-						return reject(new Error('Authentication error'))
-					}
-					await this.cachedTokenStorage.set(token, decoded)
-					resolve(decoded)
-				},
-			)
+			jwt.verify(token, Config.JWT_SECRET_KEY, async (err, decoded) => {
+				if (err) {
+					console.log(
+						err.name === 'TokenExpiredError'
+							? 'Token expired'
+							: 'Token verification failed',
+					)
+					return reject(new Error('Authentication error'))
+				}
+				await this.cachedTokenStorage.set(token, decoded)
+				resolve(decoded)
+			})
 		})
 	}
 
@@ -209,14 +212,20 @@ export default class SocketManager {
 		// Handle regular events
 		Object.entries(events).forEach(([event, handler]) => {
 			socket.on(event, (...args) =>
-				this.safeSocketHandler(socket, () => handler.apply(this, [socket, ...args])),
+				this.safeSocketHandler(socket, () =>
+					handler.apply(this, [socket, ...args]),
+				),
 			)
 		})
 
 		// Handle disconnecting separately to ensure correct room capture
 		socket.on('disconnecting', () => {
-			const rooms = Array.from(socket.rooms).filter((room) => room !== socket.id)
-			this.safeSocketHandler(socket, () => this.disconnectingHandler(socket, rooms))
+			const rooms = Array.from(socket.rooms).filter(
+				(room) => room !== socket.id,
+			)
+			this.safeSocketHandler(socket, () =>
+				this.disconnectingHandler(socket, rooms),
+			)
 		})
 	}
 
@@ -233,7 +242,7 @@ export default class SocketManager {
 		await socket.join(roomID)
 
 		const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
-		const userIds = userSocketsAndIds.map(u => u.userId)
+		const userIds = userSocketsAndIds.map((u) => u.userId)
 
 		const room = await this.roomDataManager.syncRoomData(
 			roomID,
@@ -274,11 +283,17 @@ export default class SocketManager {
 
 		socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
 
-		const decryptedData = JSON.parse(Utils.convertArrayBufferToString(encryptedData))
+		const decryptedData = JSON.parse(
+			Utils.convertArrayBufferToString(encryptedData),
+		)
 
-		this.queueRoomUpdate(roomID, {
-			elements: decryptedData.payload.elements,
-		}, socket.id)
+		this.queueRoomUpdate(
+			roomID,
+			{
+				elements: decryptedData.payload.elements,
+			},
+			socket.id,
+		)
 	}
 
 	/**
@@ -330,10 +345,14 @@ export default class SocketManager {
 		const room = await this.storageManager.get(roomID)
 		const currentFiles = { ...room.files, [id]: data }
 
-		this.queueRoomUpdate(roomID, {
-			elements: room.data,
-			files: currentFiles,
-		}, socket.id)
+		this.queueRoomUpdate(
+			roomID,
+			{
+				elements: room.data,
+				files: currentFiles,
+			},
+			socket.id,
+		)
 	}
 
 	/**
@@ -352,10 +371,14 @@ export default class SocketManager {
 		const currentFiles = { ...room.files }
 		delete currentFiles[id]
 
-		this.queueRoomUpdate(roomID, {
-			elements: room.data,
-			files: currentFiles,
-		}, socket.id)
+		this.queueRoomUpdate(
+			roomID,
+			{
+				elements: room.data,
+				files: currentFiles,
+			},
+			socket.id,
+		)
 	}
 
 	/**
@@ -400,7 +423,11 @@ export default class SocketManager {
 
 			Utils.logOperation('SOCKET', `Cleaned up socket: ${socket.id}`)
 		} catch (error) {
-			Utils.logError('SOCKET', `Failed to cleanup socket: ${socket.id}`, error)
+			Utils.logError(
+				'SOCKET',
+				`Failed to cleanup socket: ${socket.id}`,
+				error,
+			)
 		}
 	}
 
@@ -412,13 +439,19 @@ export default class SocketManager {
 	async disconnectingHandler(socket, rooms) {
 		const socketData = await this.socketDataStorage.get(socket.id)
 		if (!socketData) return
-		console.log(`[${socketData.fileId}] ${socketData.user.name} has disconnected`)
+		console.log(
+			`[${socketData.fileId}] ${socketData.user.name} has disconnected`,
+		)
 		console.log('socket rooms', rooms)
 
 		for (const roomID of rooms) {
-			console.log(`[${roomID}] ${socketData.user.name} has left ${roomID}`)
+			console.log(
+				`[${roomID}] ${socketData.user.name} has left ${roomID}`,
+			)
 			const userSocketsAndIds = await this.getUserSocketsAndIds(roomID)
-			const otherUserSockets = userSocketsAndIds.filter(u => u.socketId !== socket.id)
+			const otherUserSockets = userSocketsAndIds.filter(
+				(u) => u.socketId !== socket.id,
+			)
 
 			if (otherUserSockets.length > 0) {
 				this.io.to(roomID).emit('room-user-change', otherUserSockets)
@@ -453,7 +486,7 @@ export default class SocketManager {
 		await this.roomDataManager.syncRoomData(
 			roomID,
 			roomData,
-			userSocketsAndIds.map(u => u.userId),
+			userSocketsAndIds.map((u) => u.userId),
 			socketData.user.id,
 		)
 	}
@@ -465,9 +498,14 @@ export default class SocketManager {
 	 * @param {string} socketId - Socket identifier
 	 */
 	async queueRoomUpdate(roomID, updateData, socketId) {
-		this.processRoomDataUpdate(roomID, updateData, socketId).catch(error => {
-			console.error(`Failed to process room update for ${roomID}:`, error)
-		})
+		this.processRoomDataUpdate(roomID, updateData, socketId).catch(
+			(error) => {
+				console.error(
+					`Failed to process room update for ${roomID}:`,
+					error,
+				)
+			},
+		)
 	}
 
 	// UTILITY METHODS
@@ -510,18 +548,20 @@ export default class SocketManager {
 	 */
 	async getUserSocketsAndIds(roomID) {
 		const sockets = await this.io.in(roomID).fetchSockets()
-		return Promise.all(sockets.map(async (s) => {
-			const data = await this.socketDataStorage.get(s.id)
-			if (!data?.user?.id) {
-				console.warn(`Invalid socket data for socket ${s.id}`)
-				return null
-			}
-			return {
-				socketId: s.id,
-				user: data.user,
-				userId: data.user.id,
-			}
-		})).then(results => results.filter(Boolean))
+		return Promise.all(
+			sockets.map(async (s) => {
+				const data = await this.socketDataStorage.get(s.id)
+				if (!data?.user?.id) {
+					console.warn(`Invalid socket data for socket ${s.id}`)
+					return null
+				}
+				return {
+					socketId: s.id,
+					user: data.user,
+					userId: data.user.id,
+				}
+			}),
+		).then((results) => results.filter(Boolean))
 	}
 
 }

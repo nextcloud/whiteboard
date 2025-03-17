@@ -29,7 +29,9 @@ dotenv.config()
 const Config = {
 	IS_TEST_ENV: process.env.NODE_ENV === 'test',
 
-	BYPASS_SSL_VALIDATION: Utils.parseBooleanFromEnv(process.env.BYPASS_SSL_VALIDATION),
+	BYPASS_SSL_VALIDATION: Utils.parseBooleanFromEnv(
+		process.env.BYPASS_SSL_VALIDATION,
+	),
 
 	PORT: process.env.PORT || DEFAULT_PORT,
 
@@ -43,25 +45,30 @@ const Config = {
 
 	REDIS_URL: process.env.REDIS_URL || DEFAULT_REDIS_URL,
 
-	FORCE_CLOSE_TIMEOUT: process.env.FORCE_CLOSE_TIMEOUT || DEFAULT_FORCE_CLOSE_TIMEOUT,
+	FORCE_CLOSE_TIMEOUT:
+		process.env.FORCE_CLOSE_TIMEOUT || DEFAULT_FORCE_CLOSE_TIMEOUT,
 
 	METRICS_TOKEN: process.env.METRICS_TOKEN || null,
 
 	BACKUP_DIR: process.env.BACKUP_DIR || DEFAULT_BACKUP_DIR,
 
-	MAX_BACKUPS_PER_ROOM: process.env.MAX_BACKUPS_PER_ROOM || DEFAULT_MAX_BACKUPS_PER_ROOM,
+	MAX_BACKUPS_PER_ROOM:
+		process.env.MAX_BACKUPS_PER_ROOM || DEFAULT_MAX_BACKUPS_PER_ROOM,
 
-	MAX_UPLOAD_FILE_SIZE: process.env.MAX_UPLOAD_FILE_SIZE * (1e6) || 2e6,
+	MAX_UPLOAD_FILE_SIZE: process.env.MAX_UPLOAD_FILE_SIZE * 1e6 || 2e6,
 
 	LOCK_TIMEOUT: process.env.LOCK_TIMEOUT || DEFAULT_LOCK_TIMEOUT,
 
-	LOCK_RETRY_INTERVAL: process.env.LOCK_RETRY_INTERVAL || DEFAULT_LOCK_RETRY_INTERVAL,
+	LOCK_RETRY_INTERVAL:
+		process.env.LOCK_RETRY_INTERVAL || DEFAULT_LOCK_RETRY_INTERVAL,
 
-	ROOM_CLEANUP_INTERVAL: process.env.ROOM_CLEANUP_INTERVAL || DEFAULT_ROOM_CLEANUP_INTERVAL,
+	ROOM_CLEANUP_INTERVAL:
+		process.env.ROOM_CLEANUP_INTERVAL || DEFAULT_ROOM_CLEANUP_INTERVAL,
 
 	ROOM_MAX_AGE: process.env.ROOM_MAX_AGE || DEFAULT_ROOM_MAX_AGE,
 
-	MAX_ROOMS_IN_STORAGE: process.env.MAX_ROOMS_IN_STORAGE || DEFAULT_MAX_ROOMS_IN_STORAGE,
+	MAX_ROOMS_IN_STORAGE:
+		process.env.MAX_ROOMS_IN_STORAGE || DEFAULT_MAX_ROOMS_IN_STORAGE,
 
 	CACHED_TOKEN_TTL: process.env.CACHED_TOKEN_TTL || DEFAULT_CACHED_TOKEN_TTL,
 
@@ -76,12 +83,26 @@ const Config = {
 		return process.env.JWT_SECRET_KEY
 	},
 
-	get NEXTCLOUD_WEBSOCKET_URL() {
-		return Utils.getOriginFromUrl(process.env.NEXTCLOUD_URL || DEFAULT_NEXTCLOUD_URL)
+	get NEXTCLOUD_URL() {
+		const url = Utils.normalizeUrlPath(
+			process.env.NEXTCLOUD_URL || DEFAULT_NEXTCLOUD_URL,
+			this.USE_TLS,
+		)
+		console.log('NEXTCLOUD_URL configured as:', url)
+		return url
 	},
 
-	get NEXTCLOUD_URL() {
-		return this.NEXTCLOUD_WEBSOCKET_URL
+	get CORS_ORIGINS() {
+		const fullUrl = new URL(this.NEXTCLOUD_URL)
+		const baseOrigin = `${fullUrl.protocol}//${fullUrl.host}`
+		const origins = [this.NEXTCLOUD_URL]
+
+		if (baseOrigin !== this.NEXTCLOUD_URL) {
+			origins.push(baseOrigin)
+		}
+
+		console.log('CORS origins configured as:', origins)
+		return origins
 	},
 }
 
