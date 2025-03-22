@@ -57,7 +57,7 @@
     "@nextcloud/eslint-config": "^8.4.2",
     "@nextcloud/stylelint-config": "^3.0.1",
     "@nextcloud/vite-config": "^1.5.3",
-    "@playwright/test": "^1.51.0",
+    "@playwright/test": "^1.51.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "@vue/tsconfig": "^0.5.1",
