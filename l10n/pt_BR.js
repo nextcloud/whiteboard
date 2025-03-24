@@ -14,6 +14,7 @@ OC.L10N.register(
     "Whiteboard server URL" : "URL do servidor Whiteboard",
     "Shared secret" : "Segredo compartilhado",
     "Save settings" : "Salvar configurações",
-    "Advanced settings" : "Configurações avançadas"
+    "Advanced settings" : "Configurações avançadas",
+    "Max file size" : "Tamanho máximo de arquivo"
 },
 "nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
