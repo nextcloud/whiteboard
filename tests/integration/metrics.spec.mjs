@@ -7,7 +7,6 @@ import ConfigModule from '../../websocket_server/Config.js'
 vi.mock('../../websocket_server/Config.js', () => ({
 	default: createConfigMock({
 		NEXTCLOUD_URL: 'http://localhost:3008',
-		NEXTCLOUD_WEBSOCKET_URL: 'http://localhost:3008',
 		PORT: '3008',
 		METRICS_TOKEN: 'secret',
 	}),
