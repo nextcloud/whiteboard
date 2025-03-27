@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<info>
+    <id>whiteboard_websocket</id>
+    <name>Whiteboard WebSocket Server</name>
+    <summary>WebSocket server for Whiteboard app</summary>
+    <description>A WebSocket server implementation as an external app for Nextcloud Whiteboard</description>
+    <version>0.0.1</version>
+    <licence>AGPL</licence>
+    <author>Nextcloud GmbH</author>
+    <namespace>WhiteboardWebSocket</namespace>
+    <category>tools</category>
+    <bugs>https://your-github-repo/issues</bugs>
+    <dependencies>
+        <nextcloud min-version="27" max-version="30"/>
+    </dependencies>
+    <external-app>
+        <docker-install>
+            <registry>docker.io</registry>
+            <image>hweihwang/whiteboard_websocket</image>
+            <image-tag>latest</image-tag>
+        </docker-install>
+		<routes>
+			<route>
+				<url>.*</url>
+				<verb>GET,POST,PUT,DELETE,OPTIONS</verb>
+				<access_level>PUBLIC</access_level>
+				<headers_to_exclude>[]</headers_to_exclude>
+				<bruteforce_protection>[401, 500]</bruteforce_protection>
+			</route>
+		</routes>
+    </external-app>
+</info>
