@@ -25,6 +25,7 @@ import { useSyncStore } from './stores/useSyncStore'
 import { useShallow } from 'zustand/react/shallow'
 
 import { db } from './database/db'
+import { useAssistant } from './hooks/useAssistant'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -103,6 +104,7 @@ export default function App({
 
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
+	const { renderAssistant } = useAssistant()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
@@ -196,7 +198,8 @@ export default function App({
 		console.log('[App] Initializing UI components')
 		updateLang()
 		renderSmartPicker()
-	}, [updateLang, renderSmartPicker])
+		renderAssistant()
+	}, [updateLang, renderSmartPicker, renderAssistant])
 
 	// Data Loading Effect
 	useEffect(() => {
