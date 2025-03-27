@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@mdi/react'
 import { mdiSlashForwardBox, mdiMonitorScreenshot } from '@mdi/js'
+import { InjectAssistant } from './assistant/assistant'
 import { createRoot } from 'react-dom'
 import {
 	Excalidraw,
@@ -95,6 +96,7 @@ export default function App({
 	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
 	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
+		InjectAssistant(excalidrawAPI)
 		const extraTools = document.getElementsByClassName(
 			'App-toolbar__extra-tools-trigger',
 		)[0]
