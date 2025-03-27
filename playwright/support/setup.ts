@@ -17,6 +17,8 @@ setup('Configure Nextcloud', async () => {
 	const appsToInstall = [
 		'whiteboard',
 		'viewer',
+		'assistant',
+		'testing',
 	]
 	await configureNextcloud(appsToInstall)
 	await runOcc(['config:app:set', 'whiteboard', 'collabBackendUrl', '--value', 'http://localhost:3002'])

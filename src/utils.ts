@@ -7,8 +7,27 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { getCommonBounds } from '@excalidraw/excalidraw'
+import type { ExcalidrawElementsIncludingDeleted } from '@excalidraw/excalidraw/types/scene/Scene'
 /* eslint-disable-next-line camelcase */
 import { unstable_batchedUpdates } from 'react-dom'
+
+export function getViewPortCenter() {
+	const x = window.innerWidth / 2
+	const y = window.innerHeight / 2
+	return { clientX: x, clientY: y }
+}
+
+export function moveElementsAroundCoords(elements: ExcalidrawElementsIncludingDeleted, targetCords:{x: number, y: number}) {
+	const [minx, maxx, miny, maxy] = getCommonBounds(elements)
+	const centerx = Math.abs(minx - maxx) / 2
+	const centery = Math.abs(miny - maxy) / 2
+	return elements.map((element) => {
+		const x = element.x + (targetCords.x - centerx)
+		const y = element.y + (targetCords.y - centery)
+		return { ...element, x, y }
+	})
+}
 
 export const throttleRAF = <T extends any[]>(
 	fn: (...args: T) => void,
