@@ -80,17 +80,17 @@ export class Collab {
 				if (Object.keys(newFiles).length > 0) {
 					this.portal.sendImageFiles(newFiles)
 				}
-			})()
+			}, 100)()
 		}
 	}
 
-	onPointerUpdate = (payload: {
+	onPointerUpdate = throttle((payload: {
 		pointersMap: Gesture['pointers'],
 		pointer: { x: number; y: number; tool: 'laser' | 'pointer' },
 		button: 'down' | 'up'
 	}) => {
 		payload.pointersMap.size < 2 && this.portal.socket && this.portal.broadcastMouseLocation(payload)
-	}
+	}, 100)
 
 	updateCollaborators = (users: {
 		user: {
