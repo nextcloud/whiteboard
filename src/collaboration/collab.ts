@@ -17,16 +17,26 @@ export class Collab {
 	fileId: number
 	portal: Portal
 	publicSharingToken: string | null
-	setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>
+	setViewModeEnabled: (enabled: boolean) => void
+	initialStatePromiseRef: { promise: ResolvablePromise<ExcalidrawInitialDataState | null> }
 	lastBroadcastedOrReceivedSceneVersion: number = -1
 	private collaborators = new Map<string, Collaborator>()
 	private files = new Map<string, BinaryFileData>()
 
-	constructor(excalidrawAPI: ExcalidrawImperativeAPI, fileId: number, publicSharingToken: string | null, setViewModeEnabled: React.Dispatch<React.SetStateAction<boolean>>) {
+	constructor(
+		excalidrawAPI: ExcalidrawImperativeAPI,
+		fileId: number,
+		publicSharingToken: string | null,
+		setViewModeEnabled: (enabled: boolean) => void,
+		initialStatePromiseRef: {
+			promise: ResolvablePromise<ExcalidrawInitialDataState | null>
+		},
+	) {
 		this.excalidrawAPI = excalidrawAPI
 		this.fileId = fileId
 		this.publicSharingToken = publicSharingToken
 		this.setViewModeEnabled = setViewModeEnabled
+		this.initialStatePromiseRef = initialStatePromiseRef
 
 		this.portal = new Portal(`${fileId}`, this, publicSharingToken)
 		registerFilesHandler(this.excalidrawAPI, this)

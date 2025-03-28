@@ -132,10 +132,18 @@ export class Portal {
 		this.socket?.emit('join-room', this.roomId)
 		this.socket?.on('joined-data', (data) => {
 			const remoteElements = JSON.parse(new TextDecoder().decode(data))
-			const reconciledElements
-				= this.collab._reconcileElements(remoteElements)
-			this.collab.handleRemoteSceneUpdate(reconciledElements)
-			this.collab.scrollToContent()
+			const reconciledElements = this.collab._reconcileElements(remoteElements)
+
+			// Resolve the initial state promise with the received data
+			this.collab.initialStatePromiseRef.current.promise.resolve({
+				elements: reconciledElements,
+				appState: {
+					currentItemFontFamily: 3,
+					currentItemStrokeWidth: 1,
+					currentItemRoughness: 0,
+				},
+				scrollToContent: true,
+			})
 		})
 		this.socket?.on('image-data', (file) => {
 			this.collab.addFile(file)
