@@ -132,11 +132,8 @@ export class Portal {
 		this.socket?.emit('join-room', this.roomId)
 		this.socket?.on('joined-data', (data) => {
 			const remoteElements = JSON.parse(new TextDecoder().decode(data))
-			const reconciledElements = this.collab._reconcileElements(remoteElements)
-
-			// Resolve the initial state promise with the received data
 			this.collab.initialStatePromiseRef.current.promise.resolve({
-				elements: reconciledElements,
+				elements: remoteElements,
 				appState: {
 					currentItemFontFamily: 3,
 					currentItemStrokeWidth: 1,
