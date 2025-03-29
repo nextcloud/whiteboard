@@ -19,12 +19,30 @@ export default class Utils {
 		return value === 'true'
 	}
 
-	static getOriginFromUrl(url) {
+	/**
+	 * Ensures a URL has a protocol and no trailing slashes
+	 * @param {string} url - URL to normalize
+	 * @param {boolean} [useTLS] - Whether to use HTTPS (true) or HTTP (false) when protocol is missing
+	 * @return {string} Normalized URL
+	 */
+	static normalizeUrlPath(url, useTLS = true) {
+		if (!url?.trim()) return ''
+
 		try {
-			return new URL(url).origin
+			const withProtocol = url.match(/^https?:\/\//)
+				? url
+				: `${useTLS ? 'https' : 'http'}://${url}`
+
+			const urlObj = new URL(withProtocol)
+
+			if (urlObj.pathname === '/' || urlObj.pathname === '') {
+				return urlObj.origin
+			}
+
+			return `${urlObj.origin}${urlObj.pathname.replace(/\/+$/, '')}`
 		} catch (error) {
-			console.error('Invalid URL:', url)
-			return null
+			console.error(`Invalid URL: "${url}" - ${error.message}`)
+			return url
 		}
 	}
 
