@@ -12,7 +12,7 @@ OC.L10N.register(
     "Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Tablica wymaga osobnego serwera współpracy połączonego z Nextcloud.",
     "See the documentation on how to install it." : "Zobacz dokumentację dotyczącą sposobu instalacji.",
     "Whiteboard server URL" : "Adres URL serwera tablicy",
-    "Shared secret" : "Udostępniony tajny klucz",
+    "Shared secret" : "Klucz współdzielony",
     "Save settings" : "Zapisz ustawienia",
     "Advanced settings" : "Ustawienia zaawansowane"
 },
