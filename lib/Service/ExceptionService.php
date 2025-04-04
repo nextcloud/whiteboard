@@ -16,14 +16,21 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use Psr\Log\LoggerInterface;
 
 /**
  * @psalm-suppress UndefinedClass
  */
 final class ExceptionService {
+	public function __construct(
+		private LoggerInterface $logger,
+	) {
+	}
 	public function handleException(Exception $e): DataResponse {
 		$statusCode = $this->getStatusCode($e);
 		$message = $this->getMessage($e);
+
+		$this->logger->error($message, ['exception' => $e]);
 
 		return new DataResponse(['message' => $message], $statusCode);
 	}

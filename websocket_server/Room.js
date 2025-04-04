@@ -10,6 +10,7 @@ export default class Room {
 		this.data = data
 		this.users = new Set(users)
 		this.lastEditedUser = lastEditedUser
+		this.lastSavedAt = Date.now()
 		this.files = files
 	}
 
@@ -49,24 +50,35 @@ export default class Room {
 		return this.users.size === 0
 	}
 
+	updateLastSavedAt() {
+		this.lastSavedAt = Date.now()
+	}
+
+	getLastSavedAt() {
+		return this.lastSavedAt
+	}
+
 	toJSON() {
 		return {
 			id: this.id,
 			data: this.data,
 			users: Array.from(this.users),
 			lastEditedUser: this.lastEditedUser,
+			lastSavedAt: this.lastSavedAt,
 			files: this.files,
 		}
 	}
 
 	static fromJSON(json) {
-		return new Room(
+		const room = new Room(
 			json.id,
 			json.data,
 			new Set(json.users),
 			json.lastEditedUser,
 			json.files,
 		)
+		room.lastSavedAt = json.lastSavedAt
+		return room
 	}
 
 }

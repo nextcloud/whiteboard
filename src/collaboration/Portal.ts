@@ -11,6 +11,7 @@ import type { AppState, BinaryFiles, Gesture } from '@excalidraw/excalidraw/type
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
+import { showError } from '@nextcloud/dialogs'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT',
@@ -66,10 +67,11 @@ export class Portal {
 	}
 
 	handleConnectionError = () => {
-		alert(
-			'Failed to connect to the whiteboard server.',
-		)
-		OCA.Viewer?.close()
+		showError('Failed to connect to the whiteboard server.')
+		this.disconnectSocket()
+		setTimeout(() => {
+			this.connectSocket()
+		}, 5000)
 	}
 
 	disconnectSocket = () => {
@@ -179,8 +181,7 @@ export class Portal {
 		  return token
 		} catch (error) {
 		  console.error('Error refreshing JWT:', error)
-		  alert(error.message)
-		  OCA.Viewer?.close()
+		  showError(error.message)
 		  return null
 		}
 	  }
