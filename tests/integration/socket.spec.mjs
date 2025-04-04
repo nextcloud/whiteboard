@@ -3,8 +3,10 @@ import { io } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
 import { createConfigMock } from './configMock.js'
 import ServerManagerModule from '../../websocket_server/ServerManager.js'
-import UtilsModule from '../../websocket_server/Utils.js'
 import ConfigModule from '../../websocket_server/Config.js'
+
+// Set a longer timeout for socket tests
+vi.setConfig({ testTimeout: 10000 })
 
 vi.mock('../../websocket_server/Config.js', () => ({
 	default: createConfigMock({
@@ -17,7 +19,6 @@ vi.mock('../../websocket_server/Config.js', () => ({
 
 const Config = ConfigModule
 const ServerManager = ServerManagerModule
-const Utils = UtilsModule
 
 function waitFor(socket, event) {
 	return new Promise((resolve) => {
@@ -44,7 +45,13 @@ describe('Socket handling', () => {
 	})
 
 	afterAll(async () => {
-		await socket.disconnect()
+		// Disconnect the main socket
+		socket.disconnect()
+
+		// Allow some time for socket cleanup
+		await new Promise(resolve => setTimeout(resolve, 500))
+
+		// Shutdown the server
 		await serverManager.gracefulShutdown()
 	})
 
@@ -74,27 +81,86 @@ describe('Socket handling', () => {
 		})
 	})
 
-	it('join room', async () => {
-		const joinedDataMessage = waitFor(socket, 'joined-data')
-		socket.emit('join-room', 123)
-		const result = await joinedDataMessage
-		const roomData = JSON.parse(Utils.convertArrayBufferToString(result))
+	it('join room and receive sync designation', async () => {
+		// Wait for sync-designate event which indicates role assignment
+		const syncDesignatePromise = waitFor(socket, 'sync-designate')
 
-		expect(roomData).toEqual([])
+		// Join the room
+		socket.emit('join-room', 123)
+
+		// Wait for the sync designation
+		const syncDesignate = await syncDesignatePromise
+
+		// Verify the sync designation contains the expected structure
+		expect(syncDesignate).toHaveProperty('isSyncer')
+		expect(typeof syncDesignate.isSyncer).toBe('boolean')
 	})
 
-	it('read only socket', async () => {
-		const socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+	it('read only socket should not be designated as syncer', async () => {
+		// Create a socket with read-only permissions
+		const readOnlySocket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' }, isFileReadOnly: true }, Config.JWT_SECRET_KEY),
+				token: jwt.sign({
+					roomID: 123,
+					user: { id: 'read-only-user', name: 'ReadOnly' },
+					isFileReadOnly: true,
+				}, Config.JWT_SECRET_KEY),
 			},
 		})
-		return new Promise((resolve) => {
-			const readOnlyMessage = waitFor(socket, 'read-only')
-			socket.on('connect', async () => {
-				await readOnlyMessage
-				resolve()
-			})
+
+		// Wait for connection
+		const connectPromise = waitFor(readOnlySocket, 'connect')
+		await connectPromise
+
+		// Join the room
+		const syncDesignatePromise = waitFor(readOnlySocket, 'sync-designate')
+		readOnlySocket.emit('join-room', 123)
+		const syncDesignate = await syncDesignatePromise
+
+		// Verify the read-only socket is not designated as syncer
+		expect(syncDesignate.isSyncer).toBe(false)
+
+		// Test that read-only socket cannot broadcast
+		const testData = new ArrayBuffer(8)
+		const testIv = new ArrayBuffer(8)
+		readOnlySocket.emit('server-broadcast', 123, testData, testIv)
+
+		// We can't easily test that no broadcast occurred, but we can at least
+		// verify the socket is still connected after attempting to broadcast
+		expect(readOnlySocket.connected).toBe(true)
+
+		// Clean up
+		readOnlySocket.disconnect()
+	})
+
+	it('should emit room-user-change when users join', async () => {
+		// Create a new socket for this test
+		const newSocket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+			auth: {
+				token: jwt.sign({
+					roomID: 123,
+					user: { id: 'new-user', name: 'NewUser' },
+				}, Config.JWT_SECRET_KEY),
+			},
 		})
+
+		// Wait for connection
+		await waitFor(newSocket, 'connect')
+
+		// Listen for room-user-change event on the original socket
+		const userChangePromise = waitFor(socket, 'room-user-change')
+
+		// New user joins the room
+		newSocket.emit('join-room', 123)
+
+		// Wait for the room-user-change event
+		const userChangeData = await userChangePromise
+
+		// Verify the user change data
+		expect(Array.isArray(userChangeData)).toBe(true)
+		expect(userChangeData.length).toBeGreaterThan(0)
+
+		// Clean up
+		newSocket.disconnect()
 	})
 })

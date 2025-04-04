@@ -24,6 +24,7 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -39,6 +40,7 @@ final class WhiteboardController extends ApiController {
 		private WhiteboardContentService $contentService,
 		private ExceptionService $exceptionService,
 		private ConfigService $configService,
+		private LoggerInterface $logger,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -69,9 +71,9 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
 		try {
-			$this->validateBackendSharedToken($fileId);
+			$jwt = $this->getJwtFromRequest();
 
-			$userId = $this->getUserIdFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
 
 			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
 
@@ -81,6 +83,8 @@ final class WhiteboardController extends ApiController {
 
 			return new DataResponse(['status' => 'success']);
 		} catch (Exception $e) {
+			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());
+
 			return $this->exceptionService->handleException($e);
 		}
 	}
