@@ -7,9 +7,9 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/* eslint-disable-next-line camelcase */
 import { getCommonBounds } from '@excalidraw/excalidraw'
 import type { ExcalidrawElementsIncludingDeleted } from '@excalidraw/excalidraw/types/scene/Scene'
+/* eslint-disable-next-line camelcase */
 import { unstable_batchedUpdates } from 'react-dom'
 
 export function getViewPortCenter() {

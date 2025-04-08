@@ -1,3 +1,7 @@
+<!--
+  - SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 <script>
 import { NcTextArea, NcTextField, NcButton, NcModal } from '@nextcloud/vue'
 import { ScheduleTask } from './assistantApi'
@@ -28,6 +32,7 @@ export default defineComponent({
 			waitingForTask: false,
 			taskResponse: '',
 			generatedElements: {},
+			mermaidError: false,
 		}
 	},
 	watch: {
@@ -57,6 +62,7 @@ export default defineComponent({
 			this.onCancel()
 		},
 		async loadPreviewMermaid() {
+			this.mermaidError = false
 			parseMermaidToExcalidraw(this.taskResponse).then(async (res) => {
 				const { elements, files } = res
 				const data = {
@@ -67,14 +73,16 @@ export default defineComponent({
 				this.$refs.canvasRef.innerHTML = ''
 				this.$refs.canvasRef.appendChild(canvas)
 				this.generatedElements = data
+			}).catch((error) => {
+				this.mermaidError = error
 			})
 			this.waitingForTask = false
 		},
 		onSubmit() {
 			this.waitingForTask = true
 			ScheduleTask(this.assistantQuery).then(response => {
+				this.waitingForTask = false
 				this.taskResponse = response.data.ocs.data.task.output.output
-				this.loadPreviewMermaid()
 			}).catch(() => {
 				this.waitingForTask = false
 			})
@@ -117,6 +125,9 @@ export default defineComponent({
 					<div class="preview-canvas-wrapper">
 						<div ref="canvasRef" class="assistant-mermaid-preview" />
 					</div>
+					<div v-if="mermaidError" class="mermaid-error">
+						{{ mermaidError }}
+					</div>
 				</div>
 				<div class="dialog-buttons">
 					<NcButton type="submit"
@@ -128,6 +139,9 @@ export default defineComponent({
 					</NcButton>
 				</div>
 			</div>
+			<div v-else>
+				Task is loading this may take a while
+			</div>
 		</div>
 	</NcModal>
 </template>
@@ -136,6 +150,7 @@ export default defineComponent({
 	height: 100%;
 	canvas{
 		height: 100%;
+		width: 100%;
 	}
 }
 .generated{
@@ -191,6 +206,15 @@ export default defineComponent({
 	justify-content: space-between;
 	align-items: center;
 	width: 100%;
+}
+
+.mermaid-error {
+	position: absolute;
+	left: 50%;
+	text-align: center;
+	color: red;
+	font-size: 1.2rem;
+	font-weight: bold;
 }
 
 </style>

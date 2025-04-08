@@ -1,3 +1,8 @@
+/**
+ * - SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * - SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import { createRoot } from 'react-dom'
 import Vue from 'vue'
 import { Icon } from '@mdi/react'

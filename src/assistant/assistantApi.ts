@@ -1,3 +1,7 @@
+/**
+ * - SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * - SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 import axios, { type AxiosResponse } from '@nextcloud/axios'
 
 async function getTaskResponse(taskId: number) {
@@ -12,7 +16,7 @@ async function getTaskResponse(taskId: number) {
 	}
 }
 
-export async function ScheduleTask(prompt: string):Promise<AxiosResponse> {
+export async function ScheduleTask(prompt: string): Promise<AxiosResponse> {
 	return new Promise((resolve, reject) => {
 		axios
 			.post('/ocs/v2.php/taskprocessing/schedule', {

@@ -22,22 +22,22 @@ test('open a whiteboard', async ({ page }) => {
 	await page.getByRole('button', { name: 'Create' }).click()
 	await expect(page.getByText('Drawing canvas')).toBeVisible()
 
-	await page.getByTitle('Text — T or').locator('div').click();
+	await page.getByTitle('Text — T or').locator('div').click()
 	await page.getByText('Drawing canvas').click({
 		position: {
 			x: 534,
-			y: 249
-		}
-	});
-	await page.locator('textarea').fill('Test');
+			y: 249,
+		},
+	})
+	await page.locator('textarea').fill('Test')
 	await page.getByText('Drawing canvas').click({
 		position: {
 			x: 683,
-			y: 214
-		}
-	});
-	await page.getByTestId('main-menu-trigger').click();
-	await expect(page.getByText('Canvas backgroundExport image')).toBeVisible();
-	await page.getByTestId('main-menu-trigger').click();
-	await page.getByTestId('dropdown-menu-button').click();
+			y: 214,
+		},
+	})
+	await page.getByTestId('main-menu-trigger').click()
+	await expect(page.getByText('Canvas backgroundExport image')).toBeVisible()
+	await page.getByTestId('main-menu-trigger').click()
+	await page.getByTestId('dropdown-menu-button').click()
 })
