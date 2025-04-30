@@ -71,16 +71,6 @@ export default function App({
 		}
 	}, [])
 
-	const initialData = {
-		elements: [],
-		appState: {
-			currentItemFontFamily: 3,
-			currentItemStrokeWidth: 1,
-			currentItemRoughness: 0,
-		},
-		scrollToContent: true,
-	}
-
 	const initialStatePromiseRef = useRef<{
 		promise: ResolvablePromise<ExcalidrawInitialDataState | null>
 	}>({ promise: null! })
@@ -92,7 +82,7 @@ export default function App({
 		= useState<ExcalidrawImperativeAPI | null>(null)
 	const [collab, setCollab] = useState<Collab | null>(null)
 
-	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled)) }
+	if (excalidrawAPI && !collab) { setCollab(new Collab(excalidrawAPI, fileId, publicSharingToken, setViewModeEnabled, initialStatePromiseRef)) }
 	if (collab && !collab.portal.socket) collab.startCollab()
 	useEffect(() => {
 		const extraTools = document.getElementsByClassName(
@@ -130,17 +120,6 @@ export default function App({
 	}, [collab])
 
 	useHandleLibrary({ excalidrawAPI })
-
-	useEffect(() => {
-		if (!excalidrawAPI) {
-			return
-		}
-		const fetchData = async () => {
-			initialStatePromiseRef.current.promise.resolve(initialData)
-		}
-
-		fetchData().then()
-	}, [excalidrawAPI])
 
 	const onLinkOpen = useCallback(
 		(
