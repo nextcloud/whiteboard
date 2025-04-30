@@ -44,10 +44,11 @@ jobs:
           TESTING=true npm run build --if-present
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium --only-shell
+        run: npx playwright install chromium --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test
+        run: |
+          npx playwright test
 
       - uses: actions/upload-artifact@v4
         if: always()

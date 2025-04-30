@@ -1,8 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<files psalm-version="5.26.1@d747f6500b38ac4f7dfc5edbcae6e4b637d7add0">
+<files psalm-version="6.10.0@9c0add4eb88d4b169ac04acb7c679918cbb9c252">
+  <file src="lib/AppInfo/Application.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Controller/JWTController.php">
+    <UnusedClass>
+      <code><![CDATA[JWTController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="lib/Controller/SettingsController.php">
+    <UnusedClass>
+      <code><![CDATA[SettingsController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="lib/Controller/WhiteboardController.php">
+    <UnusedClass>
+      <code><![CDATA[WhiteboardController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="lib/Listener/AddContentSecurityPolicyListener.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+    <UnusedProperty>
+      <code><![CDATA[$request]]></code>
+    </UnusedProperty>
+  </file>
+  <file src="lib/Listener/BeforeTemplateRenderedListener.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Listener/LoadViewerListener.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Listener/RegisterTemplateCreatorListener.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Service/Authentication/AuthenticateUserServiceFactory.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Service/Authentication/GetUserFromIdServiceFactory.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Service/ConfigService.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
   <file src="lib/Service/ExceptionService.php">
     <ArgumentTypeCoercion>
       <code><![CDATA[$statusCode]]></code>
     </ArgumentTypeCoercion>
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+    <UnusedProperty>
+      <code><![CDATA[$logger]]></code>
+    </UnusedProperty>
+  </file>
+  <file src="lib/Service/File/GetFileServiceFactory.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Service/JWTService.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Settings/Admin.php">
+    <UnusedClass>
+      <code><![CDATA[Admin]]></code>
+    </UnusedClass>
+  </file>
+  <file src="lib/Settings/Section.php">
+    <UnusedClass>
+      <code><![CDATA[Section]]></code>
+    </UnusedClass>
+  </file>
+  <file src="lib/Settings/SetupCheck.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
   </file>
 </files>

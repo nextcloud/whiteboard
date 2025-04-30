@@ -18,18 +18,22 @@ class Section implements IIconSection {
 	) {
 	}
 
+	#[\Override]
 	public function getID() {
 		return 'whiteboard';
 	}
 
+	#[\Override]
 	public function getName() {
 		return $this->l10n->t('Whiteboard');
 	}
 
+	#[\Override]
 	public function getPriority() {
 		return 75;
 	}
 
+	#[\Override]
 	public function getIcon() {
 		return $this->url->imagePath('whiteboard', 'app-dark.svg');
 	}

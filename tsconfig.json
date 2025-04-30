@@ -10,7 +10,13 @@
     "plugins": [
       { "name": "typescript-plugin-css-modules" }
     ],
-    "sourceMap": true
+    "sourceMap": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true
   },
   "exclude": [
     "js",

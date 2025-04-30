@@ -23,6 +23,7 @@ final class GetPublicSharingUserFromIdService implements GetUserFromIdService {
 	) {
 	}
 
+	#[\Override]
 	public function getUser(): User {
 		$parts = explode('_', $this->userId);
 		if (count($parts) < 3) {

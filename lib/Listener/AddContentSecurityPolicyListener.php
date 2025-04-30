@@ -20,6 +20,7 @@ class AddContentSecurityPolicyListener implements IEventListener {
 	) {
 	}
 
+	#[\Override]
 	public function handle(Event $event): void {
 		if (!$event instanceof AddContentSecurityPolicyEvent) {
 			return;
@@ -28,6 +29,8 @@ class AddContentSecurityPolicyListener implements IEventListener {
 		$policy = new EmptyContentSecurityPolicy();
 
 		$policy->addAllowedConnectDomain('*');
+		$policy->addAllowedWorkerSrcDomain('*');
+
 		$event->addPolicy($policy);
 	}
 }

@@ -35,11 +35,14 @@ describe('Metrics endpoint', () => {
 			},
 		})
 		expect(response.status).toBe(200)
+		// Check for memory metrics
 		expect(response.data).toContain('whiteboard_memory_usage{type="rss"}')
+		// Check for room metrics
+		expect(response.data).toContain('whiteboard_room_stats{stat="connectedClients"}')
 		expect(response.data).toContain('whiteboard_room_stats{stat="activeRooms"}')
-		expect(response.data).toContain('whiteboard_room_stats{stat="totalUsers"}')
-		expect(response.data).toContain('whiteboard_room_stats{stat="totalDataSize"}')
-		expect(response.data).toContain('whiteboard_cache_info{info="size"}')
+		// Check for cache metrics
+		expect(response.data).toContain('whiteboard_cache_stats{stat="size"}')
+		// Check for socket.io metrics
 		expect(response.data).toContain('socket_io_connected')
 	})
 
@@ -47,6 +50,8 @@ describe('Metrics endpoint', () => {
 		const response = await axios.get(`${Config.NEXTCLOUD_URL}/metrics?token=${Config.METRICS_TOKEN}`)
 		expect(response.status).toBe(200)
 		expect(response.data).toContain('whiteboard_room_stats{stat="activeRooms"}')
+		expect(response.data).toContain('whiteboard_memory_usage')
+		expect(response.data).toContain('whiteboard_cache_stats')
 	})
 
 	it('Not return on invalid auth', async () => {

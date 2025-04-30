@@ -25,6 +25,7 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 	) {
 	}
 
+	#[\Override]
 	public function handle(Event $event): void {
 		if (!($event instanceof RegisterTemplateCreatorEvent)) {
 			return;
@@ -39,7 +40,10 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 	public static function getTemplateFileCreator(IL10N $l10n): TemplateFileCreator {
 		$whiteboard = new TemplateFileCreator(Application::APP_ID, $l10n->t('New whiteboard'), '.whiteboard');
 		$whiteboard->addMimetype('application/vnd.excalidraw+json');
-		$whiteboard->setIconSvgInline(file_get_contents(__DIR__ . '/../../img/app-filetype.svg'));
+		$iconContent = file_get_contents(__DIR__ . '/../../img/app-filetype.svg');
+		if ($iconContent !== false) {
+			$whiteboard->setIconSvgInline($iconContent);
+		}
 		$whiteboard->setActionLabel($l10n->t('Create new whiteboard'));
 		return $whiteboard;
 	}

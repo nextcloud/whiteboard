@@ -6,11 +6,9 @@
  */
 
 import StorageStrategy from './StorageStrategy.js'
-import LRUCacheStrategy from './LRUCacheStrategy.js'
+import LRUStrategy from './LRUStrategy.js'
 import RedisStrategy from './RedisStrategy.js'
 import InMemoryStrategy from './InMemoryStrategy.js'
-import GeneralLRUStrategy from './GeneralLRUStrategy.js'
-import GeneralRedisStrategy from './GeneralRedisStrategy.js'
 
 export default class StorageManager {
 
@@ -42,25 +40,15 @@ export default class StorageManager {
 		await this.strategy.clear()
 	}
 
-	getRooms() {
-		return this.strategy.getRooms()
-	}
-
-	static create(strategyType = 'lru', redisClient = null, apiService = null, options = {}) {
+	static create(strategyType = 'lru', redisClient = null, options = {}) {
 		let strategy
 
 		switch (strategyType) {
 		case 'lru':
-			strategy = new LRUCacheStrategy(apiService)
+			strategy = new LRUStrategy(options)
 			break
 		case 'redis':
-			strategy = new RedisStrategy(redisClient, apiService)
-			break
-		case 'general-lru':
-			strategy = new GeneralLRUStrategy(options)
-			break
-		case 'general-redis':
-			strategy = new GeneralRedisStrategy(redisClient, options)
+			strategy = new RedisStrategy(redisClient, options)
 			break
 		case 'in-mem':
 			strategy = new InMemoryStrategy()

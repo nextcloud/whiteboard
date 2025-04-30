@@ -22,6 +22,7 @@ final class AuthenticatePublicSharingUserService implements AuthenticateUserServ
 	) {
 	}
 
+	#[\Override]
 	public function authenticate(): User {
 		if (!$this->publicSharingToken) {
 			throw new UnauthorizedException('Public sharing token not provided');

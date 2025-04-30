@@ -39,6 +39,7 @@ final class GetFileFromIdService implements GetFileService {
 	 * @throws NoUserException
 	 * @throws InvalidPathException
 	 */
+	#[\Override]
 	public function getFile(): File {
 		$userFolder = $this->rootFolder->getUserFolder($this->userId);
 
@@ -76,6 +77,7 @@ final class GetFileFromIdService implements GetFileService {
 	 * @throws NotFoundException
 	 * @throws InvalidPathException
 	 */
+	#[\Override]
 	public function isFileReadOnly(): bool {
 		if ($this->file === null) {
 			throw new NotFoundException('File not found');

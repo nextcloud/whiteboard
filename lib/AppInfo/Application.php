@@ -38,6 +38,7 @@ class Application extends App implements IBootstrap {
 		parent::__construct(self::APP_ID, $params);
 	}
 
+	#[\Override]
 	public function register(IRegistrationContext $context): void {
 		include_once __DIR__ . '/../../vendor/autoload.php';
 
@@ -48,10 +49,11 @@ class Application extends App implements IBootstrap {
 		$context->registerSetupCheck(SetupCheck::class);
 	}
 
+	#[\Override]
 	public function boot(IBootContext $context): void {
 		[$major] = Util::getVersion();
 		if ($major < 30) {
-			$context->injectFn(function (ITemplateManager $templateManager, IL10N $l10n) use ($major) {
+			$context->injectFn(function (ITemplateManager $templateManager, IL10N $l10n) {
 				$templateManager->registerTemplateFileCreator(function () use ($l10n) {
 					return RegisterTemplateCreatorListener::getTemplateFileCreator($l10n);
 				});

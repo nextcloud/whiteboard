@@ -28,8 +28,4 @@ export default class InMemoryStrategy extends StorageStrategy {
 		this.store.clear()
 	}
 
-	getRooms() {
-		throw new Error('Method not implemented.')
-	}
-
 }

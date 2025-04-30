@@ -19,6 +19,7 @@ final class ChainAuthenticateUserService implements AuthenticateUserService {
 	) {
 	}
 
+	#[\Override]
 	public function authenticate(): User {
 		foreach ($this->strategies as $strategy) {
 			try {

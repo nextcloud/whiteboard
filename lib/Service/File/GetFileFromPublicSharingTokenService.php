@@ -35,6 +35,7 @@ final class GetFileFromPublicSharingTokenService implements GetFileService {
 	/**
 	 * @throws NotFoundException
 	 */
+	#[\Override]
 	public function getFile(): File {
 		try {
 			$share = $this->shareManager->getShareByToken($this->publicSharingToken);
@@ -59,6 +60,7 @@ final class GetFileFromPublicSharingTokenService implements GetFileService {
 		throw new InvalidArgumentException('No proper share data');
 	}
 
+	#[\Override]
 	public function isFileReadOnly(): bool {
 		if ($this->share === null) {
 			throw new InvalidArgumentException('No share data');

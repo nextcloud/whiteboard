@@ -12,6 +12,7 @@ import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 import './viewer.css'
 
 const EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
+
 const App = lazy(() => import('./App'))
 
 const generateRandomId = () =>
@@ -71,11 +72,15 @@ function handlePublicSharing(token) {
 		const whiteboardElement = createWhiteboardElement()
 		imgframeElement.appendChild(whiteboardElement)
 
+		// Get collaboration backend URL from initial state
+		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
+
 		renderApp(whiteboardElement, {
 			fileId,
 			isEmbedded: false,
 			fileName: document.title,
 			publicSharingToken: token,
+			collabBackendUrl,
 		})
 	})
 }
@@ -113,11 +118,15 @@ function createWhiteboardComponent() {
 						event.stopPropagation()
 					}
 				})
+				// Get collaboration backend URL from initial state
+				const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
+
 				this.root = renderApp(rootElement, {
 					fileId: this.fileid,
 					isEmbedded: this.isEmbedded,
 					fileName: this.basename,
 					publicSharingToken: getSharingToken(),
+					collabBackendUrl,
 				})
 			})
 

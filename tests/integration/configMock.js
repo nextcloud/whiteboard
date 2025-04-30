@@ -1,6 +1,5 @@
 const defaultMockValues = {
 	IS_TEST_ENV: true,
-	BYPASS_SSL_VALIDATION: false,
 	USE_TLS: false,
 	TLS_KEY_PATH: null,
 	TLS_CERT_PATH: null,
@@ -9,13 +8,8 @@ const defaultMockValues = {
 	FORCE_CLOSE_TIMEOUT: 60 * 1000,
 	METRICS_TOKEN: null,
 	JWT_SECRET_KEY: null,
-	BACKUP_DIR: './backup',
-	ROOM_CLEANUP_INTERVAL: 1000,
-	LOCK_TIMEOUT: 1000,
-	LOCK_RETRY_INTERVAL: 1000,
-	MAX_BACKUPS_PER_ROOM: 10,
-	ROOM_MAX_AGE: 1000,
-	MAX_ROOMS_IN_STORAGE: 1000,
+	// WebSocket compression setting
+	COMPRESSION_ENABLED: true,
 }
 
 export function createConfigMock(customValues = {}) {
