@@ -56,7 +56,7 @@ The server requires the `NEXTCLOUD_URL` environment variable to be set to the UR
 The server can be run in a container using the following command:
 
 ```bash
-docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --rm ghcr.io/nextcloud-releases/whiteboard:release
+docker run -p 3002:3002 -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --restart unless-stopped ghcr.io/nextcloud-releases/whiteboard:release
 ```
 
 Docker compose can also be used to run the server:
@@ -71,7 +71,7 @@ services:
     environment:
       - NEXTCLOUD_URL=https://nextcloud.local
       - JWT_SECRET_KEY=some-random-key
-      
+    restart: unless-stopped
 ```
 
 #### Building the image locally

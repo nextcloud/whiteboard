@@ -14,3 +14,4 @@ services:
       - JWT_SECRET_KEY
       ## if you run this rootess, backup_dir needs to be in a place writeable to the non-root process, for example:
       - BACKUP_DIR=/tmp/backup
+    restart: unless-stopped
