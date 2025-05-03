@@ -59,7 +59,7 @@
     "@nextcloud/e2e-test-server": "^0.2.1",
     "@nextcloud/eslint-config": "^8.4.2",
     "@nextcloud/stylelint-config": "^3.0.1",
-    "@nextcloud/vite-config": "^1.5.3",
+    "@nextcloud/vite-config": "^1.5.4",
     "@playwright/test": "^1.51.0",
     "@types/lodash": "^4.17.16",
     "@types/react-dom": "^18.3.5",
