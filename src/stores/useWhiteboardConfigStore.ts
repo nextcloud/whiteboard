@@ -9,7 +9,7 @@ import { create } from 'zustand'
 import { resolvablePromise } from '../utils'
 import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
 
-interface WhiteboardState {
+interface WhiteboardConfigState {
 	// Core state
 	fileId: number
 	fileName: string
@@ -17,7 +17,6 @@ interface WhiteboardState {
 	isReadOnly: boolean // Single source of truth for read-only state, determined by JWT
 	isEmbedded: boolean
 	initialDataPromise: ReturnType<typeof resolvablePromise>
-	isInitializing: boolean // Indicates if the app is still initializing data
 	collabBackendUrl: string // URL of the collaboration backend server
 
 	// UI state
@@ -28,7 +27,7 @@ interface WhiteboardState {
 	setConfig: (
 		config: Partial<
 			Pick<
-				WhiteboardState,
+				WhiteboardConfigState,
 				| 'fileId'
 				| 'fileName'
 				| 'publicSharingToken'
@@ -37,7 +36,6 @@ interface WhiteboardState {
 			>
 		>,
 	) => void
-	setIsInitializing: (initializing: boolean) => void
 	resolveInitialData: (data: ExcalidrawInitialDataState) => void
 	resetInitialDataPromise: () => void
 	resetStore: () => void // Reset the entire store state
@@ -51,7 +49,7 @@ interface WhiteboardState {
 }
 
 // Create the store without persistence
-export const useWhiteboardStore = create<WhiteboardState>()((set, get) => ({
+export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, get) => ({
 	// Core state
 	fileId: 0,
 	fileName: '',
@@ -59,7 +57,6 @@ export const useWhiteboardStore = create<WhiteboardState>()((set, get) => ({
 	isReadOnly: false,
 	isEmbedded: false,
 	initialDataPromise: resolvablePromise(),
-	isInitializing: true, // Start in initializing state
 	collabBackendUrl: '', // Will be initialized from initial state
 
 	// UI state
@@ -67,17 +64,12 @@ export const useWhiteboardStore = create<WhiteboardState>()((set, get) => ({
 	gridModeEnabled: false,
 
 	// Core actions
-	setConfig: (config: Partial<Pick<WhiteboardState, 'fileId' | 'fileName' | 'publicSharingToken' | 'isEmbedded' | 'collabBackendUrl'>>) => {
+	setConfig: (config: Partial<Pick<WhiteboardConfigState, 'fileId' | 'fileName' | 'publicSharingToken' | 'isEmbedded' | 'collabBackendUrl'>>) => {
 		set(config)
 	},
 
-	setIsInitializing: (initializing: boolean) => {
-		set({ isInitializing: initializing })
-		console.log(`[WhiteboardStore] Initializing state set to: ${initializing}`)
-	},
-
 	resolveInitialData: (data: ExcalidrawInitialDataState) => {
-		console.log('[WhiteboardStore] Resolving initial data:', {
+		console.log('[WhiteboardConfigStore] Resolving initial data:', {
 			elementCount: data.elements ? data.elements.length : 0,
 			firstElement: data.elements && data.elements.length > 0 ? data.elements[0].type : 'none',
 			hasFiles: !!data.files && Object.keys(data.files).length > 0,
@@ -86,7 +78,7 @@ export const useWhiteboardStore = create<WhiteboardState>()((set, get) => ({
 
 		// Resolve the promise with the data
 		get().initialDataPromise.resolve(data)
-		console.log('[WhiteboardStore] Initial data loaded and resolved')
+		console.log('[WhiteboardConfigStore] Initial data loaded and resolved')
 	},
 
 	resetInitialDataPromise: () =>
@@ -94,7 +86,7 @@ export const useWhiteboardStore = create<WhiteboardState>()((set, get) => ({
 
 	// Reset the entire store to its initial state
 	resetStore: () => {
-		console.log('[WhiteboardStore] Resetting store state')
+		console.log('[WhiteboardConfigStore] Resetting store state')
 		// Keep the current fileId, fileName, and other config values
 		const { fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl } = get()
 		set({
@@ -107,7 +99,6 @@ export const useWhiteboardStore = create<WhiteboardState>()((set, get) => ({
 			// Reset these values
 			isReadOnly: false,
 			initialDataPromise: resolvablePromise(),
-			isInitializing: true,
 			zenModeEnabled: false,
 			gridModeEnabled: false,
 		})
@@ -121,6 +112,6 @@ export const useWhiteboardStore = create<WhiteboardState>()((set, get) => ({
 	// Permission actions
 	setReadOnly: (readOnly: boolean) => {
 		set({ isReadOnly: readOnly })
-		console.log(`[WhiteboardStore] Read-only state set to: ${readOnly}`)
+		console.log(`[WhiteboardConfigStore] Read-only state set to: ${readOnly}`)
 	},
 }))

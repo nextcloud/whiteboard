@@ -10,7 +10,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import { useWhiteboardStore } from './useWhiteboardStore'
+import { useWhiteboardConfigStore } from './useWhiteboardConfigStore'
 
 // Refresh token 90 seconds before expiration
 const TOKEN_REFRESH_BUFFER = 90
@@ -88,7 +88,7 @@ export const useJWTStore = create<JWTStore>()(
 			},
 
 			getJWT: async () => {
-				const { fileId } = useWhiteboardStore.getState()
+				const { fileId } = useWhiteboardConfigStore.getState()
 
 				const { tokens, isTokenExpired, setupAutoRefresh } = get()
 				const token = tokens[fileId]
@@ -109,7 +109,7 @@ export const useJWTStore = create<JWTStore>()(
 
 			refreshJWT: async () => {
 				const { fileId, publicSharingToken }
-					= useWhiteboardStore.getState()
+					= useWhiteboardConfigStore.getState()
 
 				try {
 					console.log(`[JWTStore] Refreshing JWT for room ${fileId}`)
@@ -160,7 +160,7 @@ export const useJWTStore = create<JWTStore>()(
 					// Update read-only state based on the new JWT
 					if (payload.isFileReadOnly !== undefined) {
 						console.log(`[JWTStore] JWT indicates ${payload.isFileReadOnly ? 'read-only' : 'write'} access`)
-						useWhiteboardStore.getState().setReadOnly(payload.isFileReadOnly)
+						useWhiteboardConfigStore.getState().setReadOnly(payload.isFileReadOnly)
 					}
 
 					return token

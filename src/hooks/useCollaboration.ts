@@ -18,7 +18,7 @@ import { reconcileElements } from '../util'
 import { io, type Socket } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
-import { useWhiteboardStore } from '../stores/useWhiteboardStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
@@ -50,7 +50,7 @@ export function useCollaboration() {
 		})),
 	)
 
-	const { fileId } = useWhiteboardStore(
+	const { fileId } = useWhiteboardConfigStore(
 		useShallow(state => ({
 			fileId: state.fileId,
 		})),
@@ -511,8 +511,8 @@ export function useCollaboration() {
 		// Reset socket state for a fresh attempt (auto reconnect managed by socket.io)
 		try {
 			setStatus('connecting')
-			// Get collaboration backend URL from the WhiteboardStore
-			const collabBackendUrl = useWhiteboardStore.getState().collabBackendUrl
+			// Get collaboration backend URL from the WhiteboardConfigStore
+			const collabBackendUrl = useWhiteboardConfigStore.getState().collabBackendUrl
 			if (!collabBackendUrl) throw new Error('Collaboration backend URL missing.')
 
 			const token = await getJWT()
