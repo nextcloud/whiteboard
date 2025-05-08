@@ -33,10 +33,8 @@ enum BroadcastType {
 const CURSOR_UPDATE_DELAY = 50
 
 export function useCollaboration() {
-	// --- Local state to track room join status ---
 	const joinedRoomRef = useRef<string | null>(null)
 
-	// --- Zustand Stores with selective subscriptions using useShallow ---
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow(state => ({
 			excalidrawAPI: state.excalidrawAPI,
@@ -381,6 +379,8 @@ export function useCollaboration() {
 		}
 	}, [excalidrawAPI, fileId])
 
+	// No custom reconnection strategy needed - socket.io will handle reconnection with Infinity attempts
+
 	// --- Socket Event Handlers Setup ---
 	const setupSocketEventHandlers = useCallback(
 		(socketInstance: Socket) => {
@@ -438,11 +438,6 @@ export function useCollaboration() {
 
 			socketInstance.on('reconnect_error', (error) => {
 				console.error('[Collaboration] Reconnection error:', error)
-			})
-
-			socketInstance.on('reconnect_failed', () => {
-				console.error('[Collaboration] Failed to reconnect after all attempts')
-				setStatus('offline')
 			})
 
 			// --- Application Logic Events ---
@@ -541,8 +536,8 @@ export function useCollaboration() {
 				transports: ['websocket'],
 				reconnection: true, // Enable auto reconnect
 				reconnectionDelay: 1000, // Start with 1s delay
-				reconnectionDelayMax: 5000, // Max 5s delay
-				reconnectionAttempts: 10, // Limit reconnection attempts
+				reconnectionDelayMax: 10000, // Max 10s delay between reconnection attempts
+				reconnectionAttempts: Infinity, // Never stop trying to reconnect
 				// Enable per-message deflate compression
 				perMessageDeflate: {
 					threshold: 1024, // Only compress messages larger than 1KB
