@@ -147,18 +147,34 @@ describe('Socket handling', () => {
 		// Wait for connection
 		await waitFor(newSocket, 'connect')
 
+		// Add a small delay to ensure the socket is fully connected
+		await new Promise(resolve => setTimeout(resolve, 50))
+
 		// Listen for room-user-change event on the original socket
 		const userChangePromise = waitFor(socket, 'room-user-change')
 
 		// New user joins the room
 		newSocket.emit('join-room', 123)
 
-		// Wait for the room-user-change event
-		const userChangeData = await userChangePromise
+		// Wait for the room-user-change event with a timeout
+		const userChangeData = await Promise.race([
+			userChangePromise,
+			new Promise((_resolve, reject) =>
+				setTimeout(() => reject(new Error('Timeout waiting for room-user-change event')), 2000),
+			),
+		])
 
 		// Verify the user change data
 		expect(Array.isArray(userChangeData)).toBe(true)
+
 		expect(userChangeData.length).toBeGreaterThan(0)
+
+		// Verify the user data contains the expected properties
+		if (userChangeData.length > 0) {
+			expect(userChangeData[0]).toHaveProperty('socketId')
+			expect(userChangeData[0]).toHaveProperty('userId')
+			expect(userChangeData[0]).toHaveProperty('user')
+		}
 
 		// Clean up
 		newSocket.disconnect()
