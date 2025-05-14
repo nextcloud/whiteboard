@@ -63,11 +63,9 @@ const getStatusConfig = (status: CollaborationConnectionStatus): StatusConfig =>
 
 const NetworkStatusIndicatorComponent = () => {
 	// Use state from useCollaborationStore with useShallow to prevent unnecessary re-renders
-	const { status, lastConnected, reconnectAttempts } = useCollaborationStore(
+	const { status } = useCollaborationStore(
 		useShallow(state => ({
 			status: state.status,
-			lastConnected: state.lastConnected,
-			reconnectAttempts: state.reconnectAttempts,
 		})),
 	)
 	const [expanded, setExpanded] = useState(false)
@@ -94,22 +92,8 @@ const NetworkStatusIndicatorComponent = () => {
 	const statusConfig = useMemo(() => getStatusConfig(status), [status])
 	const { icon, text, className, description } = statusConfig
 
-	// Enhanced description with more details
-	const enhancedDescription = useMemo(() => {
-		let desc = description
-		if (status === 'offline' || status === 'reconnecting') {
-			if (lastConnected) {
-				const timeAgo = Math.round((Date.now() - lastConnected) / 1000)
-				if (timeAgo < 60) desc += ` Last connected ${timeAgo}s ago.`
-				else if (timeAgo < 3600) desc += ` Last connected ${Math.floor(timeAgo / 60)}m ago.`
-				else desc += ` Last connected ${Math.floor(timeAgo / 3600)}h ago.`
-			}
-			if (status === 'reconnecting' && reconnectAttempts > 0) {
-				desc += ` Attempt ${reconnectAttempts}.`
-			}
-		}
-		return desc
-	}, [status, description, lastConnected, reconnectAttempts])
+	// Use the basic description without additional details
+	const enhancedDescription = description
 
 	const toggleExpanded = useCallback(() => {
 		setExpanded(prev => !prev)

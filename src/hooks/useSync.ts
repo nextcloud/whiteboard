@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { throttle } from 'lodash'
-import { useWhiteboardStore } from '../stores/useWhiteboardStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useSyncStore, logSyncResult } from '../stores/useSyncStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
@@ -31,7 +31,7 @@ const WEBSOCKET_SYNC_DELAY = 500
 const CURSOR_SYNC_DELAY = 50
 
 export function useSync() {
-	const { fileId, isReadOnly } = useWhiteboardStore(
+	const { fileId, isReadOnly } = useWhiteboardConfigStore(
 		useShallow(state => ({
 			fileId: state.fileId,
 			isReadOnly: state.isReadOnly,
@@ -143,7 +143,7 @@ export function useSync() {
 		try {
 			const jwt = await getJWT()
 			if (!jwt) throw new Error('JWT token missing for server API sync.')
-			if (useWhiteboardStore.getState().fileId !== fileId) {
+			if (useWhiteboardConfigStore.getState().fileId !== fileId) {
 				throw new Error('FileId changed during server sync preparation.')
 			}
 
