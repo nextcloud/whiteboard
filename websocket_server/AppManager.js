@@ -7,6 +7,7 @@
 
 import express from 'express'
 import axios from 'axios'
+import https from 'node:https'
 import Config from './Config.js'
 
 export default class AppManager {
@@ -26,6 +27,10 @@ export default class AppManager {
 		if (Config.METRICS_TOKEN) {
 			this.app.get('/metrics', this.metricsHandler.bind(this))
 		}
+
+		// Ex App
+		this.app.get('/heartbeat', this.heartbeatHandler.bind(this))
+		this.app.put('/enabled', express.json(), this.enabledHandler.bind(this))
 	}
 
 	/**
@@ -70,8 +75,17 @@ export default class AppManager {
 		const statusUrl = NEXTCLOUD_URL + '/status.php'
 		let connectBack
 		try {
+			// Create a custom HTTPS agent that bypasses certificate verification
+			// SECURITY WARNING: This disables TLS certificate validation which can lead to MITM attacks.
+			// This should only be used in development/testing environments or when the server uses
+			// self-signed certificates in a trusted network environment.
+			const httpsAgent = new https.Agent({
+				rejectUnauthorized: false,
+			})
+
 			const response = await axios.get(statusUrl, {
 				timeout: 5000,
+				httpsAgent, // Use the agent that bypasses certificate verification
 			})
 			connectBack = response.data?.version ? true : ('No version found when requesting ' + statusUrl)
 		} catch (e) {
@@ -137,6 +151,15 @@ export default class AppManager {
 
 		res.set('Content-Type', 'application/json')
 		res.send(JSON.stringify(response))
+	}
+
+	// Ex App
+	heartbeatHandler(req, res) {
+		res.status(200).json({ status: 'ok' })
+	}
+
+	async enabledHandler(req, res) {
+		res.status(200).json({ enabled: true })
 	}
 
 	getApp() {

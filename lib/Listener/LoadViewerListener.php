@@ -12,6 +12,7 @@ namespace OCA\Whiteboard\Listener;
 
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Service\ConfigService;
+use OCA\Whiteboard\Service\ExAppService;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
@@ -22,6 +23,7 @@ class LoadViewerListener implements IEventListener {
 	public function __construct(
 		private IInitialState $initialState,
 		private ConfigService $configService,
+		private ExAppService $exAppService,
 	) {
 	}
 
@@ -42,5 +44,8 @@ class LoadViewerListener implements IEventListener {
 			'maxFileSize',
 			$this->configService->getMaxFileSize()
 		);
+
+		// Initialize ExApp frontend state
+		$this->exAppService->initFrontendState();
 	}
 }

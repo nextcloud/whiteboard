@@ -1,0 +1,40 @@
+{
+  "name": "whiteboard-websocket",
+  "version": "0.0.1",
+  "description": "WebSocket server for Nextcloud Whiteboard app",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nextcloud/whiteboard"
+  },
+  "author": "Nextcloud GmbH",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "start": "node ./main.js",
+    "dev": "nodemon ./main.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@socket.io/redis-streams-adapter": "^0.2.2",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "lru-cache": "^11.1.0",
+    "prom-client": "^14.2.0",
+    "redis": "^4.7.1",
+    "socket.io": "^4.8.1",
+    "socket.io-prometheus": "^0.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "nodemon": "^3.1.9"
+  }
+}
