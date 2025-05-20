@@ -48,9 +48,10 @@ export function useCollaboration() {
 		})),
 	)
 
-	const { fileId } = useWhiteboardConfigStore(
+	const { fileId, collabBackendUrl } = useWhiteboardConfigStore(
 		useShallow(state => ({
 			fileId: state.fileId,
+			collabBackendUrl: state.collabBackendUrl,
 		})),
 	)
 
@@ -507,7 +508,6 @@ export function useCollaboration() {
 		try {
 			setStatus('connecting')
 			// Get collaboration backend URL from the WhiteboardConfigStore
-			const collabBackendUrl = useWhiteboardConfigStore.getState().collabBackendUrl
 			if (!collabBackendUrl) throw new Error('Collaboration backend URL missing.')
 
 			const token = await getJWT()
@@ -567,7 +567,7 @@ export function useCollaboration() {
 		}
 	}, [
 		getJWT, setStatus, setSocket, setupSocketEventHandlers,
-		fileId,
+		fileId, collabBackendUrl,
 	])
 
 	useEffect(() => {

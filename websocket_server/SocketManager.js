@@ -27,7 +27,7 @@ export default class SocketManager {
 			transports: ['websocket', 'polling'],
 			maxHttpBufferSize: Config.MAX_UPLOAD_FILE_SIZE + 1e6,
 			cors: {
-				origin: Config.NEXTCLOUD_WEBSOCKET_URL,
+				origin: ['*'],
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 				credentials: true,
 			},
