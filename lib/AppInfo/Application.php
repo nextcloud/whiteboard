@@ -10,12 +10,14 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\AppInfo;
 
+use OCA\AppAPI\Middleware\AppAPIAuthMiddleware;
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
+use OCA\Whiteboard\Service\ExAppService;
 use OCA\Whiteboard\Settings\SetupCheck;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -26,6 +28,8 @@ use OCP\Files\Template\RegisterTemplateCreatorEvent;
 use OCP\IL10N;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 use OCP\Util;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -47,6 +51,10 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerSetupCheck(SetupCheck::class);
+
+		if (class_exists(AppAPIAuthMiddleware::class) && $this->getExAppService()->isWhiteboardWebsocketEnabled()) {
+			$context->registerMiddleware(AppAPIAuthMiddleware::class);
+		}
 	}
 
 	#[\Override]
@@ -59,5 +67,13 @@ class Application extends App implements IBootstrap {
 				});
 			});
 		}
+	}
+
+	/**
+	 * @throws ContainerExceptionInterface
+	 * @throws NotFoundExceptionInterface
+	 */
+	private function getExAppService(): ExAppService {
+		return $this->getContainer()->get(ExAppService::class);
 	}
 }
