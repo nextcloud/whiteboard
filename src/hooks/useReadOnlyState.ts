@@ -7,12 +7,12 @@
 
 import { useEffect, useCallback } from 'react'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import { useWhiteboardStore } from '../stores/useWhiteboardStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
 
 export function useReadOnlyState() {
 	const { excalidrawAPI } = useExcalidrawStore()
-	const { isReadOnly, setReadOnly } = useWhiteboardStore()
+	const { isReadOnly, setReadOnly } = useWhiteboardConfigStore()
 	const { getJWT, parseJwt } = useJWTStore()
 
 	// Update read-only state based on JWT
@@ -50,7 +50,7 @@ export function useReadOnlyState() {
 	// Refresh read-only state from JWT
 	const refreshReadOnlyState = useCallback(async () => {
 		// Get the current fileId
-		const { fileId } = useWhiteboardStore.getState()
+		const { fileId } = useWhiteboardConfigStore.getState()
 
 		// Check if fileId is valid before proceeding
 		if (!fileId) {
@@ -83,7 +83,7 @@ export function useReadOnlyState() {
 			updateReadOnlyState(isReadOnly)
 
 			// Get the current fileId
-			const { fileId } = useWhiteboardStore.getState()
+			const { fileId } = useWhiteboardConfigStore.getState()
 
 			// Only refresh from JWT if fileId is valid
 			if (fileId) {
@@ -98,7 +98,7 @@ export function useReadOnlyState() {
 	// Initial setup - refresh read-only state from JWT
 	useEffect(() => {
 		// Get the current fileId
-		const { fileId } = useWhiteboardStore.getState()
+		const { fileId } = useWhiteboardConfigStore.getState()
 
 		// Only refresh if fileId is valid
 		if (fileId) {
