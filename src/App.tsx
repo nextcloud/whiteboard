@@ -9,7 +9,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
 import './App.scss'
-import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawInitialDataState, LibraryItems } from '@excalidraw/excalidraw/types/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardStore } from './stores/useWhiteboardStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
@@ -20,6 +20,7 @@ import { ExcalidrawMenu } from './components/ExcalidrawMenu'
 import Embeddable from './Embeddable'
 import { useLangStore } from './stores/useLangStore'
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
+import { useLibrary } from './hooks/useLibrary'
 import { useSync } from './hooks/useSync'
 import { useSyncStore } from './stores/useSyncStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -104,6 +105,7 @@ export default function App({
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
+	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
 
@@ -249,6 +251,25 @@ export default function App({
 						resolveInitialData(initialDataState)
 					}, 50)
 				}
+
+				// Fetch library items from the API
+				const fetchLibInterval = setInterval(async () => {
+					const api = useExcalidrawStore.getState().excalidrawAPI
+					if (!api) {
+						console.warn('[App] Excalidraw API not available, cannot update library')
+						return
+					}
+					clearInterval(fetchLibInterval)
+					try {
+						const libraryItems = await fetchLibraryItems()
+						await api.updateLibrary({
+							libraryItems: libraryItems || [],
+							openLibraryMenu: true,
+						})
+					} catch (error) {
+						console.error('[App] Error updating library items:', error)
+					}
+				}, 1000)
 			} catch (error) {
 				console.error('[App] Error loading data:', error)
 				// Force a small delay to ensure the component is ready to receive the data
@@ -272,6 +293,14 @@ export default function App({
 			setIsInitializing(false)
 		}
 	}, [fileId, resolveInitialData, setIsInitializing])
+
+	const onLibraryChange = useCallback(async (items: LibraryItems) => {
+		try {
+			await updateLibraryItems(items)
+		} catch (error) {
+			console.error('[App] Error syncing library items:', error)
+		}
+	}, [])
 
 	const onLinkOpen = useCallback((element: any, event: any) => {
 		const link = element.link
@@ -327,6 +356,7 @@ export default function App({
 						},
 					}}
 					onLinkOpen={onLinkOpen}
+					onLibraryChange={onLibraryChange}
 					langCode={lang}
 				>
 					<MemoizedExcalidrawMenu
