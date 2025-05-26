@@ -15,6 +15,10 @@ return [
 	'routes' => [
 		/** @see JWTController::getJWT() */
 		['name' => 'JWT#getJWT', 'url' => '{fileId}/token', 'verb' => 'GET'],
+		/** @see WhiteboardController::getLib() */
+		['name' => 'Whiteboard#getLib', 'url' => 'library', 'verb' => 'GET'],
+		/** @see WhiteboardController::updateLib() */
+		['name' => 'Whiteboard#updateLib', 'url' => 'library', 'verb' => 'PUT'],
 		/** @see WhiteboardController::update() */
 		['name' => 'Whiteboard#update', 'url' => '{fileId}', 'verb' => 'PUT'],
 		/** @see WhiteboardController::show() */

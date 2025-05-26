@@ -23,6 +23,7 @@ import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
 import { AuthErrorNotification } from './components/AuthErrorNotification'
 import { useSync } from './hooks/useSync'
 import { useSyncStore } from './stores/useSyncStore'
+import { useLibrary } from './hooks/useLibrary'
 import { useShallow } from 'zustand/react/shallow'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
 
@@ -99,6 +100,7 @@ export default function App({
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
+	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
 
@@ -134,6 +136,25 @@ export default function App({
 		resetInitialDataPromise()
 		console.log('[App] Reset initialDataPromise on mount')
 
+		// Fetch library items from the API
+		window.name = fileName
+		const fetchLibInterval = setInterval(async () => {
+			const api = useExcalidrawStore.getState().excalidrawAPI
+			if (!api) {
+				console.warn('[App] Excalidraw API not available, cannot update library')
+				return
+			}
+			clearInterval(fetchLibInterval)
+			try {
+				const libraryItems = await fetchLibraryItems()
+				await api.updateLibrary({
+					libraryItems: libraryItems || [],
+				})
+			} catch (error) {
+				console.error('[App] Error updating library items:', error)
+			}
+		}, 1000)
+
 		// On unmount: Clean up all stores to prevent stale state
 		return () => {
 			// Save any pending changes before resetting stores
@@ -160,6 +181,16 @@ export default function App({
 		updateLang()
 		renderSmartPicker()
 	}, [updateLang, renderSmartPicker])
+
+	const onLibraryChange = useCallback(async (items: LibraryItems) => {
+		try {
+			await updateLibraryItems(items)
+		} catch (error) {
+			console.error('[App] Error syncing library items:', error)
+		}
+	}, [])
+
+	const libraryReturnUrl = encodeURIComponent(window.location.href)
 
 	// Data loading is now handled by useBoardDataManager
 
@@ -218,7 +249,9 @@ export default function App({
 						},
 					}}
 					onLinkOpen={onLinkOpen}
+					onLibraryChange={onLibraryChange}
 					langCode={lang}
+					libraryReturnUrl={libraryReturnUrl}
 				>
 					<MemoizedExcalidrawMenu
 						fileNameWithoutExtension={fileNameWithoutExtension}
