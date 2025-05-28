@@ -30,7 +30,15 @@ jobs:
       - name: Set vars
         id: vars
         run: |
-          echo "version_channel=${{ github.event_name == 'release' && 'release' || 'daily' }}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+              echo "version_channel=beta" >> $GITHUB_OUTPUT
+            else
+              echo "version_channel=stable" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "version_channel=daily" >> $GITHUB_OUTPUT
+          fi
           echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "platform=$(echo -n ${{ matrix.platform }} | sed 's/\//-/g')" >> $GITHUB_OUTPUT
 
@@ -64,7 +72,15 @@ jobs:
       - name: Set vars
         id: vars
         run: |
-          echo "version_channel=${{ github.event_name == 'release' && 'release' || 'daily' }}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+              echo "version_channel=beta" >> $GITHUB_OUTPUT
+            else
+              echo "version_channel=stable" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "version_channel=daily" >> $GITHUB_OUTPUT
+          fi
           echo "version_ref=${{ github.event_name == 'release' && github.ref_name || github.sha }}" >> $GITHUB_OUTPUT
           echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
 
@@ -77,15 +93,29 @@ jobs:
 
       - name: Create GHCR manifest
         run: |
+          # Create manifest for the specific version (tag name or commit SHA)
           docker manifest create $GHCR_REPO:${{ steps.vars.outputs.version_ref }} \
             $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-amd64 \
             $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-arm64
 
+          # Create manifest for the channel (release, prerelease, or daily)
           docker manifest create $GHCR_REPO:${{ steps.vars.outputs.version_channel }} \
             $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-amd64 \
             $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-arm64
+
+          # Create 'latest' tag only for stable releases (not pre-releases)
+          if [[ "${{ steps.vars.outputs.version_channel }}" == "stable" ]]; then
+            docker manifest create $GHCR_REPO:latest \
+              $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-amd64 \
+              $GHCR_REPO:${{ steps.vars.outputs.version }}-linux-arm64
+          fi
 
       - name: Push manifests
         run: |
           docker manifest push $GHCR_REPO:${{ steps.vars.outputs.version_ref }}
           docker manifest push $GHCR_REPO:${{ steps.vars.outputs.version_channel }}
+
+          # Push 'latest' tag only for stable releases
+          if [[ "${{ steps.vars.outputs.version_channel }}" == "stable" ]]; then
+            docker manifest push $GHCR_REPO:latest
+          fi

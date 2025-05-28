@@ -6,8 +6,17 @@
  */
 
 import StorageStrategy from './StorageStrategy.js'
+import { createClient } from 'redis'
+import Config from './Config.js'
 
 export default class RedisStrategy extends StorageStrategy {
+
+	static createRedisClient() {
+		console.log(`Creating Redis client with URL: ${Config.REDIS_URL}`)
+		return createClient({
+			url: Config.REDIS_URL,
+		})
+	}
 
 	constructor(redisClient, options = {}) {
 		const { prefix = 'general_', ttl = null } = options
