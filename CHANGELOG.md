@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0
+## 1.1.0-beta.1
 
 ### Features
 * local centric by @hweihwang in https://github.com/nextcloud/whiteboard/pull/393
