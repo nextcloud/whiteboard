@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0
+
+### Features
+* local centric by @hweihwang in https://github.com/nextcloud/whiteboard/pull/393
+* server data integrate by @hweihwang in https://github.com/nextcloud/whiteboard/pull/449
+* feat: Add setup check to verify whiteboard backend server version and connectivity by @juliusknorr in https://github.com/nextcloud/whiteboard/pull/297
+* Update docker-compose.yml by @joergmschulz in https://github.com/nextcloud/whiteboard/pull/356
+* Add traefik configuration hints by @jensens in https://github.com/nextcloud/whiteboard/pull/352
+
+### Fixed
+* fix setup check trailing spaces by @hweihwang in https://github.com/nextcloud/whiteboard/pull/401
+* Fix undo handling on initial load by @juliusknorr in https://github.com/nextcloud/whiteboard/pull/431
+
 ## 1.0.5
 
 ### Features
