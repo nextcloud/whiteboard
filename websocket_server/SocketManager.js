@@ -199,6 +199,7 @@ export default class SocketManager {
 
 		console.log(`[${roomID}] ${userName} joined room`)
 
+		// Join the room
 		await socket.join(roomID)
 
 		// Check if this user is already the syncer for this room
@@ -242,14 +243,21 @@ export default class SocketManager {
 			socket.emit('sync-designate', { isSyncer: false })
 		}
 
-		// Get updated list of users in the room
+		// Ensure the socket is fully added to the room before getting the user list
+		// This small delay ensures the socket.io internal state is updated
+		await new Promise(resolve => setTimeout(resolve, 10))
+
+		// Get updated list of users in the room, including the newly joined user
 		const roomUsers = await this.getUserSocketsAndIds(roomID)
 
 		// Log the number of users in the room
 		console.log(`[${roomID}] Room now has ${roomUsers.length} users`)
 
 		// Notify all users in the room about the updated user list
-		this.io.to(roomID).emit('room-user-change', roomUsers)
+		// Make sure we include the current user in the list
+		if (roomUsers.length > 0) {
+			this.io.to(roomID).emit('room-user-change', roomUsers)
+		}
 
 		// Notify all users in the room that a new user has joined
 		// This will trigger the syncer to broadcast the current scene
@@ -458,7 +466,13 @@ export default class SocketManager {
 	 * @return {Promise<Array<{socketId: string, user: object, userId: string}>>}
 	 */
 	async getUserSocketsAndIds(roomID) {
+		// Fetch all sockets in the room
 		const sockets = await this.io.in(roomID).fetchSockets()
+
+		// Log for debugging
+		console.log(`[${roomID}] Fetched ${sockets.length} sockets for room-user-change event`)
+
+		// Process each socket to get user data
 		return Promise.all(
 			sockets.map(async (s) => {
 				const data = await this.socketDataStorage.get(s.id)
@@ -472,7 +486,12 @@ export default class SocketManager {
 					userId: data.user.id,
 				}
 			}),
-		).then((results) => results.filter(Boolean))
+		).then((results) => {
+			// Filter out any null entries and log the final count
+			const filteredResults = results.filter(Boolean)
+			console.log(`[${roomID}] Returning ${filteredResults.length} valid users for room-user-change event`)
+			return filteredResults
+		})
 	}
 
 	/**

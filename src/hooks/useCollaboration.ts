@@ -18,7 +18,7 @@ import { reconcileElements } from '../util'
 import { io, type Socket } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
-import { useWhiteboardStore } from '../stores/useWhiteboardStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
@@ -33,10 +33,8 @@ enum BroadcastType {
 const CURSOR_UPDATE_DELAY = 50
 
 export function useCollaboration() {
-	// --- Local state to track room join status ---
 	const joinedRoomRef = useRef<string | null>(null)
 
-	// --- Zustand Stores with selective subscriptions using useShallow ---
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow(state => ({
 			excalidrawAPI: state.excalidrawAPI,
@@ -50,7 +48,7 @@ export function useCollaboration() {
 		})),
 	)
 
-	const { fileId } = useWhiteboardStore(
+	const { fileId } = useWhiteboardConfigStore(
 		useShallow(state => ({
 			fileId: state.fileId,
 		})),
@@ -381,6 +379,8 @@ export function useCollaboration() {
 		}
 	}, [excalidrawAPI, fileId])
 
+	// No custom reconnection strategy needed - socket.io will handle reconnection with Infinity attempts
+
 	// --- Socket Event Handlers Setup ---
 	const setupSocketEventHandlers = useCallback(
 		(socketInstance: Socket) => {
@@ -438,11 +438,6 @@ export function useCollaboration() {
 
 			socketInstance.on('reconnect_error', (error) => {
 				console.error('[Collaboration] Reconnection error:', error)
-			})
-
-			socketInstance.on('reconnect_failed', () => {
-				console.error('[Collaboration] Failed to reconnect after all attempts')
-				setStatus('offline')
 			})
 
 			// --- Application Logic Events ---
@@ -511,8 +506,8 @@ export function useCollaboration() {
 		// Reset socket state for a fresh attempt (auto reconnect managed by socket.io)
 		try {
 			setStatus('connecting')
-			// Get collaboration backend URL from the WhiteboardStore
-			const collabBackendUrl = useWhiteboardStore.getState().collabBackendUrl
+			// Get collaboration backend URL from the WhiteboardConfigStore
+			const collabBackendUrl = useWhiteboardConfigStore.getState().collabBackendUrl
 			if (!collabBackendUrl) throw new Error('Collaboration backend URL missing.')
 
 			const token = await getJWT()
@@ -541,8 +536,8 @@ export function useCollaboration() {
 				transports: ['websocket'],
 				reconnection: true, // Enable auto reconnect
 				reconnectionDelay: 1000, // Start with 1s delay
-				reconnectionDelayMax: 5000, // Max 5s delay
-				reconnectionAttempts: 10, // Limit reconnection attempts
+				reconnectionDelayMax: 10000, // Max 10s delay between reconnection attempts
+				reconnectionAttempts: Infinity, // Never stop trying to reconnect
 				// Enable per-message deflate compression
 				perMessageDeflate: {
 					threshold: 1024, // Only compress messages larger than 1KB

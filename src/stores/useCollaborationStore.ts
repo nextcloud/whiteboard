@@ -8,7 +8,6 @@ import type { Socket } from 'socket.io-client'
 
 export type CollaborationConnectionStatus = 'online' | 'offline' | 'connecting' | 'reconnecting'
 
-// This store now holds all state related to the collaboration websocket connection
 interface CollaborationStore {
 	status: CollaborationConnectionStatus
 	socket: Socket | null
@@ -18,7 +17,7 @@ interface CollaborationStore {
 	setStatus: (status: CollaborationConnectionStatus) => void
 	setSocket: (socket: Socket | null) => void
 	setDedicatedSyncer: (isSyncer: boolean) => void
-	resetStore: () => void // Resets the store to initial state
+	resetStore: () => void
 }
 
 const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'resetStore'> = {
