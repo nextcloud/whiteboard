@@ -97,7 +97,7 @@ RewriteRule ^/?whiteboard/(.*) "ws://localhost:3002/$1" [P,L]
 #### Apache >= 2.4.47
 
 ```apache
-ProxyPass /whiteboard http://localhost:3002/ upgrade=websocket
+ProxyPass /whiteboard/ http://localhost:3002/ upgrade=websocket
 ```
 
 #### Nginx
