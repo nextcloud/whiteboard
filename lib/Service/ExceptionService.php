@@ -31,6 +31,14 @@ final class ExceptionService {
 		$statusCode = $this->getStatusCode($e);
 		$message = $this->getMessage($e);
 
+		// Log the exception with essential context for debugging
+		$this->logger->error('Exception handled: ' . get_class($e), [
+			'message' => $e->getMessage(),
+			'file' => $e->getFile(),
+			'line' => $e->getLine(),
+			'status_code' => $statusCode,
+		]);
+
 		return new DataResponse(['message' => $message], $statusCode);
 	}
 

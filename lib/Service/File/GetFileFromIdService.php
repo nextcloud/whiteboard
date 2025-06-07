@@ -17,6 +17,7 @@ use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use Psr\Log\LoggerInterface;
 
 /**
  * @psalm-suppress UndefinedDocblockClass
@@ -30,6 +31,7 @@ final class GetFileFromIdService implements GetFileService {
 		private IRootFolder $rootFolder,
 		private string $userId,
 		private int $fileId,
+		private LoggerInterface $logger,
 	) {
 	}
 
@@ -46,12 +48,15 @@ final class GetFileFromIdService implements GetFileService {
 		$file = $userFolder->getFirstNodeById($this->fileId);
 		if ($file instanceof File && $file->getPermissions() & Constants::PERMISSION_UPDATE) {
 			$this->file = $file;
-
 			return $file;
 		}
 
 		$files = $userFolder->getById($this->fileId);
 		if (empty($files)) {
+			$this->logger->error('File not found', [
+				'user_id' => $this->userId,
+				'file_id' => $this->fileId
+			]);
 			throw new NotFoundException('File not found');
 		}
 
@@ -61,15 +66,22 @@ final class GetFileFromIdService implements GetFileService {
 
 		$file = $files[0];
 		if (!$file instanceof File) {
+			$this->logger->error('Node is not a file', [
+				'file_id' => $this->fileId,
+				'node_type' => get_class($file)
+			]);
 			throw new NotFoundException('Not a file');
 		}
 
 		if (!($file->getPermissions() & Constants::PERMISSION_READ)) {
+			$this->logger->error('No read permission for file', [
+				'file_id' => $this->fileId,
+				'permissions' => $file->getPermissions()
+			]);
 			throw new NotPermittedException('No read permission');
 		}
 
 		$this->file = $file;
-
 		return $this->file;
 	}
 

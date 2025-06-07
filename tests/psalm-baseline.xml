@@ -65,9 +65,6 @@
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
-    <UnusedProperty>
-      <code><![CDATA[$logger]]></code>
-    </UnusedProperty>
   </file>
   <file src="lib/Service/File/GetFileServiceFactory.php">
     <PossiblyUnusedMethod>

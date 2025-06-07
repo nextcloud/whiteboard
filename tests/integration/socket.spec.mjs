@@ -11,7 +11,6 @@ vi.setConfig({ testTimeout: 10000 })
 vi.mock('../../websocket_server/Config.js', () => ({
 	default: createConfigMock({
 		NEXTCLOUD_URL: 'http://localhost:3009',
-		NEXTCLOUD_WEBSOCKET_URL: 'http://localhost:3009',
 		PORT: '3009',
 		JWT_SECRET_KEY: 'secret',
 	}),
@@ -33,9 +32,12 @@ describe('Socket handling', () => {
 		serverManager = new ServerManager()
 		await serverManager.start()
 
-		socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' } }, Config.JWT_SECRET_KEY),
+				token: jwt.sign(
+					{ roomID: 123, user: { name: 'Admin' } },
+					Config.JWT_SECRET_KEY,
+				),
 			},
 		})
 
@@ -56,9 +58,12 @@ describe('Socket handling', () => {
 	})
 
 	it('socket invalid jwt', async () => {
-		const socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		const socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' } }, 'wrongsecret'),
+				token: jwt.sign(
+					{ roomID: 123, user: { name: 'Admin' } },
+					'wrongsecret',
+				),
 			},
 		})
 		return new Promise((resolve) => {
@@ -69,9 +74,12 @@ describe('Socket handling', () => {
 	})
 
 	it('socket valid jwt', async () => {
-		const socket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		const socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({ roomID: 123, user: { name: 'Admin' } }, Config.JWT_SECRET_KEY),
+				token: jwt.sign(
+					{ roomID: 123, user: { name: 'Admin' } },
+					Config.JWT_SECRET_KEY,
+				),
 			},
 		})
 		return new Promise((resolve) => {
@@ -98,13 +106,16 @@ describe('Socket handling', () => {
 
 	it('read only socket should not be designated as syncer', async () => {
 		// Create a socket with read-only permissions
-		const readOnlySocket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		const readOnlySocket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({
-					roomID: 123,
-					user: { id: 'read-only-user', name: 'ReadOnly' },
-					isFileReadOnly: true,
-				}, Config.JWT_SECRET_KEY),
+				token: jwt.sign(
+					{
+						roomID: 123,
+						user: { id: 'read-only-user', name: 'ReadOnly' },
+						isFileReadOnly: true,
+					},
+					Config.JWT_SECRET_KEY,
+				),
 			},
 		})
 
@@ -135,12 +146,15 @@ describe('Socket handling', () => {
 
 	it('should emit room-user-change when users join', async () => {
 		// Create a new socket for this test
-		const newSocket = io(Config.NEXTCLOUD_WEBSOCKET_URL, {
+		const newSocket = io(Config.NEXTCLOUD_URL, {
 			auth: {
-				token: jwt.sign({
-					roomID: 123,
-					user: { id: 'new-user', name: 'NewUser' },
-				}, Config.JWT_SECRET_KEY),
+				token: jwt.sign(
+					{
+						roomID: 123,
+						user: { id: 'new-user', name: 'NewUser' },
+					},
+					Config.JWT_SECRET_KEY,
+				),
 			},
 		})
 
@@ -179,4 +193,5 @@ describe('Socket handling', () => {
 		// Clean up
 		newSocket.disconnect()
 	})
+
 })

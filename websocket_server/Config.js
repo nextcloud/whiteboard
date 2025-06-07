@@ -57,12 +57,20 @@ const Config = {
 		return process.env.JWT_SECRET_KEY
 	},
 
-	get NEXTCLOUD_WEBSOCKET_URL() {
-		return Utils.getOriginFromUrl(process.env.NEXTCLOUD_URL || DEFAULT_NEXTCLOUD_URL)
+	get NEXTCLOUD_URL() {
+		return Utils.normalizeUrlPath(process.env.NEXTCLOUD_URL || DEFAULT_NEXTCLOUD_URL)
 	},
 
-	get NEXTCLOUD_URL() {
-		return this.NEXTCLOUD_WEBSOCKET_URL
+	get CORS_ORIGINS() {
+		const fullUrl = new URL(this.NEXTCLOUD_URL)
+		const baseOrigin = `${fullUrl.protocol}//${fullUrl.host}`
+		const origins = [this.NEXTCLOUD_URL]
+
+		if (baseOrigin !== this.NEXTCLOUD_URL) {
+			origins.push(baseOrigin)
+		}
+
+		return origins
 	},
 }
 
