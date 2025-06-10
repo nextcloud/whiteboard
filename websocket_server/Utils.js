@@ -19,12 +19,22 @@ export default class Utils {
 		return value === 'true'
 	}
 
-	static getOriginFromUrl(url) {
+	static normalizeUrlPath(url) {
 		try {
-			return new URL(url).origin
+			// If URL already has protocol, use it as-is but remove trailing slashes
+			if (url.match(/^https?:\/\//)) {
+				const urlObj = new URL(url)
+				if (urlObj.pathname === '/' || urlObj.pathname === '') {
+					return urlObj.origin
+				}
+				return `${urlObj.origin}${urlObj.pathname.replace(/\/+$/, '')}`
+			}
+
+			// If no protocol, just return the original URL to avoid rewriting
+			return url
 		} catch (error) {
 			console.error('Invalid URL:', url)
-			return null
+			return url
 		}
 	}
 
