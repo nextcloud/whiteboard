@@ -63,9 +63,10 @@ const getStatusConfig = (status: CollaborationConnectionStatus): StatusConfig =>
 
 const NetworkStatusIndicatorComponent = () => {
 	// Use state from useCollaborationStore with useShallow to prevent unnecessary re-renders
-	const { status } = useCollaborationStore(
+	const { status, authError } = useCollaborationStore(
 		useShallow(state => ({
 			status: state.status,
+			authError: state.authError,
 		})),
 	)
 	const [expanded, setExpanded] = useState(false)
@@ -92,8 +93,19 @@ const NetworkStatusIndicatorComponent = () => {
 	const statusConfig = useMemo(() => getStatusConfig(status), [status])
 	const { icon, text, className, description } = statusConfig
 
-	// Use the basic description without additional details
-	const enhancedDescription = description
+	// Enhanced description with auth error context
+	const enhancedDescription = useMemo(() => {
+		let baseDescription = description
+
+		// Add auth error context if there's a persistent auth issue
+		if (authError.isPersistent && authError.type === 'jwt_secret_mismatch') {
+			baseDescription += ' Authentication configuration issue detected.'
+		} else if (authError.consecutiveFailures >= 2) {
+			baseDescription += ' Authentication issues detected.'
+		}
+
+		return baseDescription
+	}, [description, authError])
 
 	const toggleExpanded = useCallback(() => {
 		setExpanded(prev => !prev)
