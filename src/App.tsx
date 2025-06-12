@@ -20,6 +20,7 @@ import { ExcalidrawMenu } from './components/ExcalidrawMenu'
 import Embeddable from './Embeddable'
 import { useLangStore } from './stores/useLangStore'
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
+import { AuthErrorNotification } from './components/AuthErrorNotification'
 import { useSync } from './hooks/useSync'
 import { useSyncStore } from './stores/useSyncStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -38,6 +39,7 @@ export const initialDataState: ExcalidrawInitialDataState = {
 }
 
 const MemoizedNetworkStatusIndicator = memo(NetworkStatusIndicator)
+const MemoizedAuthErrorNotification = memo(AuthErrorNotification)
 const MemoizedExcalidrawMenu = memo(ExcalidrawMenu)
 
 interface WhiteboardAppProps {
@@ -176,6 +178,7 @@ export default function App({
 		<div className="App" style={{ display: 'flex', flexDirection: 'column' }}>
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				<MemoizedNetworkStatusIndicator />
+				<MemoizedAuthErrorNotification />
 				<Excalidraw
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}

@@ -58,12 +58,16 @@ export function useCollaboration() {
 		setStatus,
 		setSocket,
 		setDedicatedSyncer,
+		incrementAuthFailure,
+		clearAuthError,
 		resetStore, // Use resetStore for full cleanup
 	} = useCollaborationStore(
 		useShallow(state => ({
 			setStatus: state.setStatus,
 			setSocket: state.setSocket,
 			setDedicatedSyncer: state.setDedicatedSyncer,
+			incrementAuthFailure: state.incrementAuthFailure,
+			clearAuthError: state.clearAuthError,
 			resetStore: state.resetStore,
 		})),
 	)
@@ -391,7 +395,19 @@ export function useCollaboration() {
 			socketInstance.on('connect_error', async (error: Error) => {
 				console.error('[Collaboration] Connection Error:', error.message)
 				if (error.message.includes('Authentication error')) {
-					// Stop auto reconnection attempts on auth error
+					// Track authentication failure - this is likely a JWT secret mismatch
+					incrementAuthFailure('jwt_secret_mismatch', 'WebSocket authentication failed - possible JWT secret mismatch')
+
+					// Check if we should stop trying to reconnect due to persistent auth failures
+					const { authError } = useCollaborationStore.getState()
+					if (authError.isPersistent) {
+						console.warn('[Collaboration] Persistent authentication failures detected, stopping reconnection attempts')
+						socketInstance.disconnect()
+						setStatus('offline')
+						return
+					}
+
+					// Stop auto reconnection attempts on auth error and try token refresh
 					socketInstance.disconnect()
 					await handleTokenRefresh()
 				} else {
@@ -407,6 +423,13 @@ export function useCollaboration() {
 			socketInstance.on('connect', () => {
 				console.log('[Collaboration] Connected.')
 				setStatus('online')
+
+				// Only clear auth errors if this was not a JWT secret mismatch
+				// JWT secret mismatch is a persistent configuration issue that won't be resolved by connection success
+				const { authError } = useCollaborationStore.getState()
+				if (authError.type !== 'jwt_secret_mismatch') {
+					clearAuthError()
+				}
 
 				// Reset room join tracking on new connection
 				joinedRoomRef.current = null
@@ -487,6 +510,14 @@ export function useCollaboration() {
 		// Avoid reconnecting if already online or connecting
 		if (currentStatus === 'online' || currentStatus === 'connecting') {
 			console.log('[Collaboration] Already online or connecting, skipping connection attempt')
+			return
+		}
+
+		// Check if we should avoid reconnecting due to persistent auth failures
+		const { authError } = useCollaborationStore.getState()
+		if (authError.isPersistent && authError.type === 'jwt_secret_mismatch') {
+			console.warn('[Collaboration] Skipping connection attempt due to persistent JWT secret mismatch')
+			setStatus('offline')
 			return
 		}
 

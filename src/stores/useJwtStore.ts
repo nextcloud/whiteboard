@@ -12,6 +12,7 @@ import axios from '@nextcloud/axios'
 // @ts-expect-error - Type definitions issue with @nextcloud/router
 import { generateUrl } from '@nextcloud/router'
 import { useWhiteboardConfigStore } from './useWhiteboardConfigStore'
+import { useCollaborationStore } from './useCollaborationStore'
 
 const TOKEN_REFRESH_BUFFER = 90
 
@@ -43,6 +44,7 @@ interface JWTStore {
 	executeWithJWT: <T>(apiCall: (token: string) => Promise<T>) => Promise<T>
 	isTokenExpired: (roomId: string) => boolean
 	parseJwt: (token: string) => JwtPayload | null
+	validateJwtIntegrity: (token: string) => boolean
 	setupAutoRefresh: (roomId: string) => void
 	clearAutoRefresh: (roomId: string) => void
 	clearTokens: () => void
@@ -104,6 +106,50 @@ export const useJWTStore = create<JWTStore>()(
 				}
 			},
 
+			validateJwtIntegrity: (token) => {
+				try {
+					if (!isTokenFormatValid(token)) {
+						return false
+					}
+
+					const payload = get().parseJwt(token)
+					if (!payload) {
+						return false
+					}
+
+					// Additional integrity checks
+					const now = Math.floor(Date.now() / 1000)
+
+					// Check if token is not expired
+					if (payload.exp < now) {
+						console.warn('[JWTStore] Token validation failed: expired')
+						return false
+					}
+
+					// Check if token was issued in the past (not future)
+					if (payload.iat > now + 60) { // Allow 60 seconds clock skew
+						console.warn('[JWTStore] Token validation failed: issued in future')
+						return false
+					}
+
+					// Check required fields are present and valid
+					if (!payload.userid || typeof payload.userid !== 'string') {
+						console.warn('[JWTStore] Token validation failed: invalid userid')
+						return false
+					}
+
+					if (payload.fileId === undefined || typeof payload.fileId !== 'number') {
+						console.warn('[JWTStore] Token validation failed: invalid fileId')
+						return false
+					}
+
+					return true
+				} catch (e) {
+					console.error('[JWTStore] Error validating JWT integrity:', e)
+					return false
+				}
+			},
+
 			isTokenExpired: (roomId) => {
 				const { tokens, tokenExpiries } = get()
 				const token = tokens[roomId]
@@ -120,23 +166,43 @@ export const useJWTStore = create<JWTStore>()(
 			getJWT: async () => {
 				const { fileId } = useWhiteboardConfigStore.getState()
 
-				const { tokens, isTokenExpired, setupAutoRefresh, parseJwt } = get()
+				// Check if we have a persistent auth error - if so, don't try to get/refresh tokens
+				const { authError } = useCollaborationStore.getState()
+
+				if (authError.isPersistent) {
+					console.warn('[JWTStore] Persistent auth error detected, working in local-only mode')
+					useWhiteboardConfigStore.getState().setReadOnly(true)
+					return null
+				}
+
+				const { tokens, isTokenExpired, setupAutoRefresh, validateJwtIntegrity } = get()
 				const token = tokens[fileId]
 				const fileIdStr = String(fileId)
 
 				if (token) {
-					const payload = parseJwt(token)
+					// Use comprehensive validation instead of just parsing
+					const isValid = validateJwtIntegrity(token)
 
-					if (!payload) {
-						console.error('[JWTStore] Stored token is invalid')
+					if (!isValid) {
+						console.error('[JWTStore] Stored token failed integrity validation')
 						console.log('[JWTStore] Will attempt to refresh invalid token')
+
+						// This could indicate JWT secret mismatch
+						useCollaborationStore.getState().incrementAuthFailure(
+							'jwt_secret_mismatch',
+							'Stored JWT token failed integrity validation',
+						)
 
 						console.warn('[JWTStore] Invalid token, enforcing read-only mode until refresh completes')
 						useWhiteboardConfigStore.getState().setReadOnly(true)
 					} else if (!isTokenExpired(fileIdStr)) {
+						// Token is valid and not expired, parse it to get payload
+						const payload = get().parseJwt(token)
 
-						if (payload.fileId === fileId) {
-
+						if (!payload) {
+							console.error('[JWTStore] Failed to parse valid token')
+							useWhiteboardConfigStore.getState().setReadOnly(true)
+						} else if (payload.fileId === fileId) {
 							setupAutoRefresh(fileIdStr)
 
 							if (payload.isFileReadOnly !== undefined) {
@@ -147,12 +213,10 @@ export const useJWTStore = create<JWTStore>()(
 							return token
 						} else {
 							console.error(`[JWTStore] Stored token is for fileId ${payload.fileId}, but requested fileId is ${fileId}`)
-
 							useWhiteboardConfigStore.getState().setReadOnly(true)
 						}
 					} else {
 						console.log('[JWTStore] Token is expired, will attempt to refresh')
-
 						console.warn('[JWTStore] Using expired token, enforcing read-only mode until refresh completes')
 						useWhiteboardConfigStore.getState().setReadOnly(true)
 					}
@@ -183,6 +247,15 @@ export const useJWTStore = create<JWTStore>()(
 				const { fileId, publicSharingToken }
 					= useWhiteboardConfigStore.getState()
 
+				// Check if we have a persistent auth error - if so, don't try to refresh
+				const { authError } = useCollaborationStore.getState()
+
+				if (authError.isPersistent) {
+					console.warn('[JWTStore] Persistent auth error detected, skipping token refresh')
+					useWhiteboardConfigStore.getState().setReadOnly(true)
+					return null
+				}
+
 				try {
 					console.log(`[JWTStore] Refreshing JWT for room ${fileId}`)
 
@@ -205,13 +278,25 @@ export const useJWTStore = create<JWTStore>()(
 						return null
 					}
 
-					// Validate the token
-					const payload = get().parseJwt(token)
-					if (!payload || !payload.exp) {
-						console.error(
-							'[JWTStore] Invalid token payload:',
-							payload,
+					// Validate the token integrity
+					const isValid = get().validateJwtIntegrity(token)
+					if (!isValid) {
+						console.error('[JWTStore] Refreshed token failed integrity validation')
+
+						// This strongly suggests JWT secret mismatch between PHP and Node.js
+						useCollaborationStore.getState().incrementAuthFailure(
+							'jwt_secret_mismatch',
+							'Refreshed JWT token failed integrity validation - possible secret mismatch',
 						)
+
+						// Set read-only mode immediately
+						useWhiteboardConfigStore.getState().setReadOnly(true)
+						return null
+					}
+
+					const payload = get().parseJwt(token)
+					if (!payload) {
+						console.error('[JWTStore] Failed to parse validated token')
 						return null
 					}
 
@@ -239,6 +324,13 @@ export const useJWTStore = create<JWTStore>()(
 						`[JWTStore] JWT refreshed for room ${fileId}, expires at ${new Date(payload.exp * 1000).toISOString()}`,
 					)
 
+					// Only clear auth errors if this was not a JWT secret mismatch
+					// If it was a JWT secret mismatch, the new token will also fail validation
+					const { authError } = useCollaborationStore.getState()
+					if (authError.type !== 'jwt_secret_mismatch') {
+						useCollaborationStore.getState().clearAuthError()
+					}
+
 					// Update read-only state based on the new JWT
 					if (payload.isFileReadOnly !== undefined) {
 						console.log(`[JWTStore] JWT indicates ${payload.isFileReadOnly ? 'read-only' : 'write'} access`)
@@ -248,6 +340,18 @@ export const useJWTStore = create<JWTStore>()(
 					return token
 				} catch (error) {
 					console.error('[JWTStore] Error refreshing JWT:', error)
+
+					// Track authentication failures for better error detection
+					if (error instanceof Error && 'response' in error && error.response) {
+						const status = (error.response as any).status
+						if (status === 401 || status === 403) {
+							console.warn('[JWTStore] Authentication error during token refresh')
+							useCollaborationStore.getState().incrementAuthFailure(
+								'unauthorized',
+								'Authentication failed during token refresh',
+							)
+						}
+					}
 
 					// Log network errors but continue with the same error handling
 					if (error instanceof Error
@@ -294,7 +398,15 @@ export const useJWTStore = create<JWTStore>()(
 						throw new Error('Failed to obtain JWT token')
 					}
 
-					return await apiCall(token)
+					const result = await apiCall(token)
+
+					// Only clear auth errors if this was not a JWT secret mismatch
+					const { authError } = useCollaborationStore.getState()
+					if (authError.type !== 'jwt_secret_mismatch') {
+						useCollaborationStore.getState().clearAuthError()
+					}
+
+					return result
 				} catch (error) {
 					// Handle authentication errors (401/403)
 					if (
@@ -310,8 +422,23 @@ export const useJWTStore = create<JWTStore>()(
 						console.warn('[JWTStore] Authentication error, enforcing read-only mode')
 						useWhiteboardConfigStore.getState().setReadOnly(true)
 
-						// Always attempt to refresh the token regardless of connection state
+						// Track authentication failure for better error detection
+						const status = (error.response as any).status
+						const errorType = status === 401 ? 'token_expired' : 'unauthorized'
+						useCollaborationStore.getState().incrementAuthFailure(
+							errorType,
+							`Authentication failed with status ${status}`,
+						)
 
+						// Check if we have a persistent auth error before attempting refresh
+						const { authError } = useCollaborationStore.getState()
+						if (authError.isPersistent) {
+							console.warn('[JWTStore] Persistent auth error detected, not attempting token refresh')
+							useWhiteboardConfigStore.getState().setReadOnly(true)
+							throw new Error('Persistent authentication error - working in local-only mode')
+						}
+
+						// Always attempt to refresh the token regardless of connection state
 						console.log(
 							'[JWTStore] Token expired or invalid, refreshing and retrying...',
 						)
@@ -370,6 +497,14 @@ export const useJWTStore = create<JWTStore>()(
 				// Set up the timer
 				const timerId = window.setTimeout(async () => {
 					console.log(`[JWTStore] Auto-refresh timer triggered for room ${roomId}`)
+
+					// Check if we have a persistent auth error before auto-refreshing
+					const { authError } = useCollaborationStore.getState()
+					if (authError.isPersistent) {
+						console.warn('[JWTStore] Persistent auth error detected, skipping auto-refresh')
+						return
+					}
+
 					await refreshJWT()
 
 					// After refresh, set up the next auto-refresh
