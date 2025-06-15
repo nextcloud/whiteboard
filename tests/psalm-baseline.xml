@@ -58,6 +58,11 @@
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
   </file>
+  <file src="lib/Service/ExAppService.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
   <file src="lib/Service/ExceptionService.php">
     <ArgumentTypeCoercion>
       <code><![CDATA[$statusCode]]></code>
