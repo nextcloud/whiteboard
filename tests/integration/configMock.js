@@ -19,9 +19,6 @@ export function createConfigMock(customValues = {}) {
 		get JWT_SECRET_KEY() {
 			return mockValues.JWT_SECRET_KEY
 		},
-		get NEXTCLOUD_WEBSOCKET_URL() {
-			return mockValues.NEXTCLOUD_WEBSOCKET_URL
-		},
 		get NEXTCLOUD_URL() {
 			return mockValues.NEXTCLOUD_URL
 		},
