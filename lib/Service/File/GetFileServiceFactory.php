@@ -15,6 +15,7 @@ use OCA\Whiteboard\Model\PublicSharingUser;
 use OCA\Whiteboard\Model\User;
 use OCP\Files\IRootFolder;
 use OCP\Share\IManager as ShareManager;
+use Psr\Log\LoggerInterface;
 
 /**
  * @psalm-suppress UndefinedDocblockClass
@@ -25,12 +26,13 @@ final class GetFileServiceFactory {
 	public function __construct(
 		private IRootFolder $rootFolder,
 		private ShareManager $shareManager,
+		private LoggerInterface $logger,
 	) {
 	}
 
 	public function create(User $user, int $fileId): GetFileService {
 		if ($user instanceof AuthenticatedUser) {
-			return new GetFileFromIdService($this->rootFolder, $user->getUID(), $fileId);
+			return new GetFileFromIdService($this->rootFolder, $user->getUID(), $fileId, $this->logger);
 		}
 
 		if ($user instanceof PublicSharingUser) {

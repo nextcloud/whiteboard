@@ -27,7 +27,7 @@ export default class SocketManager {
 			transports: ['websocket', 'polling'],
 			maxHttpBufferSize: Config.MAX_UPLOAD_FILE_SIZE + 1e6,
 			cors: {
-				origin: Config.NEXTCLOUD_WEBSOCKET_URL,
+				origin: Config.CORS_ORIGINS,
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 				credentials: true,
 			},
@@ -92,6 +92,7 @@ export default class SocketManager {
 
 			next()
 		} catch (error) {
+			console.debug(`[AUTH] Authentication failed for socket ${socket.id}: ${error.message}`)
 			await this.handleAuthError(socket, next)
 		}
 	}
