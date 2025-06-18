@@ -109,6 +109,27 @@ export default function App({
 	// Use the board data manager hook
 	const { saveOnUnmount, isLoading } = useBoardDataManager()
 
+	// Effect to handle fileId changes - cleanup previous board data
+	useEffect(() => {
+		console.log('[App] FileId changed to:', fileId)
+
+		// Clear any existing Excalidraw data when fileId changes
+		if (excalidrawAPI) {
+			console.log('[App] Clearing Excalidraw data for fileId change')
+			excalidrawAPI.resetScene()
+		}
+
+		// Reset the initialDataPromise to ensure clean state
+		resetInitialDataPromise()
+
+		return () => {
+			// Save current board data before switching
+			if (excalidrawAPI) {
+				saveOnUnmount()
+			}
+		}
+	}, [fileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount])
+
 	useEffect(() => {
 		resetInitialDataPromise()
 		console.log('[App] Reset initialDataPromise on mount')
