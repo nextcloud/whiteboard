@@ -6,7 +6,7 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
@@ -19,13 +19,17 @@ import { initialDataState } from '../App'
 
 export function useBoardDataManager() {
 	const [isLoading, setIsLoading] = useState(true)
+	const loadingTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set())
+	const currentFileIdRef = useRef<number | null>(null)
 
 	const {
 		fileId,
 		resolveInitialData,
+		resetInitialDataPromise,
 	} = useWhiteboardConfigStore(useShallow(state => ({
 		fileId: state.fileId,
 		resolveInitialData: state.resolveInitialData,
+		resetInitialDataPromise: state.resetInitialDataPromise,
 	})))
 
 	const fetchDataFromServer = useCallback(async (fileId: number) => {
@@ -69,6 +73,12 @@ export function useBoardDataManager() {
 		}
 	}, [])
 
+	// Cleanup function to cancel all pending timeouts
+	const cancelPendingTimeouts = useCallback(() => {
+		loadingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout))
+		loadingTimeoutsRef.current.clear()
+	}, [])
+
 	const loadBoard = useCallback(async () => {
 		if (!fileId) {
 			console.warn('[BoardDataManager] No fileId provided, cannot load data')
@@ -76,6 +86,9 @@ export function useBoardDataManager() {
 			setIsLoading(false)
 			return
 		}
+
+		// Store the current fileId to validate later
+		currentFileIdRef.current = fileId
 
 		console.log('[BoardDataManager] Loading data for fileId:', fileId)
 		try {
@@ -86,6 +99,13 @@ export function useBoardDataManager() {
 			}
 
 			const localData = await db.get(fileId)
+
+			// Validate that we're still loading the same file
+			if (currentFileIdRef.current !== fileId) {
+				console.log('[BoardDataManager] FileId changed during load, aborting')
+				return
+			}
+
 			let shouldUseLocalData = false
 			let shouldFetchFromServer = false
 
@@ -124,6 +144,12 @@ export function useBoardDataManager() {
 			if (shouldFetchFromServer) {
 				serverData = await fetchDataFromServer(fileId)
 
+				// Validate that we're still loading the same file
+				if (currentFileIdRef.current !== fileId) {
+					console.log('[BoardDataManager] FileId changed during server fetch, aborting')
+					return
+				}
+
 				if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
 					console.log('[BoardDataManager] Using data from server and saving to IndexedDB')
 
@@ -142,6 +168,12 @@ export function useBoardDataManager() {
 				}
 			}
 
+			// Final validation before resolving data
+			if (currentFileIdRef.current !== fileId) {
+				console.log('[BoardDataManager] FileId changed before data resolution, aborting')
+				return
+			}
+
 			// Determine which data to use
 			if (shouldUseLocalData && localData) {
 				// Use local data
@@ -152,16 +184,21 @@ export function useBoardDataManager() {
 				console.log(`[BoardDataManager] Loading data from local storage: ${elements.length} elements, ${Object.keys(files).length} files`)
 
 				// Force a small delay to ensure the component is ready to receive the data
-				setTimeout(() => {
-					resolveInitialData({
-						elements,
-						appState: finalAppState,
-						files,
-						scrollToContent: true,
-					})
-					console.log('[BoardDataManager] Loaded data from local storage with merged settings')
-					setIsLoading(false)
+				const timeout = setTimeout(() => {
+					// Validate one more time before resolving
+					if (currentFileIdRef.current === fileId) {
+						resolveInitialData({
+							elements,
+							appState: finalAppState,
+							files,
+							scrollToContent: true,
+						})
+						console.log('[BoardDataManager] Loaded data from local storage with merged settings')
+						setIsLoading(false)
+					}
+					loadingTimeoutsRef.current.delete(timeout)
 				}, 50)
+				loadingTimeoutsRef.current.add(timeout)
 			} else if (serverData && serverData.elements) {
 				// Use server data
 				const elements = serverData.elements
@@ -171,32 +208,47 @@ export function useBoardDataManager() {
 				console.log(`[BoardDataManager] Loading data from server: ${elements.length} elements, ${Object.keys(files || {}).length} files`)
 
 				// Force a small delay to ensure the component is ready to receive the data
-				setTimeout(() => {
-					resolveInitialData({
-						elements,
-						appState: finalAppState,
-						files,
-						scrollToContent: true,
-					})
-					console.log('[BoardDataManager] Loaded data from server with merged settings')
-					setIsLoading(false)
+				const timeout = setTimeout(() => {
+					// Validate one more time before resolving
+					if (currentFileIdRef.current === fileId) {
+						resolveInitialData({
+							elements,
+							appState: finalAppState,
+							files,
+							scrollToContent: true,
+						})
+						console.log('[BoardDataManager] Loaded data from server with merged settings')
+						setIsLoading(false)
+					}
+					loadingTimeoutsRef.current.delete(timeout)
 				}, 50)
+				loadingTimeoutsRef.current.add(timeout)
 			} else {
 				// No valid data from either source, use defaults
 				console.log('[BoardDataManager] No valid data found in local storage or server, using defaults')
 				// Force a small delay to ensure the component is ready to receive the data
-				setTimeout(() => {
-					resolveInitialData(initialDataState)
-					setIsLoading(false)
+				const timeout = setTimeout(() => {
+					// Validate one more time before resolving
+					if (currentFileIdRef.current === fileId) {
+						resolveInitialData(initialDataState)
+						setIsLoading(false)
+					}
+					loadingTimeoutsRef.current.delete(timeout)
 				}, 50)
+				loadingTimeoutsRef.current.add(timeout)
 			}
 		} catch (error) {
 			console.error('[BoardDataManager] Error loading data:', error)
 			// Force a small delay to ensure the component is ready to receive the data
-			setTimeout(() => {
-				resolveInitialData(initialDataState)
-				setIsLoading(false)
+			const timeout = setTimeout(() => {
+				// Validate one more time before resolving
+				if (currentFileIdRef.current === fileId) {
+					resolveInitialData(initialDataState)
+					setIsLoading(false)
+				}
+				loadingTimeoutsRef.current.delete(timeout)
 			}, 50)
+			loadingTimeoutsRef.current.add(timeout)
 		}
 	}, [fileId, resolveInitialData, fetchDataFromServer])
 
@@ -262,10 +314,30 @@ export function useBoardDataManager() {
 	// Load data when fileId changes
 	useEffect(() => {
 		if (fileId) {
+			// Cancel any pending timeouts from previous loads
+			cancelPendingTimeouts()
+
+			// Reset the initialDataPromise to ensure clean state
+			resetInitialDataPromise()
+
+			// Clear any existing Excalidraw data
+			const api = useExcalidrawStore.getState().excalidrawAPI
+			if (api) {
+				console.log('[BoardDataManager] Clearing existing Excalidraw data before loading new board')
+				api.resetScene()
+			}
+
 			setIsLoading(true)
 			loadBoard()
 		}
-	}, [fileId, loadBoard])
+	}, [fileId, loadBoard, cancelPendingTimeouts, resetInitialDataPromise])
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			cancelPendingTimeouts()
+		}
+	}, [cancelPendingTimeouts])
 
 	return {
 		isLoading,
