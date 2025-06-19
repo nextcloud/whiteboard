@@ -14,8 +14,13 @@ import { viewportCoordsToSceneCoords } from '@excalidraw/excalidraw'
 import { getViewPortCenter, moveElementsAroundCoords } from '../utils'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import { getCapabilities } from '@nextcloud/capabilities'
 
 export function useAssistant() {
+	const capabilities = getCapabilities() as { assistant?: { version: string, enabled: boolean } }
+	if (!capabilities.assistant?.enabled) {
+		return { renderAssistant: () => {} }
+	}
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow((state) => ({
 			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),

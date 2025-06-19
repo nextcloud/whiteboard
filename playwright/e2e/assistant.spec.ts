@@ -65,7 +65,7 @@ test('Assistant Button', async ({ page }) => {
 	await page.getByRole('button', { name: 'Create' }).click()
 	await expect(page.getByText('Drawing canvas')).toBeVisible()
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
-	await page.getByRole('textbox', { name: 'Assistant' }).fill('abc')
+	await page.getByRole('textbox', { name: 'Query' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()
 	await page.getByRole('button', { name: 'submit' }).click()
 })
@@ -76,7 +76,7 @@ test('Show Mermaid render Error', async ({ page }) => {
 	await page.getByRole('button', { name: 'Create' }).click()
 	await expect(page.getByText('Drawing canvas')).toBeVisible()
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
-	await page.getByRole('textbox', { name: 'Assistant' }).fill('abc')
+	await page.getByRole('textbox', { name: 'Query' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()
 	await page.getByRole('textbox', { name: 'Generated mermaid' }).click()
 	await page
