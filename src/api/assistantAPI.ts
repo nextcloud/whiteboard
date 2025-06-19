@@ -17,10 +17,11 @@ async function getTaskResponse(taskId: number) {
 }
 
 export async function ScheduleTask(prompt: string): Promise<AxiosResponse> {
+	const wrappedPrompt = `You have to generaid mermaid diagrams! never generate anything else! Always use mermaid syntax! and do not include any other text or explanation. Also do not use the backticks to indicate you are generating mermaid. This is the user-prompt for the requested diagram: ${prompt}`
 	return new Promise((resolve, reject) => {
 		axios
 			.post('/ocs/v2.php/taskprocessing/schedule', {
-				input: { input: prompt },
+				input: { input: wrappedPrompt },
 				type: 'core:text2text',
 				appId: 'whiteboard',
 			})

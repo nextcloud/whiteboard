@@ -88,23 +88,28 @@ export default defineComponent({
 <template>
 	<NcModal v-if="show"
 		:can-close="true"
-		size="large"
+		size="normal"
 		@close="onCancel">
 		<div class="assistant-dialog">
 			<div v-if="!waitingForTask && !taskResponse">
-				<NcTextField ref="assistantDialog"
-					v-model="assistantQuery"
-					label="Assistant"
-					type="text" />
-				<div class="dialog-buttons">
-					<NcButton type="submit"
-						@click="onCancel">
-						Close
-					</NcButton>
-					<NcButton type="submit" @click="onGetTask">
-						Generate
-					</NcButton>
-				</div>
+				<h2>
+					Generate diagram
+				</h2>
+				<form @submit.prevent="onGetTask">
+					<NcTextField ref="assistantDialog"
+						v-model="assistantQuery"
+						label="Query"
+						aria-placeholder="Flowchart, sequence diagram..."
+						type="text" />
+					<div class="dialog-buttons">
+						<NcButton @click="onCancel">
+							Close
+						</NcButton>
+						<NcButton type="submit">
+							Generate
+						</NcButton>
+					</div>
+				</form>
 			</div>
 			<div v-else-if="!waitingForTask && taskResponse" class="preview-wrapper">
 				<div class="preview">
@@ -115,7 +120,7 @@ export default defineComponent({
 						resize="none"
 						type="text"
 						@change="loadPreviewMermaid" />
-					<div class="preview-canvas-wrapper">
+					<div v-show="!mermaidError" class="preview-canvas-wrapper">
 						<div ref="canvasRef" class="assistant-mermaid-preview" />
 					</div>
 					<div v-if="mermaidError" class="mermaid-error">
@@ -156,6 +161,9 @@ export default defineComponent({
 }
 </style>
 <style scoped lang="scss">
+h2{
+	text-align: center;
+}
 .preview-button{
 	height: 1rem;
 }
@@ -164,9 +172,12 @@ export default defineComponent({
 	display: flex;
 	flex-direction: column;
 	justify-content: space-evenly;
+	overflow: hidden;
 }
 .preview-wrapper{
 	height: 100%;
+	min-height: 50vh;
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
@@ -176,6 +187,7 @@ export default defineComponent({
 
 .preview{
 	height: 90%;
+	overflow: hidden;
 	display: flex;
 	flex-direction: row;
 	align-items: flex-start;
@@ -183,7 +195,10 @@ export default defineComponent({
 
 .generated{
 	width: 50%;
+	margin-block-start: 0;
 	height: 100%;
+	padding-block-start: 6px;
+	box-sizing: border-box;
 }
 
 .preview-canvas-wrapper{
