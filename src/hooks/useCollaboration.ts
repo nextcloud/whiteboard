@@ -6,12 +6,11 @@
 /* eslint-disable no-console */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import type { ExcalidrawElement, ExcalidrawImageElement } from '@excalidraw/excalidraw/types/element/types'
 import type {
 	AppState,
 	BinaryFileData,
 	Collaborator,
-	ExcalidrawImageElement,
 } from '@excalidraw/excalidraw/types/types'
 import { restoreElements } from '@excalidraw/excalidraw'
 import { reconcileElements } from '../util'
@@ -48,9 +47,10 @@ export function useCollaboration() {
 		})),
 	)
 
-	const { fileId } = useWhiteboardConfigStore(
+	const { fileId, collabBackendUrl } = useWhiteboardConfigStore(
 		useShallow(state => ({
 			fileId: state.fileId,
+			collabBackendUrl: state.collabBackendUrl,
 		})),
 	)
 
@@ -94,7 +94,7 @@ export function useCollaboration() {
 					const missingImages = restoredRemoteElements
 						.filter(el => el.type === 'image'
 							&& (el as ExcalidrawImageElement).fileId
-							&& !currentFiles[(el as ExcalidrawImageElement).fileId])
+							&& !currentFiles[(el as ExcalidrawImageElement).fileId!])
 
 					// Request each missing image
 					missingImages.forEach(el => {
@@ -538,7 +538,6 @@ export function useCollaboration() {
 		try {
 			setStatus('connecting')
 			// Get collaboration backend URL from the WhiteboardConfigStore
-			const collabBackendUrl = useWhiteboardConfigStore.getState().collabBackendUrl
 			if (!collabBackendUrl) throw new Error('Collaboration backend URL missing.')
 
 			const token = await getJWT()
@@ -564,12 +563,12 @@ export function useCollaboration() {
 			const newSocket = io(url.origin, {
 				path,
 				auth: { token },
-				transports: ['websocket'],
+				transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
 				reconnection: true, // Enable auto reconnect
 				reconnectionDelay: 1000, // Start with 1s delay
 				reconnectionDelayMax: 10000, // Max 10s delay between reconnection attempts
 				reconnectionAttempts: Infinity, // Never stop trying to reconnect
-				// Enable per-message deflate compression
+				// Enable per-message deflate compression for websocket (ignored for polling)
 				perMessageDeflate: {
 					threshold: 1024, // Only compress messages larger than 1KB
 					zlibDeflateOptions: {
@@ -598,7 +597,7 @@ export function useCollaboration() {
 		}
 	}, [
 		getJWT, setStatus, setSocket, setupSocketEventHandlers,
-		fileId,
+		fileId, collabBackendUrl,
 	])
 
 	useEffect(() => {
