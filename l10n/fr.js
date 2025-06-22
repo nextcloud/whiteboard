@@ -14,6 +14,7 @@ OC.L10N.register(
     "Whiteboard server URL" : "URL du serveur du tableau blanc",
     "Shared secret" : "Secret partagé",
     "Save settings" : "Enregistrer les paramètres",
-    "Advanced settings" : "Paramètres avancés"
+    "Advanced settings" : "Paramètres avancés",
+    "Max file size" : "Taille de fichier maximale"
 },
 "nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
