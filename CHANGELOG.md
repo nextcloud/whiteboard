@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.1
+
+### Fixed
+* Fix data leaked between boards by @hweihwang in https://github.com/nextcloud/whiteboard/pull/510
+
+### Other
+* Update translations from Transifex
+
 ## 1.1.0
 
 ### Fixed
