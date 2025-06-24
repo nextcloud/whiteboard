@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+
+### Fixed
+* Fix admin connectivity checks by @hweihwang in https://github.com/nextcloud/whiteboard/pull/527
+
 ## 1.1.1
 
 ### Fixed
