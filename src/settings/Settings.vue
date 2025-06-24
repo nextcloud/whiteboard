@@ -4,12 +4,12 @@
 -->
 <template>
 	<div>
-		<NcSettingsSection :name="t('whiteboard', 'Whiteboard server')">
+		<NcSettingsSection :name="t('whiteboard', 'Real-time collaboration server')">
 			<NcNoteCard v-if="!loading && setupCheck !== null" :type="setupCheck.severity">
 				{{ setupCheck.description }}
 			</NcNoteCard>
 			<NcNoteCard v-else-if="!loading && validConnection === true" type="success">
-				{{ t('whiteboard', 'Whiteboard backend server is configured and connected.') }}
+				{{ t('whiteboard', 'WebSocket server for real-time collaboration is configured and connected.') }}
 			</NcNoteCard>
 			<NcNoteCard v-else-if="!loading && validConnection === false" type="error">
 				{{ t('whiteboard', 'Failed to verify the connection:') }} {{ connectionError }}
@@ -21,33 +21,24 @@
 			</NcNoteCard>
 
 			<p>
-				{{ t('whiteboard', 'Whiteboard requires a separate collaboration server that is connected to Nextcloud.') }}
-				<a href="https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend"
+				{{ t('whiteboard', 'The WebSocket server handles real-time collaboration sessions between users. Basic whiteboard functionality works without it, but real-time collaboration requires this server to be running and accessible from users\' browsers.') }}
+			</p>
+			<p>
+				<a href="https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server-for-real-time-collaboration"
 					rel="noreferrer noopener"
 					target="_blank"
-					class="external">{{ t('whiteboard', 'See the documentation on how to install it.') }}</a>
+					class="external">{{ t('whiteboard', 'See the documentation on how to install and configure the WebSocket server.') }}</a>
 			</p>
 			<form @submit.prevent="submit">
 				<p>
-					<NcTextField :label="t('whiteboard', 'Whiteboard server URL')"
+					<NcTextField :label="t('whiteboard', 'WebSocket server URL')"
 						:value.sync="serverUrl"
-						:helper-text="t('whiteboard', 'This URL is used by the browser to connect to the whiteboard server.')" />
-				</p>
-				<p>
-					<NcTextField :label="t('whiteboard', 'Internal whiteboard server URL')"
-						:value.sync="serverUrlInternal"
-						:placeholder="serverUrl"
-						:helper-text="t('whiteboard', 'This URL is used by the Nextcloud server to connect to the whiteboard server.')" />
-				</p>
-				<p>
-					<NcCheckboxRadioSwitch type="switch"
-						:checked.sync="skipTlsVerify">
-						{{ t('whiteboard', 'Skip TLS certificate validation (not recommended)') }}
-					</NcCheckboxRadioSwitch>
+						:helper-text="t('whiteboard', 'URL where the WebSocket server for real-time collaboration is running. Must be accessible from users\' browsers.')" />
 				</p>
 				<p>
 					<NcTextField :label="t('whiteboard', 'Shared secret')"
-						:value.sync="secret" />
+						:value.sync="secret"
+						:helper-text="t('whiteboard', 'JWT secret key shared between Nextcloud and the WebSocket server for secure authentication.')" />
 				</p>
 				<p>
 					<NcButton type="submit"
@@ -74,7 +65,6 @@ import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import NcSettingsSection from '@nextcloud/vue/dist/Components/NcSettingsSection.js'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
@@ -86,16 +76,13 @@ export default {
 		NcButton,
 		NcLoadingIcon,
 		NcNoteCard,
-		NcCheckboxRadioSwitch,
 		NcSettingsSection,
 	},
 	data() {
 		return {
 			serverUrl: loadState('whiteboard', 'url', ''),
-			serverUrlInternal: loadState('whiteboard', 'urlInternal', ''),
 			secret: loadState('whiteboard', 'secret', ''),
 			maxFileSize: loadState('whiteboard', 'maxFileSize', 10),
-			skipTlsVerify: loadState('whiteboard', 'skipTlsVerify', false),
 			validConnection: undefined,
 			connectionError: undefined,
 			loadingSettings: false,
@@ -118,10 +105,8 @@ export default {
 		async submit() {
 			const data = await this.callSettings({
 				serverUrl: this.serverUrl,
-				serverUrlInternal: this.serverUrlInternal,
 				secret: this.secret,
 				maxFileSize: this.maxFileSize,
-				skipTlsVerify: this.skipTlsVerify,
 			})
 			await this.verifyConnection(data)
 		},
