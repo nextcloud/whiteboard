@@ -56,7 +56,7 @@ The server requires the `NEXTCLOUD_URL` environment variable to be set to the UR
 The server can be run in a container using the following command:
 
 ```bash
-docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --rm ghcr.io/nextcloud-releases/whiteboard:release
+docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --rm ghcr.io/nextcloud-releases/whiteboard:stable
 ```
 
 Docker compose can also be used to run the server:
@@ -65,7 +65,7 @@ Docker compose can also be used to run the server:
 version: '3.7'
 services:
   nextcloud-whiteboard-server:
-    image: ghcr.io/nextcloud-releases/whiteboard:release
+    image: ghcr.io/nextcloud-releases/whiteboard:stable
     ports:
       - 3002:3002
     environment:
