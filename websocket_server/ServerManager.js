@@ -82,8 +82,8 @@ export default class ServerManager {
 
 	start() {
 		return new Promise((resolve, reject) => {
-			this.server.listen(Config.PORT, () => {
-				console.log(`Listening on port: ${Config.PORT}`)
+			this.server.listen(Config.PORT, '0.0.0.0', () => {
+				console.log(`Listening on port: ${Config.PORT} (all interfaces)`)
 				resolve()
 			})
 

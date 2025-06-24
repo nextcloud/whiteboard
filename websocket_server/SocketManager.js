@@ -83,8 +83,9 @@ export default class SocketManager {
 	}
 
 	async socketAuthenticateHandler(socket, next) {
+		const { token, secret } = socket.handshake.auth
+
 		try {
-			const { token } = socket.handshake.auth
 			if (!token) throw new Error('No token provided')
 
 			const decodedData = await this.verifyToken(token)
@@ -92,17 +93,33 @@ export default class SocketManager {
 
 			next()
 		} catch (error) {
-			console.debug(`[AUTH] Authentication failed for socket ${socket.id}: ${error.message}`)
+			// Check if this is an admin connectivity test (has secret but no token)
+			const isAdminConnectivityTest = !token && secret
+
+			if (isAdminConnectivityTest) {
+				console.debug(`[ADMIN] Connectivity test from socket ${socket.id}`)
+			} else {
+				console.debug(`[AUTH] Authentication failed for socket ${socket.id}: ${error.message}`)
+			}
+
 			await this.handleAuthError(socket, next)
 		}
 	}
 
 	async handleAuthError(socket, next) {
-		const { secret } = socket.handshake.auth
+		const { secret, token } = socket.handshake.auth
+		const isAdminConnectivityTest = !token && secret
+
 		try {
 			jwt.verify(secret, Config.JWT_SECRET_KEY, { algorithm: 'HS256' })
+			if (isAdminConnectivityTest) {
+				console.debug(`[ADMIN] Connectivity test successful for socket ${socket.id}`)
+			}
 			next(new Error('Connection verified'))
 		} catch (e) {
+			if (isAdminConnectivityTest) {
+				console.debug(`[ADMIN] Connectivity test failed for socket ${socket.id}: JWT secret mismatch`)
+			}
 			next(new Error('Authentication error'))
 		}
 	}

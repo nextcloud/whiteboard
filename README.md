@@ -7,85 +7,93 @@
 
 [![REUSE status](https://api.reuse.software/badge/github.com/nextcloud/whiteboard)](https://api.reuse.software/info/github.com/nextcloud/whiteboard)
 
-The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.
-
-You can create whiteboards in the files app and share and collaborate on them.
+The official whiteboard app for Nextcloud. Create and share whiteboards with real-time collaboration.
 
 ## Features
 
 - 🎨 Drawing shapes, writing text, connecting elements
-- 📝 Real-time collaboration
-- 💪 Strong foundation: We use [Excalidraw](https://github.com/excalidraw/excalidraw) as our base library
+- 📝 Real-time collaboration with semi-offline support
+- 💾 Client-first architecture with local storage
+- 🔄 Automatic sync between local and server storage
+- 🌐 Works semi-offline - changes saved locally and synced when online (websocker server configured successfully)
+- 💪 Built on [Excalidraw](https://github.com/excalidraw/excalidraw)
 
-## Backend
+## Architecture
 
-### Standalone websocket server for Nextcloud Whiteboard
+Nextcloud Whiteboard uses a **client-first architecture** that prioritizes browser-based functionality:
 
-Running the whiteboard server is required for the whiteboard to work. The server will handle real-time collaboration events and broadcast them to all connected clients, which means that the server must be accessible from the users browser, so exposing it for example throuhg a reverse proxy is necessary. It is intended to be used as a standalone service that can be run in a container.
+- **Browser-First**: All whiteboard functionality works directly in the browser
+- **Local Storage**: Changes are immediately saved to browser storage (IndexedDB)
+- **Real-time Collaboration**: WebSocket server handles live collaboration sessions
+- **Simplified Connectivity**: Only browsers need to connect to the websocket server
+- **Reduced Dependencies**: Websocket server is only needed for real-time collaboration, not basic functionality
 
-We require the following connectivity:
+## Installation & Setup
 
-- The whiteboard server needs to be able to reach the Nextcloud server over HTTP(S)
-- The Nextcloud server needs to be able to reach the whiteboard server over HTTP(S)
-- The user's browser needs to be able to reach the whiteboard server over HTTP(S) in the browser
-- Nextcloud and the whiteboard server share a secret key to sign and verify JWTs
+### WebSocket Server for Real-time Collaboration
 
-On the Nextcloud side, the server must be configured through:
+The websocket server handles real-time collaboration sessions between users. **Important**: The websocket server is only needed for live collaboration - basic whiteboard functionality works without it.
+
+#### Connectivity Requirements
+
+**Essential (for real-time collaboration):**
+- User browsers need HTTP(S) access to the websocket server
+- Nextcloud and websocket server share a JWT secret for authentication
+
+#### Configuration
+
+Configure Nextcloud with the websocket server details: (Can be configured in the Nextcloud admin settings)
 
 ```bash
-occ config:app:set whiteboard collabBackendUrl --value="http://nextcloud.local:3002"
-occ config:app:set whiteboard jwt_secret_key --value="some-random"
+occ config:app:set whiteboard collabBackendUrl --value="https://nextcloud.local:3002"
+occ config:app:set whiteboard jwt_secret_key --value="some-random-secret"
 ```
 
-### Running the server
+### Running the WebSocket Server
 
-#### Local node
-
-This mode requires at least Node 20 and NPM 10 to be installed. You can clone this repository, checkout the release version matching your whiteboard app.
-The server can be run locally using the following command:
+#### Node.js
 
 ```bash
 npm ci
-JWT_SECRET_KEY="some-random" NEXTCLOUD_URL=http://nextcloud.local npm run server:start
+JWT_SECRET_KEY="some-random-secret" NEXTCLOUD_URL=https://nextcloud.local npm run server:start
 ```
 
 #### Docker
 
-The server requires the `NEXTCLOUD_URL` environment variable to be set to the URL of the Nextcloud instance that the Whiteboard app is installed on. The server will connect to the Nextcloud instance and listen for whiteboard events.
-
-The server can be run in a container using the following command:
-
 ```bash
-docker run -e JWT_SECRET_KEY=some-random -e NEXTCLOUD_URL=https://nextcloud.local --rm ghcr.io/nextcloud-releases/whiteboard:release
+docker run -e JWT_SECRET_KEY=some-random-secret -e NEXTCLOUD_URL=https://nextcloud.local -p 3002:3002 --rm ghcr.io/nextcloud-releases/whiteboard:release
 ```
 
-Docker compose can also be used to run the server:
+Or using Docker Compose:
 
 ```yaml
-version: '3.7'
 services:
-  nextcloud-whiteboard-server:
+  whiteboard-server:
     image: ghcr.io/nextcloud-releases/whiteboard:release
     ports:
-      - 3002:3002
+      - "3002:3002"
     environment:
-      - NEXTCLOUD_URL=https://nextcloud.local
-      - JWT_SECRET_KEY=some-random-key
-      
+      NEXTCLOUD_URL: https://nextcloud.local
+      JWT_SECRET_KEY: some-random-secret
 ```
 
-#### Building the image locally
+**Environment Variables:**
+- `JWT_SECRET_KEY`: Must match the secret configured in Nextcloud
+- `NEXTCLOUD_URL`: Used for JWT token validation (not for server-to-server communication)
 
-While we publish image on the GitHub container registry you can build the image locally using the following command:
+## Reverse Proxy Configuration
 
-```bash
-docker build -t nextcloud-whiteboard-server -f Dockerfile .
+If running the websocket server manually, configure your reverse proxy to expose it:
+
+<details>
+<summary>Apache Configuration</summary>
+
+**Apache >= 2.4.47:**
+```apache
+ProxyPass /whiteboard/ http://localhost:3002/ upgrade=websocket
 ```
 
-### Reverse proxy
-
-#### Apache < 2.4.47
-
+**Apache < 2.4.47:**
 ```apache
 ProxyPass /whiteboard/ http://localhost:3002/
 RewriteEngine on
@@ -93,151 +101,111 @@ RewriteCond %{HTTP:Upgrade} websocket [NC]
 RewriteCond %{HTTP:Connection} upgrade [NC]
 RewriteRule ^/?whiteboard/(.*) "ws://localhost:3002/$1" [P,L]
 ```
+</details>
 
-#### Apache >= 2.4.47
-
-```apache
-ProxyPass /whiteboard/ http://localhost:3002/ upgrade=websocket
-```
-
-#### Nginx
+<details>
+<summary>Nginx Configuration</summary>
 
 ```nginx
 location /whiteboard/ {
-	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-	proxy_set_header Host $host;
-	
-	proxy_pass http://localhost:3002/;
-	
-	proxy_http_version 1.1;
-	proxy_set_header Upgrade $http_upgrade;
-	proxy_set_header Connection "upgrade";
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host $host;
+    proxy_pass http://localhost:3002/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
 }
 ```
+</details>
 
-#### Caddy v2
+<details>
+<summary>Other Reverse Proxies</summary>
 
+**Caddy v2:**
 ```caddy
 handle_path /whiteboard/* {
     reverse_proxy http://127.0.0.1:3002
 }
 ```
 
-#### Traefik v3
-
-As lables for Docker & Swarm:
-
+**Traefik v3:**
 ```yaml
 - traefik.http.services.whiteboard.loadbalancer.server.port=3002
 - traefik.http.middlewares.strip-whiteboard.stripprefix.prefixes=/whiteboard
 - traefik.http.routers.whiteboard.rule=Host(`nextcloud.example.com`) && PathPrefix(`/whiteboard`)
 - traefik.http.routers.whiteboard.middlewares=strip-whiteboard
 ```
+</details>
 
-## Storage Strategies and Scaling
+## WebSocket Server Configuration
 
-The whiteboard application supports two storage strategies: LRU (Least Recently Used) cache and Redis. Each strategy has its own characteristics and is suitable for different deployment scenarios.
+The websocket server handles real-time collaboration sessions (not critical whiteboard data):
 
-### Storage Strategies
+### Collaboration Data Storage
 
-#### 1. LRU (Least Recently Used) Cache
+**LRU Cache (Default)**
+- In-memory session storage, simple setup
+- Suitable for most deployments
+- Session data cleared on restart (whiteboard data remains safe in Nextcloud/local storage)
 
-The LRU cache strategy is an in-memory storage solution that keeps the most recently used items in memory while automatically removing the least recently used items when the cache reaches its capacity.
-
-**Advantages:**
-- Simple setup with no additional infrastructure required
-- Fast read and write operations
-- Suitable for single-node deployments
-
-**Limitations:**
-- Limited by available memory on the server
-- Data is not persistent across server restarts
-- Not suitable for multi-node deployments
-
-**Configuration:**
-To use the LRU cache strategy, set the following in your `.env` file:
-
-```
+```bash
 STORAGE_STRATEGY=lru
 ```
 
-**Resources:**
-- [LRU Cache in Node.js](https://www.npmjs.com/package/lru-cache)
+**Redis**
+- For multi-server setups or session persistence
+- Enables horizontal scaling with Redis Streams
 
-#### 2. Redis
-
-Redis is an in-memory data structure store that can be used as a database, cache, and message broker. It provides persistence and supports distributed setups.
-
-**Advantages:**
-- Persistent storage
-- Supports multi-node deployments
-- Allows for horizontal scaling
-
-**Limitations:**
-- Requires additional infrastructure setup and maintenance
-- Slightly higher latency compared to LRU cache for single-node setups
-
-**Configuration:**
-To use the Redis strategy, set the following in your `.env` file:
-
-```
+```bash
 STORAGE_STRATEGY=redis
 REDIS_URL=redis://[username:password@]host[:port][/database_number]
 ```
 
-Replace the `REDIS_URL` with your actual Redis server details.
+### Scaling (Optional)
 
-### Scaling and Deployment
+For high-traffic environments with multiple websocket servers:
 
-#### Single-Node Deployment
+1. Use Redis for shared session state
+2. Configure load balancer with session stickiness
+3. Redis Streams handles WebSocket scaling automatically
 
-For small to medium-sized deployments, a single-node setup can be sufficient:
+## Troubleshooting
 
-1. Choose either LRU or Redis strategy based on your persistence needs.
-2. Configure the `.env` file with the appropriate `STORAGE_STRATEGY`.
-3. If using Redis, ensure the Redis server is accessible and configure the `REDIS_URL`.
-4. Start the whiteboard server.
+### Connection Issues
 
-#### Multi-Node Deployment (Clustered Setup)
+**Real-time Collaboration Not Working**
+- Verify JWT secrets match between Nextcloud and websocket server
+- Check that user browsers can access the websocket server URL
+- Ensure reverse proxy correctly handles WebSocket upgrades
+- Check browser console for connection errors
 
-For larger deployments requiring high availability and scalability, a multi-node setup is recommended:
+### Known Issues
 
-1. Use the Redis storage strategy.
-2. Set up a Redis cluster or a managed Redis service.
-3. Configure each node's `.env` file with:
-   ```
-   STORAGE_STRATEGY=redis
-   REDIS_URL=redis://[username:password@]host[:port][/database_number]
-   ```
-4. Set up a load balancer to distribute traffic across the nodes.
-5. Ensure all nodes can access the same Redis instance or cluster.
+**Legacy Integration App Conflict**
+If you previously had `integration_whiteboard` installed, remove any whiteboard entries from `config/mimetypealiases.json` and run:
+```bash
+occ maintenance:mimetype:update-db
+occ maintenance:mimetype:update-js
+```
 
-#### Scaling WebSocket Connections
+**Misleading Admin Errors**
+Admin connectivity checks may show false negatives in Docker/proxy environments. These errors don't affect actual functionality since the architecture is client-first. Focus on browser-based connectivity tests instead.
 
-The whiteboard application uses the Redis Streams adapter for scaling WebSocket connections across multiple nodes. This adapter leverages Redis Streams, not the Redis Pub/Sub mechanism, for improved performance and scalability.
+## Development
 
-When using the Redis strategy, the application automatically sets up the Redis Streams adapter for WebSocket scaling. This allows multiple server instances to share WebSocket connections and real-time updates.
+To build the project locally:
 
-**Resources:**
-- [Socket.IO Redis Streams Adapter](https://socket.io/docs/v4/redis-streams-adapter/)
+```bash
+npm ci
+npm run build
+```
 
-#### Considerations for Multi-Node Setups
+For development with hot reload:
+```bash
+npm run watch
+```
 
-- **Load Balancing:** Set up a load balancer to distribute incoming connections across your server nodes.
-- **Session Stickiness:** While not strictly required for WebSocket transport, it's recommended to configure your load balancer to use session stickiness. This ensures that requests from a client are routed to the same server for the duration of a session, which can be beneficial if falling back to long polling.
-- **WebSocket Support:** Ensure your load balancer is configured to support WebSocket connections and maintain long-lived connections.
-- **Redis Setup:** The current implementation does not configure Redis Cluster. So if you need to use a Redis Cluster for high availability, you'll need to set up your own load balancer in front of your Redis Cluster nodes.
-- **Redis Connection:** The application currently supports only one Redis connection for both the storage layer and streaming/scaling the WebSocket server.
-- **Redis Persistence:** Configure Redis with appropriate persistence settings (e.g., RDB snapshots or AOF logs) to prevent data loss in case of Redis server restarts.
-- **Monitoring:** Implement monitoring for both your application nodes and Redis servers to quickly identify and respond to issues.
-
-### Choosing the Right Strategy
-
-- **LRU Cache:** Ideal for small deployments, development environments, or scenarios where data persistence across restarts is not critical.
-- **Redis:** Recommended for production environments, especially when scaling horizontally or when data persistence is required.
-
-By carefully considering your deployment needs and choosing the appropriate storage strategy, you can ensure optimal performance and scalability for your whiteboard application.
-
-### Known issues
-
-If the [integration_whiteboard](https://github.com/nextcloud/integration_whiteboard) app was previously installed there might be a leftover non-standard mimetype configured. In this case opening the whiteboard may fail and a file is downloaded instead. Make sure to remove any entry in config/mimetypealiases.json mentioning whiteboard and run `occ maintenance:mimetype:update-db` and `occ maintenance:mimetype:update-js`.
+To run the websocket server in development:
+```bash
+npm run server:watch
+```

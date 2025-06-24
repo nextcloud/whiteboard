@@ -50,40 +50,8 @@ final class ConfigService {
 		$this->appConfig->setAppValueString('collabBackendUrl', $collabBackendUrl);
 	}
 
-	public function getInternalCollabBackendUrl(bool $fallback = true): string {
-		if (!method_exists($this->appConfig, 'getAppValueString')) {
-			// Get internal URL from app config
-			$this->appConfig->getAppValue('collabBackendUrlInternal');
-		}
-
-		$internalUrl = $this->appConfig->getAppValueString('collabBackendUrlInternal');
-
-		if ($internalUrl !== '' || !$fallback) {
-			return $this->trimUrl($internalUrl);
-		}
-
-		return $this->getCollabBackendUrl();
-	}
-
 	private function trimUrl(string $url): string {
 		return rtrim(trim($url), '/');
-	}
-
-	public function setInternalCollabBackendUrl(string $collabBackendUrl): void {
-		if (!method_exists($this->appConfig, 'setAppValueString')) {
-			$this->appConfig->setAppValue('collabBackendUrlInternal', $collabBackendUrl);
-			return;
-		}
-
-		$this->appConfig->setAppValueString('collabBackendUrlInternal', $collabBackendUrl);
-	}
-
-	public function getSkipTlsVerify(): bool {
-		return $this->appConfig->getAppValueBool('skip_tls_verify', false);
-	}
-
-	public function setSkipTlsVerify(bool $skip): void {
-		$this->appConfig->setAppValueBool('skip_tls_verify', $skip);
 	}
 
 	public function getWhiteboardSharedSecret(): string {
