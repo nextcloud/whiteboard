@@ -5,7 +5,6 @@ OC.L10N.register(
     "Whiteboard" : "Pizarra blanca",
     "Failed to verify the connection:" : "No se pudo verificar la conexión:",
     "Verifying connection…" : "Verificando conexión…",
-    "See the documentation on how to install it." : "Consulte la documentación sobre cómo instalarlo.",
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuración",
     "Advanced settings" : "Configuración avanzada"

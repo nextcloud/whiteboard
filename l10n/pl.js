@@ -6,14 +6,11 @@ OC.L10N.register(
     "Whiteboard" : "Tablica",
     "Whiteboard app" : "Aplikacja tablicowa",
     "The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.\n\n**Whiteboard requires a separate collaboration server to work.** Please see the [documentation](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) on how to install it.\n\n- 🎨 Drawing shapes, writing text, connecting elements\n- 📝 Real-time collaboration\n- 🖼️ Add images with drag and drop\n- 📊 Easily add mermaid diagrams\n- ✨ Use the Smart Picker to embed other elements from Nextcloud\n- 📦 Image export\n- 💪 Strong foundation: We use Excalidraw as our base library" : "Oficjalna aplikacja tablicowa dla Nextcloud. Umożliwia użytkownikom tworzenie i udostępnianie tablic innym użytkownikom oraz współpracę w czasie rzeczywistym.\n\n**Tablica wymaga do działania oddzielnego serwera współpracy.** Zapoznaj się z [dokumentacją](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend), jak ją zainstalować.\n\n- 🎨 Rysowanie kształtów, pisanie tekstu, łączenie elementów\n- 📝 Współpraca w czasie rzeczywistym\n- 🖼️ Dodawaj obrazy metodą przeciągnij i upuść\n- 📊 Z łatwością dodawaj syrenie diagramy\n- ✨ Użyj inteligentnego wyboru, aby osadzić inne elementy z Nextcloud\n- 📦 Eksport obrazu\n- 💪 Mocny fundament: Używamy Excalidraw jako naszej podstawowej biblioteki",
-    "Whiteboard backend server is configured and connected." : "Serwer zaplecza tablicy jest skonfigurowany i podłączony.",
     "Failed to verify the connection:" : "Nie udało się zweryfikować połączenia:",
     "Verifying connection…" : "Weryfikacja połączenia…",
-    "Whiteboard requires a separate collaboration server that is connected to Nextcloud." : "Tablica wymaga osobnego serwera współpracy połączonego z Nextcloud.",
-    "See the documentation on how to install it." : "Zobacz dokumentację dotyczącą sposobu instalacji.",
-    "Whiteboard server URL" : "Adres URL serwera tablicy",
     "Shared secret" : "Klucz współdzielony",
     "Save settings" : "Zapisz ustawienia",
-    "Advanced settings" : "Ustawienia zaawansowane"
+    "Advanced settings" : "Ustawienia zaawansowane",
+    "Max file size" : "Maksymalny rozmiar pliku"
 },
 "nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);");
