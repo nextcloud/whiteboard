@@ -18,6 +18,7 @@ use OCA\Whiteboard\Service\ExceptionService;
 use OCA\Whiteboard\Service\File\GetFileServiceFactory;
 use OCA\Whiteboard\Service\JWTService;
 use OCA\Whiteboard\Service\WhiteboardContentService;
+use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -38,6 +39,7 @@ final class WhiteboardController extends ApiController {
 		private GetFileServiceFactory $getFileServiceFactory,
 		private JWTService $jwtService,
 		private WhiteboardContentService $contentService,
+		private WhiteboardLibraryService $libraryService,
 		private ExceptionService $exceptionService,
 		private ConfigService $configService,
 		private LoggerInterface $logger,
@@ -78,6 +80,37 @@ final class WhiteboardController extends ApiController {
 		} catch (Exception $e) {
 			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());
 
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function getLib(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$this->jwtService->getUserIdFromJWT($jwt);
+			$data = $this->libraryService->getUserLib();
+
+			return new DataResponse(['data' => $data]);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function updateLib(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$items = $this->request->getParam('items', []);
+			$this->libraryService->updateUserLib($userId, $items);
+
+			return new DataResponse(['status' => 'success']);
+		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
 		}
 	}
