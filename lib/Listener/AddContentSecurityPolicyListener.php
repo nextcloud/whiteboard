@@ -30,6 +30,7 @@ class AddContentSecurityPolicyListener implements IEventListener {
 
 		$policy->addAllowedConnectDomain('*');
 		$policy->addAllowedWorkerSrcDomain('*');
+		$policy->addAllowedFontDomain('*');
 
 		$event->addPolicy($policy);
 	}

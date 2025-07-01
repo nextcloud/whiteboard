@@ -20,7 +20,7 @@
     "start:nextcloud": "node playwright/start-nextcloud-server.mjs"
   },
   "dependencies": {
-    "@excalidraw/excalidraw": "^0.17.6",
+    "@excalidraw/excalidraw": "^0.18.0",
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
     "@mdi/svg": "^7.4.47",
@@ -89,7 +89,8 @@
       "@nextcloud/eslint-config/typescript"
     ],
     "rules": {
-      "jsdoc/require-jsdoc": "off"
+      "jsdoc/require-jsdoc": "off",
+      "import/no-unresolved": ["error", { "ignore": ["\\.css$"] }]
     }
   },
   "engines": {

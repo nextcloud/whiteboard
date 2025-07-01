@@ -8,6 +8,7 @@
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
+import '@excalidraw/excalidraw/index.css'
 import './App.scss'
 import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
