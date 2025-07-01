@@ -191,6 +191,29 @@
 	border-radius: var(--border-radius-large) !important;
 }
 
+.grid-toggle-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--color-background) !important;
+	padding: 8px !important;
+	border: 1px solid var(--color-border) !important;
+	border-radius: var(--border-radius-large) !important;
+	cursor: pointer;
+	transition: background-color 0.2s ease, box-shadow 0.2s ease;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	z-index: 10000; /* Ensure it's above other UI elements */
+	position: absolute;
+	top: 12px; /* Position at the top right corner */
+	right: 12px;
+
+	&:hover,
+	&.active {
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+		background-color: var(--color-background-hover) !important;
+	}
+}
+
 .network-status {
 	display: flex;
 	align-items: center;

@@ -26,6 +26,8 @@ import { useSyncStore } from './stores/useSyncStore'
 import { useLibrary } from './hooks/useLibrary'
 import { useShallow } from 'zustand/react/shallow'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
+import { Icon } from '@mdi/react'
+import { mdiGrid } from '@mdi/js'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -79,6 +81,7 @@ export default function App({
 		initialDataPromise,
 		resetInitialDataPromise,
 		resetStore,
+		setGridModeEnabled,
 	} = useWhiteboardConfigStore(useShallow(state => ({
 		setConfig: state.setConfig,
 		zenModeEnabled: state.zenModeEnabled,
@@ -86,6 +89,7 @@ export default function App({
 		initialDataPromise: state.initialDataPromise,
 		resetInitialDataPromise: state.resetInitialDataPromise,
 		resetStore: state.resetStore,
+		setGridModeEnabled: state.setGridModeEnabled,
 	})))
 
 	const { lang, updateLang } = useLangStore(useShallow(state => ({
@@ -231,6 +235,14 @@ export default function App({
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				<MemoizedNetworkStatusIndicator />
 				<MemoizedAuthErrorNotification />
+				<button
+					className={`grid-toggle-button ${gridModeEnabled ? 'active' : ''}`}
+					onClick={() => setGridModeEnabled(!gridModeEnabled)}
+					aria-pressed={gridModeEnabled}
+					title="Toggle grid mode"
+				>
+					<Icon path={mdiGrid} size={1} />
+				</button>
 				<Excalidraw
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
