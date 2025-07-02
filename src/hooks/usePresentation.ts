@@ -109,10 +109,10 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 				throw new Error('Invalid authentication token')
 			}
 
-			console.log('[Presentation] Emitting presentation-start event:', {
-				fileId: fileId.toString(),
-				userId: jwtPayload.userid,
-			})
+			// console.log('[Presentation] Emitting presentation-start event:', {
+			//  fileId: fileId.toString(),
+			//  userId: jwtPayload.userid,
+			// })
 
 			// Emit start presentation event
 			socket.emit('presentation-start', {
@@ -171,11 +171,11 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		if (newAutoFollow && presenterId) {
 			// Set followed user immediately to start following
 			useCollaborationStore.setState({ followedUserId: presenterId })
-			console.log(`[Presentation] Enabled auto-follow for presenter: ${presenterId}`)
+			// console.log(`[Presentation] Enabled auto-follow for presenter: ${presenterId}`)
 
 			// Request their viewport for immediate sync
 			if (socket?.connected) {
-				console.log('[Presentation] Requesting presenter viewport for immediate sync')
+				// console.log('[Presentation] Requesting presenter viewport for immediate sync')
 				// Broadcast request to all users in the room - presenter will respond
 				socket.emit('request-presenter-viewport', {
 					fileId: fileId.toString(),
@@ -186,7 +186,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 			const currentFollowed = useCollaborationStore.getState().followedUserId
 			if (currentFollowed === presenterId) {
 				useCollaborationStore.setState({ followedUserId: null })
-				console.log('[Presentation] Disabled auto-follow')
+				// console.log('[Presentation] Disabled auto-follow')
 			}
 		}
 	}, [autoFollowPresenter, setAutoFollowPresenter, presenterId, socket, fileId])
@@ -222,7 +222,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 
 		const handlePresentationStarted = async () => {
 			// eslint-disable-next-line no-console
-			console.log('[Presentation] Successfully started presenting - received presentation-started event')
+			// console.log('[Presentation] Successfully started presenting - received presentation-started event')
 
 			// Get current user info to set as presenter
 			const jwt = await getJWT()
@@ -230,12 +230,12 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 			const currentUserId = jwtPayload?.userid
 
 			// eslint-disable-next-line no-console
-			console.log('[Presentation] Setting presentation state:', {
-				presenterId: currentUserId,
-				isPresentationMode: true,
-				isPresenting: true,
-				presentationStartTime: Date.now(),
-			})
+			// console.log('[Presentation] Setting presentation state:', {
+			//  presenterId: currentUserId,
+			//  isPresentationMode: true,
+			//  isPresenting: true,
+			//  presentationStartTime: Date.now(),
+			// })
 
 			setPresentationState({
 				presenterId: currentUserId,
@@ -248,12 +248,12 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		}
 
 		const handlePresentationStopped = () => {
-			console.log('[Presentation] Presentation ended')
+			// console.log('[Presentation] Presentation ended')
 
 			// Clear auto-follow when presentation ends
 			const currentState = useCollaborationStore.getState()
 			if (currentState.followedUserId === presenterId) {
-				console.log('[Presentation] Clearing auto-follow (presentation ended)')
+				// console.log('[Presentation] Clearing auto-follow (presentation ended)')
 				useCollaborationStore.setState({ followedUserId: null })
 			}
 
@@ -274,7 +274,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		}
 
 		const handleUserStartedPresenting = (data: { userId: string; username: string }) => {
-			console.log(`[Presentation] User started presenting: ${data.username}`)
+			// console.log(`[Presentation] User started presenting: ${data.username}`)
 			setPresentationState({
 				presenterId: data.userId,
 				isPresentationMode: true,
@@ -285,12 +285,12 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 			// If auto-follow is enabled, immediately follow the presenter and request their viewport
 			const currentAutoFollow = useCollaborationStore.getState().autoFollowPresenter
 			if (currentAutoFollow) {
-				console.log(`[Presentation] Auto-following new presenter: ${data.userId}`)
+				// console.log(`[Presentation] Auto-following new presenter: ${data.userId}`)
 				useCollaborationStore.setState({ followedUserId: data.userId })
 
 				// Request presenter's viewport for immediate sync
 				if (socket?.connected) {
-					console.log('[Presentation] Requesting presenter viewport for new joiner')
+					// console.log('[Presentation] Requesting presenter viewport for new joiner')
 					socket.emit('request-presenter-viewport', {
 						fileId: fileId.toString(),
 					})
@@ -299,12 +299,12 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		}
 
 		const handleUserStoppedPresenting = () => {
-			console.log('[Presentation] User stopped presenting')
+			// console.log('[Presentation] User stopped presenting')
 
 			// Clear auto-follow when presentation ends
 			const currentState = useCollaborationStore.getState()
 			if (currentState.followedUserId === presenterId) {
-				console.log('[Presentation] Clearing auto-follow (presenter stopped)')
+				// console.log('[Presentation] Clearing auto-follow (presenter stopped)')
 				useCollaborationStore.setState({ followedUserId: null })
 			}
 
@@ -319,18 +319,18 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 
 		// Handle connection events
 		const handleConnect = () => {
-			console.log('[Presentation] Socket connected')
+			// console.log('[Presentation] Socket connected')
 			// Reset any error states on reconnection
 			setError(null)
 		}
 
 		const handleDisconnect = () => {
-			console.log('[Presentation] Socket disconnected')
+			// console.log('[Presentation] Socket disconnected')
 
 			// Clear auto-follow on disconnect
 			const currentState = useCollaborationStore.getState()
 			if (currentState.followedUserId === presenterId) {
-				console.log('[Presentation] Clearing auto-follow (disconnected)')
+				// console.log('[Presentation] Clearing auto-follow (disconnected)')
 				useCollaborationStore.setState({ followedUserId: null })
 			}
 
@@ -348,7 +348,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		}
 
 		// Register event listeners
-		console.log('[Presentation] Registering socket event listeners')
+		// console.log('[Presentation] Registering socket event listeners')
 		socket.on('connect', handleConnect)
 		socket.on('disconnect', handleDisconnect)
 		socket.on('presentation-started', handlePresentationStarted)
@@ -376,11 +376,11 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		if (isPresentationMode && presenterId && autoFollowPresenter) {
 			// Set the followed user ID to enable viewport following
 			useCollaborationStore.setState({ followedUserId: presenterId })
-			console.log(`[Presentation] Auto-following presenter: ${presenterId}`)
+			// console.log(`[Presentation] Auto-following presenter: ${presenterId}`)
 
 			// Request presenter's viewport for immediate sync
 			if (socket?.connected) {
-				console.log('[Presentation] Requesting presenter viewport on auto-follow enable')
+				// console.log('[Presentation] Requesting presenter viewport on auto-follow enable')
 				socket.emit('request-presenter-viewport', {
 					fileId: fileId.toString(),
 				})
@@ -390,7 +390,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 			const currentFollowed = useCollaborationStore.getState().followedUserId
 			if (currentFollowed === presenterId) {
 				useCollaborationStore.setState({ followedUserId: null })
-				console.log('[Presentation] Stopped auto-following (presentation ended)')
+				// console.log('[Presentation] Stopped auto-following (presentation ended)')
 			}
 		}
 	}, [isPresentationMode, presenterId, autoFollowPresenter, socket, fileId])
@@ -402,7 +402,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 			// If there's no presenter but we're still following someone from a previous presentation
 			const wasAutoFollowing = currentState.followedUserId !== null
 			if (wasAutoFollowing) {
-				console.log('[Presentation] Clearing auto-follow (no active presenter)')
+				// console.log('[Presentation] Clearing auto-follow (no active presenter)')
 				useCollaborationStore.setState({ followedUserId: null })
 			}
 		}
@@ -413,11 +413,11 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		if (isPresentationMode && presenterId) {
 			if (autoFollowPresenter) {
 				useCollaborationStore.setState({ followedUserId: presenterId })
-				console.log(`[Presentation] Enabled auto-follow for presenter: ${presenterId}`)
+				// console.log(`[Presentation] Enabled auto-follow for presenter: ${presenterId}`)
 
 				// Request presenter's current viewport for immediate sync
 				if (socket?.connected) {
-					console.log('[Presentation] Requesting presenter viewport for immediate sync')
+					// console.log('[Presentation] Requesting presenter viewport for immediate sync')
 					socket.emit('request-presenter-viewport', {
 						fileId: fileId.toString(),
 					})
@@ -427,7 +427,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 				const currentFollowed = useCollaborationStore.getState().followedUserId
 				if (currentFollowed === presenterId) {
 					useCollaborationStore.setState({ followedUserId: null })
-					console.log('[Presentation] Disabled auto-follow')
+					// console.log('[Presentation] Disabled auto-follow')
 				}
 			}
 		}
