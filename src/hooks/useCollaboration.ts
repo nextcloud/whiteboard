@@ -14,7 +14,7 @@ import type {
 	ExcalidrawImageElement,
 } from '@excalidraw/excalidraw/types/types'
 import { restoreElements } from '@excalidraw/excalidraw'
-import { reconcileElements } from '../util'
+import { reconcileElements } from '../utils/reconcileElements'
 import { io, type Socket } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'

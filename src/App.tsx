@@ -35,6 +35,9 @@ import { RecordingOverlay } from './components/Recording'
 import { usePresentation } from './hooks/usePresentation'
 import { PresentationOverlay } from './components/Presentation'
 import { useCollaborationStore } from './stores/useCollaborationStore'
+import { useElementCreatorTracking } from './hooks/useElementCreatorTracking'
+import { CreatorDisplay } from './components/CreatorDisplay'
+import { useCreatorDisplayStore } from './stores/useCreatorDisplayStore'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -115,6 +118,10 @@ export default function App({
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
+
+	// Creator tracking
+	const creatorDisplaySettings = useCreatorDisplayStore(state => state.settings)
+	useElementCreatorTracking({ excalidrawAPI, enabled: true })
 
 	// Expose followUser globally for recording agent access
 	useEffect(() => {
@@ -322,6 +329,10 @@ export default function App({
 				/>
 				<PresentationOverlay
 					presentationState={presentationState}
+				/>
+				<CreatorDisplay
+					excalidrawAPI={excalidrawAPI}
+					settings={creatorDisplaySettings}
 				/>
 			</div>
 		</div>

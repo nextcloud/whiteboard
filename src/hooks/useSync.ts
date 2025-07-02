@@ -293,7 +293,6 @@ export function useSync() {
 					socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer, [])
 
 					lastBroadcastedViewportRef.current = { scrollX, scrollY, zoom: zoom.value }
-					console.debug('[Sync] Viewport synced:', { userId, scrollX, scrollY, zoom: zoom.value })
 				} catch (error) {
 					console.error('[Sync] Error syncing viewport:', error)
 				}
