@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Service\Authentication;
 
+use OCA\Whiteboard\Service\ConfigService;
 use OCP\IUserSession;
 use OCP\Share\IManager as ShareManager;
 
@@ -16,6 +17,7 @@ final class AuthenticateUserServiceFactory {
 	public function __construct(
 		private ShareManager $shareManager,
 		private IUserSession $userSession,
+		private ConfigService $configService,
 	) {
 	}
 
