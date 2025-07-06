@@ -556,3 +556,570 @@
 		animation: none;
 	}
 }
+
+/* Recording styles */
+.recording-overlay {
+	pointer-events: none;
+
+	.recording-status {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 12px;
+		border-radius: 6px;
+		background: var(--color-main-background);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		pointer-events: auto;
+
+		&.recording {
+			color: var(--color-error);
+		}
+
+		.recording-spinner {
+			width: 10px;
+			height: 10px;
+			border: 2px solid var(--color-loading-light);
+			border-top-color: var(--color-loading-dark);
+			border-radius: 50%;
+			animation: spin 1s linear infinite;
+		}
+
+		.recording-indicator {
+			width: 10px;
+			height: 10px;
+			background: var(--color-error);
+			border-radius: 50%;
+			animation: pulse 2s ease-in-out infinite;
+		}
+	}
+
+	.recording-error {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 12px;
+		border-radius: 6px;
+		background: var(--color-error);
+		color: var(--color-primary-text);
+		pointer-events: auto;
+		cursor: pointer;
+
+		small {
+			opacity: 0.8;
+			margin-left: auto;
+		}
+	}
+
+	/* Nextcloud-style note cards for recording status */
+	.nc-notecard {
+		pointer-events: auto;
+		background: var(--color-main-background);
+		border: 2px solid var(--color-border);
+		border-radius: var(--border-radius-large);
+		padding: 16px;
+		display: flex;
+		align-items: flex-start;
+		gap: 12px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		animation: slideInFromTop 0.3s ease-out;
+		min-width: 280px;
+		max-width: 400px;
+		position: relative; /* Ensure proper stacking context */
+
+		&--info {
+			border-color: var(--color-primary-element);
+			.nc-notecard__icon {
+				color: var(--color-primary-element);
+			}
+		}
+
+		&--success {
+			border-color: #46ba61;
+			background: #f8fff9;
+			.nc-notecard__icon {
+				color: #46ba61;
+			}
+		}
+
+		&--error {
+			border-color: var(--color-error);
+			background: #fef7f7;
+			.nc-notecard__icon {
+				color: var(--color-error);
+			}
+		}
+
+		.nc-notecard__icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+			margin-top: 2px;
+		}
+
+		.nc-notecard__content {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.nc-notecard__text {
+			color: var(--color-main-text);
+			line-height: 1.4;
+			font-size: 14px;
+
+			strong {
+				font-weight: 600;
+			}
+		}
+
+		.nc-notecard__dismiss {
+			position: absolute;
+			top: 8px;
+			right: 8px;
+			background: transparent;
+			border: none;
+			color: var(--color-text-maxcontrast);
+			cursor: pointer;
+			padding: 8px;
+			border-radius: var(--border-radius);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 32px;
+			height: 32px;
+			z-index: 100; /* High z-index to ensure clickability */
+			
+			svg {
+				pointer-events: none; /* Ensure icon doesn't block clicks */
+			}
+
+			&:hover {
+				background: var(--color-background-hover);
+				color: var(--color-main-text);
+			}
+
+			&:focus-visible {
+				outline: 2px solid var(--color-primary-element);
+				outline-offset: 2px;
+			}
+		}
+	}
+
+	/* Loading spinner matching Nextcloud style */
+	.nc-loading-icon {
+		width: 16px;
+		height: 16px;
+		border: 2px solid var(--color-border);
+		border-top: 2px solid var(--color-primary-element);
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	/* Additional styles for recording notification content */
+	.recording-details {
+		margin-top: 8px;
+		font-size: 13px;
+		color: var(--color-text-lighter);
+
+		> div {
+			margin-bottom: 4px;
+		}
+
+		.recording-location {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			margin-top: 6px;
+		}
+
+		.recording-actions {
+			margin-top: 12px;
+		}
+	}
+
+	/* Starting status details */
+	.recording-starting-details {
+		margin-top: 8px;
+		font-size: 13px;
+		color: var(--color-text-lighter);
+		line-height: 1.4;
+
+		> div {
+			margin-bottom: 3px;
+		}
+	}
+
+	/* Nextcloud button styles for recording actions */
+	.nc-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 8px 16px;
+		border: none;
+		border-radius: var(--border-radius);
+		text-decoration: none;
+		font-size: 14px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background-color 0.2s ease-in-out;
+
+		&--primary {
+			background: var(--color-primary-element);
+			color: var(--color-primary-element-text);
+
+			&:hover {
+				background: var(--color-primary-element-hover);
+			}
+		}
+
+		&--small {
+			padding: 6px 12px;
+			font-size: 13px;
+		}
+	}
+
+	.other-recording-users {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 12px;
+		border-radius: 6px;
+		background: var(--color-main-background);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		pointer-events: auto;
+		opacity: 0.8;
+
+		svg {
+			color: var(--color-error);
+		}
+	}
+}
+
+/* Recording button in menu */
+.recording-button {
+	svg {
+		color: var(--color-error);
+	}
+
+	&.recording {
+		background-color: var(--color-error-background);
+
+		svg {
+			animation: pulse 2s ease-in-out infinite;
+		}
+	}
+
+	&.disconnected {
+		opacity: 0.6;
+
+		svg {
+			color: var(--color-text-lighter);
+		}
+
+		&:hover {
+			opacity: 0.8;
+		}
+	}
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes pulse {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes slideInFromTop {
+	from {
+		transform: translateY(-20px);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+/* Draggable Dialog Component */
+.draggable-dialog {
+	user-select: none;
+	
+	&.dragging {
+		opacity: 0.9;
+		cursor: grabbing !important;
+		
+		* {
+			cursor: grabbing !important;
+		}
+	}
+	
+	&__handle {
+		position: absolute;
+		top: -30px;
+		left: 50%;
+		transform: translateX(-50%);
+		background: var(--color-main-background);
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius) var(--border-radius) 0 0;
+		padding: 4px 12px;
+		cursor: grab;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--color-text-lighter);
+		transition: all 0.2s ease;
+		z-index: 1;
+		
+		&:hover {
+			background: var(--color-background-hover);
+			color: var(--color-main-text);
+		}
+		
+		&:active {
+			cursor: grabbing;
+		}
+		
+		svg {
+			pointer-events: none;
+		}
+	}
+	
+	&__content {
+		position: relative;
+	}
+}
+
+/* Presentation Components */
+.presentation-overlay {
+	pointer-events: none;
+
+	> * {
+		pointer-events: auto;
+	}
+}
+
+.presentation-status {
+	display: flex;
+	align-items: center;
+	padding: 12px 16px;
+	border-radius: 8px;
+	/* Ensure solid background that works in all themes */
+	background: var(--color-main-background);
+	background-color: rgb(var(--color-main-background-rgb, 255, 255, 255)); /* Fallback to white */
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	border: 1px solid var(--color-border);
+	animation: slideInFromTop 0.3s ease-out;
+	min-width: 280px;
+	z-index: 100010; /* Ensure it's above other elements */
+
+	&__content {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		width: 100%;
+	}
+
+	&__info {
+		flex: 1;
+		min-width: 0;
+	}
+
+	&__title {
+		font-weight: 500;
+		font-size: 14px;
+		color: var(--color-main-text);
+		margin-bottom: 2px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	&__live-indicator {
+		background: var(--color-error);
+		color: white;
+		font-size: 10px;
+		font-weight: 600;
+		padding: 2px 6px;
+		border-radius: 4px;
+		animation: pulse 2s ease-in-out infinite;
+		letter-spacing: 0.5px;
+	}
+
+	&__duration {
+		font-size: 12px;
+		color: var(--color-text-lighter);
+		font-family: monospace;
+	}
+
+	&__stop-btn, &__follow-btn {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		border: none;
+		border-radius: 6px;
+		font-size: 12px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+
+		&:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+	}
+
+	&__stop-btn {
+		background: var(--color-error);
+		color: white;
+
+		&:hover:not(:disabled) {
+			background: var(--color-error-hover);
+		}
+	}
+
+	&__follow-btn {
+		background: var(--color-background-hover);
+		color: var(--color-main-text);
+		border: 1px solid var(--color-border);
+
+		&:hover {
+			background: var(--color-background-dark);
+		}
+
+		&.active {
+			background: var(--color-primary-element);
+			color: var(--color-primary-element-text);
+			border-color: var(--color-primary-element);
+
+			&:hover {
+				background: var(--color-primary-element-hover);
+			}
+		}
+	}
+
+	&--presenting {
+		border-color: var(--color-primary-element);
+		background: var(--color-primary-element-light);
+		background-color: var(--color-primary-element-light); /* Ensure solid background */
+
+		svg {
+			color: var(--color-primary-element);
+		}
+	}
+
+	&--watching {
+		border-color: var(--color-warning);
+		background: var(--color-warning-background, #fffbeb); /* Add fallback */
+		background-color: var(--color-warning-background, #fffbeb); /* Ensure solid background */
+
+		svg {
+			color: var(--color-warning);
+		}
+	}
+}
+
+.presentation-error {
+	&__content {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 12px 16px;
+		border-radius: 8px;
+		background: var(--color-error-background, #fef2f2); /* Add fallback */
+		background-color: var(--color-error-background, #fef2f2); /* Ensure solid background */
+		border: 1px solid var(--color-error);
+		color: var(--color-error-text);
+		font-size: 14px;
+		animation: slideInFromTop 0.3s ease-out;
+		z-index: 100010; /* Ensure it's above other elements */
+
+		svg {
+			color: var(--color-error);
+			flex-shrink: 0;
+		}
+	}
+
+	&__close {
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 8px; /* Increased padding for better click area */
+		margin: -8px -8px -8px 0; /* Negative margin to extend click area */
+		border-radius: 4px;
+		color: var(--color-error);
+		margin-left: auto;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 32px;
+		min-height: 32px;
+		position: relative;
+		z-index: 1; /* Ensure it's clickable */
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.1);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--color-error);
+			outline-offset: 2px;
+		}
+	}
+}
+
+/* Presentation button in menu */
+.presentation-button {
+	svg {
+		color: var(--color-primary-element);
+	}
+
+	&--presenting {
+		background-color: var(--color-primary-element-light);
+
+		svg {
+			color: var(--color-primary-element);
+			animation: pulse 2s ease-in-out infinite;
+		}
+	}
+
+	&--starting {
+		opacity: 0.8;
+
+		svg {
+			animation: spin 1s linear infinite;
+		}
+	}
+
+	&--watching {
+		background-color: var(--color-warning-background);
+
+		svg {
+			color: var(--color-warning);
+		}
+	}
+
+	&--disconnected {
+		opacity: 0.6;
+
+		svg {
+			color: var(--color-text-lighter);
+		}
+
+		&:hover {
+			opacity: 0.8;
+		}
+	}
+}
