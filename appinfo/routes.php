@@ -8,6 +8,7 @@ declare(strict_types=1);
  */
 
 use OCA\Whiteboard\Controller\JWTController;
+use OCA\Whiteboard\Controller\RecordingController;
 use OCA\Whiteboard\Controller\SettingsController;
 use OCA\Whiteboard\Controller\WhiteboardController;
 
@@ -23,6 +24,10 @@ return [
 		['name' => 'Whiteboard#update', 'url' => '{fileId}', 'verb' => 'PUT'],
 		/** @see WhiteboardController::show() */
 		['name' => 'Whiteboard#show', 'url' => '{fileId}', 'verb' => 'GET'],
+		/** @see RecordingController::recording() */
+		['name' => 'Recording#recording', 'url' => 'recording/{fileId}/{userId}', 'verb' => 'GET'],
+		/** @see RecordingController::upload() */
+		['name' => 'Recording#upload', 'url' => 'recording/{fileId}/upload', 'verb' => 'POST'],
 		/** @see SettingsController::update() */
 		['name' => 'Settings#update', 'url' => 'settings', 'verb' => 'POST'],
 	]

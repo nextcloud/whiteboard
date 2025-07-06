@@ -21,6 +21,7 @@ enum SyncMessageType {
 	SceneInit = 'SCENE_INIT',
 	ImageAdd = 'IMAGE_ADD',
 	MouseLocation = 'MOUSE_LOCATION',
+	ViewportUpdate = 'VIEWPORT_UPDATE',
 	ServerBroadcast = 'server-broadcast',
 	ServerVolatileBroadcast = 'server-volatile-broadcast',
 }
@@ -206,13 +207,6 @@ export function useSync() {
 		throttle(doSyncViaWebSocket, WEBSOCKET_SYNC_DELAY, { leading: true, trailing: true })
 	, [doSyncViaWebSocket])
 
-	// --- Event Handlers ---
-	const onChange = useCallback(() => {
-		throttledSyncToLocal()
-		throttledSyncToServerAPI()
-		throttledSyncViaWebSocket()
-	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket])
-
 	// --- Cursor Sync ---
 	const doSyncCursors = useCallback(
 		(payload: {
@@ -244,9 +238,76 @@ export function useSync() {
 		[fileId, excalidrawAPI, socket, collabStatus],
 	)
 
+	// --- Viewport Sync ---
+	const lastBroadcastedViewportRef = useRef({ scrollX: 0, scrollY: 0, zoom: 1 })
+
+	const doSyncViewport = useCallback(
+		async (appState: { scrollX: number; scrollY: number; zoom: { value: number } }) => {
+			if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online') {
+				return
+			}
+
+			const { scrollX, scrollY, zoom } = appState
+			const lastViewport = lastBroadcastedViewportRef.current
+
+			// Only broadcast if viewport has changed significantly
+			if (
+				Math.abs(scrollX - lastViewport.scrollX) > 5
+				|| Math.abs(scrollY - lastViewport.scrollY) > 5
+				|| Math.abs(zoom.value - lastViewport.zoom) > 0.01
+			) {
+				try {
+					// Get current user ID for viewport tracking
+					const { getJWT, parseJwt } = useJWTStore.getState()
+					const jwt = await getJWT()
+					const jwtPayload = jwt ? parseJwt(jwt) : null
+					const userId = jwtPayload?.userid || 'unknown'
+
+					const data = {
+						type: SyncMessageType.ViewportUpdate,
+						payload: {
+							userId,
+							scrollX,
+							scrollY,
+							zoom: zoom.value,
+						},
+					}
+					const json = JSON.stringify(data)
+					const encodedBuffer = new TextEncoder().encode(json)
+					socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer, [])
+
+					lastBroadcastedViewportRef.current = { scrollX, scrollY, zoom: zoom.value }
+					console.debug('[Sync] Viewport synced:', { userId, scrollX, scrollY, zoom: zoom.value })
+				} catch (error) {
+					console.error('[Sync] Error syncing viewport:', error)
+				}
+			}
+		},
+		[fileId, excalidrawAPI, socket, collabStatus],
+	)
+
 	const throttledSyncCursors = useMemo(() =>
 		throttle(doSyncCursors, CURSOR_SYNC_DELAY, { leading: true, trailing: true })
 	, [doSyncCursors])
+
+	const throttledSyncViewport = useMemo(() =>
+		throttle(doSyncViewport, CURSOR_SYNC_DELAY, { leading: true, trailing: true })
+	, [doSyncViewport])
+
+	// --- Event Handlers ---
+	const onChange = useCallback(() => {
+		throttledSyncToLocal()
+		throttledSyncToServerAPI()
+		throttledSyncViaWebSocket()
+
+		// Sync viewport changes
+		if (excalidrawAPI) {
+			const appState = excalidrawAPI.getAppState()
+			throttledSyncViewport(appState)
+		}
+
+		console.debug('[Sync] Changes detected, triggered sync operations')
+	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncViewport, excalidrawAPI])
 
 	const onPointerUpdate = useCallback(
 		(payload: {

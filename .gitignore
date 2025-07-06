@@ -13,3 +13,6 @@
 .php-cs-fixer.cache
 .phpunit.result.cache
 .env
+
+.DS_Store
+/recordings/

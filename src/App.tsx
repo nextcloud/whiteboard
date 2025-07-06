@@ -30,6 +30,11 @@ import { Icon } from '@mdi/react'
 import { mdiGrid } from '@mdi/js'
 import { useAssistant } from './hooks/useAssistant'
 import logger from './logger'
+import { useRecording } from './hooks/useRecording'
+import { RecordingOverlay } from './components/Recording'
+import { usePresentation } from './hooks/usePresentation'
+import { PresentationOverlay } from './components/Presentation'
+import { useCollaborationStore } from './stores/useCollaborationStore'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -110,6 +115,41 @@ export default function App({
 	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
+
+	// Expose followUser globally for recording agent access
+	useEffect(() => {
+		// Create a followUser function that accesses the collaboration store directly
+		window.followUser = (userId: string) => {
+			if (!excalidrawAPI) {
+				console.warn('[Collaboration] Cannot follow user: Excalidraw API not available')
+				return
+			}
+
+			const currentSocket = useCollaborationStore.getState().socket
+			if (!currentSocket?.connected) {
+				logger.warn('[Collaboration] Cannot follow user: Socket not connected')
+				return
+			}
+
+			// Set the followed user ID in the collaboration store
+			useCollaborationStore.setState({ followedUserId: userId })
+			logger.info(`[Collaboration] Recording agent now following user: ${userId}`)
+
+			// Debug: Log current collaboration store state
+			const state = useCollaborationStore.getState()
+			logger.debug('[Collaboration] Current collaboration store state:', {
+				followedUserId: state.followedUserId,
+				socketConnected: state.socket?.connected,
+				status: state.status,
+			})
+		}
+		return () => {
+			delete window.followUser
+		}
+	}, [excalidrawAPI])
+
+	const recordingState = useRecording({ fileId })
+	const presentationState = usePresentation({ fileId })
 
 	useHandleLibrary({
 		excalidrawAPI,
@@ -264,8 +304,20 @@ export default function App({
 				>
 					<MemoizedExcalidrawMenu
 						fileNameWithoutExtension={fileNameWithoutExtension}
+						recordingState={recordingState}
+						presentationState={presentationState}
 					/>
 				</Excalidraw>
+				<RecordingOverlay
+					{...recordingState}
+					otherRecordingUsers={recordingState.otherUsers}
+					hasOtherRecordingUsers={recordingState.hasOtherRecordingUsers}
+					resetError={recordingState.resetError}
+					dismissSuccess={recordingState.dismissSuccess}
+				/>
+				<PresentationOverlay
+					presentationState={presentationState}
+				/>
 			</div>
 		</div>
 	)

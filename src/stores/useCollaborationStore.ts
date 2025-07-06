@@ -25,6 +25,14 @@ interface CollaborationStore {
 	socket: Socket | null
 	isDedicatedSyncer: boolean // Is this client responsible for syncing to server/broadcasting?
 	authError: AuthErrorState
+	followedUserId: string | null // User ID being followed for viewport synchronization
+
+	// Presentation state
+	presenterId: string | null // User ID of current presenter
+	isPresentationMode: boolean // Whether presentation mode is active in the room
+	isPresenting: boolean // Whether current user is presenting
+	presentationStartTime: number | null // When presentation started
+	autoFollowPresenter: boolean // Whether to automatically follow presenter (can be disabled by user)
 
 	// Actions
 	setStatus: (status: CollaborationConnectionStatus) => void
@@ -34,6 +42,15 @@ interface CollaborationStore {
 	incrementAuthFailure: (errorType: AuthErrorType, message: string) => void
 	clearAuthError: () => void
 	resetStore: () => void
+
+	// Presentation actions
+	setPresentationState: (state: {
+		presenterId?: string | null
+		isPresentationMode?: boolean
+		isPresenting?: boolean
+		presentationStartTime?: number | null
+	}) => void
+	setAutoFollowPresenter: (autoFollow: boolean) => void
 }
 
 const initialAuthErrorState: AuthErrorState = {
@@ -44,11 +61,19 @@ const initialAuthErrorState: AuthErrorState = {
 	isPersistent: false,
 }
 
-const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'setAuthError' | 'incrementAuthFailure' | 'clearAuthError' | 'resetStore'> = {
+const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'setAuthError' | 'incrementAuthFailure' | 'clearAuthError' | 'resetStore' | 'setPresentationState' | 'setAutoFollowPresenter'> = {
 	status: 'offline',
 	socket: null,
 	isDedicatedSyncer: false,
 	authError: initialAuthErrorState,
+	followedUserId: null,
+
+	// Presentation initial state
+	presenterId: null,
+	isPresentationMode: false,
+	isPresenting: false,
+	presentationStartTime: null,
+	autoFollowPresenter: true,
 }
 
 // Constants for auth failure detection
@@ -89,4 +114,12 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	clearAuthError: () => set({ authError: initialAuthErrorState }),
 
 	resetStore: () => set(initialState),
+
+	// Presentation actions
+	setPresentationState: (state) => set((currentState) => ({
+		...currentState,
+		...state,
+	})),
+
+	setAutoFollowPresenter: (autoFollow) => set({ autoFollowPresenter: autoFollow }),
 }))
