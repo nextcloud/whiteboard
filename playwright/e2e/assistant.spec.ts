@@ -67,10 +67,53 @@ test('Assistant Button', async ({ page }) => {
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
 	await page.getByRole('textbox', { name: 'Query' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()
-	await page.getByRole('button', { name: 'submit' }).click()
+	await expect(page.getByRole('textbox', { name: 'Query' })).not.toBeVisible()
 })
 
-test('Show Mermaid render Error', async ({ page }) => {
+test('Restart on false Assistant output', async ({ page }) => {
+	await page.route(
+		'**/ocs/v2.php/taskprocessing/task/*',
+		(route, request) => {
+			const taskId = parseInt(request.url().split('/').pop() || '0', 10) // Extract taskId from URL
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					ocs: {
+						meta: {
+							status: 'ok',
+							statuscode: 200,
+							message: 'OK',
+						},
+						data: {
+							task: {
+								id: taskId,
+								type: 'core:text2text',
+								lastUpdated: 1744024462,
+								status: 'STATUS_SUCCESSFUL',
+								userId: 'admin',
+								appId: 'whiteboard',
+								input: {
+									max_tokens: 1234,
+									model: 'model_2',
+									input: 'a',
+								},
+								output: {
+									output: 'INVALID MERMAID SYNTAX',
+								},
+								customId: '',
+								completionExpectedAt: 1744024460,
+								progress: 1,
+								scheduledAt: 1744024459,
+								startedAt: 1744024462,
+								endedAt: 1744024462,
+							},
+						},
+					},
+				}),
+			})
+		},
+	)
 	await page.getByRole('button', { name: 'New' }).click()
 	await page.getByRole('menuitem', { name: 'New whiteboard' }).click()
 	await page.getByRole('button', { name: 'Create' }).click()
@@ -78,12 +121,5 @@ test('Show Mermaid render Error', async ({ page }) => {
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
 	await page.getByRole('textbox', { name: 'Query' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()
-	await page.getByRole('textbox', { name: 'Generated mermaid' }).click()
-	await page
-		.getByRole('textbox', { name: 'Generated mermaid' })
-		.fill(
-			'flowchart TD\n A[Christmas] -->|Get money| B(Go shopping)\n B --> C{Let me think}\n C -->|One| D[Laptop]\n C -->|Two| E[iPhone]\n C -->|Three| F[Car]\nB --',
-		)
-	await page.waitForSelector('text=Error: Parse error on line 8', { timeout: 5000 })
-	await expect(page.getByText('Error: Parse error on line 8')).toBeVisible()
+	await expect(page.getByRole('textbox', { name: 'Query' })).toHaveValue('abc')
 })
