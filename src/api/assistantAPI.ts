@@ -12,12 +12,15 @@ async function getTaskResponse(taskId: number) {
 		if (response.data.ocs.data.task.status === 'STATUS_SUCCESSFUL') {
 			return response
 		}
+		if (response.data.ocs.data.task.status !== 'STATUS_RUNNING' && response.data.ocs.data.task.status !== 'STATUS_SCHEDULED') {
+			throw new Error('Task failed')
+		}
 		await new Promise((resolve) => setTimeout(resolve, 500))
 	}
 }
 
 export async function ScheduleTask(prompt: string): Promise<AxiosResponse> {
-	const wrappedPrompt = `You have to generaid mermaid diagrams! never generate anything else! Always use mermaid syntax! and do not include any other text or explanation. Also do not use the backticks to indicate you are generating mermaid. This is the user-prompt for the requested diagram: ${prompt}`
+	const wrappedPrompt = `You have to generate mermaid diagrams! Never generate anything else! Always use mermaid syntax! and do not include any other text or explanation. Also do not use the backticks to indicate you are generating mermaid. This is the user-prompt for the requested diagram: ${prompt}`
 	return new Promise((resolve, reject) => {
 		axios
 			.post('/ocs/v2.php/taskprocessing/schedule', {
