@@ -41,10 +41,25 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 		$whiteboard = new TemplateFileCreator(Application::APP_ID, $l10n->t('New whiteboard'), '.whiteboard');
 		$whiteboard->addMimetype('application/vnd.excalidraw+json');
 		$whiteboard->addMimetype('application/octet-stream');
+
+		// Always use the custom SVG icon for consistency
 		$iconContent = file_get_contents(__DIR__ . '/../../img/app-filetype.svg');
 		if ($iconContent !== false) {
-			$whiteboard->setIconSvgInline($iconContent);
+			// For NC 29+, use the native method
+			if (method_exists($whiteboard, 'setIconSvgInline')) {
+				$whiteboard->setIconSvgInline($iconContent);
+			} else {
+				// For NC 28, use custom CSS to display the SVG
+				$whiteboard->setIconClass('whiteboard-template-icon');
+				
+				// Register custom CSS to display the SVG
+				\OCP\Util::addStyle('whiteboard', 'template-icon');
+			}
+		} else {
+			// Fallback to generic template icon
+			$whiteboard->setIconClass('icon-template-add');
 		}
+
 		$whiteboard->setActionLabel($l10n->t('Create new whiteboard'));
 		return $whiteboard;
 	}
