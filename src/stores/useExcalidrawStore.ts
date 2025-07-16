@@ -17,7 +17,7 @@ interface ExcalidrawStore {
 export const useExcalidrawStore = create<ExcalidrawStore>((set, get) => ({
 	excalidrawAPI: null,
 
-	setExcalidrawAPI: (api) => set({ excalidrawAPI: api }),
+	setExcalidrawAPI: (api: ExcalidrawImperativeAPI) => set({ excalidrawAPI: api }),
 	resetExcalidrawAPI: () => set({ excalidrawAPI: null }),
 	scrollToContent: () => {
 		const { excalidrawAPI } = get()
