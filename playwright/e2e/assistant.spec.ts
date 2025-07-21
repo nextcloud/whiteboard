@@ -65,9 +65,9 @@ test('Assistant Button', async ({ page }) => {
 	await page.getByRole('button', { name: 'Create' }).click()
 	await expect(page.getByText('Drawing canvas')).toBeVisible()
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
-	await page.getByRole('textbox', { name: 'Query' }).fill('abc')
+	await page.getByRole('textbox', { name: 'Prompt to generate diagram' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()
-	await expect(page.getByRole('textbox', { name: 'Query' })).not.toBeVisible()
+	await expect(page.getByRole('textbox', { name: 'Prompt to generate diagram' })).not.toBeVisible()
 })
 
 test('Restart on false Assistant output', async ({ page }) => {
@@ -119,7 +119,7 @@ test('Restart on false Assistant output', async ({ page }) => {
 	await page.getByRole('button', { name: 'Create' }).click()
 	await expect(page.getByText('Drawing canvas')).toBeVisible()
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
-	await page.getByRole('textbox', { name: 'Query' }).fill('abc')
+	await page.getByRole('textbox', { name: 'Prompt to generate diagram' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()
-	await expect(page.getByRole('textbox', { name: 'Query' })).toHaveValue('abc')
+	await expect(page.getByRole('textbox', { name: 'Prompt to generate diagram' })).toHaveValue('abc')
 })
