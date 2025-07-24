@@ -61,15 +61,15 @@ JWT_SECRET_KEY="some-random-secret" NEXTCLOUD_URL=https://nextcloud.local npm ru
 #### Docker
 
 ```bash
-docker run -e JWT_SECRET_KEY=some-random-secret -e NEXTCLOUD_URL=https://nextcloud.local -p 3002:3002 --rm ghcr.io/nextcloud-releases/whiteboard:release
+docker run -e JWT_SECRET_KEY=some-random-secret -e NEXTCLOUD_URL=https://nextcloud.local -p 3002:3002 --rm ghcr.io/nextcloud-releases/whiteboard:stable
 ```
 
 Or using Docker Compose:
 
 ```yaml
 services:
-  whiteboard-server:
-    image: ghcr.io/nextcloud-releases/whiteboard:release
+  nextcloud-whiteboard-server:
+    image: ghcr.io/nextcloud-releases/whiteboard:stable
     ports:
       - "3002:3002"
     environment:
