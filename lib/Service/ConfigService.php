@@ -26,10 +26,19 @@ final class ConfigService {
 	}
 
 	public function getMaxFileSize(): int {
+		if (!method_exists($this->appConfig, 'getAppValueInt')) {
+			return (int)$this->appConfig->getAppValue('max_file_size', '10');
+		}
+
 		return $this->appConfig->getAppValueInt('max_file_size', 10);
 	}
 
 	public function setMaxFileSize(int $maxFileSize): void {
+		if (!method_exists($this->appConfig, 'setAppValueInt')) {
+			$this->appConfig->setAppValue('max_file_size', (string)$maxFileSize);
+			return;
+		}
+
 		$this->appConfig->setAppValueInt('max_file_size', $maxFileSize);
 	}
 
@@ -55,6 +64,10 @@ final class ConfigService {
 	}
 
 	public function getWhiteboardSharedSecret(): string {
+		if (!method_exists($this->appConfig, 'getAppValueString')) {
+			return $this->appConfig->getAppValue('jwt_secret_key');
+		}
+
 		return $this->appConfig->getAppValueString('jwt_secret_key');
 	}
 
