@@ -3,7 +3,7 @@
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <script>
-import { NcTextField, NcButton, NcModal, NcLoadingIcon } from '@nextcloud/vue'
+import { NcTextField, NcButton, NcModal } from '@nextcloud/vue'
 import { ScheduleTask } from '../api/assistantAPI'
 import { parseMermaidToExcalidraw } from '@excalidraw/mermaid-to-excalidraw'
 import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
@@ -15,7 +15,6 @@ export default defineComponent({
 		NcTextField,
 		NcButton,
 		NcModal,
-		NcLoadingIcon,
 	},
 	props: {
 		excalidrawAPI: {
@@ -47,6 +46,16 @@ export default defineComponent({
 			this.mermaidError = false
 
 			const { elements, files } = await parseMermaidToExcalidraw(taskResponse)
+			elements.forEach((element) => {
+				// set font family (6 should always be Nunito)
+				if (element.label) {
+					element.label.fontFamily = 6
+				}
+				if (element.type === 'text') {
+					element.fontFamily = 6
+				}
+				element.roughness = 0
+			})
 			const data = {
 				elements: convertToExcalidrawElements(elements, { regenerateIds: true }),
 				files,
@@ -81,7 +90,7 @@ export default defineComponent({
 		size="normal"
 		@close="onCancel">
 		<div class="assistant-dialog">
-			<div v-if="!waitingForTask">
+			<div>
 				<h2>
 					Generate diagram
 				</h2>
@@ -91,39 +100,45 @@ export default defineComponent({
 				<form @submit.prevent="onGetTask">
 					<NcTextField ref="assistantDialog"
 						v-model="assistantQuery"
-						label="Query"
-						aria-placeholder="Flowchart, sequence diagram..."
-						type="text" />
+						label="Prompt to generate diagram"
+						placeholder="Flowchart, sequence diagram..."
+						type="text"
+						:disabled="waitingForTask" />
 					<div class="dialog-buttons">
 						<NcButton @click="onCancel">
 							Close
 						</NcButton>
-						<NcButton type="submit">
-							Generate
+						<NcButton :disabled="waitingForTask" type="submit">
+							{{ waitingForTask ? 'Generating...' : 'Generate' }}
 						</NcButton>
 					</div>
 				</form>
 			</div>
-			<NcLoadingIcon v-else />
 		</div>
 	</NcModal>
 </template>
 <style scoped lang="scss">
+.loading-icon {
+	padding: 30px;
+}
 h2 {
     text-align: center;
 }
 .assistant-dialog {
-    height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
     overflow: hidden;
+	form {
+		padding-inline: 10px;
+	}
 }
 .dialog-buttons {
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
+	padding-block: 10px;
 }
 .mermaid-error {
 	text-align: center;
