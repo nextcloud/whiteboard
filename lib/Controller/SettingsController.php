@@ -36,17 +36,11 @@ final class SettingsController extends Controller {
 	public function update(): DataResponse {
 		try {
 			$serverUrl = $this->request->getParam('serverUrl');
-			$serverUrlInternal = $this->request->getParam('serverUrlInternal');
 			$secret = $this->request->getParam('secret');
 			$maxFileSize = $this->request->getParam('maxFileSize');
-			$skipTlsVerify = $this->request->getParam('skipTlsVerify');
 
 			if ($serverUrl !== null) {
 				$this->configService->setCollabBackendUrl($serverUrl);
-			}
-
-			if ($serverUrlInternal !== null) {
-				$this->configService->setInternalCollabBackendUrl($serverUrlInternal);
 			}
 
 			if ($secret !== null) {
@@ -57,12 +51,8 @@ final class SettingsController extends Controller {
 				$this->configService->setMaxFileSize(intval($maxFileSize));
 			}
 
-			if ($skipTlsVerify !== null) {
-				$this->configService->setSkipTlsVerify(filter_var($skipTlsVerify, FILTER_VALIDATE_BOOLEAN));
-			}
-
 			$result = null;
-			if ($serverUrl !== null || $serverUrlInternal !== null || $secret !== null || $maxFileSize !== null || $skipTlsVerify !== null) {
+			if ($serverUrl !== null || $secret !== null || $maxFileSize !== null) {
 				$result = $this->setupCheck->run();
 			}
 

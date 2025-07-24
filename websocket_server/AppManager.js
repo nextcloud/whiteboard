@@ -6,7 +6,6 @@
 /* eslint-disable no-console */
 
 import express from 'express'
-import axios from 'axios'
 import Config from './Config.js'
 
 export default class AppManager {
@@ -64,21 +63,6 @@ export default class AppManager {
 	}
 
 	async statusHandler(req, res) {
-		const NEXTCLOUD_URL = Config.NEXTCLOUD_URL
-
-		// Check connectivity to Nextcloud
-		const statusUrl = NEXTCLOUD_URL + '/status.php'
-		let connectBack
-		try {
-			const response = await axios.get(statusUrl, {
-				timeout: 5000,
-			})
-			connectBack = response.data?.version ? true : ('No version found when requesting ' + statusUrl)
-		} catch (e) {
-			console.error('Error connecting to Nextcloud:', e.message)
-			connectBack = e?.message
-		}
-
 		// Get system stats if systemMonitor is available
 		let roomStats = {}
 		let memoryStats = {}
@@ -117,22 +101,19 @@ export default class AppManager {
 			}
 		}
 
-		// Prepare the response with the original structure
+		// Simple status response for monitoring/health checks
 		const response = {
 			version: process.env.npm_package_version,
-			connectBack: connectBack === true,
-			connectBackMessage: connectBack === true ? 'Connection successful' : connectBack,
-		}
-
-		// Add additional metrics data without breaking the original structure
-		response.metrics = {
-			rooms: roomStats,
-			memory: memoryStats,
-			cache: cacheStats,
-			uptime: this.systemMonitor ? this.systemMonitor.getUptime().processFormatted : '0s',
-			storageStrategy: Config.STORAGE_STRATEGY,
-			redisEnabled: !!Config.REDIS_URL,
-			metricsEnabled: !!Config.METRICS_TOKEN,
+			status: 'running',
+			metrics: {
+				rooms: roomStats,
+				memory: memoryStats,
+				cache: cacheStats,
+				uptime: this.systemMonitor ? this.systemMonitor.getUptime().processFormatted : '0s',
+				storageStrategy: Config.STORAGE_STRATEGY,
+				redisEnabled: !!Config.REDIS_URL,
+				metricsEnabled: !!Config.METRICS_TOKEN,
+			},
 		}
 
 		res.set('Content-Type', 'application/json')

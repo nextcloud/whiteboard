@@ -25,11 +25,9 @@ class Admin implements ISettings {
 	#[\Override]
 	public function getForm(): TemplateResponse {
 		$this->initialState->provideInitialState('url', $this->configService->getCollabBackendUrl());
-		$this->initialState->provideInitialState('urlInternal', $this->configService->getInternalCollabBackendUrl(false));
 		$this->initialState->provideInitialState('secret', $this->configService->getWhiteboardSharedSecret());
 		$this->initialState->provideInitialState('jwt', $this->jwtService->generateJWTFromPayload([]));
 		$this->initialState->provideInitialState('maxFileSize', $this->configService->getMaxFileSize());
-		$this->initialState->provideInitialState('skipTlsVerify', $this->configService->getSkipTlsVerify());
 		$response = new TemplateResponse(
 			'whiteboard',
 			'admin',

@@ -76,6 +76,11 @@
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
   </file>
+  <file src="lib/Service/WhiteboardLibraryService.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
   <file src="lib/Settings/Admin.php">
     <UnusedClass>
       <code><![CDATA[Admin]]></code>

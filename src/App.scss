@@ -135,10 +135,6 @@
 	}
 }
 
-.layer-ui__wrapper__top-right label[title='Library'] {
-	display: none;
-}
-
 .ImageExportModal__preview__filename {
 	display: none;
 }
@@ -195,6 +191,30 @@
 	border-radius: var(--border-radius-large) !important;
 }
 
+.grid-toggle-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--color-background-hover) !important;
+	padding: 9px !important;
+	border: 1px solid var(--color-primary) !important;
+	border-radius: var(--border-radius-large) !important;
+	cursor: pointer;
+	transition: background-color 0.2s ease, box-shadow 0.2s ease;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	z-index: 10000; /* Ensure it's above other UI elements */
+	position: absolute;
+	bottom: 140px; /* Position above the network status */
+	right: 14px;
+	margin-right: 0;
+
+	&:hover,
+	&.active {
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+		background-color: var(--color-primary) !important;
+	}
+}
+
 .network-status {
 	display: flex;
 	align-items: center;
@@ -203,7 +223,7 @@
 	transition: all 0.2s ease;
 	position: absolute;
 	bottom: 80px; /* Position at the bottom with enough space for other UI elements */
-	right: 12px;
+	right: 16px;
 	z-index: 10000; /* Increased z-index to ensure it's above all other UI elements */
 	max-width: 40px;
 	cursor: pointer;
