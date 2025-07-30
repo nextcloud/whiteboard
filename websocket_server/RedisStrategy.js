@@ -13,9 +13,18 @@ export default class RedisStrategy extends StorageStrategy {
 
 	static createRedisClient() {
 		console.log(`Creating Redis client with URL: ${Config.REDIS_URL}`)
-		return createClient({
-			url: Config.REDIS_URL,
-		})
+
+		const redisUrl = new URL(Config.REDIS_URL)
+
+		if (redisUrl.protocol === 'unix:') {
+			const db = redisUrl.searchParams.get('db')
+			return createClient({
+				socket: { path: redisUrl.pathname },
+				database: db !== null ? Number(db) : undefined,
+			})
+		} else {
+			return createClient({ url: Config.REDIS_URL })
+		}
 	}
 
 	constructor(redisClient, options = {}) {
