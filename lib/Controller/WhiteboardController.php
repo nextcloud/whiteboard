@@ -24,6 +24,8 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\ICacheFactory;
+use OCP\IMemcache;
 use OCP\IRequest;
 use Psr\Log\LoggerInterface;
 
@@ -32,6 +34,8 @@ use Psr\Log\LoggerInterface;
  * @psalm-suppress UndefinedDocblockClass
  */
 final class WhiteboardController extends ApiController {
+	private IMemcache $cache;
+
 	public function __construct(
 		$appName,
 		IRequest $request,
@@ -43,8 +47,10 @@ final class WhiteboardController extends ApiController {
 		private ExceptionService $exceptionService,
 		private ConfigService $configService,
 		private LoggerInterface $logger,
+		private ICacheFactory $cacheFactory,
 	) {
 		parent::__construct($appName, $request);
+		$this->cache = $cacheFactory->createLocking('whiteboard_sync');
 	}
 
 	#[NoAdminRequired]
@@ -68,6 +74,15 @@ final class WhiteboardController extends ApiController {
 	#[NoCSRFRequired]
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
+		$lockKey = "sync_lock_{$fileId}";
+		$lockValue = uniqid();
+		$lockTTL = 5; // 5 seconds
+
+		// Simple distributed lock
+		if (!$this->cache->add($lockKey, $lockValue, $lockTTL)) {
+			return new DataResponse(['status' => 'conflict'], 409);
+		}
+
 		try {
 			$jwt = $this->getJwtFromRequest();
 			$userId = $this->jwtService->getUserIdFromJWT($jwt);
@@ -77,10 +92,15 @@ final class WhiteboardController extends ApiController {
 			$this->contentService->updateContent($file, $data);
 
 			return new DataResponse(['status' => 'success']);
+
 		} catch (Exception $e) {
 			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());
-
 			return $this->exceptionService->handleException($e);
+
+		} finally {
+			if ($this->cache->get($lockKey) === $lockValue) {
+				$this->cache->remove($lockKey);
+			}
 		}
 	}
 
