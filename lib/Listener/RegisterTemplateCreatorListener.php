@@ -51,7 +51,7 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 			} else {
 				// For NC 28, use custom CSS to display the SVG
 				$whiteboard->setIconClass('whiteboard-template-icon');
-				
+
 				// Register custom CSS to display the SVG
 				\OCP\Util::addStyle('whiteboard', 'template-icon');
 			}
