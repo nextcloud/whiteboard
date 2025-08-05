@@ -3,7 +3,6 @@
 
 import { createAppConfig } from '@nextcloud/vite-config'
 import react from '@vitejs/plugin-react'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
 import { defineConfig } from 'vite'
 import { join, resolve } from 'path'
 
@@ -51,20 +50,9 @@ const AppConfig = createAppConfig({
 			react({
 				jsxRuntime: 'classic',
 			}),
-			viteStaticCopy({
-				targets: [
-					{
-						src: './node_modules/@excalidraw/excalidraw/dist/excalidraw-assets/*',
-						dest: './dist/excalidraw-assets',
-					},
-				],
-			}),
+
 		],
-		resolve: {
-			alias: {
-				'@excalidraw/excalidraw/types': resolve(__dirname, 'node_modules/@excalidraw/excalidraw/types'),
-			},
-		},
+
 	}),
 })
 

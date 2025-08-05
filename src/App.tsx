@@ -8,6 +8,7 @@
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
+import '@excalidraw/excalidraw/index.css'
 import './App.scss'
 import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
@@ -28,6 +29,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { Icon } from '@mdi/react'
 import { mdiGrid } from '@mdi/js'
+import { useAssistant } from './hooks/useAssistant'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -103,6 +105,7 @@ export default function App({
 
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
+	const { renderAssistant } = useAssistant()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
 	useCollaboration()
@@ -184,7 +187,8 @@ export default function App({
 		console.log('[App] Initializing UI components')
 		updateLang()
 		renderSmartPicker()
-	}, [updateLang, renderSmartPicker])
+		renderAssistant()
+	}, [updateLang, renderSmartPicker, renderAssistant])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
 		try {

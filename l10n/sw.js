@@ -1,0 +1,26 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "New whiteboard" : "Ubao mpya",
+    "Create new whiteboard" : "Unda ubao mweupe mpya",
+    "Whiteboard" : "Ubao mweupe",
+    "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "URL ya seva ya WebSocket haijasanidiwa. Ushirikiano wa wakati halisi unahitaji seva tofauti ya WebSocket. Utendaji wa msingi wa ubao mweupe hufanya kazi bila hiyo.",
+    "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Siri iliyoshirikiwa ya seva ya WebSocket haijasanidiwa. Hii inahitajika kwa uthibitishaji salama kati ya Nextcloud na seva ya WebSocket kwa ushirikiano wa wakati halisi.",
+    "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "Usanidi wa seva ya WebSocket ni halali. Jaribio la muunganisho linalotegemea kivinjari litathibitisha muunganisho halisi kwa ushirikiano wa wakati halisi.",
+    "Whiteboard app" : "Programu ya ubao mweupe",
+    "The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.\n\n**Whiteboard requires a separate collaboration server to work.** Please see the [documentation](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) on how to install it.\n\n- 🎨 Drawing shapes, writing text, connecting elements\n- 📝 Real-time collaboration\n- 🖼️ Add images with drag and drop\n- 📊 Easily add mermaid diagrams\n- ✨ Use the Smart Picker to embed other elements from Nextcloud\n- 📦 Image export\n- 💪 Strong foundation: We use Excalidraw as our base library" : "Programu rasmi ya ubao mweupe ya Nextcloud. Huruhusu watumiaji kuunda na kushiriki ubao mweupe na watumiaji wengine na kushirikiana katika muda halisi.\n\n**Ubao mweupe unahitaji seva tofauti ya ushirikiano ili kufanya kazi.** Tafadhali angalia [hati](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) kuhusu jinsi ya kuisakinisha.\n\n- 🎨 Kuchora maumbo, kuandika maandishi, vitu vya kuunganisha\n- 📝 Ushirikiano wa wakati halisi\n- 🖼️ Ongeza picha kwa kuvuta na kuacha\n- 📊 Ongeza kwa urahisi michoro ya nguva\n- ✨ Tumia Smart Picker kupachika vipengele vingine kutoka Nextcloud\n- 📦 Uhamishaji wa picha\n- 💪 Msingi thabiti: Tunatumia Excalidraw kama maktaba yetu ya msingi",
+    "Real-time collaboration server" : "Seva ya ushirikiano wa wakati halisi",
+    "WebSocket server for real-time collaboration is configured and connected." : "Seva ya WebSocket kwa ushirikiano wa wakati halisi imesanidiwa na kuunganishwa.",
+    "Failed to verify the connection:" : "Imeshindwa kuthibitisha muunganisho:",
+    "Verifying connection…" : "Inathibitisha muunganisho...",
+    "The WebSocket server handles real-time collaboration sessions between users. Basic whiteboard functionality works without it, but real-time collaboration requires this server to be running and accessible from users' browsers." : "Seva ya WebSocket hushughulikia vipindi vya ushirikiano vya wakati halisi kati ya watumiaji. Utendaji msingi wa ubao mweupe hufanya kazi bila hiyo, lakini ushirikiano wa wakati halisi unahitaji seva hii kufanya kazi na kupatikana kutoka kwa vivinjari vya watumiaji.",
+    "See the documentation on how to install and configure the WebSocket server." : "Tazama nyaraka za jinsi ya kusakinisha na kusanidi seva ya WebSocket.",
+    "WebSocket server URL" : "URL ya seva ya WebSocket",
+    "URL where the WebSocket server for real-time collaboration is running. Must be accessible from users' browsers." : "URL ambapo seva ya WebSocket ya ushirikiano wa wakati halisi inafanya kazi. Lazima ipatikane kutoka kwa vivinjari vya watumiaji.",
+    "Shared secret" : "Siri iliyoshirikiwa",
+    "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Kitufe cha siri cha JWT kilichoshirikiwa kati ya Nextcloud na seva ya WebSocket kwa uthibitishaji salama.",
+    "Save settings" : "Hifadhi mipangilio",
+    "Advanced settings" : "Mipangilio ya kiwangi cha juu",
+    "Max file size" : "Kiwango cha juu cha ukubwa wa faili"
+},
+"nplurals=2; plural=(n != 1);");
