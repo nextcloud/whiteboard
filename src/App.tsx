@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { getCurrentUser } from '@nextcloud/auth'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import './App.scss'
@@ -31,6 +32,7 @@ import { Icon } from '@mdi/react'
 import { mdiGrid } from '@mdi/js'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import { useAssistant } from './hooks/useAssistant'
+import { useCreator } from './hooks/useCreator'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -109,6 +111,7 @@ export default function App({
 	const { renderAssistant } = useAssistant()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
+	const { onPointerDown: creatorOnPointerDown } = useCreator()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
 
@@ -127,6 +130,10 @@ export default function App({
 		if (excalidrawAPI) {
 			console.log('[App] Clearing Excalidraw data for fileId change')
 			excalidrawAPI.resetScene()
+
+			excalidrawAPI.onPointerDown((_activeTool, state) => {
+				creatorOnPointerDown(_activeTool, state)
+			})
 		}
 
 		// Reset the initialDataPromise to ensure clean state
@@ -227,7 +234,7 @@ export default function App({
 		elements.forEach(el => {
 			const isNew = !prevElements.some(pEl => el.id === pEl.id)
 			if (isNew && !el.customData?.created_by) {
-				newElements.push({ ...el, customData: { created_by: 'test_user' } })
+				newElements.push({ ...el, customData: { created_by: getCurrentUser()?.uid } })
 			}
 		})
 
@@ -244,7 +251,7 @@ export default function App({
 				const indexInScene = updatedScene.findIndex(e => e.id === el.id)
 				const sceneEl = updatedScene[indexInScene]
 				if (!sceneEl) continue
-				updatedScene[indexInScene] = { ...sceneEl, customData: { ...sceneEl.customData, created_by: 'test_user' } }
+				updatedScene[indexInScene] = { ...sceneEl, customData: { ...sceneEl.customData, created_by: getCurrentUser()?.uid } }
 			}
 			excalidrawAPI.updateScene({ elements: updatedScene, commitToHistory: false })
 		}
