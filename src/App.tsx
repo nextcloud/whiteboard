@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { getCurrentUser } from '@nextcloud/auth'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import './App.scss'
@@ -29,8 +30,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { Icon } from '@mdi/react'
 import { mdiGrid } from '@mdi/js'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import type { ExcalidrawElement } from '../../../../../../../pulls/excalidraw/packages/element/src/types'
 import { useAssistant } from './hooks/useAssistant'
+import { useCreator } from './hooks/useCreator'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -109,6 +111,7 @@ export default function App({
 	const { renderAssistant } = useAssistant()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
+	const { onPointerDown: creatorOnPointerDown } = useCreator()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
 
@@ -127,6 +130,10 @@ export default function App({
 		if (excalidrawAPI) {
 			console.log('[App] Clearing Excalidraw data for fileId change')
 			excalidrawAPI.resetScene()
+
+			excalidrawAPI.onPointerDown((_activeTool, state) => {
+				creatorOnPointerDown(_activeTool, state)
+			})
 		}
 
 		// Reset the initialDataPromise to ensure clean state
@@ -221,34 +228,6 @@ export default function App({
 
 		setPrevElements(elements)
 		onChangeSync()
-
-		// check if elements where added
-		const newElements: ExcalidrawElement[] = []
-		elements.forEach(el => {
-			const isNew = !prevElements.some(pEl => el.id === pEl.id)
-			if (isNew && !el.customData?.created_by) {
-				newElements.push({ ...el, customData: { created_by: 'test_user' } })
-			}
-		})
-
-		if (newElements.length > 0) {
-			// wait until new element(s) not edited by user anymore
-			while (newElements.some(el => el.id === excalidrawAPI.getAppState().editingElement?.id)) {
-				await new Promise(resolve => setTimeout(resolve, 0))
-				continue
-			}
-
-			// get updated scene and write created_by into new elements
-			const updatedScene: ExcalidrawElement[] = [...excalidrawAPI.getSceneElementsIncludingDeleted()]
-			for (const el of newElements) {
-				const indexInScene = updatedScene.findIndex(e => e.id === el.id)
-				const sceneEl = updatedScene[indexInScene]
-				if (!sceneEl) continue
-				updatedScene[indexInScene] = { ...sceneEl, customData: { ...sceneEl.customData, created_by: 'test_user' } }
-			}
-			excalidrawAPI.updateScene({ elements: updatedScene, commitToHistory: false })
-		}
-
 	}, [excalidrawAPI, fileId, isLoading, onChangeSync, prevElements, setPrevElements])
 
 	if (isLoading) {
@@ -264,6 +243,11 @@ export default function App({
 				</div>
 			</div>
 		)
+	}
+
+	const beforeElementCreatedCallback = (element: ExcalidrawElement) => {
+		element.customData = { ...element.customData, created_by: getCurrentUser() }
+		return element
 	}
 
 	return (
@@ -284,6 +268,7 @@ export default function App({
 					renderEmbeddable={Embeddable}
 					excalidrawAPI={setExcalidrawAPI}
 					initialData={initialDataPromise}
+					beforeElementCreated={beforeElementCreatedCallback}
 					onPointerUpdate={onPointerUpdate}
 					onChange={handleOnChange}
 					viewModeEnabled={isReadOnly}
