@@ -946,16 +946,16 @@
         },
         {
             "name": "psalm/phar",
-            "version": "6.13.0",
+            "version": "6.13.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/psalm/phar.git",
-                "reference": "f99546ae420e3b3a27dea85d7551330bd23d076e"
+                "reference": "e143bcacd037f1cbc5a738b76d846841e787a62f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/psalm/phar/zipball/f99546ae420e3b3a27dea85d7551330bd23d076e",
-                "reference": "f99546ae420e3b3a27dea85d7551330bd23d076e",
+                "url": "https://api.github.com/repos/psalm/phar/zipball/e143bcacd037f1cbc5a738b76d846841e787a62f",
+                "reference": "e143bcacd037f1cbc5a738b76d846841e787a62f",
                 "shasum": ""
             },
             "require": {
@@ -975,9 +975,9 @@
             "description": "Composer-based Psalm Phar",
             "support": {
                 "issues": "https://github.com/psalm/phar/issues",
-                "source": "https://github.com/psalm/phar/tree/6.13.0"
+                "source": "https://github.com/psalm/phar/tree/6.13.1"
             },
-            "time": "2025-07-14T10:03:49+00:00"
+            "time": "2025-08-07T12:36:48+00:00"
         },
         {
             "name": "psr/clock",
