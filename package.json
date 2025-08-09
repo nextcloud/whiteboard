@@ -65,7 +65,7 @@
     "@playwright/test": "^1.54.2",
     "@types/lodash": "^4.17.20",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.7.0",
+    "@vitejs/plugin-react": "^5.0.0",
     "@vue/tsconfig": "^0.5.1",
     "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
