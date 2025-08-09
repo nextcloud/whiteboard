@@ -157,6 +157,16 @@ const handleSyncToServer = async (data: any) => {
 			}),
 		})
 
+		if (response.status === 409) {
+			// Another sync in progress - just treat as success
+			log('Sync skipped - another tab is syncing')
+			sendMessage('SERVER_SYNC_COMPLETE', {
+				success: true,
+				skipped: true,
+			})
+			return
+		}
+
 		if (!response.ok) {
 			let errorMessage = `Server responded with status: ${response.status}`
 			try {
