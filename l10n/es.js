@@ -2,11 +2,25 @@ OC.L10N.register(
     "whiteboard",
     {
     "New whiteboard" : "Nueva pizarra",
+    "Create new whiteboard" : "Crear una pizarra nueva",
     "Whiteboard" : "Pizarra blanca",
-    "Failed to verify the connection:" : "No se pudo verificar la conexión:",
+    "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "La URL de WebSocket del servidor no está configurada. La colaboración en tiempo real requiere un servidor individual de WebSocket. La funcionalidad básica de la pizarra funciona sin este.",
+    "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "El secreto compartido del servidor WebSocket no está configurado. Esto se requiere para la autenticación segura entre Nextcloud y el servidor WebSocket para colaboración en tiempo real.",
+    "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "La configuración del servidor WebSocket es válida. Una prueba de conexión basada en el navegador verificará la conexión para la colaboración en tiempo real.",
+    "Whiteboard app" : "App Pizarra",
+    "The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.\n\n**Whiteboard requires a separate collaboration server to work.** Please see the [documentation](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) on how to install it.\n\n- 🎨 Drawing shapes, writing text, connecting elements\n- 📝 Real-time collaboration\n- 🖼️ Add images with drag and drop\n- 📊 Easily add mermaid diagrams\n- ✨ Use the Smart Picker to embed other elements from Nextcloud\n- 📦 Image export\n- 💪 Strong foundation: We use Excalidraw as our base library" : "La app oficial de pizarras blancas para Nextcloud. Permite a los usuarios crear y compartir estas pizarras y colaborar en tiempo real.\n\n**Pizarra requiere un servidor separado de colaboración para funcionar.** Por favor, vea la [documentación](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) sobre como instalarlo.\n\n- 🎨 Dibujar formas, escribir texto, conectar elementos\n- 📝 Colaboración en tiempo real\n- 🖼️ Añada imágenes arrastrando y soltando\n- 📊 Agregue diagramas de tipo mermaid fácilmente\n- ✨ Utilice el selector inteligente para embeber otros elementos desde Nextcloud\n- 📦 Exportación de Imágenes\n- 💪 Fortaleza fundacional: Utilizamos Excalidraw como nuestra librería base",
+    "Real-time collaboration server" : "Servidor de colaboración en tiempo real",
+    "WebSocket server for real-time collaboration is configured and connected." : "El servidor WebSocket para colaboración en tiempo real está configurado y conectado.",
+    "Failed to verify the connection:" : "Fallo al verificar la conexión:",
     "Verifying connection…" : "Verificando conexión…",
+    "The WebSocket server handles real-time collaboration sessions between users. Basic whiteboard functionality works without it, but real-time collaboration requires this server to be running and accessible from users' browsers." : "El servidor WebSocket maneja las sesiones de colaboración en tiempo real entre los usuarios. La funcionalidad básica de pizarras funciona sin el mismo, pero la colaboración en tiempo real requiere que este servidor esté funcionando y sea accesible por los navegadores de los usuarios.",
+    "See the documentation on how to install and configure the WebSocket server." : "Vea la documentación sobre cómo instalar y configurar el servidor WebSocket.",
+    "WebSocket server URL" : "URL del servidor WebSocket",
+    "URL where the WebSocket server for real-time collaboration is running. Must be accessible from users' browsers." : "URL dónde el servidor WebSocket para colaboración en tiempo real está ejecutándose. Debe ser accesible desde los navegadores de los usuarios.",
     "Shared secret" : "Secreto compartido",
+    "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Clave secreta JWT compartida entre Nextcloud y el servidor WebSocket para autenticación segura.",
     "Save settings" : "Guardar configuración",
-    "Advanced settings" : "Configuración avanzada"
+    "Advanced settings" : "Configuración avanzada",
+    "Max file size" : "Tamaño max. de archivo"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
