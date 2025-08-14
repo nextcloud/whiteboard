@@ -6,7 +6,8 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { getCurrentUser } from '@nextcloud/auth'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import './App.scss'
@@ -29,7 +30,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { Icon } from '@mdi/react'
 import { mdiGrid } from '@mdi/js'
+import type { ExcalidrawElement } from '../../../../../../../pulls/excalidraw/packages/element/src/types'
 import { useAssistant } from './hooks/useAssistant'
+import { useCreator } from './hooks/useCreator'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -108,6 +111,7 @@ export default function App({
 	const { renderAssistant } = useAssistant()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
+	const { onPointerDown: creatorOnPointerDown } = useCreator()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
 
@@ -126,6 +130,10 @@ export default function App({
 		if (excalidrawAPI) {
 			console.log('[App] Clearing Excalidraw data for fileId change')
 			excalidrawAPI.resetScene()
+
+			excalidrawAPI.onPointerDown((_activeTool, state) => {
+				creatorOnPointerDown(_activeTool, state)
+			})
 		}
 
 		// Reset the initialDataPromise to ensure clean state
@@ -214,10 +222,13 @@ export default function App({
 		}
 	}, [])
 
-	const handleOnChange = useCallback(() => {
+	const [prevElements, setPrevElements] = useState<readonly ExcalidrawElement[]>([])
+	const handleOnChange = useCallback(async (elements : readonly ExcalidrawElement[]) => {
 		if (!excalidrawAPI || !fileId || isLoading) return
+
+		setPrevElements(elements)
 		onChangeSync()
-	}, [excalidrawAPI, fileId, isLoading, onChangeSync])
+	}, [excalidrawAPI, fileId, isLoading, onChangeSync, prevElements, setPrevElements])
 
 	if (isLoading) {
 		return (
@@ -232,6 +243,11 @@ export default function App({
 				</div>
 			</div>
 		)
+	}
+
+	const beforeElementCreatedCallback = (element: ExcalidrawElement) => {
+		element.customData = { ...element.customData, created_by: getCurrentUser() }
+		return element
 	}
 
 	return (
@@ -252,6 +268,7 @@ export default function App({
 					renderEmbeddable={Embeddable}
 					excalidrawAPI={setExcalidrawAPI}
 					initialData={initialDataPromise}
+					onElementCreated={beforeElementCreatedCallback}
 					onPointerUpdate={onPointerUpdate}
 					onChange={handleOnChange}
 					viewModeEnabled={isReadOnly}
