@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.3
+
+### Features
+* Assistant Integration: Add AI assistant support for generating Mermaid diagrams by @grnd-alt in https://github.com/nextcloud/whiteboard/pull/581
+* Grid Toggle: Add grid toggle button for better drawing precision by @luka-nextcloud in https://github.com/nextcloud/whiteboard/pull/532
+* Library Support: Enhanced library functionality for better asset management by @luka-nextcloud in https://github.com/nextcloud/whiteboard/pull/473
+
+### Fixed
+* Fix file locking issues and improve file handling reliability by @hweihwang in https://github.com/nextcloud/whiteboard/pull/600
+* Fix compatibility issues with Nextcloud 28 by @hweihwang in https://github.com/nextcloud/whiteboard/pull/573
+* Update Redis client to support Unix socket connections by @Object9050 in https://github.com/nextcloud/whiteboard/pull/603
+
+### Other
+* Update Excalidraw to v0.18.0 with latest features and improvements by @hweihwang in https://github.com/nextcloud/whiteboard/pull/543
+* Update @nextcloud/ocp and other core dependencies for better compatibility
+* Update README with improved Docker Compose image tag by @st3iny in https://github.com/nextcloud/whiteboard/pull/525
+* Update codeowners by @kesselb in https://github.com/nextcloud/whiteboard/pull/610
+
 ## 1.1.2
 
 ### Fixed
