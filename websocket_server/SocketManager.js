@@ -11,13 +11,33 @@ import jwt from 'jsonwebtoken'
 import Utils from './Utils.js'
 import { createAdapter } from '@socket.io/redis-streams-adapter'
 import Config from './Config.js'
+import RecordingService from './RecordingService.js'
 
 export default class SocketManager {
+
+	#getRecordingKey(roomId, userId) {
+		return `${roomId}_${userId}`
+	}
+
+	// Debug method to check recording services state
+	debugRecordingServices() {
+		console.log('Active recording services:', Array.from(this.recordingServices.keys()))
+		return this.recordingServices
+	}
+
+	// Debug method to check presentation sessions state
+	debugPresentationSessions() {
+		console.log('Active presentation sessions:', Array.from(this.presentationSessions.entries()))
+		return this.presentationSessions
+	}
 
 	constructor(server, socketDataStorage, cachedTokenStorage, redisClient) {
 		this.socketDataStorage = socketDataStorage
 		this.cachedTokenStorage = cachedTokenStorage
 		this.redisClient = redisClient
+		this.recordingServices = new Map()
+		// Track presentation state per room: roomId -> { presenterId, presenterName, startTime }
+		this.presentationSessions = new Map()
 		this.io = this.createSocketServer(server)
 		this.init()
 	}
@@ -177,6 +197,14 @@ export default class SocketManager {
 			'server-broadcast': this.serverBroadcastHandler,
 			'server-volatile-broadcast': this.serverVolatileBroadcastHandler,
 			'image-get': this.imageGetHandler,
+			'start-recording': this.startRecordingHandler,
+			'stop-recording': this.stopRecordingHandler,
+			'presentation-start': this.presentationStartHandler,
+			'presentation-stop': this.presentationStopHandler,
+			'request-presenter-viewport': this.requestPresenterViewportHandler,
+			'follow-user': this.followUserHandler,
+			'request-viewport': this.requestViewportHandler,
+			'viewport-change': this.viewportChangeHandler,
 			disconnect: this.disconnectHandler,
 		}
 
@@ -285,6 +313,16 @@ export default class SocketManager {
 			socketId: socket.id,
 			isSyncer,
 		})
+
+		// Check if there's an active presentation session and notify the new user
+		const presentationSession = this.presentationSessions.get(roomID)
+		if (presentationSession) {
+			console.log(`[${roomID}] Notifying new user ${userName} about active presentation by ${presentationSession.presenterName}`)
+			socket.emit('user-started-presenting', {
+				userId: presentationSession.presenterId,
+				username: presentationSession.presenterName,
+			})
+		}
 	}
 
 	async serverBroadcastHandler(socket, roomID, encryptedData, iv) {
@@ -311,6 +349,27 @@ export default class SocketManager {
 					user: socketData.user,
 				},
 			}
+
+			socket.volatile.broadcast
+				.to(roomID)
+				.emit(
+					'client-broadcast',
+					Utils.convertStringToArrayBuffer(JSON.stringify(eventData)),
+				)
+		} else if (payload.type === 'VIEWPORT_UPDATE') {
+			const socketData = await this.socketDataStorage.get(socket.id)
+
+			if (!socketData) return
+
+			const eventData = {
+				type: 'VIEWPORT_UPDATE',
+				payload: {
+					...payload.payload,
+					userId: socketData.user.id,
+				},
+			}
+
+			console.log(`[${roomID}] Broadcasting viewport update from user ${socketData.user.id}:`, eventData.payload)
 
 			socket.volatile.broadcast
 				.to(roomID)
@@ -389,6 +448,35 @@ export default class SocketManager {
 					await this.findNewSyncer(roomID)
 				} else {
 					console.log(`[${roomID}] Syncer disconnected but has other active connections, maintaining syncer status`)
+				}
+			}
+
+			// Check if user was presenting and clean up presentation session
+			const presentationSession = this.presentationSessions.get(roomID)
+			if (presentationSession) {
+				const isPublicSharingUser = userId.startsWith('shared_')
+				let shouldEndPresentation = false
+
+				if (presentationSession.presenterId === userId) {
+					shouldEndPresentation = true
+				} else if (isPublicSharingUser) {
+					// For public sharing users, check if they're from the same token
+					const userTokenPart = userId.split('_')[1]
+					const presenterTokenPart = presentationSession.presenterId.split('_')[1]
+					if (userTokenPart === presenterTokenPart) {
+						shouldEndPresentation = true
+					}
+				}
+
+				if (shouldEndPresentation) {
+					console.log(`[${roomID}] Presenter ${userName} disconnected, ending presentation`)
+					this.presentationSessions.delete(roomID)
+
+					// Notify all participants that presentation ended
+					socket.to(roomID).emit('user-stopped-presenting', {
+						userId,
+						username: userName,
+					})
 				}
 			}
 
@@ -533,6 +621,397 @@ export default class SocketManager {
 				}
 			}),
 		).then((results) => results.filter(Boolean))
+	}
+
+	/**
+	 * Handles recording start requests
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {object} data - Recording data containing fileId, recordingUrl, uploadToken
+	 */
+	async startRecordingHandler(socket, data) {
+		const { fileId, recordingUrl, uploadToken } = data
+		const roomID = fileId.toString()
+		const sessionKey = `${roomID}_${socket.id}`
+
+		try {
+			// Validate input and permissions
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData?.user?.id) throw new Error('Unauthorized')
+
+			// Check if recording already in progress
+			const recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
+			if (this.recordingServices.has(recordingKey)) {
+				throw new Error('Recording already in progress')
+			}
+
+			// Initialize recording service with client-provided URL
+			const recorder = new RecordingService()
+			console.log(`[${sessionKey}] Initializing recording at ${recordingUrl}`)
+
+			if (!await recorder.init(recordingUrl, roomID, socketData.user.id)) {
+				throw new Error('Recorder initialization failed')
+			}
+
+			// Start recording session
+			console.log(`[${sessionKey}] Starting recording`)
+			await recorder.startRecording(roomID, socketData.user.id)
+
+			// Store recorder with upload token for later use
+			this.recordingServices.set(recordingKey, { recorder, uploadToken })
+
+			// Notify participants
+			socket.emit('recording-started')
+			socket.to(roomID).emit('user-started-recording', {
+				userId: socketData.user.id,
+				username: socketData.user.displayName,
+			})
+
+		} catch (error) {
+			console.error(`[${sessionKey}] Start recording failed:`, error)
+			socket.emit('recording-error', error.message)
+		}
+	}
+
+	/**
+	 * Handles recording stop requests
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 */
+	async stopRecordingHandler(socket, roomID) {
+		const sessionKey = `${roomID}_${socket.id}`
+		try {
+			// Validate session
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData?.user?.id) throw new Error('Unauthorized')
+
+			// Retrieve recording instance
+			const recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
+			console.log(`[${sessionKey}] Looking for recorder with key: ${recordingKey}`)
+			const recordingService = this.recordingServices.get(recordingKey)
+			if (!recordingService) {
+				console.log(`[${sessionKey}] Available recording keys:`, Array.from(this.recordingServices.keys()))
+				throw new Error('No active recording found')
+			}
+
+			const { recorder, uploadToken } = recordingService
+
+			// Stop recording and cleanup
+			console.log(`[${sessionKey}] Stopping recording`)
+			const result = await recorder.stopRecording(roomID, socketData.user.id)
+			await recorder.cleanup(roomID, socketData.user.id)
+			this.recordingServices.delete(recordingKey)
+			console.log(`[${sessionKey}] Removed recorder from services map`)
+
+			console.log(`[${sessionKey}] Notifying participants of recording stop`)
+			// Notify participants with recording data and upload token
+			socket.emit('recording-stopped', {
+				filePath: result.localPath,
+				recordingData: result.recordingData,
+				uploadToken,
+				fileId: roomID,
+			})
+			console.log(`[${sessionKey}] Emitted recording-stopped to ${socketData.user.id}`)
+
+			socket.to(roomID).emit('user-stopped-recording', {
+				userId: socketData.user.id,
+				username: socketData.user.displayName,
+			})
+			console.log(`[${sessionKey}] Emitted user-stopped-recording to room ${roomID}`)
+
+			console.log(`[${sessionKey}] Stop recording completed successfully`)
+
+		} catch (error) {
+			console.error(`[${sessionKey}] Stop recording failed:`, error)
+			console.error(`[${sessionKey}] Error stack:`, error.stack)
+			socket.emit('recording-error', error.message)
+		} finally {
+			// Ensure cleanup even if errors occur
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (socketData?.user?.id) {
+				const recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
+				if (this.recordingServices.has(recordingKey)) {
+					const recordingService = this.recordingServices.get(recordingKey)
+					if (recordingService?.recorder?.cleanup) {
+						await recordingService.recorder.cleanup()
+					}
+					this.recordingServices.delete(recordingKey)
+				}
+			}
+		}
+	}
+
+	/**
+	 * Handles presentation start requests
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {object} data - Presentation data containing fileId, userId
+	 */
+	async presentationStartHandler(socket, data) {
+		const { fileId, userId } = data
+		const roomID = fileId
+		const sessionKey = `${roomID}_${socket.id}`
+
+		try {
+			// Validate input and permissions
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData?.user?.id) throw new Error('Unauthorized')
+
+			// Verify the user ID matches the socket user
+			// For public sharing users, the user ID format is: shared_{token}_{randomBytes}
+			// We need to be more flexible with the validation
+			const socketUserId = socketData.user.id
+			const isPublicSharingUser = socketUserId.startsWith('shared_')
+
+			console.log(`[${sessionKey}] User ID validation:`, {
+				socketUserId,
+				requestUserId: userId,
+				isPublicSharingUser,
+				match: socketUserId === userId,
+			})
+
+			// Use the authoritative user ID (prefer socket data for public sharing users)
+			let authoritativeUserId = userId
+			if (socketUserId !== userId) {
+				// For public sharing users, the user ID might be regenerated on each request
+				// but they should still be allowed to present if they have the same session
+				if (!isPublicSharingUser) {
+					throw new Error('User ID mismatch')
+				}
+
+				// For public sharing users, we'll use the socket user ID as the authoritative one
+				console.log(`[${sessionKey}] Using socket user ID for public sharing user: ${socketUserId}`)
+				authoritativeUserId = socketUserId
+			}
+
+			// Check if presentation already in progress
+			if (this.presentationSessions.has(roomID)) {
+				const currentSession = this.presentationSessions.get(roomID)
+				// If the same user is trying to start again, allow it (might be a reconnection)
+				if (currentSession.presenterId === authoritativeUserId) {
+					console.log(`[${sessionKey}] User ${socketData.user.displayName} restarting their presentation`)
+					// Update the session timestamp
+					currentSession.startTime = Date.now()
+					this.presentationSessions.set(roomID, currentSession)
+
+					// Notify the presenter
+					socket.emit('presentation-started')
+					return // Exit early, no need to create new session
+				} else {
+					throw new Error(`Presentation already in progress by ${currentSession.presenterName}`)
+				}
+			}
+
+			// Start presentation session
+			const presenterName = socketData.user.displayName || socketData.user.name || 'Unknown User'
+			const presentationSession = {
+				presenterId: authoritativeUserId,
+				presenterName,
+				startTime: Date.now(),
+			}
+
+			console.log(`[${sessionKey}] Creating presentation session:`, presentationSession)
+
+			this.presentationSessions.set(roomID, presentationSession)
+			console.log(`[${sessionKey}] Started presentation by ${presenterName}`)
+
+			// Notify the presenter
+			console.log(`[${sessionKey}] Emitting presentation-started to presenter`)
+			socket.emit('presentation-started')
+
+			// Notify all other participants in the room
+			console.log(`[${sessionKey}] Emitting user-started-presenting to room ${roomID}`)
+			socket.to(roomID).emit('user-started-presenting', {
+				userId: authoritativeUserId,
+				username: presenterName,
+			})
+
+			console.log(`[${sessionKey}] Notified room about presentation start`)
+
+		} catch (error) {
+			console.error(`[${sessionKey}] Start presentation failed:`, error)
+			socket.emit('presentation-error', error.message)
+		}
+	}
+
+	/**
+	 * Handles presentation stop requests
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {object} data - Presentation data containing fileId
+	 */
+	async presentationStopHandler(socket, data) {
+		const { fileId } = data
+		const roomID = fileId
+		const sessionKey = `${roomID}_${socket.id}`
+
+		try {
+			// Validate input and permissions
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData?.user?.id) throw new Error('Unauthorized')
+
+			// Check if presentation exists and user is the presenter
+			const presentationSession = this.presentationSessions.get(roomID)
+			if (!presentationSession) {
+				throw new Error('No active presentation found')
+			}
+
+			const socketUserId = socketData.user.id
+			const isPublicSharingUser = socketUserId.startsWith('shared_')
+
+			console.log(`[${sessionKey}] Stop presentation validation:`, {
+				socketUserId,
+				presenterId: presentationSession.presenterId,
+				isPublicSharingUser,
+				match: presentationSession.presenterId === socketUserId,
+			})
+
+			// For public sharing users, we need to be more flexible with presenter validation
+			// since their user IDs might change between requests
+			if (presentationSession.presenterId !== socketUserId) {
+				if (!isPublicSharingUser) {
+					throw new Error('Only the presenter can stop the presentation')
+				}
+
+				// For public sharing users, check if they're from the same session/token
+				// by comparing the token part of the user ID
+				const socketTokenPart = socketUserId.split('_')[1] // Extract token from shared_{token}_{random}
+				const presenterTokenPart = presentationSession.presenterId.split('_')[1]
+
+				if (socketTokenPart !== presenterTokenPart) {
+					throw new Error('Only the presenter can stop the presentation')
+				}
+
+				console.log(`[${sessionKey}] Allowing public sharing user to stop presentation (same token)`)
+			}
+
+			// Stop presentation session
+			const presenterName = socketData.user.displayName || socketData.user.name || 'Unknown User'
+			this.presentationSessions.delete(roomID)
+			console.log(`[${sessionKey}] Stopped presentation by ${presenterName}`)
+
+			// Notify the presenter
+			socket.emit('presentation-stopped')
+
+			// Notify all other participants in the room
+			socket.to(roomID).emit('user-stopped-presenting', {
+				userId: socketData.user.id,
+				username: presenterName,
+			})
+
+			console.log(`[${sessionKey}] Notified room about presentation stop`)
+
+		} catch (error) {
+			console.error(`[${sessionKey}] Stop presentation failed:`, error)
+			socket.emit('presentation-error', error.message)
+		}
+	}
+
+	/**
+	 * Handles request for presenter's viewport
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {object} data - Request data containing fileId
+	 */
+	async requestPresenterViewportHandler(socket, data) {
+		const { fileId } = data
+		const roomID = fileId
+		const sessionKey = `${roomID}_${socket.id}`
+
+		try {
+			console.log(`[${sessionKey}] Presenter viewport requested`)
+
+			// Check if there's an active presentation
+			const presentationSession = this.presentationSessions.get(roomID)
+			if (!presentationSession) {
+				console.log(`[${sessionKey}] No active presentation found`)
+				return
+			}
+
+			// Broadcast the request to all users in the room (including the presenter)
+			// The presenter will respond with their viewport if they're still connected
+			this.io.to(roomID).emit('request-presenter-viewport')
+
+			console.log(`[${sessionKey}] Broadcast presenter viewport request to room ${roomID}`)
+		} catch (error) {
+			console.error(`[${sessionKey}] Request presenter viewport failed:`, error)
+		}
+	}
+
+	/**
+	 * Handles follow user requests from recording agents
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {string} targetUserId - User ID to follow
+	 */
+	async followUserHandler(socket, roomID, targetUserId) {
+		const socketData = await this.socketDataStorage.get(socket.id)
+		if (!socketData?.user?.id) {
+			console.warn(`[${roomID}] Invalid socket data for follow-user request`)
+			return
+		}
+
+		console.log(`[${roomID}] User ${socketData.user.id} wants to follow user ${targetUserId}`)
+
+		// Store the follow relationship for this socket
+		await this.socketDataStorage.set(`${socket.id}:following`, targetUserId)
+
+		// Acknowledge the follow request
+		socket.emit('follow-user-ack', { targetUserId, status: 'following' })
+	}
+
+	/**
+	 * Handles viewport request events
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {object} data - Request data containing fileId and userId
+	 */
+	async requestViewportHandler(socket, data) {
+		const { fileId, userId } = data
+		const roomID = fileId
+
+		try {
+			// Validate the requesting socket
+			const socketData = await this.socketDataStorage.get(socket.id)
+			if (!socketData?.user?.id) {
+				console.warn(`[${roomID}] Invalid socket data for viewport request`)
+				return
+			}
+
+			console.log(`[${roomID}] User ${socketData.user.id} requesting viewport from user ${userId}`)
+
+			// Find sockets for the target user in the room
+			const userSockets = await this.getUserSocketsInRoom(roomID)
+			const targetSockets = userSockets.filter(s => s.userId === userId)
+
+			if (targetSockets.length > 0) {
+				// Request viewport from the first socket of the target user
+				const targetSocketId = targetSockets[0].socketId
+				const targetSocket = this.io.sockets.sockets.get(targetSocketId)
+
+				if (targetSocket) {
+					// Ask the target user to send their viewport
+					console.log(`[${roomID}] Requesting viewport from socket ${targetSocketId}`)
+					targetSocket.emit('send-viewport-request', {
+						requesterId: socketData.user.id,
+						requesterSocketId: socket.id,
+					})
+				} else {
+					console.warn(`[${roomID}] Target socket ${targetSocketId} not found`)
+				}
+			} else {
+				console.warn(`[${roomID}] User ${userId} not found in room`)
+			}
+		} catch (error) {
+			console.error(`[${roomID}] Error handling viewport request:`, error)
+		}
+	}
+
+	/**
+	 * Handles viewport change events (legacy support)
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {object} viewportData - Viewport data
+	 */
+	async viewportChangeHandler(socket, roomID, viewportData) {
+		// This handler exists for compatibility but viewport updates
+		// are now handled through serverVolatileBroadcastHandler
+		console.debug(`[${roomID}] Legacy viewport change event received`)
 	}
 
 }
