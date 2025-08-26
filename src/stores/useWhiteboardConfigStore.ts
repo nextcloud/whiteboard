@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable no-console */
-
 import { create } from 'zustand'
 import { resolvablePromise } from '../utils'
 import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
@@ -69,16 +67,8 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	},
 
 	resolveInitialData: (data: ExcalidrawInitialDataState) => {
-		console.log('[WhiteboardConfigStore] Resolving initial data:', {
-			elementCount: data.elements ? data.elements.length : 0,
-			firstElement: data.elements && data.elements.length > 0 ? data.elements[0].type : 'none',
-			hasFiles: !!data.files && Object.keys(data.files).length > 0,
-			hasAppState: !!data.appState,
-		})
-
 		// Resolve the promise with the data
 		get().initialDataPromise.resolve(data)
-		console.log('[WhiteboardConfigStore] Initial data loaded and resolved')
 	},
 
 	resetInitialDataPromise: () =>
@@ -86,7 +76,6 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 
 	// Reset the entire store to its initial state
 	resetStore: () => {
-		console.log('[WhiteboardConfigStore] Resetting store state')
 		// Keep the current fileId, fileName, and other config values
 		const { fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl } = get()
 		set({
@@ -112,6 +101,5 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	// Permission actions
 	setReadOnly: (readOnly: boolean) => {
 		set({ isReadOnly: readOnly })
-		console.log(`[WhiteboardConfigStore] Read-only state set to: ${readOnly}`)
 	},
 }))

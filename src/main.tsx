@@ -10,6 +10,7 @@ import { loadState } from '@nextcloud/initial-state'
 import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 
 import './viewer.css'
+import logger from './logger'
 
 const EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
 
@@ -58,7 +59,7 @@ function handlePublicSharing(token) {
 	document.addEventListener('DOMContentLoaded', () => {
 		const imgframeElement = document.getElementById('preview')
 		if (!imgframeElement) {
-			console.error('#imgframe element not found')
+			logger.error('#imgframe element not found')
 			return
 		}
 		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement
@@ -91,7 +92,7 @@ function handleNonPublicSharing() {
 	if (typeof OCA.Viewer !== 'undefined') {
 		registerViewerHandler(Component)
 	} else {
-		console.error('Could not register whiteboard handler for viewer')
+		logger.error('Could not register whiteboard handler for viewer')
 	}
 }
 
