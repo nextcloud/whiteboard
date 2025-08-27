@@ -55,7 +55,7 @@ final class WhiteboardLibraryService {
 		foreach ($templates as $template) {
 			$templateDetails = $template->jsonSerialize();
 
-			if (str_ends_with($templateDetails['filename'], '.excalidrawlib')) {
+			if (str_ends_with($templateDetails['basename'], '.excalidrawlib')) {
 				$fileId = $templateDetails['fileid'];
 				$file = $this->rootFolder->getFirstNodeById($fileId);
 
@@ -64,7 +64,7 @@ final class WhiteboardLibraryService {
 				}
 
 				$lib = json_decode($file->getContent(), true, 512, JSON_THROW_ON_ERROR);
-				$lib['filename'] = $templateDetails['filename'];
+				$lib['basename'] = $templateDetails['basename'];
 				$libs[] = $lib;
 			}
 		}

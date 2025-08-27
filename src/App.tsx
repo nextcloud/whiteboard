@@ -107,7 +107,7 @@ export default function App({
 	const { renderSmartPicker } = useSmartPicker()
 	const { renderAssistant } = useAssistant()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
-	const { fetchLibraryItems, updateLibraryItems } = useLibrary()
+	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
 	useCollaboration()
 	const { isReadOnly } = useReadOnlyState()
 
@@ -157,6 +157,7 @@ export default function App({
 				await api.updateLibrary({
 					libraryItems: libraryItems || [],
 				})
+				setIsLibraryLoaded(true)
 			} catch (error) {
 				console.error('[App] Error updating library items:', error)
 			}
@@ -191,12 +192,16 @@ export default function App({
 	}, [updateLang, renderSmartPicker, renderAssistant])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
+		if (!isLibraryLoaded) {
+			// Skip updating library items on first load
+			return
+		}
 		try {
 			await updateLibraryItems(items)
 		} catch (error) {
 			console.error('[App] Error syncing library items:', error)
 		}
-	}, [])
+	}, [isLibraryLoaded])
 
 	const libraryReturnUrl = encodeURIComponent(window.location.href)
 
