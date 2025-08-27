@@ -55,7 +55,7 @@ final class WhiteboardLibraryService {
 		foreach ($templates as $template) {
 			$templateDetails = $template->jsonSerialize();
 
-			if (str_ends_with($templateDetails['filename'], '.excalidrawlib')) {
+			if (str_ends_with($templateDetails['basename'], '.excalidrawlib')) {
 				$fileId = $templateDetails['fileid'];
 				$file = $this->rootFolder->getFirstNodeById($fileId);
 
@@ -64,7 +64,7 @@ final class WhiteboardLibraryService {
 				}
 
 				$lib = json_decode($file->getContent(), true, 512, JSON_THROW_ON_ERROR);
-				$lib['filename'] = $templateDetails['filename'];
+				$lib['basename'] = $templateDetails['basename'];
 				$libs[] = $lib;
 			}
 		}
@@ -80,7 +80,12 @@ final class WhiteboardLibraryService {
 	 * @throws JsonException
 	 */
 	public function updateUserLib(string $uid, array $items): void {
-		// Update the .excalidrawlib files in the /Templates directory
+		// Check if the user has a Templates folder, if not create one
+		if (!$this->templateManager->hasTemplateDirectory()) {
+			$this->templateManager->initializeTemplateDirectory(null, $uid, false);
+		}
+
+		// Update the .excalidrawlib files in the Templates directory
 		$userFolder = $this->rootFolder->getUserFolder($uid);
 		$templatesPath = $this->templateManager->getTemplatePath();
 		$templatesFolder = $userFolder->get($templatesPath);
