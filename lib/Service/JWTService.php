@@ -44,6 +44,8 @@ final class JWTService {
 			'exp' => $expirationTime
 		];
 
+
+
 		return $this->generateJWTFromPayload($payload);
 	}
 
@@ -59,7 +61,9 @@ final class JWTService {
 	public function getUserIdFromJWT(string $jwt): string {
 		try {
 			$key = $this->configService->getJwtSecretKey();
-			return JWT::decode($jwt, new Key($key, JWTConsts::JWT_ALGORITHM))->userid;
+			$decoded = JWT::decode($jwt, new Key($key, JWTConsts::JWT_ALGORITHM));
+
+			return $decoded->userid;
 		} catch (Exception) {
 			throw new UnauthorizedException();
 		}
