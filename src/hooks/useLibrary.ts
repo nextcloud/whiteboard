@@ -3,13 +3,12 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable no-console */
-
 import { useCallback } from 'react'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
 import type { LibraryItem, LibraryItems } from '@excalidraw/excalidraw/types/types'
+import logger from '../logger'
 
 type LibraryItemExtended = LibraryItem & {
 	filename?: string;
@@ -26,7 +25,7 @@ export function useLibrary() {
 		try {
 			const jwt = await getJWT()
 			if (!jwt) {
-				console.warn('[Library] No JWT found, cannot fetch library')
+				logger.warn('[Library] No JWT found, cannot fetch library')
 				return null
 			}
 			const url = generateUrl('apps/whiteboard/library')
@@ -48,7 +47,6 @@ export function useLibrary() {
 
 			for (const file of data.data) {
 				if (!file.library && !file.libraryItems) {
-					console.warn('[Library] No valid library data found for file:', file)
 					continue
 				}
 
@@ -72,7 +70,6 @@ export function useLibrary() {
 				if (file.libraryItems) {
 					for (const item of file.libraryItems) {
 						if (!item.elements || item.elements.length === 0) {
-							console.warn('[Library] Skipping item with no elements:', item)
 							continue
 						}
 						const libraryItem: LibraryItemExtended = {
@@ -88,7 +85,7 @@ export function useLibrary() {
 			}
 			return libraryItems
 		} catch (error) {
-			console.error('[Library] Error fetching library:', error)
+			logger.error('[Library] Error fetching library:', error)
 			return null
 		}
 	})
@@ -97,7 +94,7 @@ export function useLibrary() {
 		try {
 			const jwt = await getJWT()
 			if (!jwt) {
-				console.warn('[Library] No JWT found, cannot update library')
+				logger.warn('[Library] No JWT found, cannot update library')
 				return
 			}
 			const url = generateUrl('apps/whiteboard/library')
@@ -115,7 +112,7 @@ export function useLibrary() {
 				throw new Error(`Failed to update library: ${response.statusText}`)
 			}
 		} catch (error) {
-			console.error('[Library] Error updating library:', error)
+			logger.error('[Library] Error updating library:', error)
 		}
 	})
 

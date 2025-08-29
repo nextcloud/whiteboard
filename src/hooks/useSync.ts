@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -16,6 +15,7 @@ import { useCollaborationStore } from '../stores/useCollaborationStore'
 // @ts-expect-error - Type definitions issue with @nextcloud/router
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
+import logger from '../logger'
 
 enum SyncMessageType {
 	SceneInit = 'SCENE_INIT',
@@ -76,7 +76,6 @@ export function useSync() {
 	useEffect(() => {
 		initializeWorker()
 		return () => {
-			console.log('[Sync] Terminating worker via useSync cleanup.')
 			terminateWorker()
 		}
 	}, [initializeWorker, terminateWorker])
@@ -87,7 +86,6 @@ export function useSync() {
 	// Reset prevSyncedFilesRef when fileId changes to prevent leakage across files
 	useEffect(() => {
 		prevSyncedFilesRef.current = {}
-		console.debug('[Sync] Cleared prevSyncedFilesRef due to fileId change:', fileId)
 	}, [fileId]) // Depends on fileId from the hook scope
 
 	// --- Sync Logic ---
@@ -95,18 +93,10 @@ export function useSync() {
 	// Saves current state to IndexedDB
 	const doSyncToLocal = useCallback(async () => {
 		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly) {
-			console.debug('[Sync] Not ready for local sync:', {
-				isWorkerReady,
-				hasWorker: !!worker,
-				hasFileId: !!fileId,
-				hasApi: !!excalidrawAPI,
-				isReadOnly,
-			})
 			return
 		}
 
 		try {
-			console.debug(`[Sync] Preparing local sync for file ${fileId}`)
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as any
 			const appState = excalidrawAPI.getAppState() as any
 			const files = excalidrawAPI.getFiles() as any
@@ -114,11 +104,10 @@ export function useSync() {
 			delete filteredAppState?.collaborators
 			delete filteredAppState?.selectedElementIds
 
-			console.debug(`[Sync] Sending ${elements.length} elements to worker for local sync.`)
 			worker.postMessage({ type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState })
 			logSyncResult('local', { status: 'syncing' })
 		} catch (error) {
-			console.error('[Sync] Local sync failed:', error)
+			logger.error('[Sync] Local sync failed:', error)
 			logSyncResult('local', { status: 'error', error: error instanceof Error ? error.message : String(error) })
 		}
 	}, [isWorkerReady, worker, fileId, excalidrawAPI, isReadOnly])
@@ -126,15 +115,6 @@ export function useSync() {
 	// Saves current state to the Nextcloud server API
 	const doSyncToServerAPI = useCallback(async () => {
 		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online') {
-			console.debug('[Sync] Not ready for server sync:', {
-				isWorkerReady,
-				hasWorker: !!worker,
-				hasFileId: !!fileId,
-				hasApi: !!excalidrawAPI,
-				isDedicatedSyncer,
-				isReadOnly,
-				collabStatus,
-			})
 			return
 		}
 
@@ -154,7 +134,7 @@ export function useSync() {
 				type: 'SYNC_TO_SERVER', fileId, url: generateUrl(`apps/whiteboard/${fileId}`), jwt, elements, files,
 			})
 		} catch (error) {
-			console.error('[Sync] Server API sync failed:', error)
+			logger.error('[Sync] Server API sync failed:', error)
 			logSyncResult('server', { status: 'error API', error: error instanceof Error ? error.message : String(error) })
 		}
 	}, [isWorkerReady, worker, fileId, excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus, getJWT])
@@ -171,13 +151,6 @@ export function useSync() {
 	// Syncs scene and files via WebSocket
 	const doSyncViaWebSocket = useCallback(async () => {
 		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly) {
-			console.debug('[Sync] Not ready for websocket sync:', {
-				hasFileId: !!fileId,
-				hasApi: !!excalidrawAPI,
-				hasSocket: !!socket,
-				collabStatus,
-				isReadOnly,
-			})
 			return
 		}
 
@@ -194,7 +167,6 @@ export function useSync() {
 			// 2. Send only new or changed files
 			if (files && Object.keys(files).length > 0) {
 				const currentFileHashes: Record<string, string> = {}
-				let changedFilesCount = 0
 				for (const fileIdKey in files) {
 					const file = files[fileIdKey]
 					if (!file?.dataURL) continue
@@ -205,19 +177,16 @@ export function useSync() {
 						const fileJson = JSON.stringify(fileData)
 						const fileBuffer = new TextEncoder().encode(fileJson)
 						socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, fileBuffer, [])
-						changedFilesCount++
 					}
 				}
 				prevSyncedFilesRef.current = currentFileHashes
 				logSyncResult('websocket', { status: 'sync success', elementsCount: elements.length })
-				console.log(`[Sync] WebSocket sync: ${Object.keys(files).length} files, ${changedFilesCount} changed`)
 			} else {
 				logSyncResult('websocket', { status: 'sync success', elementsCount: elements.length })
-				console.log('[Sync] WebSocket sync: 0 files')
 				prevSyncedFilesRef.current = {}
 			}
 		} catch (error) {
-			console.error('[Sync] WebSocket sync failed:', error)
+			logger.error('[Sync] WebSocket sync failed:', error)
 			logSyncResult('websocket', { status: 'sync error', error: error instanceof Error ? error.message : String(error) })
 		}
 	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly])
@@ -242,8 +211,6 @@ export function useSync() {
 		throttledSyncToLocal()
 		throttledSyncToServerAPI()
 		throttledSyncViaWebSocket()
-
-		console.debug('[Sync] Changes detected, triggered sync operations')
 	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket])
 
 	// --- Cursor Sync ---
@@ -253,12 +220,6 @@ export function useSync() {
 			button: 'down' | 'up'
 		}) => {
 			if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online') {
-				console.debug('[Sync] Not ready for cursor sync:', {
-					hasFileId: !!fileId,
-					hasApi: !!excalidrawAPI,
-					hasSocket: !!socket,
-					collabStatus,
-				})
 				return
 			}
 
@@ -276,7 +237,7 @@ export function useSync() {
 				socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer, [])
 				logSyncResult('cursor', { status: 'sync success' })
 			} catch (error) {
-				console.error('[Sync] Error syncing cursor:', error)
+				logger.error('[Sync] Error syncing cursor:', error)
 				logSyncResult('cursor', { status: 'sync error', error: error instanceof Error ? error.message : String(error) })
 			}
 		},
@@ -303,13 +264,10 @@ export function useSync() {
 	useEffect(() => {
 		const handleBeforeUnload = () => {
 			if (excalidrawAPI && !isReadOnly) {
-				console.log('[Sync] Saving state locally on page unload (beforeunload).')
 				// Cancel any pending throttled trailing call FIRST
 				throttledSyncToLocal.cancel()
 				// Call the unthrottled version directly, ensures latest state is attempted
 				doSyncToLocal()
-			} else {
-				console.log('[Sync] Skipping local save on page unload (no API or read-only).')
 			}
 		}
 
@@ -318,14 +276,12 @@ export function useSync() {
 		// Cleanup function for component unmount
 		return () => {
 			window.removeEventListener('beforeunload', handleBeforeUnload)
-			console.log('[Sync] Cleaning up sync hook on unmount.')
 
 			// Cancel all throttled functions to prevent them from running after unmount
 			throttledSyncToLocal.cancel()
 			throttledSyncToServerAPI.cancel()
 			throttledSyncViaWebSocket.cancel()
 			throttledSyncCursors.cancel()
-			console.log('[Sync] Cancelled throttled functions on unmount.')
 		}
 	}, [doSyncToLocal, throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncCursors, excalidrawAPI, isReadOnly])
 

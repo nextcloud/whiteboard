@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
@@ -30,6 +29,7 @@ import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { Icon } from '@mdi/react'
 import { mdiGrid } from '@mdi/js'
 import { useAssistant } from './hooks/useAssistant'
+import logger from './logger'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -63,7 +63,7 @@ export default function App({
 	collabBackendUrl,
 }: WhiteboardAppProps) {
 	if (!fileId) {
-		console.warn('[App] Invalid fileId during initialization:', fileId)
+		logger.warn('[App] Invalid fileId during initialization:', fileId)
 
 		return <div className="App-error">Invalid whiteboard ID. Please try again.</div>
 	}
@@ -120,11 +120,8 @@ export default function App({
 
 	// Effect to handle fileId changes - cleanup previous board data
 	useEffect(() => {
-		console.log('[App] FileId changed to:', fileId)
-
 		// Clear any existing Excalidraw data when fileId changes
 		if (excalidrawAPI) {
-			console.log('[App] Clearing Excalidraw data for fileId change')
 			excalidrawAPI.resetScene()
 		}
 
@@ -141,14 +138,13 @@ export default function App({
 
 	useEffect(() => {
 		resetInitialDataPromise()
-		console.log('[App] Reset initialDataPromise on mount')
 
 		// Fetch library items from the API
 		window.name = fileName
 		const fetchLibInterval = setInterval(async () => {
 			const api = useExcalidrawStore.getState().excalidrawAPI
 			if (!api) {
-				console.warn('[App] Excalidraw API not available, cannot update library')
+				logger.warn('[App] Excalidraw API not available, cannot update library')
 				return
 			}
 			clearInterval(fetchLibInterval)
@@ -158,7 +154,7 @@ export default function App({
 					libraryItems: libraryItems || [],
 				})
 			} catch (error) {
-				console.error('[App] Error updating library items:', error)
+				logger.error('[App] Error updating library items:', error)
 			}
 		}, 1000)
 
@@ -168,7 +164,6 @@ export default function App({
 			saveOnUnmount()
 
 			// Reset all stores
-			console.log('[App] Resetting all stores on unmount')
 			resetStore()
 			resetExcalidrawAPI()
 
@@ -179,12 +174,10 @@ export default function App({
 
 	useLayoutEffect(() => {
 		setConfig({ fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl })
-		console.log('[App] Configuration set')
 	}, [setConfig, fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl])
 
 	// UI Initialization Effect
 	useEffect(() => {
-		console.log('[App] Initializing UI components')
 		updateLang()
 		renderSmartPicker()
 		renderAssistant()
@@ -194,7 +187,7 @@ export default function App({
 		try {
 			await updateLibraryItems(items)
 		} catch (error) {
-			console.error('[App] Error syncing library items:', error)
+			logger.error('[App] Error syncing library items:', error)
 		}
 	}, [])
 

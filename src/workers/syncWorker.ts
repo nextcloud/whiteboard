@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { db } from '../database/db'
@@ -24,14 +23,15 @@ try {
 	} as any
 }
 
-const log = (message: string, ...args: any[]) => {
-	try {
-		globalThis.console.log(`[SyncWorker] ${message}`, ...args)
-	} catch (e) {}
+// Logging disabled in production to reduce noise
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const log = () => {
+	// No-op
 }
 
 const error = (message: string, ...args: any[]) => {
 	try {
+		// Only log errors as they are critical
 		globalThis.console.error(`[SyncWorker] ${message}`, ...args)
 	} catch (e) {}
 }
@@ -50,8 +50,6 @@ const sendMessage = (type: string, data: any = {}) => {
 const handleMessage = async (event: MessageEvent<SyncWorkerMessage>) => {
 	const { type, ...data } = event.data
 
-	log(`Received message: ${type}`)
-
 	try {
 		switch (type) {
 		case 'INIT':
@@ -64,7 +62,7 @@ const handleMessage = async (event: MessageEvent<SyncWorkerMessage>) => {
 			await handleSyncToServer(data)
 			break
 		default:
-			log(`Unknown message type: ${type}`)
+			// Unknown message type - ignore
 		}
 	} catch (e) {
 		error(`Error handling message ${type}:`, e)
@@ -90,22 +88,14 @@ const handleSyncToLocal = async (data: any) => {
 
 	// We used to prevent syncing empty whiteboards, but this caused issues with deleting all elements
 	// Now we allow empty element arrays to be saved, which is necessary when all elements are deleted
-	if (elements.length === 0) {
-		log('[Worker] Syncing empty whiteboard (all elements deleted or new whiteboard)')
-		// Continue with the sync operation to allow saving empty element arrays
-	}
 
 	const startTime = performance.now()
 
 	try {
-		log(
-			`Syncing ${elements.length} elements to local storage for file ${fileId}`,
-		)
 
 		const filteredAppState = appState ? { ...appState } : appState
 
 		if (filteredAppState && filteredAppState.collaborators) {
-			log('Removing collaborators from appState before storing')
 			delete filteredAppState.collaborators
 		}
 
@@ -114,7 +104,6 @@ const handleSyncToLocal = async (data: any) => {
 		const endTime = performance.now()
 		const duration = endTime - startTime
 
-		log(`Local sync completed in ${duration.toFixed(2)}ms for ${elements.length} elements`)
 		sendMessage('LOCAL_SYNC_COMPLETE', {
 			duration,
 			elementsCount: elements.length,
@@ -141,7 +130,6 @@ const handleSyncToServer = async (data: any) => {
 	const startTime = performance.now()
 
 	try {
-		log(`Sending ${elements.length} elements to server for file ${fileId}`)
 
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
@@ -159,7 +147,6 @@ const handleSyncToServer = async (data: any) => {
 
 		if (response.status === 409) {
 			// Another sync in progress - just treat as success
-			log('Sync skipped - another tab is syncing')
 			sendMessage('SERVER_SYNC_COMPLETE', {
 				success: true,
 				skipped: true,
@@ -182,13 +169,11 @@ const handleSyncToServer = async (data: any) => {
 		try {
 			responseData = await response.json()
 		} catch (parseError) {
-			log('Could not parse server response, but sync was successful')
+			// Could not parse server response, but sync was successful
 		}
 
 		const endTime = performance.now()
 		const duration = endTime - startTime
-
-		log(`Server sync completed successfully in ${duration.toFixed(2)}ms for ${elements.length} elements`)
 
 		sendMessage('SERVER_SYNC_COMPLETE', {
 			success: true,
@@ -205,10 +190,8 @@ const handleSyncToServer = async (data: any) => {
 }
 
 const initWorker = () => {
-	log('Initializing worker')
 	try {
 		sendMessage('INIT_COMPLETE')
-		log('Worker initialization completed')
 	} catch (e) {
 		error('Failed to initialize worker:', e)
 		sendMessage('INIT_ERROR', {
@@ -218,5 +201,3 @@ const initWorker = () => {
 }
 
 ctx.addEventListener('message', handleMessage)
-
-log('Sync worker loaded')
