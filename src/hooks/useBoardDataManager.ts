@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useState, useRef } from 'react'
@@ -16,6 +15,7 @@ import { db } from '../database/db'
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import { initialDataState } from '../App'
+import logger from '../logger'
 
 export function useBoardDataManager() {
 	const [isLoading, setIsLoading] = useState(true)
@@ -33,11 +33,10 @@ export function useBoardDataManager() {
 	})))
 
 	const fetchDataFromServer = useCallback(async (fileId: number) => {
-		console.log('[BoardDataManager] Fetching data from Nextcloud server for fileId:', fileId)
 		try {
 			const jwt = await useJWTStore.getState().getJWT()
 			if (!jwt) {
-				console.error('[BoardDataManager] Failed to get JWT token for server data fetch')
+				logger.error('[BoardDataManager] Failed to get JWT token for server data fetch')
 				return null
 			}
 
@@ -52,23 +51,19 @@ export function useBoardDataManager() {
 			})
 
 			if (!response.ok) {
-				console.error(`[BoardDataManager] Server responded with status: ${response.status} when fetching data`)
+				logger.error(`[BoardDataManager] Server responded with status: ${response.status} when fetching data`)
 				return null
 			}
 
 			const responseData = await response.json()
 			if (!responseData || !responseData.data) {
-				console.error('[BoardDataManager] Invalid response data from server:', responseData)
+				logger.error('[BoardDataManager] Invalid response data from server:', responseData)
 				return null
 			}
 
-			console.log('[BoardDataManager] Successfully fetched data from server:', {
-				elementCount: responseData.data.elements?.length || 0,
-			})
-
 			return responseData.data
 		} catch (error) {
-			console.error('[BoardDataManager] Error fetching data from server:', error)
+			logger.error('[BoardDataManager] Error fetching data from server:', error)
 			return null
 		}
 	}, [])
@@ -81,7 +76,7 @@ export function useBoardDataManager() {
 
 	const loadBoard = useCallback(async () => {
 		if (!fileId) {
-			console.warn('[BoardDataManager] No fileId provided, cannot load data')
+			logger.warn('[BoardDataManager] No fileId provided, cannot load data')
 			resolveInitialData(initialDataState)
 			setIsLoading(false)
 			return
@@ -90,7 +85,6 @@ export function useBoardDataManager() {
 		// Store the current fileId to validate later
 		currentFileIdRef.current = fileId
 
-		console.log('[BoardDataManager] Loading data for fileId:', fileId)
 		try {
 			const defaultSettings = {
 				currentItemFontFamily: 3,
@@ -102,7 +96,6 @@ export function useBoardDataManager() {
 
 			// Validate that we're still loading the same file
 			if (currentFileIdRef.current !== fileId) {
-				console.log('[BoardDataManager] FileId changed during load, aborting')
 				return
 			}
 
@@ -110,32 +103,22 @@ export function useBoardDataManager() {
 			let shouldFetchFromServer = false
 
 			if (localData) {
-				console.log('[BoardDataManager] Local data retrieved:', {
-					elementCount: localData.elements?.length || 0,
-					savedAt: localData.savedAt ? new Date(localData.savedAt).toISOString() : 'unknown',
-					fileId: localData.id,
-				})
-
 				// Check if local data is valid and has elements
 				if (localData.elements && Array.isArray(localData.elements)) {
 					if (localData.elements.length > 0) {
 						// Local data has elements, use it
 						shouldUseLocalData = true
-						console.log('[BoardDataManager] Local data has elements, will use it')
 					} else {
 						// Local data exists but has no elements, might be empty
 						// We should check the server for data
-						console.log('[BoardDataManager] Local data exists but has no elements, will check server')
 						shouldFetchFromServer = true
 					}
 				} else {
 					// Invalid local data, check server
-					console.log('[BoardDataManager] Invalid local data structure, will check server')
 					shouldFetchFromServer = true
 				}
 			} else {
 				// No local data found, check server
-				console.log('[BoardDataManager] No local data found, will check server')
 				shouldFetchFromServer = true
 			}
 
@@ -146,13 +129,10 @@ export function useBoardDataManager() {
 
 				// Validate that we're still loading the same file
 				if (currentFileIdRef.current !== fileId) {
-					console.log('[BoardDataManager] FileId changed during server fetch, aborting')
 					return
 				}
 
 				if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
-					console.log('[BoardDataManager] Using data from server and saving to IndexedDB')
-
 					// Save server data to IndexedDB for future use
 					await db.put(
 						fileId,
@@ -163,14 +143,11 @@ export function useBoardDataManager() {
 
 					// Use server data instead of local data
 					shouldUseLocalData = false
-				} else {
-					console.log('[BoardDataManager] No valid data from server, will use empty state')
 				}
 			}
 
 			// Final validation before resolving data
 			if (currentFileIdRef.current !== fileId) {
-				console.log('[BoardDataManager] FileId changed before data resolution, aborting')
 				return
 			}
 
@@ -180,8 +157,6 @@ export function useBoardDataManager() {
 				const elements = localData.elements
 				const finalAppState = { ...defaultSettings, ...(localData.appState || {}) }
 				const files = localData.files || {}
-
-				console.log(`[BoardDataManager] Loading data from local storage: ${elements.length} elements, ${Object.keys(files).length} files`)
 
 				// Force a small delay to ensure the component is ready to receive the data
 				const timeout = setTimeout(() => {
@@ -193,7 +168,6 @@ export function useBoardDataManager() {
 							files,
 							scrollToContent: true,
 						})
-						console.log('[BoardDataManager] Loaded data from local storage with merged settings')
 						setIsLoading(false)
 					}
 					loadingTimeoutsRef.current.delete(timeout)
@@ -205,8 +179,6 @@ export function useBoardDataManager() {
 				const finalAppState = { ...defaultSettings, ...(serverData.appState || {}) }
 				const files = serverData.files || {}
 
-				console.log(`[BoardDataManager] Loading data from server: ${elements.length} elements, ${Object.keys(files || {}).length} files`)
-
 				// Force a small delay to ensure the component is ready to receive the data
 				const timeout = setTimeout(() => {
 					// Validate one more time before resolving
@@ -217,7 +189,6 @@ export function useBoardDataManager() {
 							files,
 							scrollToContent: true,
 						})
-						console.log('[BoardDataManager] Loaded data from server with merged settings')
 						setIsLoading(false)
 					}
 					loadingTimeoutsRef.current.delete(timeout)
@@ -225,7 +196,6 @@ export function useBoardDataManager() {
 				loadingTimeoutsRef.current.add(timeout)
 			} else {
 				// No valid data from either source, use defaults
-				console.log('[BoardDataManager] No valid data found in local storage or server, using defaults')
 				// Force a small delay to ensure the component is ready to receive the data
 				const timeout = setTimeout(() => {
 					// Validate one more time before resolving
@@ -238,7 +208,7 @@ export function useBoardDataManager() {
 				loadingTimeoutsRef.current.add(timeout)
 			}
 		} catch (error) {
-			console.error('[BoardDataManager] Error loading data:', error)
+			logger.error('[BoardDataManager] Error loading data:', error)
 			// Force a small delay to ensure the component is ready to receive the data
 			const timeout = setTimeout(() => {
 				// Validate one more time before resolving
@@ -257,7 +227,6 @@ export function useBoardDataManager() {
 		const currentIsReadOnly = useWhiteboardConfigStore.getState().isReadOnly
 
 		if (api && !currentIsReadOnly) {
-			console.log('[App] Saving final state on unmount')
 
 			const currentFileId = useWhiteboardConfigStore.getState().fileId
 			const currentWorker = useSyncStore.getState().worker
@@ -275,15 +244,12 @@ export function useBoardDataManager() {
 						selectedElementIds: undefined,
 					}
 
-					console.log(`[App] Sending final sync with ${elements.length} elements before unmount`)
-
 					// Set up a one-time message handler to detect when sync is complete
 					const messageHandler = (event: MessageEvent) => {
 						if (event.data.type === 'LOCAL_SYNC_COMPLETE') {
-							console.log('[App] Final sync completed successfully')
 							currentWorker.removeEventListener('message', messageHandler)
 						} else if (event.data.type === 'LOCAL_SYNC_ERROR') {
-							console.error('[App] Final sync failed:', event.data.error)
+							logger.error('[App] Final sync failed:', event.data.error)
 							currentWorker.removeEventListener('message', messageHandler)
 						}
 					}
@@ -305,7 +271,7 @@ export function useBoardDataManager() {
 						currentWorker.removeEventListener('message', messageHandler)
 					}, 500)
 				} catch (error) {
-					console.error('[App] Error during final sync on unmount:', error)
+					logger.error('[App] Error during final sync on unmount:', error)
 				}
 			}
 		}
@@ -323,7 +289,6 @@ export function useBoardDataManager() {
 			// Clear any existing Excalidraw data
 			const api = useExcalidrawStore.getState().excalidrawAPI
 			if (api) {
-				console.log('[BoardDataManager] Clearing existing Excalidraw data before loading new board')
 				api.resetScene()
 			}
 

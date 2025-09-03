@@ -3,15 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable no-console */
-
 import { create } from 'zustand'
+import logger from '../logger'
 
 export type SyncOperation = 'local' | 'server' | 'websocket' | 'cursor'
 
 // Utility function for logging sync results (moved outside the store)
 export function logSyncResult(operation: SyncOperation, result: { status: string, error?: string | null, elementsCount?: number | null }) {
-	console.log(
+	logger.debug(
 		`[SyncStore] ${operation} sync ${result.status}`,
 		result.elementsCount ? `elements: ${result.elementsCount}` : '',
 		result.error ? `error: ${result.error}` : '',
@@ -46,7 +45,6 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 
 	// Worker functions
 	initializeWorker: () => {
-		console.log('[SyncStore] Initializing sync worker')
 
 		// If worker already exists, terminate it first
 		if (get().worker) {
@@ -63,31 +61,18 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 				new URL('../workers/syncWorker.ts', import.meta.url),
 				{ type: 'module' },
 			)
-			console.log('[SyncStore] Worker initialized successfully')
 
 			// Setup worker message handler
 			if (syncWorker) {
 				syncWorker.onmessage = (event) => {
 					const { type, ...data } = event.data
 
-					console.log(
-						`[SyncStore] Received message from worker: ${type}`,
-						data,
-					)
-
 					switch (type) {
 					case 'INIT_COMPLETE':
-						console.log(
-							'[SyncStore] Worker initialization complete',
-						)
 						get().setIsWorkerReady(true)
 						break
 
 					case 'LOCAL_SYNC_COMPLETE':
-						console.log(
-							'[SyncStore] Worker completed local sync:',
-							data,
-						)
 						// Use the imported logSyncResult function
 						logSyncResult('local', {
 							status: 'success',
@@ -97,10 +82,7 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 						break
 
 					case 'LOCAL_SYNC_ERROR':
-						console.error(
-							'[SyncStore] Worker local sync error:',
-							data.error,
-						)
+						logger.error('[SyncStore] Worker local sync error:', data.error)
 						// Use the imported logSyncResult function
 						logSyncResult('local', {
 							status: 'error',
@@ -109,10 +91,6 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 						break
 
 					case 'SERVER_SYNC_COMPLETE':
-						console.log(
-							'[SyncStore] Worker completed server sync:',
-							data,
-						)
 						// Use the imported logSyncResult function
 						logSyncResult('server', {
 							status: 'success',
@@ -122,10 +100,7 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 						break
 
 					case 'SERVER_SYNC_ERROR':
-						console.error(
-							'[SyncStore] Worker server sync error:',
-							data.error,
-						)
+						logger.error('[SyncStore] Worker server sync error:', data.error)
 						// Use the imported logSyncResult function
 						logSyncResult('server', {
 							status: 'error',
@@ -134,9 +109,7 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 						break
 
 					default:
-						console.warn(
-							`[SyncStore] Unknown message from worker: ${type}`,
-						)
+						logger.warn(`[SyncStore] Unknown message from worker: ${type}`)
 					}
 				}
 
@@ -147,11 +120,9 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 
 				// Store the worker in the state
 				set({ worker: syncWorker })
-			} else {
-				console.warn('[SyncStore] Worker not available, using fallback')
 			}
 		} catch (e) {
-			console.error('[SyncStore] Failed to initialize worker:', e)
+			logger.error('[SyncStore] Failed to initialize worker:', e)
 		}
 
 		return syncWorker
@@ -165,7 +136,6 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 				worker: null,
 				isWorkerReady: false,
 			})
-			console.log('[SyncStore] Worker terminated')
 		}
 	},
 }))
