@@ -28,6 +28,7 @@ enum BroadcastType {
 	MouseLocation = 'MOUSE_LOCATION', // Incoming cursor data
 	ImageAdd = 'IMAGE_ADD', // Incoming image data from others
 	ImageRequest = 'IMAGE_REQUEST', // Request for image data
+	ViewportUpdate = 'VIEWPORT_UPDATE', // Incoming viewport changes from others
 }
 
 const CURSOR_UPDATE_DELAY = 50
@@ -219,6 +220,77 @@ export function useCollaboration() {
 		[throttledUpdateCursor],
 	)
 
+	const updateViewportState = useCallback(
+		(payload: {
+			userId: string
+			scrollX: number
+			scrollY: number
+			zoom: number
+		}) => {
+			if (!payload.userId || typeof payload.scrollX !== 'number' || typeof payload.scrollY !== 'number' || typeof payload.zoom !== 'number') {
+				console.warn('[Collaboration] Invalid viewport payload:', payload)
+				return
+			}
+
+			const {
+				followedUserId,
+				presenterId,
+				isPresentationMode,
+				autoFollowPresenter,
+			} = useCollaborationStore.getState()
+
+			// Debug logging for recording agents and presentation
+			console.log(`[Collaboration] Viewport update received from user ${payload.userId}`, {
+				followedUserId,
+				presenterId,
+				isPresentationMode,
+				autoFollowPresenter,
+				payload,
+			})
+
+			// Determine if we should follow this user's viewport
+			let shouldFollow = false
+			let followReason = ''
+
+			// 1. Explicit following (recording agents, manual follow)
+			if (followedUserId === payload.userId) {
+				shouldFollow = true
+				followReason = 'explicit follow'
+			} else if (isPresentationMode
+					 && presenterId === payload.userId
+					 && autoFollowPresenter
+					 && !followedUserId) { // Don't override explicit following
+				// 2. Auto-follow presenter during presentation mode
+				shouldFollow = true
+				followReason = 'presentation auto-follow'
+			}
+
+			if (shouldFollow && excalidrawAPI) {
+				console.log(`[Collaboration] Applying viewport from ${payload.userId} (${followReason}):`, payload)
+				const currentAppState = excalidrawAPI.getAppState()
+
+				// Apply viewport changes with smooth transition
+				excalidrawAPI.updateScene({
+					appState: {
+						...currentAppState,
+						scrollX: payload.scrollX,
+						scrollY: payload.scrollY,
+						zoom: { value: payload.zoom },
+					},
+				})
+			} else if (followedUserId || (isPresentationMode && presenterId)) {
+				console.log(`[Collaboration] Ignoring viewport update from ${payload.userId}`, {
+					reason: followedUserId
+						? `following ${followedUserId}`
+						: isPresentationMode && !autoFollowPresenter
+							? 'auto-follow disabled'
+							: 'not presenter',
+				})
+			}
+		},
+		[excalidrawAPI],
+	)
+
 	const clearExcalidrawCollaborators = useCallback(() => {
 		if (excalidrawAPI) {
 			excalidrawAPI.updateScene({ collaborators: new Map() })
@@ -343,6 +415,13 @@ export function useCollaboration() {
 						}
 					}
 					break
+				case BroadcastType.ViewportUpdate:
+					if (decoded.payload && typeof decoded.payload === 'object') {
+						updateViewportState(decoded.payload)
+					} else {
+						console.warn('[Collaboration] Invalid ViewportUpdate payload:', decoded.payload)
+					}
+					break
 				default:
 					console.debug('[Collaboration] Unknown broadcast type:', decoded.type)
 					break
@@ -351,7 +430,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error processing client broadcast:', error)
 			}
 		},
-		[reconcileAndApplyRemoteElements, updateCursorState, handleRemoteImageAdd, excalidrawAPI, fileId],
+		[reconcileAndApplyRemoteElements, updateCursorState, handleRemoteImageAdd, updateViewportState, excalidrawAPI, fileId],
 	)
 
 	const handleSyncDesignate = useCallback((data: { isSyncer: boolean }) => {
@@ -421,7 +500,7 @@ export function useCollaboration() {
 			})
 
 			socketInstance.on('connect', () => {
-				console.log('[Collaboration] Connected.')
+				console.log('[Collaboration] Socket connect event fired - setting status to online')
 				setStatus('online')
 
 				// Only clear auth errors if this was not a JWT secret mismatch
@@ -433,25 +512,46 @@ export function useCollaboration() {
 
 				// Reset room join tracking on new connection
 				joinedRoomRef.current = null
+				console.log('[Collaboration] Reset room join tracking due to connect event')
 
 				// We don't need to call handleInitRoom() here because the server will send an init-room event
 				// which will trigger the room join. This prevents double room joins.
 			})
 
 			socketInstance.on('disconnect', (reason) => {
-				console.warn(`[Collaboration] Disconnected: ${reason}`)
+				console.warn(`[Collaboration] Socket disconnect event fired: ${reason}`)
 				clearExcalidrawCollaborators()
-				setStatus('offline')
+
+				// Only set to offline if this is an intentional disconnect
+				// For server disconnects, Socket.IO will automatically try to reconnect
+				if (reason === 'io client disconnect') {
+					console.log('[Collaboration] Client disconnect - setting status to offline')
+					setStatus('offline')
+				} else {
+					console.log('[Collaboration] Server disconnect detected, Socket.IO will attempt auto-reconnect')
+					setStatus('reconnecting')
+				}
 
 				// Reset room join tracking on disconnect
 				joinedRoomRef.current = null
+				console.log('[Collaboration] Reset room join tracking due to disconnect')
 			})
 
 			socketInstance.on('reconnect', (attemptNumber) => {
-				console.log(`[Collaboration] Reconnected after ${attemptNumber} attempts`)
+				console.log(`[Collaboration] Socket reconnect event fired after ${attemptNumber} attempts - setting status to online`)
+
+				// Update status to online on successful reconnect
+				setStatus('online')
+
+				// Clear auth errors since we're successfully reconnected
+				const { authError } = useCollaborationStore.getState()
+				if (authError.type !== 'jwt_secret_mismatch') {
+					clearAuthError()
+				}
 
 				// Reset room join tracking on reconnect
 				joinedRoomRef.current = null
+				console.log('[Collaboration] Reset room join tracking due to reconnect event')
 			})
 
 			socketInstance.on('reconnect_attempt', (attemptNumber) => {
@@ -463,9 +563,40 @@ export function useCollaboration() {
 				console.error('[Collaboration] Reconnection error:', error)
 			})
 
+			socketInstance.on('reconnect_failed', () => {
+				console.error('[Collaboration] Reconnection failed - giving up')
+				setStatus('offline')
+			})
+
+			socketInstance.on('reconnect_error', (error) => {
+				console.error('[Collaboration] Reconnection error:', error)
+			})
+
 			// --- Application Logic Events ---
 			socketInstance.on('init-room', () => {
 				console.log('[Collaboration] Received init-room event from server, initiating room join')
+
+				// Force reset room join tracking since we're getting init-room
+				// This handles cases where the connect/reconnect events don't fire properly
+				const wasAlreadyJoined = joinedRoomRef.current
+				joinedRoomRef.current = null
+				console.log(`[Collaboration] Force reset room join tracking (was: ${wasAlreadyJoined})`)
+
+				// Fallback: If we receive init-room but status is still connecting or offline,
+				// and the socket is actually connected, update status to online
+				// This handles cases where the 'connect' event doesn't fire properly
+				const currentStatus = useCollaborationStore.getState().status
+				if ((currentStatus === 'connecting' || currentStatus === 'offline') && socketInstance.connected) {
+					console.log(`[Collaboration] Fallback: Setting status to online based on init-room + socket.connected (was: ${currentStatus})`)
+					setStatus('online')
+
+					// Clear auth errors since we're successfully connected
+					const { authError } = useCollaborationStore.getState()
+					if (authError.type !== 'jwt_secret_mismatch') {
+						clearAuthError()
+					}
+				}
+
 				// This is the primary trigger for joining a room - the server sends this event
 				// when a socket connects, and we respond by joining the appropriate room
 				handleInitRoom()
@@ -484,12 +615,99 @@ export function useCollaboration() {
 				handleUserJoined(data)
 			})
 
+			// Handle request for presenter's viewport
+			socketInstance.on('request-presenter-viewport', async () => {
+				console.log('[Collaboration] Presenter viewport requested')
+
+				// Check if we're the presenter
+				const { isPresenting } = useCollaborationStore.getState()
+
+				if (isPresenting && excalidrawAPI) {
+					const appState = excalidrawAPI.getAppState()
+					const { presenterId } = useCollaborationStore.getState()
+
+					const viewportData = {
+						type: BroadcastType.ViewportUpdate,
+						payload: {
+							userId: presenterId, // Use the presenterId
+							scrollX: appState.scrollX || 0,
+							scrollY: appState.scrollY || 0,
+							zoom: appState.zoom?.value || 1,
+						},
+					}
+
+					// Broadcast viewport to all users
+					const viewportJson = JSON.stringify(viewportData)
+					const viewportBuffer = new TextEncoder().encode(viewportJson)
+					socketInstance.emit('server-broadcast', `${fileId}`, viewportBuffer, [])
+
+					console.log('[Collaboration] Sent presenter viewport:', viewportData.payload)
+				}
+			})
+
+			// Handle viewport request from another user (for presentation follow)
+			socketInstance.on('send-viewport-request', async (data) => {
+				const { requesterId } = data
+				console.log(`[Collaboration] Viewport requested by user ${requesterId}`)
+
+				// Send our current viewport back to the requester
+				if (excalidrawAPI) {
+					const appState = excalidrawAPI.getAppState()
+
+					// Check if we're the presenter
+					const { isPresenting, presenterId: currentPresenterId } = useCollaborationStore.getState()
+
+					// Use the presenterId if we're presenting, otherwise use JWT userId
+					let userId = 'unknown'
+					if (isPresenting && currentPresenterId) {
+						// If we're presenting, use our presenter ID
+						userId = currentPresenterId
+					} else {
+						// Otherwise get our actual user ID from JWT
+						const jwt = await getJWT()
+						if (jwt) {
+							try {
+								const payload = JSON.parse(atob(jwt.split('.')[1]))
+								userId = payload.userid || payload.userId || 'unknown'
+							} catch (e) {
+								console.error('[Collaboration] Failed to parse JWT for user ID')
+							}
+						}
+					}
+
+					const viewportData = {
+						type: BroadcastType.ViewportUpdate,
+						payload: {
+							userId,
+							scrollX: appState.scrollX || 0,
+							scrollY: appState.scrollY || 0,
+							zoom: appState.zoom?.value || 1,
+						},
+					}
+
+					// Send directly to the requester via server broadcast
+					const viewportJson = JSON.stringify(viewportData)
+					const viewportBuffer = new TextEncoder().encode(viewportJson)
+					socketInstance.emit('server-broadcast', `${fileId}`, viewportBuffer, [])
+
+					console.log('[Collaboration] Sent viewport to requester:', viewportData.payload)
+				}
+			})
+
+			// Also handle presenter viewport broadcast (when presenter moves)
+			socketInstance.on('presenter-viewport-update', (data) => {
+				const { viewportData } = data
+				if (viewportData && viewportData.type === BroadcastType.ViewportUpdate) {
+					updateViewportState(viewportData.payload)
+				}
+			})
+
 			return socketInstance
 		},
 		[ // Ensure all dependencies using state/actions are listed
 			setStatus, handleInitRoom, handleTokenRefresh,
 			updateCollaboratorsState, handleClientBroadcast, handleSyncDesignate,
-			clearExcalidrawCollaborators, handleUserJoined,
+			clearExcalidrawCollaborators, handleUserJoined, excalidrawAPI, fileId, getJWT,
 		],
 	)
 

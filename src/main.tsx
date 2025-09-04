@@ -13,8 +13,60 @@ import './viewer.css'
 import logger from './logger'
 
 const EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
-
 const App = lazy(() => import('./App'))
+
+// Check if this is a recording session
+const isRecording = loadState('whiteboard', 'isRecording', false)
+
+if (isRecording) {
+	// For recording, load the required state values
+	const fileId = loadState('whiteboard', 'file_id', '')
+	const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl')
+	const jwt = loadState('whiteboard', 'jwt', '')
+
+	document.addEventListener('DOMContentLoaded', async () => {
+		// Initialize the JWT store with the recording JWT
+		const { useJWTStore } = await import('./stores/useJwtStore')
+		const payload = useJWTStore.getState().parseJwt(jwt)
+
+		if (payload && jwt) {
+			useJWTStore.setState((state) => ({
+				...state,
+				tokens: {
+					...state.tokens,
+					[fileId]: jwt,
+				},
+				tokenExpiries: {
+					...state.tokenExpiries,
+					[fileId]: payload.exp,
+				},
+			}))
+		}
+
+		document.body.removeAttribute('id')
+		document.body.innerHTML = ''
+		const whiteboardElement = createWhiteboardElement()
+		whiteboardElement.classList.add('recording')
+		document.body.appendChild(whiteboardElement)
+
+		renderApp(whiteboardElement, {
+			fileId,
+			isEmbedded: false,
+			fileName: '',
+			publicSharingToken: null,
+			collabBackendUrl,
+		})
+	})
+} else {
+	// Normal mode - handle public and non-public sharing
+	const publicSharingToken = getSharingToken()
+
+	if (isPublicShare()) {
+		handlePublicSharing(publicSharingToken)
+	}
+
+	handleNonPublicSharing()
+}
 
 const generateRandomId = () =>
 	Math.random()
@@ -35,14 +87,6 @@ const renderApp = (rootElement, props) => {
 }
 
 window.EXCALIDRAW_ASSET_PATH = EXCALIDRAW_ASSET_PATH
-
-const publicSharingToken = getSharingToken()
-
-if (isPublicShare()) {
-	handlePublicSharing(publicSharingToken)
-}
-
-handleNonPublicSharing()
 
 // Handler functions
 function handlePublicSharing(token) {
