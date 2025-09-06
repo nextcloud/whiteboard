@@ -44,7 +44,7 @@
     "form-data": "^4.0.3",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
-    "lru-cache": "^11.0.2",
+    "lru-cache": "^11.2.1",
     "node-fetch": "^3.3.2",
     "persist": "^0.2.7",
     "prom-client": "^14.2.0",
