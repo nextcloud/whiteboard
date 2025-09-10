@@ -567,9 +567,9 @@ export default class SocketManager {
 	}
 
 	/**
-	 * Gets user sockets and IDs for a room
+	 * Gets user sockets and IDs for a room (deduplicated by user ID)
 	 * @param {string} roomID - Room identifier
-	 * @return {Promise<Array<{socketId: string, user: object, userId: string}>>}
+	 * @return {Promise<Array<{socketId: string, user: object, userId: string, socketIds: string[]}>>}
 	 */
 	async getUserSocketsAndIds(roomID) {
 		// Fetch all sockets in the room
@@ -579,7 +579,7 @@ export default class SocketManager {
 		console.log(`[${roomID}] Fetched ${sockets.length} sockets for room-user-change event`)
 
 		// Process each socket to get user data
-		return Promise.all(
+		const socketResults = await Promise.all(
 			sockets.map(async (s) => {
 				const data = await this.socketDataStorage.get(s.id)
 				if (!data?.user?.id) {
@@ -592,12 +592,35 @@ export default class SocketManager {
 					userId: data.user.id,
 				}
 			}),
-		).then((results) => {
-			// Filter out any null entries and log the final count
-			const filteredResults = results.filter(Boolean)
-			console.log(`[${roomID}] Returning ${filteredResults.length} valid users for room-user-change event`)
-			return filteredResults
+		)
+
+		// Filter out null entries
+		const validSockets = socketResults.filter(Boolean)
+
+		// Group sockets by user ID to deduplicate
+		const userMap = new Map()
+		validSockets.forEach((socketData) => {
+			const existingUser = userMap.get(socketData.userId)
+			if (existingUser) {
+				// User already exists, just add this socket ID to their list
+				existingUser.socketIds.push(socketData.socketId)
+			} else {
+				// New user, create entry with array of socket IDs
+				userMap.set(socketData.userId, {
+					socketId: socketData.socketId, // Keep first socket ID for compatibility
+					user: socketData.user,
+					userId: socketData.userId,
+					socketIds: [socketData.socketId], // Array of all socket IDs for this user
+				})
+			}
 		})
+
+		// Convert map to array
+		const deduplicatedUsers = Array.from(userMap.values())
+
+		console.log(`[${roomID}] Returning ${deduplicatedUsers.length} unique users (from ${validSockets.length} sockets) for room-user-change event`)
+
+		return deduplicatedUsers
 	}
 
 	/**

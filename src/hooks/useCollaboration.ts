@@ -133,7 +133,7 @@ export function useCollaboration() {
 
 	// --- Collaborator State Management ---
 	const updateCollaboratorsState = useCallback(
-		(usersPayload: {
+		async (usersPayload: {
 			user: { id: string; name: string } // Persistent user ID and display name
 			pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
 			button: 'down' | 'up'
@@ -141,28 +141,44 @@ export function useCollaboration() {
 		}[]) => {
 			if (!excalidrawAPI) return
 
+			// Get current user ID from JWT to filter them out
+			let currentUserId: string | null = null
+			try {
+				const token = await getJWT()
+				if (token) {
+					const { parseJwt } = useJWTStore.getState()
+					const decodedToken = parseJwt(token)
+					currentUserId = decodedToken?.user?.id || decodedToken?.userid || null
+				}
+			} catch (error) {
+				console.error('[Collaboration] Failed to get current user ID:', error)
+			}
+
 			const newCollaborators = new Map<string, Collaborator>()
 
 			usersPayload.forEach((payload) => {
-				// Use persistent user ID as the key for the map
-				newCollaborators.set(payload.user.id, {
-					id: payload.user.id,
-					username: payload.user.name,
-					pointer: payload.pointer,
-					button: payload.button,
-					selectedElementIds: payload.selectedElementIds,
-				})
+				// Filter out the current user from collaborators list
+				if (payload.user.id !== currentUserId) {
+					// Use persistent user ID as the key for the map
+					newCollaborators.set(payload.user.id, {
+						id: payload.user.id,
+						username: payload.user.name,
+						pointer: payload.pointer,
+						button: payload.button,
+						selectedElementIds: payload.selectedElementIds,
+					})
+				}
 			})
 
 			excalidrawAPI!.updateScene({ collaborators: newCollaborators })
-			console.log(`[Collaboration] Updated collaborators: ${newCollaborators.size} users online`)
+			console.log(`[Collaboration] Updated collaborators: ${newCollaborators.size} users online (filtered out current user)`)
 		},
-		[excalidrawAPI],
+		[excalidrawAPI, getJWT],
 	)
 
 	// Function to update cursor state (unthrottled version)
 	const doUpdateCursor = useCallback(
-		(payload: {
+		async (payload: {
 			pointer: { x: number; y: number; tool: 'pointer' | 'laser' }
 			button: 'down' | 'up'
 			user: { id: string; name: string }
@@ -170,6 +186,24 @@ export function useCollaboration() {
 			if (!excalidrawAPI) return
 
 			try {
+				// Get current user ID from JWT to filter them out
+				let currentUserId: string | null = null
+				try {
+					const token = await getJWT()
+					if (token) {
+						const { parseJwt } = useJWTStore.getState()
+						const decodedToken = parseJwt(token)
+						currentUserId = decodedToken?.user?.id || decodedToken?.userid || null
+					}
+				} catch (error) {
+					console.error('[Collaboration] Failed to get current user ID:', error)
+				}
+
+				// Don't update cursor for the current user
+				if (payload.user.id === currentUserId) {
+					return
+				}
+
 				// Get current collaborators directly from Excalidraw
 				const currentCollaborators = excalidrawAPI.getAppState().collaborators || new Map<string, Collaborator>()
 
@@ -192,7 +226,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error updating cursor:', error)
 			}
 		},
-		[excalidrawAPI],
+		[excalidrawAPI, getJWT],
 	)
 
 	const throttledUpdateCursor = useMemo(() =>
