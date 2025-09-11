@@ -360,7 +360,7 @@ export function useCollaboration() {
 			console.error('[Collaboration] Failed to refresh token or connect:', error)
 			setStatus('offline')
 		}
-	}, [getJWT, setStatus])
+	}, [getJWT, clearTokens, setStatus])
 
 	// Create a debounced version of the room join function to prevent multiple rapid joins
 	const debouncedJoinRoom = useMemo(() =>

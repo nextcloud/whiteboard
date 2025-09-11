@@ -185,7 +185,19 @@ export const useJWTStore = create<JWTStore>()(
 
 					if (!isValid) {
 						console.error('[JWTStore] Stored token failed integrity validation')
-						console.log('[JWTStore] Will attempt to refresh invalid token')
+						console.log('[JWTStore] Clearing invalid token and refreshing')
+
+						// Clear the invalid token immediately
+						set((state) => {
+							const newTokens = { ...state.tokens }
+							const newExpiries = { ...state.tokenExpiries }
+							delete newTokens[fileId]
+							delete newExpiries[fileId]
+							return {
+								tokens: newTokens,
+								tokenExpiries: newExpiries,
+							}
+						})
 
 						// This could indicate JWT secret mismatch
 						useCollaborationStore.getState().incrementAuthFailure(
@@ -193,8 +205,9 @@ export const useJWTStore = create<JWTStore>()(
 							'Stored JWT token failed integrity validation',
 						)
 
-						console.warn('[JWTStore] Invalid token, enforcing read-only mode until refresh completes')
+						console.warn('[JWTStore] Invalid token cleared, enforcing read-only mode until refresh completes')
 						useWhiteboardConfigStore.getState().setReadOnly(true)
+						// Continue to refresh flow below
 					} else if (!isTokenExpired(fileIdStr)) {
 						// Token is valid and not expired, parse it to get payload
 						const payload = get().parseJwt(token)
@@ -213,11 +226,33 @@ export const useJWTStore = create<JWTStore>()(
 							return token
 						} else {
 							console.error(`[JWTStore] Stored token is for fileId ${payload.fileId}, but requested fileId is ${fileId}`)
+							// Clear mismatched token
+							set((state) => {
+								const newTokens = { ...state.tokens }
+								const newExpiries = { ...state.tokenExpiries }
+								delete newTokens[fileId]
+								delete newExpiries[fileId]
+								return {
+									tokens: newTokens,
+									tokenExpiries: newExpiries,
+								}
+							})
 							useWhiteboardConfigStore.getState().setReadOnly(true)
 						}
 					} else {
-						console.log('[JWTStore] Token is expired, will attempt to refresh')
-						console.warn('[JWTStore] Using expired token, enforcing read-only mode until refresh completes')
+						console.log('[JWTStore] Token is expired, clearing and refreshing')
+						// Clear expired token to force refresh
+						set((state) => {
+							const newTokens = { ...state.tokens }
+							const newExpiries = { ...state.tokenExpiries }
+							delete newTokens[fileId]
+							delete newExpiries[fileId]
+							return {
+								tokens: newTokens,
+								tokenExpiries: newExpiries,
+							}
+						})
+						console.warn('[JWTStore] Expired token cleared, enforcing read-only mode until refresh completes')
 						useWhiteboardConfigStore.getState().setReadOnly(true)
 					}
 				}
@@ -559,6 +594,7 @@ export const useJWTStore = create<JWTStore>()(
 		{
 			name: 'jwt-storage',
 			storage: createJSONStorage(() => localStorage),
+			version: 2, // Increment this to invalidate old stored tokens
 			partialize: (state) => ({
 				tokens: state.tokens,
 				tokenExpiries: state.tokenExpiries,
@@ -566,6 +602,19 @@ export const useJWTStore = create<JWTStore>()(
 				autoRefreshTimers: {},
 				refreshPromise: null,
 			}),
+			migrate: (persistedState: any, version: number) => {
+				// Clear tokens if version changes
+				if (version < 2) {
+					console.log('[JWTStore] Storage version changed, clearing old tokens')
+					return {
+						tokens: {},
+						tokenExpiries: {},
+						autoRefreshTimers: {},
+						refreshPromise: null,
+					}
+				}
+				return persistedState
+			},
 		},
 	),
 )
