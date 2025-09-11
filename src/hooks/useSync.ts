@@ -277,7 +277,6 @@ export function useSync() {
 					socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer, [])
 
 					lastBroadcastedViewportRef.current = { scrollX, scrollY, zoom: zoom.value }
-					console.debug('[Sync] Viewport synced:', { userId, scrollX, scrollY, zoom: zoom.value })
 				} catch (error) {
 					console.error('[Sync] Error syncing viewport:', error)
 				}
@@ -305,8 +304,6 @@ export function useSync() {
 			const appState = excalidrawAPI.getAppState()
 			throttledSyncViewport(appState)
 		}
-
-		console.debug('[Sync] Changes detected, triggered sync operations')
 	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncViewport, excalidrawAPI])
 
 	const onPointerUpdate = useCallback(

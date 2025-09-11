@@ -102,7 +102,17 @@
           ]
         }
       ]
-    }
+    },
+    "overrides": [
+      {
+        "files": [
+          "src/components/CreatorMenuItem.tsx"
+        ],
+        "rules": {
+          "indent": "off"
+        }
+      }
+    ]
   },
   "engines": {
     "node": "^22.0.0",
