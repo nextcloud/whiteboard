@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
@@ -20,6 +20,8 @@ export function useLibrary() {
 			getJWT: state.getJWT,
 		})),
 	)
+
+	const [isLibraryLoaded, setIsLibraryLoaded] = useState(false)
 
 	const fetchLibraryItems = useCallback(async (): Promise<LibraryItems | null> => {
 		try {
@@ -119,5 +121,7 @@ export function useLibrary() {
 	return {
 		fetchLibraryItems,
 		updateLibraryItems,
+		isLibraryLoaded,
+		setIsLibraryLoaded,
 	}
 }
