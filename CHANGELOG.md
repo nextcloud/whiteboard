@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0
+
+### Features
+* Recording: Add presentation recording functionality #559
+
+### Fixed
+* Fix collaborators synchronization issues #646
+* Fix stale JWT token handling #645
+* Fix saving library items #630
+* Fix npm run watch command #627
+
+### Other
+* Improve frontend logging and error handling #629
+* Update Node.js and npm engine requirements #628
+* Update Nextcloud OCP dependencies
+
 ## 1.1.3
 
 ### Features
