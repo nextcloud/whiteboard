@@ -9,6 +9,7 @@ import { mdiMonitorScreenshot } from '@mdi/js'
 import { MainMenu } from '@excalidraw/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
+import { CreatorMenuItem } from './CreatorMenuItem'
 
 interface RecordingState {
 	isRecording: boolean
@@ -94,6 +95,7 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				stopPresentation={presentationState.stopPresentation}
 				isConnected={presentationState.isConnected}
 			/>
+			<CreatorMenuItem />
 		</MainMenu>
 	)
 })
