@@ -114,12 +114,27 @@ export function useSync() {
 	}, [isWorkerReady, worker, fileId, excalidrawAPI, isReadOnly])
 
 	// Saves current state to the Nextcloud server API
-	const doSyncToServerAPI = useCallback(async () => {
-		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online') {
+	const doSyncToServerAPI = useCallback(async (forceSync = false) => {
+		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, isDedicatedSyncer, collabStatus })
+
+		// Allow force sync for final save, otherwise check normal conditions
+		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online')) {
+			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
+				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus,
+			})
+			return
+		}
+
+		// For force sync, only check minimum requirements
+		if (forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly)) {
+			logger.debug('[Sync] Skipping forced server sync - minimum requirements not met', {
+				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isReadOnly,
+			})
 			return
 		}
 
 		logSyncResult('server', { status: 'syncing API' })
+		logger.debug('[Sync] Sending SYNC_TO_SERVER message to worker')
 
 		try {
 			const jwt = await getJWT()
@@ -134,6 +149,7 @@ export function useSync() {
 			worker.postMessage({
 				type: 'SYNC_TO_SERVER', fileId, url: generateUrl(`apps/whiteboard/${fileId}`), jwt, elements, files,
 			})
+			logger.debug('[Sync] SYNC_TO_SERVER message sent to worker')
 		} catch (error) {
 			logger.error('[Sync] Server API sync failed:', error)
 			logSyncResult('server', { status: 'error API', error: error instanceof Error ? error.message : String(error) })
@@ -296,6 +312,13 @@ export function useSync() {
 
 	// --- Event Handlers ---
 	const onChange = useCallback(() => {
+		// Update cached state immediately on every change
+		if (excalidrawAPI) {
+			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
+			const files = excalidrawAPI.getFiles()
+			cachedStateRef.current = { elements, files }
+		}
+
 		throttledSyncToLocal()
 		throttledSyncToServerAPI()
 		throttledSyncViaWebSocket()
@@ -306,7 +329,7 @@ export function useSync() {
 			throttledSyncViewport(appState)
 		}
 
-		console.debug('[Sync] Changes detected, triggered sync operations')
+		logger.debug('[Sync] Changes detected, triggered sync operations')
 	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncViewport, excalidrawAPI])
 
 	const onPointerUpdate = useCallback(
@@ -322,21 +345,105 @@ export function useSync() {
 		[throttledSyncCursors],
 	)
 
+	// Capture syncer state immediately to avoid closure issues
+	const isSyncerRef = useRef(isDedicatedSyncer)
+	useEffect(() => {
+		if (isDedicatedSyncer !== isSyncerRef.current) {
+			// eslint-disable-next-line no-console
+			console.log('[Sync] SYNCER STATUS:', isDedicatedSyncer ? 'DESIGNATED AS SYNCER' : 'NOT SYNCER')
+			isSyncerRef.current = isDedicatedSyncer
+		}
+	}, [isDedicatedSyncer])
+
+	// Cache the latest state for final sync - update on EVERY change
+	const cachedStateRef = useRef<{ elements: any[], files: any }>({ elements: [], files: {} })
+
+	// Direct sync when leaving - synchronous to ensure it completes
+	const doFinalServerSync = useCallback(() => {
+		if (!fileId || !isSyncerRef.current) {
+			return
+		}
+
+		// eslint-disable-next-line no-console
+		console.log('[Sync] Executing final sync on page leave')
+
+		try {
+			// Get JWT from store - it's stored in tokens[fileId]
+			const jwtState = useJWTStore.getState()
+			const jwt = jwtState.tokens[fileId]
+
+			if (!jwt) {
+				return
+			}
+
+			// Use CACHED state instead of trying to get it now (might be cleared already)
+			const { elements, files } = cachedStateRef.current
+			// eslint-disable-next-line no-console
+			console.log('[Sync] Using cached state with', elements.length, 'elements')
+
+			const url = generateUrl(`apps/whiteboard/${fileId}`)
+
+			const data = JSON.stringify({
+				data: { elements, files: files || {} },
+			})
+
+			// Use synchronous XMLHttpRequest (works in beforeunload)
+			const xhr = new XMLHttpRequest()
+			xhr.open('PUT', url, false) // false = synchronous
+			xhr.setRequestHeader('Content-Type', 'application/json')
+			xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest')
+			xhr.setRequestHeader('Authorization', `Bearer ${jwt}`)
+
+			xhr.send(data)
+			// eslint-disable-next-line no-console
+			console.log('[Sync] Final sync done, status:', xhr.status)
+		} catch (error) {
+			// eslint-disable-next-line no-console
+			console.error('[Sync] Final sync failed:', error)
+		}
+	}, [fileId])
+
 	useEffect(() => {
 		const handleBeforeUnload = () => {
-			if (excalidrawAPI && !isReadOnly) {
+			if (excalidrawAPI && !isReadOnly && isSyncerRef.current) {
+				// eslint-disable-next-line no-console
+				console.log('[Sync] Page unloading - syncing as dedicated syncer')
 				// Cancel any pending throttled trailing call FIRST
 				throttledSyncToLocal.cancel()
-				// Call the unthrottled version directly, ensures latest state is attempted
+				throttledSyncToServerAPI.cancel()
+				// Call the unthrottled versions directly
 				doSyncToLocal()
+				doFinalServerSync()
+			}
+		}
+
+		// Also handle visibility change as backup for mobile/tabs
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'hidden' && isSyncerRef.current && excalidrawAPI && !isReadOnly) {
+				throttledSyncToLocal.cancel()
+				throttledSyncToServerAPI.cancel()
+				doSyncToLocal()
+				doFinalServerSync()
 			}
 		}
 
 		window.addEventListener('beforeunload', handleBeforeUnload)
+		document.addEventListener('visibilitychange', handleVisibilityChange)
 
 		// Cleanup function for component unmount
 		return () => {
 			window.removeEventListener('beforeunload', handleBeforeUnload)
+			document.removeEventListener('visibilitychange', handleVisibilityChange)
+
+			// If we're the dedicated syncer and unmounting, do a final sync
+			if (isSyncerRef.current && excalidrawAPI && !isReadOnly) {
+				// Cancel pending throttled calls
+				throttledSyncToLocal.cancel()
+				throttledSyncToServerAPI.cancel()
+				// Do final syncs
+				doSyncToLocal()
+				doFinalServerSync()
+			}
 
 			// Cancel all throttled functions to prevent them from running after unmount
 			throttledSyncToLocal.cancel()
@@ -344,7 +451,7 @@ export function useSync() {
 			throttledSyncViaWebSocket.cancel()
 			throttledSyncCursors.cancel()
 		}
-	}, [doSyncToLocal, throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncCursors, excalidrawAPI, isReadOnly])
+	}, [doSyncToLocal, doSyncToServerAPI, doFinalServerSync, throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncCursors, excalidrawAPI, isReadOnly])
 
 	return { onChange, onPointerUpdate }
 }

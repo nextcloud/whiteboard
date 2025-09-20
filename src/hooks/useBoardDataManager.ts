@@ -99,51 +99,61 @@ export function useBoardDataManager() {
 				return
 			}
 
-			let shouldUseLocalData = false
-			let shouldFetchFromServer = false
+			// ALWAYS fetch from server to get latest data
+			const serverData = await fetchDataFromServer(fileId)
 
-			if (localData) {
-				// Check if local data is valid and has elements
-				if (localData.elements && Array.isArray(localData.elements)) {
-					if (localData.elements.length > 0) {
-						// Local data has elements, use it
-						shouldUseLocalData = true
-					} else {
-						// Local data exists but has no elements, might be empty
-						// We should check the server for data
-						shouldFetchFromServer = true
-					}
-				} else {
-					// Invalid local data, check server
-					shouldFetchFromServer = true
-				}
-			} else {
-				// No local data found, check server
-				shouldFetchFromServer = true
+			// Validate that we're still loading the same file
+			if (currentFileIdRef.current !== fileId) {
+				return
 			}
 
-			let serverData = null
+			let dataToUse = null
 
-			if (shouldFetchFromServer) {
-				serverData = await fetchDataFromServer(fileId)
+			if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
+				// Server has data
+				if (localData && localData.elements && Array.isArray(localData.elements)) {
+					// Both server and local have data - need to reconcile
+					// Use Excalidraw's reconcile logic to merge them
+					const { reconcileElements } = await import('../util')
+					const { restoreElements } = await import('@excalidraw/excalidraw')
 
-				// Validate that we're still loading the same file
-				if (currentFileIdRef.current !== fileId) {
-					return
-				}
+					const restoredServerElements = restoreElements(serverData.elements, null)
+					const restoredLocalElements = restoreElements(localData.elements, null)
 
-				if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
-					// Save server data to IndexedDB for future use
+					// Reconcile server and local elements
+					const reconciledElements = reconcileElements(restoredLocalElements, restoredServerElements, {})
+
+					dataToUse = {
+						elements: reconciledElements,
+						files: { ...localData.files, ...serverData.files },
+						appState: { ...localData.appState, ...serverData.appState },
+					}
+
+					// Save reconciled data to IndexedDB
+					await db.put(
+						fileId,
+						reconciledElements,
+						dataToUse.files || {},
+						dataToUse.appState,
+					)
+				} else {
+					// Only server has data
+					dataToUse = serverData
+
+					// Save server data to IndexedDB
 					await db.put(
 						fileId,
 						serverData.elements,
 						serverData.files || {},
 						serverData.appState,
 					)
-
-					// Use server data instead of local data
-					shouldUseLocalData = false
 				}
+			} else if (localData && localData.elements) {
+				// Only local has data
+				dataToUse = localData
+			} else {
+				// No data from either source
+				dataToUse = null
 			}
 
 			// Final validation before resolving data
@@ -151,33 +161,11 @@ export function useBoardDataManager() {
 				return
 			}
 
-			// Determine which data to use
-			if (shouldUseLocalData && localData) {
-				// Use local data
-				const elements = localData.elements
-				const finalAppState = { ...defaultSettings, ...(localData.appState || {}) }
-				const files = localData.files || {}
-
-				// Force a small delay to ensure the component is ready to receive the data
-				const timeout = setTimeout(() => {
-					// Validate one more time before resolving
-					if (currentFileIdRef.current === fileId) {
-						resolveInitialData({
-							elements,
-							appState: finalAppState,
-							files,
-							scrollToContent: true,
-						})
-						setIsLoading(false)
-					}
-					loadingTimeoutsRef.current.delete(timeout)
-				}, 50)
-				loadingTimeoutsRef.current.add(timeout)
-			} else if (serverData && serverData.elements) {
-				// Use server data
-				const elements = serverData.elements
-				const finalAppState = { ...defaultSettings, ...(serverData.appState || {}) }
-				const files = serverData.files || {}
+			// Use the reconciled/fetched data
+			if (dataToUse && dataToUse.elements) {
+				const elements = dataToUse.elements
+				const finalAppState = { ...defaultSettings, ...(dataToUse.appState || {}) }
+				const files = dataToUse.files || {}
 
 				// Force a small delay to ensure the component is ready to receive the data
 				const timeout = setTimeout(() => {
