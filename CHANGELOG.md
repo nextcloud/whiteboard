@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1
+
+### Fixed
+* Improve board synchronization reliability and reduce race conditions #656
+* Update translations from Transifex
+
+### Other
+* Keep Nextcloud OCP development dependency up to date #654 #661
+* Dependency updates: axios, @nextcloud/dialogs, @nextcloud/vue, @vitejs/plugin-react, Puppeteer, Node.js 24.8.0, PHPUnit #649 #650 #651 #652 #653 #657 #658 #659 #660
+
 ## 1.2.0
 
 ### Features
