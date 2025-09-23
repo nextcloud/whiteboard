@@ -128,6 +128,8 @@ const handleSyncToServer = async (data: any) => {
 	}
 
 	const startTime = performance.now()
+	// Logging disabled in production
+	// console.log('[SyncWorker] Starting server sync, fileId:', fileId, 'elements:', elements?.length)
 
 	try {
 
@@ -137,6 +139,7 @@ const handleSyncToServer = async (data: any) => {
 			Authorization: `Bearer ${jwt}`,
 		}
 
+		// console.log('[SyncWorker] Sending PUT request to:', url)
 		const response = await globalThis.fetch(url, {
 			method: 'PUT',
 			headers,
