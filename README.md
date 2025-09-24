@@ -169,6 +169,53 @@ For high-traffic environments with multiple websocket servers:
 2. Configure load balancer with session stickiness
 3. Redis Streams handles WebSocket scaling automatically
 
+## Benchmarking & Capacity Planning
+
+To size dedicated collaboration servers we profiled the websocket backend with the synthetic load harness in `tools/benchmarks/`. The `runBenchmarks.mjs` script boots the production server (TLS disabled, LRU cache) and spawns JWT-authenticated Socket.IO clients from `loadTest.mjs`. Each run holds a room open for 60 seconds, with 10% of participants sending cursor and viewport updates at 2 Hz to mimic active sketching while the rest stay idle.
+
+**Test environment**
+- Apple M4 (10 logical cores, 16 GB RAM), Node v24.8.0
+- Single websocket process, `NODE_OPTIONS=--max-old-space-size=8192`, `STORAGE_STRATEGY=lru`
+- Aggregate ingress/egress recorded from client telemetry (`nettop` requires root on macOS)
+- Full JSON results are stored in `tools/benchmarks/results.json`
+
+**Observed highlights**
+- Per-user CPU hovered around 0.2% for small teams and climbed to ~0.37% at 300 concurrent users.
+- Memory footprint stayed near 5 MB/user at 50 users and ~10 MB/user at 300 users.
+- Server egress reached ~3 Mbps (50 users), ~13 Mbps (100 users) and ~366 Mbps (300 users). Pushing to 500 synthetic users drove ~1.2 Gbps and the single process began dropping ~30% of sockets.
+
+**Key takeaways**
+- Expect roughly 0.2% CPU per connected collaborator; reserve additional headroom for presenters or rapid drawing.
+- Budget ~5–10 MB of process RSS per user when running in a single-node, in-memory configuration.
+- Throughput scales quickly with active senders—plan outbound bandwidth over-provisioning (≥15 Mbps / 100 users) when presentations or screen follow are frequent.
+
+| Concurrent users | Avg CPU (10-core test rig) | Avg RSS | Server egress (60 s run) | Recommended spec |
+| --- | --- | --- | --- | --- |
+| 50 | ~10% (~0.21% per user) | ~0.24 GB | ~23.5 MB total (≈3.1 Mbps) | 2 vCPU / 1 GB RAM |
+| 100 | ~20% (~0.20% per user) | ~0.36 GB | ~96.6 MB total (≈12.9 Mbps) | 4 vCPU / 2 GB RAM |
+| 500* | ~203% (≈2 cores) | ~3.6–4.5 GB | ~9.2 GB total (≈1.2 Gbps) | ≥8 vCPU / ≥8 GB RAM per node + Redis + ≥2 nodes |
+
+\*500-user test saturated a single instance and dropped ~30% of simulated clients. Treat this as an upper bound and plan to run multiple websocket workers behind a sticky load balancer with `STORAGE_STRATEGY=redis`.
+
+### Run the benchmark locally
+
+1. Install dependencies: `npm ci` (and `composer install` if you have not bootstrapped the PHP side yet).
+2. Ensure the websocket server can start without TLS (set `TLS=false` or export `TLS=false` before running the script) and that `JWT_SECRET_KEY`/`NEXTCLOUD_URL` are configured for your environment.
+3. Execute `node tools/benchmarks/runBenchmarks.mjs` to run the default scenarios (50, 100, 300 concurrent users).
+4. Adjust load with environment variables as needed:
+   - `LOAD_TEST_CONCURRENCY=50,150,300` to pick specific cohorts (comma separated).
+   - `LOAD_TEST_ACTIVE_RATIO=0.15` to vary the percentage of active broadcasters.
+   - `LOAD_TEST_RATE=3` to control per-sender update frequency (messages/sec).
+   - `LOAD_TEST_DURATION=90` to lengthen each run.
+5. After each execution the summarized telemetry is printed to stdout and saved to `tools/benchmarks/results.json`; keep copies per hardware profile for future comparisons.
+6. When testing in prod-like environments, monitor OS-level CPU/RAM/network metrics in parallel (e.g., `top`, `sar`, cloud dashboards) to validate the Node-level sampling.
+
+**Recommendations**
+- Keep `NODE_OPTIONS=--max-old-space-size=8192` (or higher) when targeting 300+ concurrent users to avoid heap exhaustion.
+- For 300+ users, switch to Redis-backed storage and deploy at least two websocket instances to spread load.
+- Budget at least 15 Mbps outbound bandwidth for every 100 concurrently connected users; architecturally heavy sessions (live presenting, rapid drawing) can double that figure.
+- Re-run `node tools/benchmarks/runBenchmarks.mjs` after feature changes or on target hardware to validate sizing before production rollout.
+
 ## Troubleshooting
 
 ### Connection Issues

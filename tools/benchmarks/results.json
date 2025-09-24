@@ -1,0 +1,57 @@
+{
+	"SPDX-FileCopyrightText": "2025 Nextcloud GmbH and Nextcloud contributors",
+	"SPDX-License-Identifier": "AGPL-3.0-or-later",
+	"timestamp": "2025-02-14T22:45:00Z",
+	"environment": {
+		"cpu": "Apple M4",
+		"logicalCores": 10,
+		"memoryGiB": 16,
+		"nodeVersion": "v24.8.0"
+	},
+	"loadParameters": {
+		"durationSeconds": 60,
+		"updateRatePerSecond": 2,
+		"activeUserRatio": 0.1,
+		"description": "Simulated cursor + viewport updates (Socket.IO volatile broadcast) with JWT-authenticated clients"
+	},
+	"scenarios": [
+		{
+			"concurrency": 50,
+			"cpu": { "average": 10.47, "peak": 47.7 },
+			"memory": { "averageRssMb": 242.77, "peakRssMb": 263.39 },
+			"network": { "ingressBytes": 149322, "egressBytes": 23495225 },
+			"droppedConnections": 0,
+			"joinDelayMs": 26.82
+		},
+		{
+			"concurrency": 100,
+			"cpu": { "average": 19.87, "peak": 55.6 },
+			"memory": { "averageRssMb": 363.73, "peakRssMb": 370.77 },
+			"network": { "ingressBytes": 299019, "egressBytes": 96610984 },
+			"droppedConnections": 0,
+			"joinDelayMs": 56.92
+		},
+		{
+			"concurrency": 300,
+			"cpu": { "average": 110.38, "peak": 440.9 },
+			"memory": { "averageRssMb": 2910.2, "peakRssMb": 3048.09 },
+			"network": { "ingressBytes": 903256, "egressBytes": 2746793047 },
+			"droppedConnections": 0,
+			"joinDelayMs": 692.84
+		},
+		{
+			"concurrency": 500,
+			"cpu": { "average": 203.1, "peak": 480 },
+			"memory": { "averageRssMb": 3588.62, "peakRssMb": 4541.17 },
+			"network": { "ingressBytes": 1507401, "egressBytes": 9226635227 },
+			"droppedConnections": 151,
+			"joinDelayMs": 1095.08
+		}
+	],
+	"notes": [
+		"Active sender ratio = 10% (i.e., 1 in 10 users continuously sending pointer updates)",
+		"Websocket server process launched with NODE_OPTIONS=--max-old-space-size=8192",
+		"Storage strategy: in-memory LRU, single node (no Redis adapter)",
+		"Network bytes derived from client telemetry; system-level nettop sampling returned 0 under macOS non-root context"
+	]
+}
