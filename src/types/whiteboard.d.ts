@@ -3,20 +3,19 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-
+import type { ExcalidrawElement, ExcalidrawLinearElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 export interface ElementCreatorInfo {
-	id: string
-	name: string
+	uid: string
+	displayName: string
 	createdAt: number
 }
 
-export interface WhiteboardElement extends ExcalidrawElement {
+export type WhiteboardElement ={
 	customData?: {
 		creator?: ElementCreatorInfo
 		lastModifiedBy?: ElementCreatorInfo
-	}
-}
+	},
+} & ExcalidrawLinearElement & ExcalidrawElement
 
 export interface CreatorDisplaySettings {
 	enabled: boolean

@@ -4,9 +4,10 @@
  */
 
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
-import type { WhiteboardElement, CreatorDisplaySettings } from '../types/whiteboard'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { CreatorDisplaySettings, WhiteboardElement } from '../types/whiteboard'
 import './CreatorDisplay.scss'
+import { sceneCoordsToViewportCoords } from '@nextcloud/excalidraw'
 
 interface CreatorDisplayProps {
 	excalidrawAPI: ExcalidrawImperativeAPI | null
@@ -31,17 +32,21 @@ export const CreatorDisplay = ({ excalidrawAPI, settings }: CreatorDisplayProps)
 		if (!excalidrawAPI) return null
 
 		const appState = excalidrawAPI.getAppState()
-		const { scrollX, scrollY, zoom } = appState
 
-		// Simple bounding box calculation
-		const x = element.x * zoom.value + scrollX
-		const y = element.y * zoom.value + scrollY
-		const width = element.width * zoom.value
-
-		return {
-			x: x + width / 2, // Center horizontally
-			y: y - 40, // Position above element with more space
+		let widthAddend
+		let heightAddend = 0
+		if (element.points && element.points[1]) {
+			widthAddend = element.points[1][0] / 2
+			heightAddend = element.points[1][1] / 2
+		} else {
+			widthAddend = element.width / 2
 		}
+
+		const { sceneX, sceneY } = { sceneX: element.x + widthAddend, sceneY: element.y + heightAddend }
+
+		const { x, y } = sceneCoordsToViewportCoords({ sceneX, sceneY }, appState)
+
+		return { x, y: y - 73 }
 	}, [excalidrawAPI])
 
 	// Update creator labels based on current scene
@@ -68,7 +73,7 @@ export const CreatorDisplay = ({ excalidrawAPI, settings }: CreatorDisplayProps)
 				if (bounds) {
 					labels.push({
 						elementId: element.id,
-						creatorName: element.customData.creator.name,
+						creatorName: element.customData.creator.displayName,
 						x: bounds.x,
 						y: bounds.y,
 						isSelected: !!selectedElementIds[element.id],

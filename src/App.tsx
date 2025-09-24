@@ -6,10 +6,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
-import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@excalidraw/excalidraw'
+import { getCurrentUser } from '@nextcloud/auth'
+import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import './App.scss'
-import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawInitialDataState, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
@@ -38,6 +39,8 @@ import { useCollaborationStore } from './stores/useCollaborationStore'
 import { useElementCreatorTracking } from './hooks/useElementCreatorTracking'
 import { CreatorDisplay } from './components/CreatorDisplay'
 import { useCreatorDisplayStore } from './stores/useCreatorDisplayStore'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ElementCreatorInfo } from './types/whiteboard'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -279,6 +282,28 @@ export default function App({
 		)
 	}
 
+	const beforeElementCreated = (el: ExcalidrawElement) => {
+		const user = getCurrentUser()
+		if (!user) {
+			return el
+		}
+		const creatorInfo: ElementCreatorInfo = {
+			uid: user.uid,
+			displayName: user.displayName || user.uid,
+			createdAt: Date.now(),
+		}
+		if (!el.customData) {
+			el.customData = {
+				creator: creatorInfo,
+				lastModifiedAt: Date.now(),
+			}
+		} else {
+			el.customData.creator = creatorInfo
+			el.customData.lastmodifiedAt = Date.now()
+		}
+		return el
+	}
+
 	return (
 		<div className="App" style={{ display: 'flex', flexDirection: 'column' }}>
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
@@ -295,6 +320,7 @@ export default function App({
 				<Excalidraw
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
+					beforeElementCreated={beforeElementCreated}
 					excalidrawAPI={setExcalidrawAPI}
 					initialData={initialDataPromise}
 					onPointerUpdate={onPointerUpdate}
