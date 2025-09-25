@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import {
 	convertToExcalidrawElements,
 	viewportCoordsToSceneCoords,
-} from '@excalidraw/excalidraw'
+} from '@nextcloud/excalidraw'
 import type {
 	BinaryFileData,
 	DataURL,
@@ -80,10 +80,10 @@ export function useFiles(
 				// If the file exists and has the same dataURL, skip adding it again
 				// This prevents unnecessary re-renders
 				if (existingFile.dataURL === file.dataURL) {
-					console.log(`[Files] File ${file.id} already exists with same content, skipping add to prevent blinking`)
+					// Skip adding file with same content to prevent blinking
 					return
 				}
-				console.log(`[Files] File ${file.id} exists but content changed, updating`)
+				// File exists but content changed, updating
 			}
 
 			// Store in our ref
@@ -94,7 +94,6 @@ export function useFiles(
 			if (excalidrawFiles[file.id]) {
 				// If the file exists in Excalidraw but content changed, we need to update it
 				// For now, we'll just add it again and let Excalidraw handle the update
-				console.log(`[Files] Updating existing file in Excalidraw: ${file.id}`)
 			}
 
 			// Add to Excalidraw

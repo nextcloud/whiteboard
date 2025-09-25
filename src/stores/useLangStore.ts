@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { getLanguage } from '@nextcloud/l10n'
-import { languages } from '@excalidraw/excalidraw'
+import { languages } from '@nextcloud/excalidraw'
 
 const languageMap = new Map(
 	languages.map((lang) => [lang.code.toLowerCase(), lang.code]),

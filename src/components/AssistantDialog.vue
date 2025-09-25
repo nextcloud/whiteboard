@@ -6,7 +6,7 @@
 import { NcTextField, NcButton, NcModal } from '@nextcloud/vue'
 import { ScheduleTask } from '../api/assistantAPI'
 import { parseMermaidToExcalidraw } from '@excalidraw/mermaid-to-excalidraw'
-import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
+import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 import { defineComponent } from 'vue'
 
 export default defineComponent({

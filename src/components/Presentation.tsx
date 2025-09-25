@@ -15,7 +15,7 @@ import {
 	mdiClose,
 	mdiInformation,
 } from '@mdi/js'
-import { MainMenu } from '@excalidraw/excalidraw'
+import { MainMenu } from '@nextcloud/excalidraw'
 import { DraggableDialog } from './DraggableDialog'
 
 interface PresentationState {

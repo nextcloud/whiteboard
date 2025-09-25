@@ -7,7 +7,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { getCommonBounds } from '@excalidraw/excalidraw'
+import { getCommonBounds } from '@nextcloud/excalidraw'
 import type { ExcalidrawElementsIncludingDeleted } from '@excalidraw/excalidraw/types/scene/Scene'
 /* eslint-disable-next-line camelcase */
 import { unstable_batchedUpdates } from 'react-dom'

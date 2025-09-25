@@ -9,7 +9,7 @@ import { useCallback, useRef, useEffect } from 'react'
 import * as ReactDOM from 'react-dom'
 import { Icon } from '@mdi/react'
 import { mdiSlashForwardBox } from '@mdi/js'
-import { viewportCoordsToSceneCoords } from '@excalidraw/excalidraw'
+import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 // @ts-expect-error - Type definitions issue with @nextcloud/vue
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
