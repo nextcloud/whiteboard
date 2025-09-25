@@ -6,7 +6,7 @@
 import { Icon } from '@mdi/react'
 import { mdiSlashForwardBox, mdiRecordCircle, mdiStopCircle, mdiCheckCircle, mdiFolder, mdiClose } from '@mdi/js'
 import { formatDuration } from '../hooks/useRecording'
-import { MainMenu } from '@excalidraw/excalidraw'
+import { MainMenu } from '@nextcloud/excalidraw'
 import { memo } from 'react'
 import { DraggableDialog } from './DraggableDialog'
 

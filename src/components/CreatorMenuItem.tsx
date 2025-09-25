@@ -6,7 +6,7 @@
 
 import { useCallback } from 'react'
 import type { ChangeEvent } from 'react'
-import { MainMenu } from '@excalidraw/excalidraw'
+import { MainMenu } from '@nextcloud/excalidraw'
 import { Icon } from '@mdi/react'
 import { mdiAccount, mdiAccountGroup, mdiEye, mdiEyeOff } from '@mdi/js'
 import { useCreatorDisplayStore } from '../stores/useCreatorDisplayStore'
@@ -40,7 +40,7 @@ export const CreatorMenuItem = () => {
 					<Icon path={settings.enabled ? mdiEye : mdiEyeOff} size="14px" />
 				</div>
 			</MainMenu.Item>
-			
+
 			{settings.enabled && (
 				<MainMenu.ItemCustom>
 					<div className={styles.settingsWrapper}>
@@ -59,7 +59,7 @@ export const CreatorMenuItem = () => {
 								<option value="always">Always Visible</option>
 							</select>
 						</div>
-						
+
 						<div>
 							<label className={styles.label}>
 								Opacity: {Math.round(settings.opacity * 100)}%

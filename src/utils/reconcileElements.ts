@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { reconcileElements as excalidrawReconcileElements } from '@excalidraw/excalidraw'
+import { reconcileElements as excalidrawReconcileElements } from '@nextcloud/excalidraw'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { AppState } from '@excalidraw/excalidraw/types/types'
 import type { WhiteboardElement } from '../types/whiteboard'

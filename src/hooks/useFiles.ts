@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import {
 	convertToExcalidrawElements,
 	viewportCoordsToSceneCoords,
-} from '@excalidraw/excalidraw'
+} from '@nextcloud/excalidraw'
 import type {
 	BinaryFileData,
 	DataURL,
