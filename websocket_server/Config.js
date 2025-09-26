@@ -7,6 +7,7 @@
 
 import dotenv from 'dotenv'
 import crypto from 'crypto'
+import fs from 'fs'
 import {
 	DEFAULT_NEXTCLOUD_URL,
 	DEFAULT_PORT,
@@ -76,6 +77,59 @@ const Config = {
 	// Recording configuration
 	NEXTCLOUD_UPLOAD_ENABLED: Utils.parseBooleanFromEnv(process.env.NEXTCLOUD_UPLOAD_ENABLED),
 	CLEANUP_LOCAL_RECORDINGS: Utils.parseBooleanFromEnv(process.env.CLEANUP_LOCAL_RECORDINGS),
+
+	// Chrome detection for puppeteer-core
+	get CHROME_EXECUTABLE_PATH() {
+		// If explicitly set via environment variable, use it
+		if (process.env.CHROME_EXECUTABLE_PATH) {
+			return process.env.CHROME_EXECUTABLE_PATH
+		}
+
+		// Common Chrome/Chromium installation paths by platform
+		const platform = process.platform
+		const possiblePaths = []
+
+		if (platform === 'darwin') {
+			// macOS
+			possiblePaths.push(
+				'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+				'/Applications/Chromium.app/Contents/MacOS/Chromium',
+				'/usr/bin/google-chrome-stable',
+				'/usr/bin/chromium-browser',
+			)
+		} else if (platform === 'linux') {
+			// Linux
+			possiblePaths.push(
+				'/usr/bin/google-chrome-stable',
+				'/usr/bin/google-chrome',
+				'/usr/bin/chromium-browser',
+				'/usr/bin/chromium',
+				'/snap/bin/chromium',
+				'/opt/google/chrome/chrome',
+			)
+		} else if (platform === 'win32') {
+			// Windows
+			possiblePaths.push(
+				'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+				'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+				'C:\\Program Files\\Chromium\\Application\\chromium.exe',
+				'C:\\Program Files (x86)\\Chromium\\Application\\chromium.exe',
+				'C:\\Users\\' + process.env.USERNAME + '\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe',
+			)
+		}
+
+		// Check each path and return the first one that exists
+		for (const chromePath of possiblePaths) {
+			if (fs.existsSync(chromePath)) {
+				console.log(`[Config] Found Chrome at: ${chromePath}`)
+				return chromePath
+			}
+		}
+
+		// If no Chrome found, return undefined to let puppeteer-core try its own detection
+		console.log('[Config] No Chrome found in common paths, letting puppeteer-core auto-detect')
+		return undefined
+	},
 }
 
 export default Config

@@ -12,6 +12,7 @@ import Utils from './Utils.js'
 import { createAdapter } from '@socket.io/redis-streams-adapter'
 import Config from './Config.js'
 import RecordingService from './RecordingService.js'
+import { checkPuppeteerAvailability } from './PuppeteerEnvironment.js'
 
 export default class SocketManager {
 
@@ -197,6 +198,7 @@ export default class SocketManager {
 			'server-broadcast': this.serverBroadcastHandler,
 			'server-volatile-broadcast': this.serverVolatileBroadcastHandler,
 			'image-get': this.imageGetHandler,
+			'check-recording-availability': this.checkRecordingAvailabilityHandler,
 			'start-recording': this.startRecordingHandler,
 			'stop-recording': this.stopRecordingHandler,
 			'presentation-start': this.presentationStartHandler,
@@ -647,6 +649,26 @@ export default class SocketManager {
 	}
 
 	/**
+	 * Handles recording availability check requests
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 */
+	async checkRecordingAvailabilityHandler(socket) {
+		try {
+			const support = await checkPuppeteerAvailability({ force: false })
+			socket.emit('recording-availability', {
+				available: support.available,
+				reason: support.reason || null,
+			})
+		} catch (error) {
+			console.error('[Recording] Availability check failed:', error)
+			socket.emit('recording-availability', {
+				available: false,
+				reason: 'Failed to check recording availability. Please try again later.',
+			})
+		}
+	}
+
+	/**
 	 * Handles recording start requests
 	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
 	 * @param {object} data - Recording data containing fileId, recordingUrl, uploadToken
@@ -667,7 +689,7 @@ export default class SocketManager {
 				throw new Error('Recording already in progress')
 			}
 
-			// Initialize recording service with client-provided URL
+			// Initialize recording service
 			const recorder = new RecordingService()
 			console.log(`[${sessionKey}] Initializing recording at ${recordingUrl}`)
 

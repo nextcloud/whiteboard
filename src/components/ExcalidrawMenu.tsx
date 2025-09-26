@@ -5,7 +5,7 @@
 
 import { useCallback, memo } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiMonitorScreenshot } from '@mdi/js'
+import { mdiMonitorScreenshot, mdiImageMultiple } from '@mdi/js'
 import { MainMenu } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
@@ -25,10 +25,14 @@ interface RecordingState {
 	isStopping: boolean
 	hasOtherRecordingUsers: boolean
 	isConnected: boolean
+	isAvailable: boolean | null
+	unavailableReason: string | null
+	showUnavailableInfo: boolean
 	startRecording: () => Promise<void>
 	stopRecording: () => Promise<void>
 	resetError: () => void
 	dismissSuccess: () => void
+	dismissUnavailableInfo: () => void
 }
 
 interface PresentationState {
@@ -54,6 +58,22 @@ interface ExcalidrawMenuProps {
 }
 
 export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState }: ExcalidrawMenuProps) {
+	const openExportDialog = useCallback(() => {
+		// Trigger export by dispatching the keyboard shortcut to the Excalidraw canvas
+		const excalidrawContainer = document.querySelector('.excalidraw') as HTMLElement
+		if (excalidrawContainer) {
+			const event = new KeyboardEvent('keydown', {
+				key: 'e',
+				code: 'KeyE',
+				shiftKey: true,
+				metaKey: true,
+				bubbles: true,
+				cancelable: true,
+			})
+			excalidrawContainer.dispatchEvent(event)
+		}
+	}, [])
+
 	const takeScreenshot = useCallback(() => {
 		const canvas = document.querySelector('.excalidraw__canvas') as HTMLCanvasElement
 		if (canvas) {
@@ -71,9 +91,14 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 			<MainMenu.DefaultItems.ToggleTheme />
 			<MainMenu.DefaultItems.ChangeCanvasBackground />
 			<MainMenu.Separator />
-			<MainMenu.DefaultItems.SaveAsImage />
 			<MainMenu.Item
-				icon={<Icon path={mdiMonitorScreenshot} size="16px" />}
+				icon={<Icon path={mdiImageMultiple} size={0.75} />}
+				onSelect={openExportDialog}
+				shortcut="⌘+⇧+E">
+				{'Export image...'}
+			</MainMenu.Item>
+			<MainMenu.Item
+				icon={<Icon path={mdiMonitorScreenshot} size={0.75} />}
 				onSelect={takeScreenshot}>
 				{'Download screenshot'}
 			</MainMenu.Item>
@@ -84,6 +109,8 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				startRecording={recordingState.startRecording}
 				stopRecording={recordingState.stopRecording}
 				isConnected={recordingState.isConnected}
+				isAvailable={recordingState.isAvailable}
+				unavailableReason={recordingState.unavailableReason}
 			/>
 			<PresentationMenuItem
 				isPresenting={presentationState.isPresenting}

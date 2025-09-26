@@ -149,6 +149,43 @@
 	font-weight: normal !important;
 }
 
+// Fix Export image icon and shortcut styling to match other menu items
+.excalidraw {
+	// Target all menu items to ensure consistent icon and shortcut styling
+	.dropdown-menu-item,
+	[role="menuitem"] {
+		svg {
+			opacity: 1 !important;
+			color: var(--color-main-text) !important;
+			width: 18px !important;
+			height: 18px !important;
+		}
+		
+		kbd {
+			opacity: 1 !important;
+			color: var(--color-text-maxcontrast) !important;
+			font-family: inherit !important;
+			
+			// Hide verbose text and show symbols instead
+			&::before {
+				content: attr(data-key) !important;
+			}
+		}
+	}
+	
+	// Specifically target the SaveAsImage default item
+	.dropdown-menu [role="menuitem"]:has(svg) {
+		svg {
+			opacity: 1 !important;
+			color: var(--color-main-text) !important;
+			width: 18px !important;
+			height: 18px !important;
+			min-width: 18px !important;
+			min-height: 18px !important;
+		}
+	}
+}
+
 .excalidraw .context-menu {
 	position: relative !important;
 	border-radius: var(--border-radius-large) !important;
@@ -797,14 +834,11 @@
 
 /* Recording button in menu */
 .recording-button {
-	svg {
-		color: var(--color-error);
-	}
-
 	&.recording {
 		background-color: var(--color-error-background);
 
 		svg {
+			color: var(--color-error);
 			animation: pulse 2s ease-in-out infinite;
 		}
 	}
@@ -1082,10 +1116,6 @@
 
 /* Presentation button in menu */
 .presentation-button {
-	svg {
-		color: var(--color-primary-element);
-	}
-
 	&--presenting {
 		background-color: var(--color-primary-element-light);
 

@@ -40,6 +40,9 @@ interface RecordingState {
 	recordingDuration: number | null
 	successTimestamp: number | null
 	startingPhase: 'preparing' | 'initializing' | null
+	isAvailable: boolean | null
+	unavailableReason: string | null
+	showUnavailableInfo: boolean
 }
 
 const INITIAL_STATE: RecordingState = {
@@ -56,6 +59,9 @@ const INITIAL_STATE: RecordingState = {
 	recordingDuration: null,
 	successTimestamp: null,
 	startingPhase: null,
+	isAvailable: null,
+	unavailableReason: null,
+	showUnavailableInfo: false,
 }
 
 export function formatDuration(ms: number) {
@@ -70,6 +76,7 @@ interface UseRecordingActions {
 	stopRecording: () => Promise<void>
 	resetError: () => void
 	dismissSuccess: () => void
+	dismissUnavailableInfo: () => void
 	hasError: boolean
 	isStarting: boolean
 	isStopping: boolean
@@ -81,6 +88,7 @@ const SOCKET_EVENTS = [
 	'recording-started',
 	'recording-stopped',
 	'recording-error',
+	'recording-availability',
 	'user-started-recording',
 	'user-stopped-recording',
 	'connect',
@@ -144,7 +152,19 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingState & Us
 	}, [])
 
 	const setupSocketListeners = useCallback((socket: Socket) => {
+		// Check recording availability when socket connects
+		socket.emit('check-recording-availability')
+
 		handleSocketEvent(socket, {
+			'recording-availability': (data: { available: boolean; reason: string | null }) => {
+				console.log('[Recording] Availability check result:', data)
+				updateState({
+					isAvailable: data.available,
+					unavailableReason: data.reason,
+					// Show info dialog if recording is unavailable and we have a reason
+					showUnavailableInfo: data.available === false && !!data.reason,
+				})
+			},
 			'recording-started': () => {
 				updateState({
 					isRecording: true,
@@ -290,8 +310,9 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingState & Us
 				otherUsers: stateRef.current.otherUsers.filter(u => u.userId !== user.userId),
 			}),
 			connect: () => {
-				// Socket reconnected, just log it
-				console.log('[Recording] Socket reconnected')
+				// Socket reconnected, check availability again
+				console.log('[Recording] Socket reconnected, checking availability')
+				socket.emit('check-recording-availability')
 			},
 			disconnect: () => stateRef.current.isRecording && updateState({ error: 'Connection lost', status: 'idle' }),
 		})
@@ -392,5 +413,6 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingState & Us
 			}
 			updateState({ showSuccess: false, successTimestamp: null })
 		},
+		dismissUnavailableInfo: () => updateState({ showUnavailableInfo: false }),
 	}
 }
