@@ -115,7 +115,7 @@ export function useBoardDataManager() {
 					// Both server and local have data - need to reconcile
 					// Use Excalidraw's reconcile logic to merge them
 					const { reconcileElements } = await import('../util')
-					const { restoreElements } = await import('@excalidraw/excalidraw')
+					const { restoreElements } = await import('@nextcloud/excalidraw')
 
 					const restoredServerElements = restoreElements(serverData.elements, null)
 					const restoredLocalElements = restoreElements(localData.elements, null)

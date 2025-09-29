@@ -11,6 +11,18 @@ const AppConfig = createAppConfig({
 	settings: resolve(join('src', 'settings.js')),
 }, {
 	config: defineConfig({
+		resolve: {
+			alias: [
+				{
+					find: /^@excalidraw\/element(.*)$/,
+					replacement: '@nextcloud/excalidraw-element$1',
+				},
+				{
+					find: /^@excalidraw\/excalidraw(.*)$/,
+					replacement: '@nextcloud/excalidraw$1',
+				},
+			],
+		},
 		build: {
 			cssCodeSplit: true,
 			chunkSizeWarningLimit: 3000,
