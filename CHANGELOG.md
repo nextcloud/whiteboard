@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0
+
+### Features
+* Add creator information for whiteboard elements #546
+
+### Other
+* Add documentation for recording feature #685
+* Add load testing tooling #665
+* Keep Nextcloud OCP development dependency up to date #675 #683
+* Dependency updates: TypeScript, Puppeteer, @vitejs/plugin-react, dotenv, vite-plugin-static-copy, PHPUnit, Node.js 24.9.0 #677 #678 #679 #680 #681 #682
+
 ## 1.2.1
 
 ### Fixed
