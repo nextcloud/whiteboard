@@ -29,7 +29,11 @@ interface RecordingProps {
 	stopRecording: () => void
 	resetError: () => void
 	dismissSuccess: () => void
+	dismissUnavailableInfo: () => void
 	isConnected: boolean
+	isAvailable: boolean | null
+	unavailableReason: string | null
+	showUnavailableInfo: boolean
 }
 
 const RecordingError = memo(({ error, resetError }: { error: string, resetError: () => void }) => (
@@ -179,6 +183,33 @@ const RecordingSuccess = memo(({
 ))
 RecordingSuccess.displayName = 'RecordingSuccess'
 
+const RecordingUnavailable = memo(({ reason, onDismiss }: { reason: string; onDismiss: () => void }) => (
+	<div className="nc-notecard nc-notecard--warning recording-unavailable">
+		<div className="nc-notecard__icon">
+			<Icon path={mdiSlashForwardBox} size={1} />
+		</div>
+		<div className="nc-notecard__content">
+			<div className="nc-notecard__text">
+				<strong>Recording unavailable</strong>
+				<div className="recording-details">
+					<div>{reason}</div>
+					<div style={{ marginTop: '8px', fontSize: '12px', opacity: 0.8 }}>
+						Contact your administrator to enable recording functionality.
+					</div>
+				</div>
+			</div>
+		</div>
+		<button
+			className="nc-notecard__dismiss"
+			onClick={onDismiss}
+			title="Dismiss"
+			aria-label="Dismiss">
+			<Icon path={mdiClose} size={0.8} />
+		</button>
+	</div>
+))
+RecordingUnavailable.displayName = 'RecordingUnavailable'
+
 export const RecordingOverlay = memo(function RecordingOverlay({
 	isStarting,
 	isStopping,
@@ -196,7 +227,25 @@ export const RecordingOverlay = memo(function RecordingOverlay({
 	startingPhase,
 	resetError,
 	dismissSuccess,
+	dismissUnavailableInfo,
+	showUnavailableInfo,
+	unavailableReason,
 }: RecordingProps) {
+	// Show unavailable info if recording is not available
+	if (showUnavailableInfo && unavailableReason) {
+		return (
+			<div className="recording-overlay">
+				<DraggableDialog
+					id="recording-unavailable"
+					initialPosition={{ x: 20, y: 20 }}
+					enableDrag={true}
+				>
+					<RecordingUnavailable reason={unavailableReason} onDismiss={dismissUnavailableInfo} />
+				</DraggableDialog>
+			</div>
+		)
+	}
+
 	if (hasError && error) {
 		return (
 			<div className="recording-overlay">
@@ -293,21 +342,39 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 	startRecording,
 	stopRecording,
 	isConnected,
-}: Pick<RecordingProps, 'isRecording' | 'isStarting' | 'isStopping' | 'startRecording' | 'stopRecording'> & {
+	isAvailable,
+	unavailableReason,
+}: Pick<RecordingProps, 'isRecording' | 'isStarting' | 'isStopping' | 'startRecording' | 'stopRecording' | 'isAvailable' | 'unavailableReason'> & {
 	isConnected: boolean
 }) {
-	const isDisabled = isStarting || isStopping || (!isConnected && !isRecording)
+	// Determine disabled state and tooltip
+	let isDisabled = isStarting || isStopping
+	let tooltipMessage: string | undefined
+
+	if (!isRecording) {
+		if (!isConnected) {
+			isDisabled = true
+			tooltipMessage = 'Recording requires connection to collaboration server'
+		} else if (isAvailable === false) {
+			isDisabled = true
+			tooltipMessage = unavailableReason || 'Recording is currently unavailable'
+		} else if (isAvailable === null) {
+			// Still checking availability
+			isDisabled = true
+			tooltipMessage = 'Checking recording availability...'
+		}
+	}
 
 	return (
 		<MainMenu.Item
-			className={`recording-button ${isRecording ? 'recording' : ''} ${!isConnected ? 'disconnected' : ''}`}
+			className={`recording-button ${isRecording ? 'recording' : ''} ${!isConnected || isAvailable === false ? 'disconnected' : ''}`}
 			icon={<Icon path={isRecording ? mdiStopCircle : mdiRecordCircle} size={1} />}
 			onSelect={isRecording ? stopRecording : startRecording}
 			shortcut="⌘+⇧+R"
 			disabled={isDisabled}
-			title={!isConnected && !isRecording ? 'Recording requires connection to collaboration server' : undefined}
+			title={tooltipMessage}
 		>
-			{isRecording ? 'Stop Recording' : isConnected ? 'Start Recording' : 'Start Recording (Offline)'}
+			{isRecording ? 'Stop Recording' : 'Start Recording'}
 		</MainMenu.Item>
 	)
 })

@@ -81,6 +81,48 @@ services:
 - `JWT_SECRET_KEY`: Must match the secret configured in Nextcloud
 - `NEXTCLOUD_URL`: Used for JWT token validation (not for server-to-server communication)
 
+### Recording prerequisites
+
+Board recordings require a headless Chromium browser on the collaboration server. The system automatically detects Chrome installations:
+
+- **Self-hosted**: Auto-detects Chrome/Chromium in standard locations
+- **Docker**: Uses bundled Alpine Chromium package
+- **Custom paths**: Set `CHROME_EXECUTABLE_PATH` environment variable
+
+**Quick Setup**
+
+**Docker (Recommended)**
+```bash
+# No setup needed - Chromium is pre-installed
+docker run -e JWT_SECRET_KEY=some-random-secret -p 3002:3002 --rm ghcr.io/nextcloud-releases/whiteboard:stable
+```
+
+**Self-hosted Systems**
+```bash
+# Debian/Ubuntu
+sudo apt-get update
+sudo apt-get install -y chromium chromium-common
+
+# Alpine Linux  
+apk add --no-cache chromium nss freetype harfbuzz ttf-freefont
+
+# macOS (install Chrome via Homebrew or download from google.com/chrome)
+brew install --cask google-chrome
+
+# Verify installation
+chromium-browser --version  # Linux
+google-chrome --version     # macOS/Chrome
+```
+
+**Advanced Configuration**
+```bash
+# Override auto-detection (for custom Chrome locations)
+export CHROME_EXECUTABLE_PATH="/path/to/your/chrome"
+npm run server:start
+```
+
+The server performs automated Chrome detection on startup and before each recording. If Chrome isn't found, users receive clear error messages with installation guidance. After installing Chrome, restart the websocket server to apply changes.
+
 ## Reverse Proxy Configuration
 
 If running the websocket server manually, configure your reverse proxy to expose it:

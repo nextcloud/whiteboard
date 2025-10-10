@@ -5,10 +5,11 @@
 
 /* eslint-disable no-console */
 
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-core'
 import fs from 'fs/promises'
 import path from 'path'
 import EventEmitter from 'events'
+import Config from './Config.js'
 
 const DEFAULT_CONFIG = {
 	viewport: { width: 1920, height: 1080 },
@@ -18,6 +19,10 @@ const DEFAULT_CONFIG = {
 	browserArgs: [
 		'--no-sandbox',
 		'--disable-setuid-sandbox',
+		'--disable-dev-shm-usage',
+		'--disable-crashpad',
+		'--disable-breakpad',
+		'--enable-crashpad=0',
 		'--allow-display-capture',
 		'--auto-select-desktop-capture-source="Chromium"',
 		'--disable-web-security',
@@ -39,6 +44,7 @@ export default class RecordingService extends EventEmitter {
 		super()
 		this.config = { ...DEFAULT_CONFIG, ...config }
 		this.recordingsPath = path.join(process.cwd(), 'recordings')
+		this.profilePath = path.join(this.recordingsPath, '.chromium-profile')
 	}
 
 	getStatus(roomId, userId) {
@@ -66,15 +72,27 @@ export default class RecordingService extends EventEmitter {
 
 		try {
 			await fs.mkdir(this.recordingsPath, { recursive: true })
+			await fs.mkdir(this.profilePath, { recursive: true })
+			const runtimeDir = path.join(this.profilePath, 'runtime')
+			const crashpadDir = path.join(this.profilePath, 'crashpad')
+			await fs.mkdir(runtimeDir, { recursive: true })
+			await fs.mkdir(crashpadDir, { recursive: true })
 
+			// Use Config-based Chrome detection
 			browser = await puppeteer.launch({
 				headless: 'new',
+				executablePath: Config.CHROME_EXECUTABLE_PATH,
 				args: [
 					...this.config.browserArgs,
-					`--unsafely-treat-insecure-origin-as-secure=${new URL(recordingUrl).origin}`,
+					`--crash-dumps-dir=${crashpadDir}`,
 				],
 				ignoreDefaultArgs: ['--mute-audio'],
 				defaultViewport: this.config.viewport,
+				userDataDir: this.profilePath,
+				env: {
+					...process.env,
+					XDG_RUNTIME_DIR: runtimeDir,
+				},
 			})
 
 			const page = await browser.newPage()
@@ -118,7 +136,11 @@ export default class RecordingService extends EventEmitter {
 			console.log(`Page loaded successfully [${sessionKey}]`)
 		} catch (error) {
 			console.error(`Failed to load page [${sessionKey}]:`, error)
-			throw new Error(`Page load failed: ${error.message}`)
+			const reason = error?.message || String(error)
+			if (reason.includes('ERR_CONNECTION_REFUSED')) {
+				throw new Error('Page load failed: Unable to reach the Nextcloud URL from the recording container. Make sure the hostname resolves inside the container or adjust NEXTCLOUD_URL.')
+			}
+			throw new Error(`Page load failed: ${reason}`)
 		}
 	}
 

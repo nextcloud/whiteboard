@@ -352,6 +352,7 @@ export default function App({
 					hasOtherRecordingUsers={recordingState.hasOtherRecordingUsers}
 					resetError={recordingState.resetError}
 					dismissSuccess={recordingState.dismissSuccess}
+					dismissUnavailableInfo={recordingState.dismissUnavailableInfo}
 				/>
 				<PresentationOverlay
 					presentationState={presentationState}
