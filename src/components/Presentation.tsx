@@ -122,7 +122,7 @@ const PresentationStatus = memo(function PresentationStatus({
 							onClick={onStopPresentation}
 							className="presentation-status__stop-btn"
 							disabled={status === 'stopping'}
-							title="Stop presentation (⌘+⇧+P)"
+							title="Stop presentation"
 						>
 							<Icon path={mdiStop} size={0.9} />
 							{status === 'stopping' ? 'Stopping...' : 'Stop'}
@@ -183,13 +183,13 @@ export const PresentationMenuItem = memo(function PresentationMenuItem({
 	let icon = mdiPresentation
 	let text = 'Start Presentation'
 	let className = 'presentation-button'
-	let tooltip = 'Start presenting to share your viewport with others (⌘+⇧+P)'
+	let tooltip = 'Start presenting to share your viewport with others'
 
 	if (isPresenting) {
 		icon = mdiStop
 		text = isStopping ? 'Stopping...' : 'Stop Presentation'
 		className += ' presentation-button--presenting'
-		tooltip = 'Stop presenting (⌘+⇧+P)'
+		tooltip = 'Stop presenting'
 	} else if (isStarting) {
 		icon = mdiPresentationPlay
 		text = 'Starting...'
@@ -211,7 +211,6 @@ export const PresentationMenuItem = memo(function PresentationMenuItem({
 			className={className}
 			icon={<Icon path={icon} size={1} />}
 			onSelect={handleClick}
-			shortcut="⌘+⇧+P"
 			disabled={isDisabled}
 			title={tooltip}
 		>
