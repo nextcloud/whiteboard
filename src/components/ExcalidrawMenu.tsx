@@ -58,21 +58,28 @@ interface ExcalidrawMenuProps {
 }
 
 export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState }: ExcalidrawMenuProps) {
+	const isMacPlatform = typeof navigator !== 'undefined' && (navigator.userAgentData?.platform === 'macOS' || /Mac|iPhone|iPad/.test(navigator.platform ?? ''))
+
 	const openExportDialog = useCallback(() => {
 		// Trigger export by dispatching the keyboard shortcut to the Excalidraw canvas
 		const excalidrawContainer = document.querySelector('.excalidraw') as HTMLElement
 		if (excalidrawContainer) {
-			const event = new KeyboardEvent('keydown', {
+			const eventConfig: KeyboardEventInit = {
 				key: 'e',
 				code: 'KeyE',
 				shiftKey: true,
-				metaKey: true,
 				bubbles: true,
 				cancelable: true,
-			})
+			}
+			if (isMacPlatform) {
+				eventConfig.metaKey = true
+			} else {
+				eventConfig.ctrlKey = true
+			}
+			const event = new KeyboardEvent('keydown', eventConfig)
 			excalidrawContainer.dispatchEvent(event)
 		}
-	}, [])
+	}, [isMacPlatform])
 
 	const takeScreenshot = useCallback(() => {
 		const canvas = document.querySelector('.excalidraw__canvas') as HTMLCanvasElement
@@ -94,7 +101,7 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 			<MainMenu.Item
 				icon={<Icon path={mdiImageMultiple} size={0.75} />}
 				onSelect={openExportDialog}
-				shortcut="⌘+⇧+E">
+				shortcut={isMacPlatform ? '⌘+⇧+E' : 'Ctrl+Shift+E'}>
 				{'Export image...'}
 			</MainMenu.Item>
 			<MainMenu.Item
