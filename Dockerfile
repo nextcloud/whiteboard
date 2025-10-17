@@ -22,6 +22,7 @@ ENV NODE_ENV=production \
     CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser \
     XDG_RUNTIME_DIR=/tmp/chromium-runtime \
     CRASHPAD_DATABASE=/tmp/chrome-crashpad \
+    RECORDINGS_DIR=/tmp/whiteboard-recordings \
     CHROME_OPTIONS="--max-old-space-size=2048 --no-sandbox"
 RUN apk add --no-cache \
         ca-certificates \
@@ -32,7 +33,7 @@ RUN apk add --no-cache \
         harfbuzz \
         ttf-freefont && \
     chromium-browser --version && \
-    install -d -m 0700 -o nobody -g nobody /tmp/chromium-runtime /tmp/chrome-crashpad && \
+    install -d -m 0700 -o nobody -g nobody /tmp/chromium-runtime /tmp/chrome-crashpad /tmp/whiteboard-recordings && \
     mv /usr/lib/chromium/chrome_crashpad_handler /usr/lib/chromium/chrome_crashpad_handler.real && \
     printf '%s\n' '#!/bin/sh' 'exec /usr/lib/chromium/chrome_crashpad_handler.real --no-periodic-tasks --database="${CRASHPAD_DATABASE:-/tmp/chrome-crashpad}" "$@"' >/usr/lib/chromium/chrome_crashpad_handler && \
     chmod +x /usr/lib/chromium/chrome_crashpad_handler

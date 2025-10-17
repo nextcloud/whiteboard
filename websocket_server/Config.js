@@ -77,6 +77,7 @@ const Config = {
 	// Recording configuration
 	NEXTCLOUD_UPLOAD_ENABLED: Utils.parseBooleanFromEnv(process.env.NEXTCLOUD_UPLOAD_ENABLED),
 	CLEANUP_LOCAL_RECORDINGS: Utils.parseBooleanFromEnv(process.env.CLEANUP_LOCAL_RECORDINGS),
+	RECORDINGS_DIR: process.env.RECORDINGS_DIR || null,
 
 	// Chrome detection for puppeteer-core
 	get CHROME_EXECUTABLE_PATH() {
