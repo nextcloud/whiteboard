@@ -370,7 +370,6 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 			className={`recording-button ${isRecording ? 'recording' : ''} ${!isConnected || isAvailable === false ? 'disconnected' : ''}`}
 			icon={<Icon path={isRecording ? mdiStopCircle : mdiRecordCircle} size={1} />}
 			onSelect={isRecording ? stopRecording : startRecording}
-			shortcut="⌘+⇧+R"
 			disabled={isDisabled}
 			title={tooltipMessage}
 		>
