@@ -35,6 +35,8 @@ const CURSOR_UPDATE_DELAY = 50
 
 export function useCollaboration() {
 	const joinedRoomRef = useRef<string | null>(null)
+	const pendingSceneUpdateRef = useRef<readonly ExcalidrawElement[] | null>(null)
+	const pendingImageUpdatesRef = useRef<Map<string, BinaryFileData>>(new Map())
 
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow(state => ({
@@ -130,6 +132,55 @@ export function useCollaboration() {
 		},
 		[excalidrawAPI],
 	)
+
+	const queueSceneUpdate = useCallback(
+		(remoteElements: readonly ExcalidrawElement[]) => {
+			if (!excalidrawAPI) {
+				pendingSceneUpdateRef.current = remoteElements
+				return
+			}
+
+			reconcileAndApplyRemoteElements(remoteElements)
+		},
+		[excalidrawAPI, reconcileAndApplyRemoteElements],
+	)
+
+	const queueImageUpdate = useCallback(
+		(file: BinaryFileData) => {
+			if (!excalidrawAPI) {
+				pendingImageUpdatesRef.current.set(file.id, file)
+				return
+			}
+
+			handleRemoteImageAdd(file)
+		},
+		[excalidrawAPI, handleRemoteImageAdd],
+	)
+
+	useEffect(() => {
+		if (!excalidrawAPI) {
+			return
+		}
+
+		if (pendingSceneUpdateRef.current) {
+			const latestScene = pendingSceneUpdateRef.current
+			pendingSceneUpdateRef.current = null
+			reconcileAndApplyRemoteElements(latestScene)
+		}
+
+		if (pendingImageUpdatesRef.current.size > 0) {
+			const pendingImages = Array.from(pendingImageUpdatesRef.current.values())
+			pendingImageUpdatesRef.current.clear()
+			pendingImages.forEach(image => {
+				handleRemoteImageAdd(image)
+			})
+		}
+	}, [excalidrawAPI, handleRemoteImageAdd, reconcileAndApplyRemoteElements])
+
+	useEffect(() => {
+		pendingSceneUpdateRef.current = null
+		pendingImageUpdatesRef.current.clear()
+	}, [fileId])
 
 	// --- Collaborator State Management ---
 	const updateCollaboratorsState = useCallback(
@@ -408,7 +459,7 @@ export function useCollaboration() {
 				switch (decoded.type) {
 				case BroadcastType.SceneInit:
 					if (Array.isArray(decoded.payload?.elements)) {
-						reconcileAndApplyRemoteElements(decoded.payload.elements)
+						queueSceneUpdate(decoded.payload.elements)
 					} else {
 						console.warn('[Collaboration] Invalid SceneInit payload:', decoded.payload)
 					}
@@ -423,7 +474,7 @@ export function useCollaboration() {
 				case BroadcastType.ImageAdd:
 					// Validate file exists before processing
 					if (decoded.payload?.file) {
-						handleRemoteImageAdd(decoded.payload.file)
+						queueImageUpdate(decoded.payload.file)
 					} else {
 						console.warn('[Collaboration] Invalid ImageAdd payload:', decoded.payload)
 					}
@@ -464,7 +515,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error processing client broadcast:', error)
 			}
 		},
-		[reconcileAndApplyRemoteElements, updateCursorState, handleRemoteImageAdd, updateViewportState, excalidrawAPI, fileId],
+		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId],
 	)
 
 	const handleSyncDesignate = useCallback((data: { isSyncer: boolean }) => {
