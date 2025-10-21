@@ -10,6 +10,7 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/typ
 import type {
 	AppState,
 	BinaryFileData,
+	BinaryFiles,
 	Collaborator,
 	ExcalidrawImageElement,
 } from '@excalidraw/excalidraw/types/types'
@@ -22,9 +23,12 @@ import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
+import { db } from '../database/db'
+import { hashElementsVersion } from '../util'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT', // Incoming scene data from others
+	SceneRestore = 'SCENE_RESTORE', // Force replace scene from authoritative source
 	MouseLocation = 'MOUSE_LOCATION', // Incoming cursor data
 	ImageAdd = 'IMAGE_ADD', // Incoming image data from others
 	ImageRequest = 'IMAGE_REQUEST', // Request for image data
@@ -37,6 +41,12 @@ export function useCollaboration() {
 	const joinedRoomRef = useRef<string | null>(null)
 	const pendingSceneUpdateRef = useRef<readonly ExcalidrawElement[] | null>(null)
 	const pendingImageUpdatesRef = useRef<Map<string, BinaryFileData>>(new Map())
+	const pendingSceneReplaceRef = useRef<{
+		elements: ExcalidrawElement[]
+		files: BinaryFiles
+		appState: Partial<AppState>
+		scrollToContent: boolean
+	} | null>(null)
 
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow(state => ({
@@ -157,9 +167,55 @@ export function useCollaboration() {
 		[excalidrawAPI, handleRemoteImageAdd],
 	)
 
+	const applySceneReplacement = useCallback(
+		(payload: {
+			elements: ExcalidrawElement[]
+			files: BinaryFiles
+			appState: Partial<AppState>
+			scrollToContent: boolean
+		}) => {
+			if (!excalidrawAPI) {
+				return
+			}
+
+			try {
+				excalidrawAPI.resetScene()
+
+				const currentAppState = excalidrawAPI.getAppState()
+				const mergedAppState = {
+					...currentAppState,
+					...payload.appState,
+					scrollToContent: payload.scrollToContent,
+				}
+
+				excalidrawAPI.updateScene({
+					elements: payload.elements,
+					appState: mergedAppState,
+				})
+
+				const filesArray = Object.values(payload.files || {}).filter(
+					(file): file is BinaryFileData => Boolean(file),
+				)
+
+				if (filesArray.length > 0) {
+					excalidrawAPI.addFiles(filesArray)
+				}
+			} catch (error) {
+				console.error('[Collaboration] Error applying restored scene:', error)
+			}
+		},
+		[excalidrawAPI],
+	)
+
 	useEffect(() => {
 		if (!excalidrawAPI) {
 			return
+		}
+
+		if (pendingSceneReplaceRef.current) {
+			const payload = pendingSceneReplaceRef.current
+			pendingSceneReplaceRef.current = null
+			applySceneReplacement(payload)
 		}
 
 		if (pendingSceneUpdateRef.current) {
@@ -175,11 +231,12 @@ export function useCollaboration() {
 				handleRemoteImageAdd(image)
 			})
 		}
-	}, [excalidrawAPI, handleRemoteImageAdd, reconcileAndApplyRemoteElements])
+	}, [excalidrawAPI, handleRemoteImageAdd, reconcileAndApplyRemoteElements, applySceneReplacement])
 
 	useEffect(() => {
 		pendingSceneUpdateRef.current = null
 		pendingImageUpdatesRef.current.clear()
+		pendingSceneReplaceRef.current = null
 	}, [fileId])
 
 	// --- Collaborator State Management ---
@@ -447,7 +504,7 @@ export function useCollaboration() {
 	}, [fileId, debouncedJoinRoom]) // Dependencies read via store state
 
 	const handleClientBroadcast = useCallback(
-		(data: ArrayBuffer) => {
+		async (data: ArrayBuffer) => {
 			try {
 				const decoded = JSON.parse(new TextDecoder().decode(data))
 
@@ -457,6 +514,62 @@ export function useCollaboration() {
 				}
 
 				switch (decoded.type) {
+				case BroadcastType.SceneRestore: {
+					const payload = decoded.payload || {}
+
+					if (!Array.isArray(payload.elements)) {
+						console.warn('[Collaboration] Invalid SceneRestore payload:', payload)
+						break
+					}
+
+					try {
+						const restoredElements = restoreElements(payload.elements, null) as ExcalidrawElement[]
+						const files = (payload.files || {}) as BinaryFiles
+						const appStatePatch: Partial<AppState> = payload.appState || {}
+						const scrollToContent = payload.scrollToContent ?? true
+
+						// Clear pending queue state since we have an authoritative snapshot
+						pendingSceneUpdateRef.current = null
+						pendingImageUpdatesRef.current.clear()
+
+						if (excalidrawAPI) {
+							applySceneReplacement({
+								elements: restoredElements,
+								files,
+								appState: appStatePatch,
+								scrollToContent,
+							})
+						} else {
+							pendingSceneReplaceRef.current = {
+								elements: restoredElements,
+								files,
+								appState: appStatePatch,
+								scrollToContent,
+							}
+						}
+
+						// Persist authoritative snapshot locally to avoid stale IndexedDB data
+						if (fileId) {
+							try {
+								await db.put(
+									fileId,
+									restoredElements,
+									files || {},
+									appStatePatch,
+									{
+										hasPendingLocalChanges: false,
+										lastSyncedHash: hashElementsVersion(restoredElements),
+									},
+								)
+							} catch (persistError) {
+								console.error('[Collaboration] Failed to persist restored scene to IndexedDB:', persistError)
+							}
+						}
+					} catch (error) {
+						console.error('[Collaboration] Error handling SceneRestore broadcast:', error)
+					}
+					break
+				}
 				case BroadcastType.SceneInit:
 					if (Array.isArray(decoded.payload?.elements)) {
 						queueSceneUpdate(decoded.payload.elements)
@@ -515,7 +628,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error processing client broadcast:', error)
 			}
 		},
-		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId],
+		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId, applySceneReplacement],
 	)
 
 	const handleSyncDesignate = useCallback((data: { isSyncer: boolean }) => {
@@ -801,6 +914,11 @@ export function useCollaboration() {
 	const socketInstanceRef = useRef<Socket | null>(null)
 
 	const connectSocket = useCallback(async () => {
+		if (useWhiteboardConfigStore.getState().isVersionPreview) {
+			console.log('[Collaboration] Skipping socket connection for version preview')
+			setStatus('offline')
+			return
+		}
 		// Use the fileId from our selective subscription instead of getState
 		const { socket: currentSocket, status: currentStatus } = useCollaborationStore.getState()
 

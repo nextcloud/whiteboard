@@ -16,6 +16,9 @@ interface WhiteboardConfigState {
 	isEmbedded: boolean
 	initialDataPromise: ReturnType<typeof resolvablePromise>
 	collabBackendUrl: string // URL of the collaboration backend server
+	isVersionPreview: boolean
+	versionSource: string | null
+	fileVersion: string | null
 
 	// UI state
 	zenModeEnabled: boolean
@@ -31,6 +34,9 @@ interface WhiteboardConfigState {
 				| 'publicSharingToken'
 				| 'isEmbedded'
 				| 'collabBackendUrl'
+				| 'isVersionPreview'
+				| 'versionSource'
+				| 'fileVersion'
 			>
 		>,
 	) => void
@@ -56,13 +62,25 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	isEmbedded: false,
 	initialDataPromise: resolvablePromise(),
 	collabBackendUrl: '', // Will be initialized from initial state
+	isVersionPreview: false,
+	versionSource: null,
+	fileVersion: null,
 
 	// UI state
 	zenModeEnabled: false,
 	gridModeEnabled: false,
 
 	// Core actions
-	setConfig: (config: Partial<Pick<WhiteboardConfigState, 'fileId' | 'fileName' | 'publicSharingToken' | 'isEmbedded' | 'collabBackendUrl'>>) => {
+	setConfig: (config: Partial<Pick<WhiteboardConfigState,
+		'fileId'
+		| 'fileName'
+		| 'publicSharingToken'
+		| 'isEmbedded'
+		| 'collabBackendUrl'
+		| 'isVersionPreview'
+		| 'versionSource'
+		| 'fileVersion'
+	>>) => {
 		set(config)
 	},
 
@@ -85,6 +103,9 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 			publicSharingToken,
 			isEmbedded,
 			collabBackendUrl,
+			isVersionPreview: false,
+			versionSource: null,
+			fileVersion: null,
 			// Reset these values
 			isReadOnly: false,
 			initialDataPromise: resolvablePromise(),
@@ -100,6 +121,10 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 
 	// Permission actions
 	setReadOnly: (readOnly: boolean) => {
+		if (get().isVersionPreview) {
+			set({ isReadOnly: true })
+			return
+		}
 		set({ isReadOnly: readOnly })
 	},
 }))

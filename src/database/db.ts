@@ -14,6 +14,8 @@ export interface WhiteboardData {
 	files: BinaryFiles
 	appState?: AppState
 	savedAt?: number
+	hasPendingLocalChanges?: boolean
+	lastSyncedHash?: number
 }
 
 export class WhiteboardDatabase extends Dexie.Dexie {
@@ -39,13 +41,21 @@ export class WhiteboardDatabase extends Dexie.Dexie {
 		elements: ExcalidrawElement[],
 		files: BinaryFiles,
 		appState?: AppState,
+		options: {
+			hasPendingLocalChanges?: boolean
+			lastSyncedHash?: number
+		} = {},
 	): Promise<number> {
+		const existing = await this.whiteboards.get(fileId)
+
 		const data = {
 			id: fileId,
 			elements,
 			files,
 			appState,
 			savedAt: Date.now(),
+			hasPendingLocalChanges: options.hasPendingLocalChanges ?? existing?.hasPendingLocalChanges ?? false,
+			lastSyncedHash: options.lastSyncedHash ?? existing?.lastSyncedHash,
 		}
 
 		return this.whiteboards.put(data)

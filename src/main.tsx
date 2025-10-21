@@ -20,7 +20,8 @@ const isRecording = loadState('whiteboard', 'isRecording', false)
 
 if (isRecording) {
 	// For recording, load the required state values
-	const fileId = loadState('whiteboard', 'file_id', '')
+	const fileIdRaw = loadState('whiteboard', 'file_id', '')
+	const fileId = Number(fileIdRaw) || 0
 	const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl')
 	const jwt = loadState('whiteboard', 'jwt', '')
 
@@ -55,6 +56,8 @@ if (isRecording) {
 			fileName: '',
 			publicSharingToken: null,
 			collabBackendUrl,
+			versionSource: null,
+			fileVersion: null,
 		})
 	})
 } else {
@@ -121,11 +124,13 @@ function handlePublicSharing(token) {
 		const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
 
 		renderApp(whiteboardElement, {
-			fileId,
+			fileId: Number(fileId) || 0,
 			isEmbedded: false,
 			fileName: document.title,
 			publicSharingToken: token,
 			collabBackendUrl,
+			versionSource: null,
+			fileVersion: null,
 		})
 	})
 }
@@ -166,12 +171,18 @@ function createWhiteboardComponent() {
 				// Get collaboration backend URL from initial state
 				const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
 
+				const normalizedFileId = Number(this.fileid ?? this.fileId ?? 0) || 0
+				const versionSource = this.source ?? null
+				const fileVersion = this.fileVersion ?? null
+
 				this.root = renderApp(rootElement, {
-					fileId: this.fileid,
+					fileId: normalizedFileId,
 					isEmbedded: this.isEmbedded,
 					fileName: this.basename,
 					publicSharingToken: getSharingToken(),
 					collabBackendUrl,
+					versionSource,
+					fileVersion,
 				})
 			})
 
@@ -193,6 +204,9 @@ function createWhiteboardComponent() {
 		props: {
 			filename: { type: String, default: null },
 			fileid: { type: Number, default: null },
+			fileId: { type: Number, default: null },
+			fileVersion: { type: String, default: null },
+			source: { type: String, default: null },
 			isEmbedded: { type: Boolean, default: false },
 		},
 		data: () => ({ root: null }),

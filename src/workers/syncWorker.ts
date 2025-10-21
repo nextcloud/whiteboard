@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { db } from '../database/db'
+import { hashElementsVersion } from '../util'
 
 const ctx: Worker = self as any
 
@@ -99,7 +100,9 @@ const handleSyncToLocal = async (data: any) => {
 			delete filteredAppState.collaborators
 		}
 
-		await db.put(fileId, elements, files || {}, filteredAppState)
+		await db.put(fileId, elements, files || {}, filteredAppState, {
+			hasPendingLocalChanges: true,
+		})
 
 		const endTime = performance.now()
 		const duration = endTime - startTime
@@ -177,6 +180,22 @@ const handleSyncToServer = async (data: any) => {
 
 		const endTime = performance.now()
 		const duration = endTime - startTime
+
+		try {
+			const existing = await db.get(fileId)
+			await db.put(
+				fileId,
+				elements,
+				files || existing?.files || {},
+				existing?.appState,
+				{
+					hasPendingLocalChanges: false,
+					lastSyncedHash: hashElementsVersion(elements || []),
+				},
+			)
+		} catch (dbError) {
+			error('Error updating local metadata after server sync:', dbError)
+		}
 
 		sendMessage('SERVER_SYNC_COMPLETE', {
 			success: true,
