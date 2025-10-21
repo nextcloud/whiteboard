@@ -80,6 +80,7 @@ services:
 **Environment Variables:**
 - `JWT_SECRET_KEY`: Must match the secret configured in Nextcloud
 - `NEXTCLOUD_URL`: Used for JWT token validation (not for server-to-server communication)
+- `RECORDINGS_DIR`: Optional writable directory for temporary recording files (defaults to `/tmp/whiteboard-recordings` in the Docker image and automatically falls back to the OS temp directory if unavailable)
 
 ### Recording prerequisites
 
@@ -121,7 +122,7 @@ export CHROME_EXECUTABLE_PATH="/path/to/your/chrome"
 npm run server:start
 ```
 
-The server performs automated Chrome detection on startup and before each recording. If Chrome isn't found, users receive clear error messages with installation guidance. After installing Chrome, restart the websocket server to apply changes.
+The server performs automated Chrome detection on startup and before each recording. If Chrome isn't found, users receive clear error messages with installation guidance. Temporary recording data is written to the directory specified by `RECORDINGS_DIR` (or `/tmp/whiteboard-recordings` in the official Docker image). If that location cannot be created or written, the server falls back to the operating system temp directory automatically and logs a warning. After installing Chrome, restart the websocket server to apply changes.
 
 ## Reverse Proxy Configuration
 
