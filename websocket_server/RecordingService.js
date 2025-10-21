@@ -7,6 +7,8 @@
 
 import puppeteer from 'puppeteer-core'
 import fs from 'fs/promises'
+import { constants as fsConstants } from 'fs'
+import os from 'os'
 import path from 'path'
 import EventEmitter from 'events'
 import Config from './Config.js'
@@ -32,6 +34,8 @@ const DEFAULT_CONFIG = {
 		'--use-fake-device-for-media-stream',
 		'--enable-usermedia-screen-capturing',
 		'--autoplay-policy=no-user-gesture-required',
+		'--ignore-certificate-errors',
+		'--allow-insecure-localhost',
 	],
 }
 
@@ -39,12 +43,16 @@ export default class RecordingService extends EventEmitter {
 
 	#status = new Map()
 	#sessions = new Map()
+	#recordingsPathPromise = null
+	#recordingsRootLogReported = false
 
 	constructor(config = {}) {
 		super()
 		this.config = { ...DEFAULT_CONFIG, ...config }
-		this.recordingsPath = path.join(process.cwd(), 'recordings')
-		this.profilePath = path.join(this.recordingsPath, '.chromium-profile')
+		this.configuredRecordingsPath = Config.RECORDINGS_DIR ? path.resolve(Config.RECORDINGS_DIR) : null
+		this.fallbackRecordingsPath = path.join(os.tmpdir(), 'whiteboard-recordings')
+		this.recordingsPath = null
+		this.profilePath = null
 	}
 
 	getStatus(roomId, userId) {
@@ -71,7 +79,7 @@ export default class RecordingService extends EventEmitter {
 		let browser
 
 		try {
-			await fs.mkdir(this.recordingsPath, { recursive: true })
+			await this.#ensureRecordingEnvironment(sessionKey)
 			await fs.mkdir(this.profilePath, { recursive: true })
 			const runtimeDir = path.join(this.profilePath, 'runtime')
 			const crashpadDir = path.join(this.profilePath, 'crashpad')
@@ -124,6 +132,72 @@ export default class RecordingService extends EventEmitter {
 			await browser?.close()
 			throw error
 		}
+	}
+
+	async #ensureRecordingEnvironment(sessionKey) {
+		if (this.recordingsPath) {
+			return
+		}
+
+		if (!this.#recordingsPathPromise) {
+			this.#recordingsPathPromise = this.#resolveRecordingsPath(sessionKey)
+		}
+
+		let resolvedPath
+		try {
+			resolvedPath = await this.#recordingsPathPromise
+		} catch (error) {
+			this.#recordingsPathPromise = null
+			throw error
+		}
+
+		this.recordingsPath = resolvedPath
+		this.profilePath = path.join(this.recordingsPath, '.chromium-profile')
+	}
+
+	async #resolveRecordingsPath(sessionKey) {
+		const tried = []
+		const candidates = [this.configuredRecordingsPath, this.fallbackRecordingsPath]
+
+		for (const candidate of candidates) {
+			if (!candidate) {
+				continue
+			}
+			const normalized = path.resolve(candidate)
+			if (tried.includes(normalized)) {
+				continue
+			}
+			tried.push(normalized)
+
+			try {
+				await fs.mkdir(normalized, { recursive: true })
+				const stats = await fs.stat(normalized)
+				if (!stats.isDirectory()) {
+					throw new Error('Path exists but is not a directory')
+				}
+				await fs.access(normalized, fsConstants.W_OK)
+
+				if (!this.#recordingsRootLogReported) {
+					const source = normalized === this.fallbackRecordingsPath ? 'fallback' : 'configured'
+					console.log(`[Recording] Using ${source} recordings directory: ${normalized}`)
+					if (source === 'fallback' && this.configuredRecordingsPath !== normalized) {
+						console.warn('[Recording] Falling back to writable temporary directory. Set RECORDINGS_DIR to control the location explicitly.')
+					}
+					this.#recordingsRootLogReported = true
+				}
+
+				return normalized
+			} catch (error) {
+				const code = error?.code
+				if (code === 'EACCES' || code === 'EROFS' || code === 'EPERM') {
+					console.warn(`[${sessionKey}] Recording path '${normalized}' is not writable (${code}).`)
+					continue
+				}
+				console.error(`[${sessionKey}] Failed to prepare recordings path '${normalized}':`, error)
+			}
+		}
+
+		throw new Error(`No writable recordings directory available. Tried: ${tried.join(', ')}`)
 	}
 
 	async #navigateWithRetry(page, url, sessionKey) {
@@ -220,6 +294,8 @@ export default class RecordingService extends EventEmitter {
 			const { page } = session
 			session.isRecording = true
 			const sessionPath = path.join(this.recordingsPath, sessionKey)
+			session.sessionPath = sessionPath
+			session.lastRecordingPath = null
 			await fs.mkdir(sessionPath, { recursive: true })
 
 			// Start browser-based recording
@@ -280,9 +356,10 @@ export default class RecordingService extends EventEmitter {
 		try {
 			const { page } = session
 			session.isRecording = false
-			const sessionPath = path.join(this.recordingsPath, sessionKey)
+			const sessionPath = session.sessionPath || path.join(this.recordingsPath, sessionKey)
 			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ')
 			const outputPath = path.join(sessionPath, `${formattedDate}.webm`)
+			session.lastRecordingPath = outputPath
 
 			// Stop recording and get the array buffer
 			const buffer = await page.evaluate(() => {
@@ -330,6 +407,28 @@ export default class RecordingService extends EventEmitter {
 			const { browser } = session
 			if (browser) {
 				await browser.close()
+			}
+			if (Config.CLEANUP_LOCAL_RECORDINGS) {
+				const targets = [session.lastRecordingPath]
+				for (const target of targets) {
+					if (!target) {
+						continue
+					}
+					try {
+						await fs.rm(target, { force: true })
+						console.log(`[Recording] Removed local recording file: ${target}`)
+					} catch (error) {
+						console.warn(`[Recording] Failed to remove recording file '${target}':`, error)
+					}
+				}
+
+				const sessionDir = session.sessionPath || path.join(this.recordingsPath, sessionKey)
+				try {
+					await fs.rm(sessionDir, { recursive: true, force: true })
+					console.log(`[Recording] Removed session directory: ${sessionDir}`)
+				} catch (error) {
+					console.warn(`[Recording] Failed to remove session directory '${sessionDir}':`, error)
+				}
 			}
 			this.#sessions.delete(sessionKey)
 			this.#status.delete(sessionKey)
