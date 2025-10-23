@@ -6,6 +6,7 @@
 import { useState, useRef, useEffect, useCallback, memo, type ReactNode, type MouseEvent, type TouchEvent } from 'react'
 import { Icon } from '@mdi/react'
 import { mdiDrag } from '@mdi/js'
+import { t } from '@nextcloud/l10n'
 
 interface Position {
 	x: number
@@ -218,7 +219,7 @@ export const DraggableDialog = memo(function DraggableDialog({
 					className="draggable-dialog__handle"
 					onMouseDown={handleMouseDown}
 					onTouchStart={handleTouchStart}
-					title="Drag to move"
+					title={t('whiteboard', 'Drag to move')}
 				>
 					<Icon path={mdiDrag} size={0.8} />
 				</div>

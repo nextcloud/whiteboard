@@ -17,6 +17,7 @@ import {
 } from '@mdi/js'
 import { MainMenu } from '@nextcloud/excalidraw'
 import { DraggableDialog } from './DraggableDialog'
+import { t } from '@nextcloud/l10n'
 
 interface PresentationState {
 	isPresenting: boolean
@@ -122,10 +123,10 @@ const PresentationStatus = memo(function PresentationStatus({
 							onClick={onStopPresentation}
 							className="presentation-status__stop-btn"
 							disabled={status === 'stopping'}
-							title="Stop presentation"
+							title={t('whiteboard', 'Stop presentation')}
 						>
 							<Icon path={mdiStop} size={0.9} />
-							{status === 'stopping' ? 'Stopping...' : 'Stop'}
+							{status === 'stopping' ? t('whiteboard', 'Stopping...') : t('whiteboard', 'Stop')}
 						</button>
 					)}
 				</div>
@@ -145,7 +146,7 @@ const PresentationStatus = memo(function PresentationStatus({
 					<button
 						onClick={onToggleAutoFollow}
 						className={`presentation-status__follow-btn ${autoFollowPresenter ? 'active' : ''}`}
-						title={autoFollowPresenter ? 'Stop following presenter' : 'Follow presenter'}
+						title={autoFollowPresenter ? t('whiteboard', 'Stop following presenter') : t('whiteboard', 'Follow presenter')}
 					>
 						<Icon path={autoFollowPresenter ? mdiEye : mdiEyeOff} size={0.9} />
 						{autoFollowPresenter ? 'Following' : 'Follow'}
@@ -181,29 +182,29 @@ export const PresentationMenuItem = memo(function PresentationMenuItem({
 
 	// Show different states based on presentation mode
 	let icon = mdiPresentation
-	let text = 'Start Presentation'
+	let text = t('whiteboard', 'Start Presentation')
 	let className = 'presentation-button'
-	let tooltip = 'Start presenting to share your viewport with others'
+	let tooltip = t('whiteboard', 'Start presenting to share your viewport with others')
 
 	if (isPresenting) {
 		icon = mdiStop
-		text = isStopping ? 'Stopping...' : 'Stop Presentation'
+		text = isStopping ? t('whiteboard', 'Stopping...') : t('whiteboard', 'Stop Presentation')
 		className += ' presentation-button--presenting'
-		tooltip = 'Stop presenting'
+		tooltip = t('whiteboard', 'Stop presenting')
 	} else if (isStarting) {
 		icon = mdiPresentationPlay
-		text = 'Starting...'
+		text = t('whiteboard', 'Starting...')
 		className += ' presentation-button--starting'
-		tooltip = 'Starting presentation...'
+		tooltip = t('whiteboard', 'Starting presentation...')
 	} else if (isPresentationMode && presenterName) {
 		icon = mdiPresentation
-		text = `${presenterName} is presenting`
+		text = t('whiteboard', '%s is presenting', [presenterName])
 		className += ' presentation-button--watching'
-		tooltip = `${presenterName} is currently presenting. Others will follow their viewport.`
+		tooltip = t('whiteboard', '%s is currently presenting. Others will follow their viewport.', [presenterName])
 	} else if (!isConnected) {
 		className += ' presentation-button--disconnected'
-		text = 'Start Presentation (Offline)'
-		tooltip = 'Presentation requires connection to collaboration server'
+		text = t('whiteboard', 'Start Presentation (Offline)')
+		tooltip = t('whiteboard', 'Presentation requires connection to collaboration server')
 	}
 
 	return (

@@ -10,6 +10,7 @@ import { MainMenu } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
 import { CreatorMenuItem } from './CreatorMenuItem'
+import { t } from '@nextcloud/l10n'
 
 interface RecordingState {
 	isRecording: boolean
@@ -102,12 +103,12 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				icon={<Icon path={mdiImageMultiple} size={0.75} />}
 				onSelect={openExportDialog}
 				shortcut={isMacPlatform ? '⌘+⇧+E' : 'Ctrl+Shift+E'}>
-				{'Export image...'}
+				{t('whiteboard', 'Export image...')}
 			</MainMenu.Item>
 			<MainMenu.Item
 				icon={<Icon path={mdiMonitorScreenshot} size={0.75} />}
 				onSelect={takeScreenshot}>
-				{'Download screenshot'}
+				{t('whiteboard', 'Download screenshot')}
 			</MainMenu.Item>
 			<RecordingMenuItem
 				isRecording={recordingState.isRecording}
