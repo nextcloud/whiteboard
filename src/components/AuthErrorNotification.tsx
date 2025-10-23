@@ -10,6 +10,7 @@ import { mdiAlert, mdiClose, mdiInformation, mdiCog } from '@mdi/js'
 import { generateUrl } from '@nextcloud/router'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import type { AuthErrorType } from '../stores/useCollaborationStore'
+import { t } from '@nextcloud/l10n'
 
 interface AuthErrorConfig {
 	icon: string
@@ -24,27 +25,27 @@ const getAuthErrorConfig = (errorType: AuthErrorType, isPersistent: boolean): Au
 	case 'jwt_secret_mismatch':
 		return {
 			icon: mdiAlert,
-			title: isPersistent ? 'Authentication Configuration Issue' : 'Authentication Error',
+			title: isPersistent ? t('whiteboard', 'Authentication Configuration Issue') : t('whiteboard', 'Authentication Error'),
 			message: isPersistent
-				? 'Unable to connect to collaboration server. The JWT secret may be misconfigured. You can continue working locally, and your changes will be saved to your device.'
-				: 'Temporary authentication issue. Retrying connection...',
-			actionText: isPersistent ? 'Open Admin Settings' : undefined,
+				? t('whiteboard', 'Unable to connect to collaboration server. The JWT secret may be misconfigured. You can continue working locally, and your changes will be saved to your device.')
+				: t('whiteboard', 'Temporary authentication issue. Retrying connection...'),
+			actionText: isPersistent ? t('whiteboard', 'Open Admin Settings') : undefined,
 			severity: isPersistent ? 'error' : 'warning',
 		}
 	case 'token_expired':
 		return {
 			icon: mdiInformation,
-			title: 'Session Expired',
-			message: 'Your session has expired. Attempting to refresh authentication...',
+			title: t('whiteboard', 'Session Expired'),
+			message: t('whiteboard', 'Your session has expired. Attempting to refresh authentication...'),
 			severity: 'info',
 		}
 	case 'unauthorized':
 		return {
 			icon: mdiAlert,
-			title: isPersistent ? 'Access Denied' : 'Authentication Issue',
+			title: isPersistent ? t('whiteboard', 'Access Denied') : t('whiteboard', 'Authentication Issue'),
 			message: isPersistent
-				? 'You do not have permission to access this whiteboard for collaboration. You can continue working locally.'
-				: 'Authentication issue detected. Retrying...',
+				? t('whiteboard', 'You do not have permission to access this whiteboard for collaboration. You can continue working locally.')
+				: t('whiteboard', 'Authentication issue detected. Retrying...'),
 			severity: isPersistent ? 'error' : 'warning',
 		}
 	default:
@@ -128,8 +129,7 @@ const AuthErrorNotificationComponent = () => {
 					{authError.isPersistent && (
 						<div className="auth-error-notification__details">
 							<small>
-								Local changes are automatically saved to your device.
-								Collaboration features will be unavailable until this issue is resolved.
+								{t('whiteboard', 'Local changes are automatically saved to your device. Collaboration features will be unavailable until this issue is resolved.')}
 							</small>
 						</div>
 					)}
@@ -147,7 +147,7 @@ const AuthErrorNotificationComponent = () => {
 					<button
 						className="auth-error-notification__close-button"
 						onClick={handleDismiss}
-						title="Dismiss"
+						title={t('whiteboard', 'Dismiss')}
 					>
 						<Icon path={mdiClose} size={0.9} />
 					</button>

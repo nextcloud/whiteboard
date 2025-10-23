@@ -12,6 +12,7 @@ import { mdiAccount, mdiAccountGroup, mdiEye, mdiEyeOff } from '@mdi/js'
 import { useCreatorDisplayStore } from '../stores/useCreatorDisplayStore'
 import type { CreatorDisplaySettings } from '../types/whiteboard'
 import styles from './CreatorMenuItem.module.scss'
+import { t } from '@nextcloud/l10n'
 
 export const CreatorMenuItem = () => {
 	const { settings, setEnabled, setDisplayMode, setOpacity } = useCreatorDisplayStore()
@@ -36,7 +37,7 @@ export const CreatorMenuItem = () => {
 				onSelect={handleToggle}
 			>
 				<div className={styles.container}>
-					<span>Show element creators</span>
+					<span>{t('whiteboard', 'Show element creators')}</span>
 					<Icon path={settings.enabled ? mdiEye : mdiEyeOff} size="14px" />
 				</div>
 			</MainMenu.Item>
@@ -46,7 +47,7 @@ export const CreatorMenuItem = () => {
 					<div className={styles.settingsWrapper}>
 						<div className={styles.fieldWrapper}>
 							<label className={styles.label}>
-								Display Mode
+								{t('whiteboard', 'Display Mode')}
 							</label>
 							<select
 								value={settings.displayMode}
@@ -54,9 +55,9 @@ export const CreatorMenuItem = () => {
 								className={styles.select}
 								onClick={(e) => e.stopPropagation()}
 							>
-								<option value="hover">On Hover</option>
-								<option value="selection">On Selection</option>
-								<option value="always">Always Visible</option>
+								<option value="hover">{t('whiteboard', 'On Hover')}</option>
+								<option value="selection">{t('whiteboard', 'On Selection')}</option>
+								<option value="always">{t('whiteboard', 'Always Visible')}</option>
 							</select>
 						</div>
 

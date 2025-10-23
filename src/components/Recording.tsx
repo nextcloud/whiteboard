@@ -9,6 +9,7 @@ import { formatDuration } from '../hooks/useRecording'
 import { MainMenu } from '@nextcloud/excalidraw'
 import { memo } from 'react'
 import { DraggableDialog } from './DraggableDialog'
+import { t } from '@nextcloud/l10n'
 
 interface RecordingProps {
 	isStarting: boolean
@@ -52,15 +53,15 @@ const RecordingStartingStatus = memo(({ startingPhase }: { startingPhase: 'prepa
 		</div>
 		<div className="nc-notecard__content">
 			<div className="nc-notecard__text">
-				<strong>Starting recording...</strong>
+				<strong>{t('whiteboard', 'Starting recording...')}</strong>
 				<div className="recording-starting-details">
 					<div>
-						{startingPhase === 'preparing' ? '• Preparing recording session...' : '✓ Recording session prepared'}
+						{startingPhase === 'preparing' ? t('whiteboard', '• Preparing recording session...') : t('whiteboard', '✓ Recording session prepared')}
 					</div>
 					<div>
-						{startingPhase === 'initializing' ? '• Initializing capture engine...' : startingPhase === 'preparing' ? '• Waiting for capture engine...' : '✓ Capture engine ready'}
+						{startingPhase === 'initializing' ? t('whiteboard', '• Initializing capture engine...') : startingPhase === 'preparing' ? t('whiteboard', '• Waiting for capture engine...') : t('whiteboard', '✓ Capture engine ready')}
 					</div>
-					<div>• This may take a few seconds</div>
+					<div>{t('whiteboard', '• This may take a few seconds')}</div>
 				</div>
 			</div>
 		</div>
@@ -373,7 +374,7 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 			disabled={isDisabled}
 			title={tooltipMessage}
 		>
-			{isRecording ? 'Stop Recording' : 'Start Recording'}
+			{isRecording ? t('whiteboard', 'Stop Recording') : t('whiteboard', 'Start Recording')}
 		</MainMenu.Item>
 	)
 })

@@ -7,6 +7,7 @@ import { useEffect, useState, memo, useCallback, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { Icon } from '@mdi/react'
 import { mdiWifiOff, mdiWifi, mdiWifiStrength1, mdiWifiStrength2, mdiLoading } from '@mdi/js'
+import { t } from '@nextcloud/l10n'
 // Import the correct store
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import type { CollaborationConnectionStatus } from '../stores/useCollaborationStore'
@@ -24,39 +25,39 @@ const getStatusConfig = (status: CollaborationConnectionStatus): StatusConfig =>
 	case 'offline':
 		return {
 			icon: mdiWifiOff,
-			text: 'Offline',
+			text: t('whiteboard', 'Offline'),
 			className: 'network-status--offline',
-			description: 'Offline - Changes saved locally.',
+			description: t('whiteboard', 'Offline - Changes saved locally.'),
 		}
 	case 'connecting':
 		return {
 			icon: mdiWifiStrength1, // Or mdiLoading directly?
-			text: 'Connecting',
+			text: t('whiteboard', 'Connecting'),
 			className: 'network-status--connecting',
-			description: 'Connecting to collaboration server...',
+			description: t('whiteboard', 'Connecting to collaboration server...'),
 		}
 	case 'reconnecting':
 		return {
 			icon: mdiWifiStrength2, // Or mdiLoading directly?
-			text: 'Reconnecting',
+			text: t('whiteboard', 'Reconnecting'),
 			className: 'network-status--reconnecting',
-			description: 'Attempting to reconnect...',
+			description: t('whiteboard', 'Attempting to reconnect...'),
 		}
 	case 'online':
 		return {
 			icon: mdiWifi,
-			text: 'Online',
+			text: t('whiteboard', 'Online'),
 			className: 'network-status--online',
-			description: 'Connected.',
+			description: t('whiteboard', 'Connected.'),
 		}
 	default:
 		// Fallback for safety, though should not happen with TypeScript
 		console.warn(`[NetworkStatusIndicator] Unknown status: ${status}`)
 		return {
 			icon: mdiWifiOff,
-			text: 'Unknown',
+			text: t('whiteboard', 'Unknown'),
 			className: 'network-status--offline',
-			description: 'Unknown connection status.',
+			description: t('whiteboard', 'Unknown connection status.'),
 		}
 	}
 }
@@ -99,9 +100,9 @@ const NetworkStatusIndicatorComponent = () => {
 
 		// Add auth error context if there's a persistent auth issue
 		if (authError.isPersistent && authError.type === 'jwt_secret_mismatch') {
-			baseDescription += ' Authentication configuration issue detected.'
+			baseDescription += t('whiteboard', ' Authentication configuration issue detected.')
 		} else if (authError.consecutiveFailures >= 2) {
-			baseDescription += ' Authentication issues detected.'
+			baseDescription += t('whiteboard', ' Authentication issues detected.')
 		}
 
 		return baseDescription
