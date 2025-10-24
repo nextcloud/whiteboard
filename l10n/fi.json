@@ -7,6 +7,8 @@
     "Verifying connection…" : "Vahvistetaan yhteyttä…",
     "Shared secret" : "Jaettu salaisuus",
     "Save settings" : "Tallenna asetukset",
-    "Advanced settings" : "Lisäasetukset"
+    "Advanced settings" : "Lisäasetukset",
+    "Offline" : "Poissa",
+    "Stop" : "Pysäytä"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

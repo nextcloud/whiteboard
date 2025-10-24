@@ -9,6 +9,8 @@ OC.L10N.register(
     "Verifying connection…" : "接続の確認...",
     "Shared secret" : "共有秘密鍵",
     "Save settings" : "設定を保存",
-    "Advanced settings" : "詳細設定"
+    "Advanced settings" : "詳細設定",
+    "Offline" : "オフライン",
+    "Stop" : "中止"
 },
 "nplurals=1; plural=0;");

@@ -21,6 +21,9 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Eochair rúnda JWT arna roinnt idir Nextcloud agus an freastalaí WebSocket le haghaidh fíordheimhniú slán.",
     "Save settings" : "Sábháil socruithe",
     "Advanced settings" : "Ardsocruithe",
-    "Max file size" : "Uasmhéid comhaid"
+    "Max file size" : "Uasmhéid comhaid",
+    "Offline" : "As líne",
+    "Online" : "Ar líne",
+    "Stop" : "Stad"
 },
 "nplurals=5; plural=(n==1 ? 0 : n==2 ? 1 : n<7 ? 2 : n<11 ? 3 : 4);");

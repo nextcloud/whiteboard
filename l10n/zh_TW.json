@@ -19,6 +19,12 @@
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Nextcloud 與 WebSocket 伺服器共用的 JWT 私鑰，用於安全驗證。",
     "Save settings" : "儲存設定",
     "Advanced settings" : "進階設定",
-    "Max file size" : "最大檔案大小"
+    "Max file size" : "最大檔案大小",
+    "Access Denied" : "拒絕存取",
+    "Offline" : "離線",
+    "Connecting" : "正在連線",
+    "Online" : "上線",
+    "Unknown" : "未知",
+    "Stop" : "停止"
 },"pluralForm" :"nplurals=1; plural=0;"
 }

@@ -9,6 +9,10 @@ OC.L10N.register(
     "Verifying connection…" : "Verifiserer forbindelse...",
     "Shared secret" : "Delt hemmelighet",
     "Save settings" : "Lagre innstillinger",
-    "Advanced settings" : "Avanserte innstillinger"
+    "Advanced settings" : "Avanserte innstillinger",
+    "Offline" : "Frakoblet",
+    "Connecting" : "Kobler til",
+    "Online" : "Pålogget",
+    "Stop" : "Stoppe"
 },
 "nplurals=2; plural=(n != 1);");

@@ -2,6 +2,8 @@
     "Whiteboard" : "Valgetahvel",
     "Shared secret" : "Jagatud saladus",
     "Save settings" : "Salvesta seaded",
-    "Advanced settings" : "Lisavalikud"
+    "Advanced settings" : "Lisavalikud",
+    "Offline" : "Pole võrgus",
+    "Stop" : "Lõpeta"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

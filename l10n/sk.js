@@ -11,6 +11,10 @@ OC.L10N.register(
     "Shared secret" : "Shared secret",
     "Save settings" : "Uložiť nastavenia",
     "Advanced settings" : "Rozšírené nastavenia",
-    "Max file size" : "Maximálna veľkosť súboru"
+    "Max file size" : "Maximálna veľkosť súboru",
+    "Offline" : "Odpojené",
+    "Connecting" : "Pripájam",
+    "Online" : "Pripojený",
+    "Stop" : "Zastaviť"
 },
 "nplurals=4; plural=(n % 1 == 0 && n == 1 ? 0 : n % 1 == 0 && n >= 2 && n <= 4 ? 1 : n % 1 != 0 ? 2: 3);");

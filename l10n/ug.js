@@ -10,6 +10,11 @@ OC.L10N.register(
     "Verifying connection…" : "ئۇلىنىشنى دەلىللەۋاتىدۇ…",
     "Shared secret" : "ئورتاق مەخپىيەتلىك",
     "Save settings" : "تەڭشەكلەرنى ساقلاڭ",
-    "Advanced settings" : "ئىلغار تەڭشەكلەر"
+    "Advanced settings" : "ئىلغار تەڭشەكلەر",
+    "Offline" : "تورسىز",
+    "Connecting" : "ئۇلىنىش",
+    "Online" : "توردا",
+    "Unknown" : "نامەلۇم",
+    "Stop" : "توختاڭ"
 },
 "nplurals=2; plural=(n != 1);");

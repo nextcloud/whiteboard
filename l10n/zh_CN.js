@@ -10,6 +10,10 @@ OC.L10N.register(
     "Verifying connection…" : "正在验证连接……",
     "Shared secret" : "已分享密码",
     "Save settings" : "保存设置",
-    "Advanced settings" : "高级选项"
+    "Advanced settings" : "高级选项",
+    "Connecting" : "正在连接",
+    "Online" : "在线",
+    "Unknown" : "未知",
+    "Stop" : "停止"
 },
 "nplurals=1; plural=0;");

@@ -11,6 +11,7 @@ OC.L10N.register(
     "Shared secret" : "Delt hemmelighed",
     "Save settings" : "Gem indstillinger",
     "Advanced settings" : "Avancerede indstillinger",
-    "Max file size" : "Maks filstørrelse"
+    "Max file size" : "Maks filstørrelse",
+    "Offline" : "Offline"
 },
 "nplurals=2; plural=(n != 1);");

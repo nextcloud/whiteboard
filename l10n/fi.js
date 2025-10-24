@@ -9,6 +9,8 @@ OC.L10N.register(
     "Verifying connection…" : "Vahvistetaan yhteyttä…",
     "Shared secret" : "Jaettu salaisuus",
     "Save settings" : "Tallenna asetukset",
-    "Advanced settings" : "Lisäasetukset"
+    "Advanced settings" : "Lisäasetukset",
+    "Offline" : "Poissa",
+    "Stop" : "Pysäytä"
 },
 "nplurals=2; plural=(n != 1);");

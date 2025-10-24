@@ -2,6 +2,8 @@
     "Whiteboard" : "Teiknitafla",
     "Shared secret" : "Sameiginlegur leynilykill",
     "Save settings" : "Vista stillingar",
-    "Advanced settings" : "Ítarlegri valkostir"
+    "Advanced settings" : "Ítarlegri valkostir",
+    "Offline" : "Ótengdur neti",
+    "Online" : "Á netinu"
 },"pluralForm" :"nplurals=2; plural=(n % 10 != 1 || n % 100 == 11);"
 }
