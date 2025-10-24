@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0
+
+### Features
+* Add whiteboard version history preview and restore workflow #735
+
+### Fixed
+* Restore whiteboard export images and keyboard shortcuts #703
+* Prevent stale scene updates during collaboration sync #705
+* Store recording temp files safely on the backend #706
+* Add missing translation strings in the interface #736
+
+### Other
+* Update translations from Transifex
+* Align browserslist baseline support with the updated configuration #707
+* Dependency updates: Node.js, Vite, Playwright, Puppeteer, @nextcloud packages, Dexie, Socket.IO Prometheus, PHPUnit #691 #692 #693 #694 #695 #696 #697 #698 #699 #700 #708 #709 #711 #712 #713 #714 #715 #716 #717 #719
+
 ## 1.3.0
 
 ### Features
