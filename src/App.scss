@@ -370,6 +370,110 @@
 	}
 }
 
+.App--version-preview {
+	.grid-toggle-button {
+		display: none;
+	}
+
+	.excalidraw .layer-ui__wrapper {
+		display: none !important;
+	}
+}
+
+.version-preview-banner {
+	position: absolute;
+	top: calc(var(--default-grid-baseline) * 2);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: calc(var(--default-grid-baseline) * 2);
+	width: min(720px, calc(100% - 32px));
+	padding: calc(var(--default-grid-baseline) * 2.5);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	border-radius: var(--border-radius-large);
+	box-shadow: 0 calc(var(--default-grid-baseline) / 2) calc(var(--default-grid-baseline) * 3)
+		var(--color-box-shadow);
+	z-index: 10100;
+}
+
+.version-preview-banner__content {
+	flex: 1;
+	min-width: 240px;
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--default-grid-baseline) / 2);
+}
+
+.version-preview-banner__title {
+	font-weight: 600;
+	font-size: 1rem;
+}
+
+.version-preview-banner__subtitle {
+	font-size: 0.875rem;
+	color: var(--color-text-maxcontrast);
+}
+
+.version-preview-banner__description {
+	font-size: 0.875rem;
+	color: var(--color-text-maxcontrast);
+	max-width: 52ch;
+}
+
+.version-preview-banner__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: calc(var(--default-grid-baseline));
+	align-items: center;
+}
+
+.version-preview-banner__button {
+	border: none;
+	border-radius: var(--border-radius);
+	font: inherit;
+	padding: 8px 16px;
+	cursor: pointer;
+	transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.version-preview-banner__button--primary {
+	background: var(--color-primary);
+	color: var(--color-primary-text);
+
+	&:hover:not(:disabled) {
+		background: var(--color-primary-element-hover);
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: wait;
+	}
+}
+
+.version-preview-banner__button--secondary {
+	background: transparent;
+	color: var(--color-main-text);
+	border: 1px solid var(--color-border);
+
+	&:hover {
+		background: var(--color-background-hover);
+	}
+}
+
+@media (max-width: 680px) {
+	.version-preview-banner {
+		align-items: stretch;
+	}
+
+	.version-preview-banner__actions {
+		width: 100%;
+		justify-content: flex-start;
+	}
+}
+
 /* Performance optimized animations that only animate opacity to reduce repaints */
 @keyframes pulse-red {
 	0% {

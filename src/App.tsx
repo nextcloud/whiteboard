@@ -41,6 +41,8 @@ import { CreatorDisplay } from './components/CreatorDisplay'
 import { useCreatorDisplayStore } from './stores/useCreatorDisplayStore'
 import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import type { ElementCreatorInfo } from './types/whiteboard'
+import { VersionPreviewBanner } from './components/VersionPreviewBanner'
+import { useVersionPreview } from './hooks/useVersionPreview'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -64,6 +66,8 @@ interface WhiteboardAppProps {
 	isEmbedded: boolean
 	publicSharingToken: string | null
 	collabBackendUrl: string
+	versionSource: string | null
+	fileVersion: string | null
 }
 
 export default function App({
@@ -72,13 +76,10 @@ export default function App({
 	fileName,
 	publicSharingToken,
 	collabBackendUrl,
+	versionSource,
+	fileVersion,
 }: WhiteboardAppProps) {
-	if (!fileId) {
-		logger.warn('[App] Invalid fileId during initialization:', fileId)
-
-		return <div className="App-error">Invalid whiteboard ID. Please try again.</div>
-	}
-
+	const normalizedFileId = Number.isFinite(fileId) ? fileId : Number(fileId)
 	const fileNameWithoutExtension = useMemo(() => fileName.split('.').slice(0, -1).join('.'), [fileName])
 
 	const { excalidrawAPI, setExcalidrawAPI, resetExcalidrawAPI } = useExcalidrawStore(useShallow(state => ({
@@ -120,7 +121,29 @@ export default function App({
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
 	useCollaboration()
-	const { isReadOnly } = useReadOnlyState()
+	const { isReadOnly, refreshReadOnlyState } = useReadOnlyState()
+
+	const {
+		isVersionPreview,
+		versionLabel,
+		versionSourceLabel,
+		exitVersionPreview,
+		handleRestoreVersion,
+		isRestoringVersion,
+	} = useVersionPreview({
+		fileId: normalizedFileId,
+		versionSource,
+		fileVersion,
+		excalidrawAPI,
+		refreshReadOnlyState,
+		isReadOnly,
+	})
+
+	if (!normalizedFileId && !isVersionPreview) {
+		logger.warn('[App] Invalid fileId during initialization:', fileId)
+
+		return <div className="App-error">Invalid whiteboard ID. Please try again.</div>
+	}
 
 	// Creator tracking
 	const creatorDisplaySettings = useCreatorDisplayStore(state => state.settings)
@@ -158,8 +181,8 @@ export default function App({
 		}
 	}, [excalidrawAPI])
 
-	const recordingState = useRecording({ fileId })
-	const presentationState = usePresentation({ fileId })
+	const recordingState = useRecording({ fileId: normalizedFileId })
+	const presentationState = usePresentation({ fileId: normalizedFileId })
 
 	useHandleLibrary({
 		excalidrawAPI,
@@ -184,7 +207,7 @@ export default function App({
 				saveOnUnmount()
 			}
 		}
-	}, [fileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount])
+	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount])
 
 	useEffect(() => {
 		resetInitialDataPromise()
@@ -224,8 +247,14 @@ export default function App({
 	}, [resetInitialDataPromise, resetStore, resetExcalidrawAPI, terminateWorker, saveOnUnmount])
 
 	useLayoutEffect(() => {
-		setConfig({ fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl })
-	}, [setConfig, fileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl])
+		setConfig({
+			fileId: normalizedFileId,
+			fileName,
+			publicSharingToken,
+			isEmbedded,
+			collabBackendUrl,
+		})
+	}, [setConfig, normalizedFileId, fileName, publicSharingToken, isEmbedded, collabBackendUrl])
 
 	// UI Initialization Effect
 	useEffect(() => {
@@ -263,9 +292,34 @@ export default function App({
 	}, [])
 
 	const handleOnChange = useCallback(() => {
-		if (!excalidrawAPI || !fileId || isLoading) return
+		if (isVersionPreview) {
+			return
+		}
+		if (!excalidrawAPI || !normalizedFileId || isLoading) return
 		onChangeSync()
-	}, [excalidrawAPI, fileId, isLoading, onChangeSync])
+	}, [excalidrawAPI, normalizedFileId, isLoading, onChangeSync, isVersionPreview])
+
+	const canvasActions = useMemo(() => {
+		if (isVersionPreview) {
+			return {
+				changeViewBackgroundColor: false,
+				clearCanvas: false,
+				export: false,
+				loadScene: false,
+				saveAsImage: false,
+				saveToActiveFile: false,
+				toggleTheme: false,
+			}
+		}
+
+		return {
+			loadScene: false,
+		}
+	}, [isVersionPreview])
+
+	const appClassName = useMemo(() => (
+		isVersionPreview ? 'App App--version-preview' : 'App'
+	), [isVersionPreview])
 
 	if (isLoading) {
 		return (
@@ -305,18 +359,29 @@ export default function App({
 	}
 
 	return (
-		<div className="App" style={{ display: 'flex', flexDirection: 'column' }}>
+		<div className={appClassName} style={{ display: 'flex', flexDirection: 'column' }}>
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
-				<MemoizedNetworkStatusIndicator />
+				{!isVersionPreview && <MemoizedNetworkStatusIndicator />}
 				<MemoizedAuthErrorNotification />
-				<button
-					className={`grid-toggle-button ${gridModeEnabled ? 'active' : ''}`}
-					onClick={() => setGridModeEnabled(!gridModeEnabled)}
-					aria-pressed={gridModeEnabled}
-					title="Toggle grid mode"
-				>
-					<Icon path={mdiGrid} size={1} />
-				</button>
+				{!isVersionPreview && (
+					<button
+						className={`grid-toggle-button ${gridModeEnabled ? 'active' : ''}`}
+						onClick={() => setGridModeEnabled(!gridModeEnabled)}
+						aria-pressed={gridModeEnabled}
+						title="Toggle grid mode"
+					>
+						<Icon path={mdiGrid} size={1} />
+					</button>
+				)}
+				{isVersionPreview && (
+					<VersionPreviewBanner
+						versionLabel={versionLabel}
+						sourceLabel={versionSourceLabel}
+						onExit={exitVersionPreview}
+						onRestore={handleRestoreVersion}
+						isRestoring={isRestoringVersion}
+					/>
+				)}
 				<Excalidraw
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
@@ -331,36 +396,43 @@ export default function App({
 					theme={theme}
 					name={fileNameWithoutExtension}
 					UIOptions={{
-						canvasActions: {
-							loadScene: false,
-						},
+						canvasActions,
+						...(isVersionPreview ? { tools: { image: false } } : {}),
 					}}
 					onLinkOpen={onLinkOpen}
 					onLibraryChange={onLibraryChange}
 					langCode={lang}
 					libraryReturnUrl={libraryReturnUrl}
 				>
-					<MemoizedExcalidrawMenu
-						fileNameWithoutExtension={fileNameWithoutExtension}
-						recordingState={recordingState}
+					{!isVersionPreview && (
+						<MemoizedExcalidrawMenu
+							fileNameWithoutExtension={fileNameWithoutExtension}
+							recordingState={recordingState}
+							presentationState={presentationState}
+						/>
+					)}
+				</Excalidraw>
+				{!isVersionPreview && (
+					<RecordingOverlay
+						{...recordingState}
+						otherRecordingUsers={recordingState.otherUsers}
+						hasOtherRecordingUsers={recordingState.hasOtherRecordingUsers}
+						resetError={recordingState.resetError}
+						dismissSuccess={recordingState.dismissSuccess}
+						dismissUnavailableInfo={recordingState.dismissUnavailableInfo}
+					/>
+				)}
+				{!isVersionPreview && (
+					<PresentationOverlay
 						presentationState={presentationState}
 					/>
-				</Excalidraw>
-				<RecordingOverlay
-					{...recordingState}
-					otherRecordingUsers={recordingState.otherUsers}
-					hasOtherRecordingUsers={recordingState.hasOtherRecordingUsers}
-					resetError={recordingState.resetError}
-					dismissSuccess={recordingState.dismissSuccess}
-					dismissUnavailableInfo={recordingState.dismissUnavailableInfo}
-				/>
-				<PresentationOverlay
-					presentationState={presentationState}
-				/>
-				<CreatorDisplay
-					excalidrawAPI={excalidrawAPI}
-					settings={creatorDisplaySettings}
-				/>
+				)}
+				{!isVersionPreview && (
+					<CreatorDisplay
+						excalidrawAPI={excalidrawAPI}
+						settings={creatorDisplaySettings}
+					/>
+				)}
 			</div>
 		</div>
 	)

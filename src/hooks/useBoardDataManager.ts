@@ -26,10 +26,16 @@ export function useBoardDataManager() {
 		fileId,
 		resolveInitialData,
 		resetInitialDataPromise,
+		isVersionPreview,
+		versionSource,
+		fileVersion,
 	} = useWhiteboardConfigStore(useShallow(state => ({
 		fileId: state.fileId,
 		resolveInitialData: state.resolveInitialData,
 		resetInitialDataPromise: state.resetInitialDataPromise,
+		isVersionPreview: state.isVersionPreview,
+		versionSource: state.versionSource,
+		fileVersion: state.fileVersion,
 	})))
 
 	const fetchDataFromServer = useCallback(async (fileId: number) => {
@@ -75,6 +81,77 @@ export function useBoardDataManager() {
 	}, [])
 
 	const loadBoard = useCallback(async () => {
+		if (isVersionPreview) {
+			try {
+				if (!versionSource) {
+					logger.warn('[BoardDataManager] Version preview requested without a version source', {
+						fileVersion,
+					})
+					resolveInitialData(initialDataState)
+					setIsLoading(false)
+					return
+				}
+
+				const response = await fetch(versionSource, {
+					method: 'GET',
+					credentials: 'include',
+					headers: {
+						Accept: 'application/json',
+					},
+				})
+
+				if (!response.ok) {
+					logger.error('[BoardDataManager] Failed to fetch version content', {
+						versionSource,
+						status: response.status,
+					})
+					resolveInitialData(initialDataState)
+					setIsLoading(false)
+					return
+				}
+
+				const rawContent = await response.text()
+				let parsedContent: any = null
+				if (rawContent.trim() !== '') {
+					try {
+						parsedContent = JSON.parse(rawContent)
+					} catch (error) {
+						logger.error('[BoardDataManager] Failed to parse version content', {
+							error,
+							versionSource,
+						})
+					}
+				}
+
+				if (!parsedContent || !Array.isArray(parsedContent.elements)) {
+					logger.warn('[BoardDataManager] Version content missing elements array, falling back to defaults', {
+						versionSource,
+					})
+					resolveInitialData(initialDataState)
+					setIsLoading(false)
+					return
+				}
+
+				const finalAppState = {
+					...initialDataState.appState,
+					...(parsedContent.appState || {}),
+				}
+
+				resolveInitialData({
+					elements: parsedContent.elements,
+					files: parsedContent.files || {},
+					appState: finalAppState,
+					scrollToContent: parsedContent.scrollToContent ?? true,
+				})
+				setIsLoading(false)
+			} catch (error) {
+				logger.error('[BoardDataManager] Error loading version content', error)
+				resolveInitialData(initialDataState)
+				setIsLoading(false)
+			}
+			return
+		}
+
 		if (!fileId) {
 			logger.warn('[BoardDataManager] No fileId provided, cannot load data')
 			resolveInitialData(initialDataState)
@@ -93,6 +170,7 @@ export function useBoardDataManager() {
 			}
 
 			const localData = await db.get(fileId)
+			const hasPendingLocalChanges = localData?.hasPendingLocalChanges ?? false
 
 			// Validate that we're still loading the same file
 			if (currentFileIdRef.current !== fileId) {
@@ -111,41 +189,59 @@ export function useBoardDataManager() {
 
 			if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
 				// Server has data
-				if (localData && localData.elements && Array.isArray(localData.elements)) {
-					// Both server and local have data - need to reconcile
-					// Use Excalidraw's reconcile logic to merge them
-					const { reconcileElements } = await import('../util')
-					const { restoreElements } = await import('@nextcloud/excalidraw')
+				const { hashElementsVersion, reconcileElements } = await import('../util')
+				const { restoreElements } = await import('@nextcloud/excalidraw')
 
-					const restoredServerElements = restoreElements(serverData.elements, null)
+				const restoredServerElements = restoreElements(serverData.elements, null)
+				const serverHash = hashElementsVersion(restoredServerElements)
+				const serverScrollToContent = serverData.scrollToContent ?? true
+
+				if (localData && localData.elements && Array.isArray(localData.elements) && hasPendingLocalChanges) {
+					// Local has pending changes – reconcile to avoid losing unsynced work
 					const restoredLocalElements = restoreElements(localData.elements, null)
-
-					// Reconcile server and local elements
 					const reconciledElements = reconcileElements(restoredLocalElements, restoredServerElements, {})
+
+					const mergedFiles = { ...localData.files, ...serverData.files }
+					const mergedAppState = { ...localData.appState, ...serverData.appState }
 
 					dataToUse = {
 						elements: reconciledElements,
-						files: { ...localData.files, ...serverData.files },
-						appState: { ...localData.appState, ...serverData.appState },
+						files: mergedFiles,
+						appState: mergedAppState,
+						scrollToContent: serverScrollToContent,
 					}
 
-					// Save reconciled data to IndexedDB
 					await db.put(
 						fileId,
 						reconciledElements,
-						dataToUse.files || {},
-						dataToUse.appState,
+						mergedFiles || {},
+						mergedAppState,
+						{
+							hasPendingLocalChanges: true,
+							lastSyncedHash: serverHash,
+						},
 					)
 				} else {
-					// Only server has data
-					dataToUse = serverData
+					// Use server content as source of truth (restores, clean loads, etc.)
+					const mergedAppState = { ...localData?.appState, ...serverData.appState }
+					const files = serverData.files || {}
 
-					// Save server data to IndexedDB
+					dataToUse = {
+						...serverData,
+						files,
+						appState: mergedAppState,
+						scrollToContent: serverScrollToContent,
+					}
+
 					await db.put(
 						fileId,
 						serverData.elements,
-						serverData.files || {},
-						serverData.appState,
+						files,
+						mergedAppState,
+						{
+							hasPendingLocalChanges: false,
+							lastSyncedHash: serverHash,
+						},
 					)
 				}
 			} else if (localData && localData.elements) {
@@ -175,7 +271,7 @@ export function useBoardDataManager() {
 							elements,
 							appState: finalAppState,
 							files,
-							scrollToContent: true,
+							scrollToContent: dataToUse.scrollToContent ?? true,
 						})
 						setIsLoading(false)
 					}
@@ -208,9 +304,13 @@ export function useBoardDataManager() {
 			}, 50)
 			loadingTimeoutsRef.current.add(timeout)
 		}
-	}, [fileId, resolveInitialData, fetchDataFromServer])
+	}, [fileId, resolveInitialData, fetchDataFromServer, isVersionPreview, versionSource, fileVersion])
 
 	const saveOnUnmount = useCallback(() => {
+		if (useWhiteboardConfigStore.getState().isVersionPreview) {
+			return
+		}
+
 		const api = useExcalidrawStore.getState().excalidrawAPI
 		const currentIsReadOnly = useWhiteboardConfigStore.getState().isReadOnly
 
@@ -267,7 +367,12 @@ export function useBoardDataManager() {
 
 	// Load data when fileId changes
 	useEffect(() => {
-		if (fileId) {
+		const shouldLoad = (
+			(isVersionPreview && !!versionSource)
+			|| (!isVersionPreview && !!fileId)
+		)
+
+		if (shouldLoad) {
 			// Cancel any pending timeouts from previous loads
 			cancelPendingTimeouts()
 
@@ -283,7 +388,7 @@ export function useBoardDataManager() {
 			setIsLoading(true)
 			loadBoard()
 		}
-	}, [fileId, loadBoard, cancelPendingTimeouts, resetInitialDataPromise])
+	}, [fileId, fileVersion, isVersionPreview, versionSource, loadBoard, cancelPendingTimeouts, resetInitialDataPromise])
 
 	// Cleanup on unmount
 	useEffect(() => {

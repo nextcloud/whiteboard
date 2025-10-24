@@ -12,14 +12,18 @@ import { useJWTStore } from '../stores/useJwtStore'
 
 export function useReadOnlyState() {
 	const { excalidrawAPI } = useExcalidrawStore()
-	const { isReadOnly, setReadOnly } = useWhiteboardConfigStore()
+	const { isReadOnly, setReadOnly, isVersionPreview } = useWhiteboardConfigStore()
 	const { getJWT, parseJwt } = useJWTStore()
 
 	// Update read-only state based on JWT
 	const updateReadOnlyState = useCallback((readOnly: boolean) => {
+		const effectiveReadOnly = isVersionPreview ? true : readOnly
+
 		// Set the read-only state in the store
-		setReadOnly(readOnly)
-		console.log(`[Permissions] User has ${readOnly ? 'read-only' : 'write'} access`)
+		setReadOnly(effectiveReadOnly)
+		console.log('[Permissions] User has', effectiveReadOnly ? 'read-only' : 'write', 'access', {
+			forcedByPreview: isVersionPreview && !readOnly,
+		})
 
 		// If we have the Excalidraw API, update the view mode directly as well
 		// This ensures immediate effect even before the next render
@@ -29,12 +33,12 @@ export function useReadOnlyState() {
 				const currentViewMode = excalidrawAPI.getAppState().viewModeEnabled
 
 				// If read-only is true, ensure view mode is enabled
-				if (readOnly && !currentViewMode) {
+				if (effectiveReadOnly && !currentViewMode) {
 					console.log('[Permissions] Enabling view mode via Excalidraw API')
 					excalidrawAPI.updateScene({
 						appState: { viewModeEnabled: true },
 					})
-				} else if (!readOnly && currentViewMode) {
+				} else if (!effectiveReadOnly && currentViewMode) {
 					// If not read-only but view mode is enabled, disable it
 					console.log('[Permissions] Disabling view mode via Excalidraw API')
 					excalidrawAPI.updateScene({
@@ -45,7 +49,7 @@ export function useReadOnlyState() {
 				console.error('[Permissions] Error updating view mode via Excalidraw API:', error)
 			}
 		}
-	}, [excalidrawAPI, setReadOnly])
+	}, [excalidrawAPI, setReadOnly, isVersionPreview])
 
 	// Refresh read-only state from JWT
 	const refreshReadOnlyState = useCallback(async () => {
