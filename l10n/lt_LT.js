@@ -9,6 +9,11 @@ OC.L10N.register(
     "Verifying connection…" : "Tikrinamas ryšys…",
     "Save settings" : "Įrašyti nustatymus",
     "Advanced settings" : "Išplėstiniai nustatymai",
-    "Stop" : "Stabdyti"
+    "Connecting" : "Jungiamasi",
+    "Unknown" : "Nežinoma",
+    "Stop" : "Stabdyti",
+    "Restore this version" : "Atkurti šią versiją",
+    "Version {version}" : "Versija {version}",
+    "Version restored" : "Versija atkurta"
 },
 "nplurals=4; plural=(n % 10 == 1 && (n % 100 > 19 || n % 100 < 11) ? 0 : (n % 10 >= 2 && n % 10 <=9) && (n % 100 > 19 || n % 100 < 11) ? 1 : n % 1 != 0 ? 2: 3);");

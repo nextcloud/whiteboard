@@ -15,6 +15,10 @@ OC.L10N.register(
     "Offline" : "Odpojené",
     "Connecting" : "Pripájam",
     "Online" : "Pripojený",
-    "Stop" : "Zastaviť"
+    "Unknown" : "Neznámy",
+    "Stop" : "Zastaviť",
+    "Restore this version" : "Obnoviť túto verziu",
+    "Version {version}" : "Verzia {version}",
+    "Version restored" : "Verzia bola obnovená"
 },
 "nplurals=4; plural=(n % 1 == 0 && n == 1 ? 0 : n % 1 == 0 && n >= 2 && n <= 4 ? 1 : n % 1 != 0 ? 2: 3);");

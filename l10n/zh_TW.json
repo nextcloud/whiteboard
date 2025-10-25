@@ -25,6 +25,9 @@
     "Connecting" : "正在連線",
     "Online" : "上線",
     "Unknown" : "未知",
-    "Stop" : "停止"
+    "Stop" : "停止",
+    "Restore this version" : "還原此版本",
+    "Version {version}" : "版本 {version}",
+    "Version restored" : "版本已還原"
 },"pluralForm" :"nplurals=1; plural=0;"
 }

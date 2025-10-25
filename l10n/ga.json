@@ -20,8 +20,14 @@
     "Save settings" : "Sábháil socruithe",
     "Advanced settings" : "Ardsocruithe",
     "Max file size" : "Uasmhéid comhaid",
+    "Access Denied" : "Rochtain Diúltaithe",
     "Offline" : "As líne",
+    "Connecting" : "Ag nascadh",
     "Online" : "Ar líne",
-    "Stop" : "Stad"
+    "Unknown" : "Anaithnid",
+    "Stop" : "Stad",
+    "Restore this version" : "Athchóirigh an leagan seo",
+    "Version {version}" : "Leagan {version}",
+    "Version restored" : "Leagan athchóirithe"
 },"pluralForm" :"nplurals=5; plural=(n==1 ? 0 : n==2 ? 1 : n<7 ? 2 : n<11 ? 3 : 4);"
 }

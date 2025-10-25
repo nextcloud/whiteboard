@@ -6,7 +6,11 @@ OC.L10N.register(
     "Save settings" : "Beállítások mentése",
     "Advanced settings" : "Speciális beállítások",
     "Offline" : "Nincs kapcsolat",
+    "Connecting" : "Kapcsolódás",
     "Online" : "Elérhető",
-    "Stop" : "Leállítás"
+    "Unknown" : "Ismeretlen",
+    "Stop" : "Leállítás",
+    "Restore this version" : "E verzió helyreállítása",
+    "Version restored" : "Verzió helyreállítva"
 },
 "nplurals=2; plural=(n != 1);");

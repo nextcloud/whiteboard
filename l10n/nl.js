@@ -8,6 +8,10 @@ OC.L10N.register(
     "Advanced settings" : "Geavanceerde instellingen",
     "Offline" : "Offline",
     "Connecting" : "Verbinden",
-    "Online" : "Online"
+    "Online" : "Online",
+    "Unknown" : "Onbekend",
+    "Restore this version" : "Deze versie herstellen",
+    "Version {version}" : "Versie {version}",
+    "Version restored" : "Versie hersteld"
 },
 "nplurals=2; plural=(n != 1);");

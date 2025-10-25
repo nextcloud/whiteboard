@@ -15,6 +15,9 @@ OC.L10N.register(
     "Connecting" : "ئۇلىنىش",
     "Online" : "توردا",
     "Unknown" : "نامەلۇم",
-    "Stop" : "توختاڭ"
+    "Stop" : "توختاڭ",
+    "Restore this version" : "بۇ نەشرىنى ئەسلىگە كەلتۈرۈڭ",
+    "Version {version}" : "نەشرى {version}",
+    "Version restored" : "نەشرى ئەسلىگە كەلتۈرۈلدى"
 },
 "nplurals=2; plural=(n != 1);");

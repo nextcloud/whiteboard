@@ -21,7 +21,11 @@
     "Advanced settings" : "Impostazioni avanzate",
     "Max file size" : "Dimensione massima del file",
     "Offline" : "Offline",
+    "Connecting" : "Connessione in corso",
     "Online" : "In linea",
-    "Stop" : "Ferma"
+    "Unknown" : "Sconosciuto",
+    "Stop" : "Ferma",
+    "Restore this version" : "Ripristina questa versione",
+    "Version restored" : "Versione ripristinata"
 },"pluralForm" :"nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;"
 }

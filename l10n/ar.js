@@ -11,6 +11,11 @@ OC.L10N.register(
     "Shared secret" : "كلمة السر المشتركة",
     "Save settings" : "حفظ الإعدادات",
     "Advanced settings" : "إعدادات متقدمة",
-    "Max file size" : "أقصى حجم للملف"
+    "Max file size" : "أقصى حجم للملف",
+    "Offline" : "بدون اتصالٍ",
+    "Connecting" : "توصيل",
+    "Online" : "مُتّصلٌ",
+    "Unknown" : "غير معروف",
+    "Stop" : "إيقاف"
 },
 "nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;");

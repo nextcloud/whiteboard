@@ -12,6 +12,11 @@ OC.L10N.register(
     "Save settings" : "Gem indstillinger",
     "Advanced settings" : "Avancerede indstillinger",
     "Max file size" : "Maks filstørrelse",
-    "Offline" : "Offline"
+    "Access Denied" : "Adgang nægtet",
+    "Offline" : "Offline",
+    "Connecting" : "Frobinder",
+    "Online" : "Online",
+    "Unknown" : "Ukendt",
+    "Restore this version" : "Gendan denne version"
 },
 "nplurals=2; plural=(n != 1);");

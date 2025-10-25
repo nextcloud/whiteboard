@@ -10,7 +10,13 @@ OC.L10N.register(
     "Shared secret" : "Jaettu salaisuus",
     "Save settings" : "Tallenna asetukset",
     "Advanced settings" : "Lisäasetukset",
+    "Access Denied" : "Pääsy estetty",
     "Offline" : "Poissa",
-    "Stop" : "Pysäytä"
+    "Connecting" : "Yhdistetään",
+    "Online" : "Online",
+    "Unknown" : "Tuntematon",
+    "Stop" : "Pysäytä",
+    "Version {version}" : "Versio {version}",
+    "Version restored" : "Versio palautettu"
 },
 "nplurals=2; plural=(n != 1);");

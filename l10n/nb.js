@@ -13,6 +13,10 @@ OC.L10N.register(
     "Offline" : "Frakoblet",
     "Connecting" : "Kobler til",
     "Online" : "Pålogget",
-    "Stop" : "Stoppe"
+    "Unknown" : "Ukjent",
+    "Stop" : "Stoppe",
+    "Restore this version" : "Gjenopprett denne versjonen",
+    "Version {version}" : "Versjon {version}",
+    "Version restored" : "Versjon gjenopprettet"
 },
 "nplurals=2; plural=(n != 1);");

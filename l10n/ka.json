@@ -1,0 +1,10 @@
+{ "translations": {
+    "Whiteboard" : "Whiteboard",
+    "Shared secret" : "Shared secret",
+    "Advanced settings" : "Advanced settings",
+    "Connecting" : "Connecting",
+    "Online" : "Online",
+    "Unknown" : "Unknown",
+    "Version restored" : "Version restored"
+},"pluralForm" :"nplurals=2; plural=(n!=1);"
+}

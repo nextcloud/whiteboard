@@ -9,6 +9,9 @@ OC.L10N.register(
     "Verifying connection…" : "연결을 확인하는 중입니다...",
     "Shared secret" : "공유된 비밀 값",
     "Save settings" : "설정 저장",
-    "Advanced settings" : "고급 설정"
+    "Advanced settings" : "고급 설정",
+    "Connecting" : "연결 중",
+    "Unknown" : "알 수 없음",
+    "Version restored" : "버전이 복원됨"
 },
 "nplurals=1; plural=0;");

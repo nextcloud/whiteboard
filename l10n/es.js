@@ -22,7 +22,14 @@ OC.L10N.register(
     "Save settings" : "Guardar configuración",
     "Advanced settings" : "Configuración avanzada",
     "Max file size" : "Tamaño max. de archivo",
+    "Access Denied" : "Acceso denegado",
     "Offline" : "Fuera de línea",
-    "Stop" : "Detener"
+    "Connecting" : "Conectando",
+    "Online" : "En línea",
+    "Unknown" : "Desconocido",
+    "Stop" : "Detener",
+    "Restore this version" : "Restaurar esta versión",
+    "Version {version}" : "Versión {version}",
+    "Version restored" : "Versión restaurada"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");

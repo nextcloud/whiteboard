@@ -1,0 +1,8 @@
+{ "translations": {
+    "Advanced settings" : "การตั้งค่าขั้นสูง",
+    "Offline" : "ออฟไลน์",
+    "Connecting" : "กำลังเชื่อมต่อ",
+    "Online" : "ออนไลน์",
+    "Unknown" : "ไม่ทราบ"
+},"pluralForm" :"nplurals=1; plural=0;"
+}

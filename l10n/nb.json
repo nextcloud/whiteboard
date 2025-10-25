@@ -11,6 +11,10 @@
     "Offline" : "Frakoblet",
     "Connecting" : "Kobler til",
     "Online" : "Pålogget",
-    "Stop" : "Stoppe"
+    "Unknown" : "Ukjent",
+    "Stop" : "Stoppe",
+    "Restore this version" : "Gjenopprett denne versjonen",
+    "Version {version}" : "Versjon {version}",
+    "Version restored" : "Versjon gjenopprettet"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

@@ -22,7 +22,12 @@ OC.L10N.register(
     "Save settings" : "Αποθήκευση ρυθμίσεων",
     "Advanced settings" : "Ρυθμίσεις για προχωρημένους",
     "Max file size" : "Μέγιστο μέγεθος αρχείου",
+    "Access Denied" : "Απαγορεύεται η Πρόσβαση",
     "Offline" : "Εκτός σύνδεσης",
-    "Stop" : "Διακοπή"
+    "Connecting" : "Συνδέεται",
+    "Online" : "Σε σύνδεση",
+    "Unknown" : "Άγνωστο",
+    "Stop" : "Διακοπή",
+    "Restore this version" : "Επαναφορά αυτής της έκδοσης"
 },
 "nplurals=2; plural=(n != 1);");

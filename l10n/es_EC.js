@@ -5,6 +5,11 @@ OC.L10N.register(
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuraciones",
     "Advanced settings" : "Configuraciones avanzados",
-    "Stop" : " detener"
+    "Connecting" : "Conectando",
+    "Online" : "En línea",
+    "Unknown" : "Desconocido",
+    "Stop" : " detener",
+    "Restore this version" : "Restaurar esta versión",
+    "Version restored" : "Versión restaurada"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");

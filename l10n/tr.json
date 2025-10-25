@@ -25,6 +25,9 @@
     "Connecting" : "Bağlantı kuruluyor",
     "Online" : "Çevrim içi",
     "Unknown" : "Bilinmiyor",
-    "Stop" : "Durdur"
+    "Stop" : "Durdur",
+    "Restore this version" : "Bu sürümü geri yükle",
+    "Version {version}" : "{version} sürümü",
+    "Version restored" : "Sürüm geri yüklendi"
 },"pluralForm" :"nplurals=2; plural=(n > 1);"
 }

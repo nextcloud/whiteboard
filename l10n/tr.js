@@ -27,6 +27,9 @@ OC.L10N.register(
     "Connecting" : "Bağlantı kuruluyor",
     "Online" : "Çevrim içi",
     "Unknown" : "Bilinmiyor",
-    "Stop" : "Durdur"
+    "Stop" : "Durdur",
+    "Restore this version" : "Bu sürümü geri yükle",
+    "Version {version}" : "{version} sürümü",
+    "Version restored" : "Sürüm geri yüklendi"
 },
 "nplurals=2; plural=(n > 1);");

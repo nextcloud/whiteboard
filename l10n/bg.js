@@ -4,6 +4,10 @@ OC.L10N.register(
     "Whiteboard" : "Табло",
     "Shared secret" : "Споделена тайна",
     "Save settings" : "Запазване на настройките",
-    "Advanced settings" : "Допълнителни настройки"
+    "Advanced settings" : "Допълнителни настройки",
+    "Connecting" : "Свързване",
+    "Online" : "На линия /онлайн/",
+    "Unknown" : "Неизвестен",
+    "Stop" : "Спиране /на/"
 },
 "nplurals=2; plural=(n != 1);");

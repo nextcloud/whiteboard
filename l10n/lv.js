@@ -5,6 +5,7 @@ OC.L10N.register(
     "Shared secret" : "Koplietojams noslēpums",
     "Save settings" : "Saglabāt iestatījumus",
     "Advanced settings" : "Paplašināti iestatījumi",
-    "Connecting" : "Savienojuma izveide"
+    "Connecting" : "Savienojuma izveide",
+    "Unknown" : "Nezināms"
 },
 "nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);");

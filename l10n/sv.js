@@ -25,6 +25,8 @@ OC.L10N.register(
     "Offline" : "Frånkopplad",
     "Connecting" : "Ansluter",
     "Online" : "Online",
-    "Unknown" : "Okänd"
+    "Unknown" : "Okänd",
+    "Restore this version" : "Återställ denna version",
+    "Version restored" : "Version återställd"
 },
 "nplurals=2; plural=(n != 1);");

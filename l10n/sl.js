@@ -7,6 +7,9 @@ OC.L10N.register(
     "Advanced settings" : "Napredne nastavitve",
     "Offline" : "Brez povezave",
     "Connecting" : "Poteka vzpostavljanje povezave ...",
-    "Online" : "Trenutno na spletu"
+    "Online" : "Trenutno na spletu",
+    "Unknown" : "Neznano",
+    "Restore this version" : "Obnovi to različico",
+    "Version restored" : "Različica je obnovljena"
 },
 "nplurals=4; plural=(n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3);");

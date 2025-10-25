@@ -1,5 +1,8 @@
 { "translations": {
     "Whiteboard" : "Pizarra",
-    "Advanced settings" : "Configuración avanzada"
+    "Advanced settings" : "Configuración avanzada",
+    "Offline" : "Desconectáu",
+    "Online" : "En llinia",
+    "Unknown" : "Desconocí­u"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

@@ -24,6 +24,8 @@ OC.L10N.register(
     "Max file size" : "Kiwango cha juu cha ukubwa wa faili",
     "Offline" : "Nje ya mtandao",
     "Online" : "Mtandaoni",
-    "Unknown" : "Haijulikani"
+    "Unknown" : "Haijulikani",
+    "Restore this version" : "Rejesha toleo hili",
+    "Version restored" : "Toleo limerejeshwa"
 },
 "nplurals=2; plural=(n != 1);");

@@ -25,6 +25,9 @@
     "Connecting" : "Повезујем се",
     "Online" : "На мрежи",
     "Unknown" : "Непознато",
-    "Stop" : "Заустави"
+    "Stop" : "Заустави",
+    "Restore this version" : "Обнови ову верзију",
+    "Version {version}" : "Верзија {version}",
+    "Version restored" : "Верзија је рестаурирана"
 },"pluralForm" :"nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);"
 }

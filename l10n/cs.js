@@ -20,6 +20,13 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "JWT tajný klíč sdílený mezi Nextcloud a WebSocket serverem pro zabezpečené ověřování.",
     "Save settings" : "Uložit nastavení",
     "Advanced settings" : "Pokročilá nastavení",
-    "Max file size" : "Nejvyšší umožněná velikost souboru"
+    "Max file size" : "Nejvyšší umožněná velikost souboru",
+    "Access Denied" : "Přístup odepřen",
+    "Offline" : "Bez připojení",
+    "Connecting" : "Připojuje se",
+    "Online" : "Online",
+    "Unknown" : "Neznámé",
+    "Stop" : "Zastavit",
+    "Restore this version" : "Obnovit do podoby v této verzi"
 },
 "nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n >= 2 && n <= 4 && n % 1 == 0) ? 1: (n % 1 != 0 ) ? 2 : 3;");

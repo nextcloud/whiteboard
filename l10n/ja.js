@@ -11,6 +11,11 @@ OC.L10N.register(
     "Save settings" : "設定を保存",
     "Advanced settings" : "詳細設定",
     "Offline" : "オフライン",
-    "Stop" : "中止"
+    "Connecting" : "接続中",
+    "Unknown" : "不明",
+    "Stop" : "中止",
+    "Restore this version" : "このバージョンを戻す",
+    "Version {version}" : "Version {version}",
+    "Version restored" : "指定のバージョンが復旧されました"
 },
 "nplurals=1; plural=0;");

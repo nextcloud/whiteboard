@@ -14,6 +14,9 @@ OC.L10N.register(
     "Connecting" : "正在连接",
     "Online" : "在线",
     "Unknown" : "未知",
-    "Stop" : "停止"
+    "Stop" : "停止",
+    "Restore this version" : "还原此版本",
+    "Version {version}" : "版本 {version}",
+    "Version restored" : "版本已还原"
 },
 "nplurals=1; plural=0;");
