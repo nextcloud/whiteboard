@@ -74,8 +74,12 @@ OC.L10N.register(
     "• This may take a few seconds" : "• 這可能需要幾秒鐘",
     "Stop Recording" : "停止錄製",
     "Start Recording" : "開始錄製",
+    "Viewing a previous version" : "檢視上一版本",
     "Restore this version" : "還原此版本",
     "Version {version}" : "版本 {version}",
+    "Stored in trash history" : "已存儲於垃圾歷史",
+    "Stored in file history" : "已存儲於檔案歷史",
+    "Could not restore this version" : "無法還原此版本",
     "Version restored" : "版本已還原"
 },
 "nplurals=1; plural=0;");

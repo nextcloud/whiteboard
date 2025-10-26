@@ -17,6 +17,8 @@ OC.L10N.register(
     "Connecting" : "Frobinder",
     "Online" : "Online",
     "Unknown" : "Ukendt",
-    "Restore this version" : "Gendan denne version"
+    "Restore this version" : "Gendan denne version",
+    "Version {version}" : "Version {version}",
+    "Version restored" : "Version genoprettet"
 },
 "nplurals=2; plural=(n != 1);");

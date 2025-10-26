@@ -1,9 +1,0 @@
-OC.L10N.register(
-    "whiteboard",
-    {
-    "Save settings" : "Ruaj konfigurimet",
-    "Advanced settings" : "Rregullime të mëtejshme",
-    "Connecting" : "Duke u lidhur",
-    "Unknown" : "I panjohur"
-},
-"nplurals=2; plural=(n != 1);");

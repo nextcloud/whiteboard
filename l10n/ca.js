@@ -7,6 +7,9 @@ OC.L10N.register(
     "Advanced settings" : "Paràmetres avançats",
     "Connecting" : "S'està connectant",
     "Online" : "En línia",
-    "Unknown" : "Desconegut"
+    "Unknown" : "Desconegut",
+    "Restore this version" : "Restaura aquesta versió",
+    "Version {version}" : "Versió {version}",
+    "Version restored" : "S'ha recuperat la versió"
 },
 "nplurals=2; plural=(n != 1);");

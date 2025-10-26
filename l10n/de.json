@@ -72,6 +72,13 @@
     "• This may take a few seconds" : "• Dies kann ein paar Sekunden dauern",
     "Stop Recording" : "Aufnahme anhalten",
     "Start Recording" : "Aufnahme starten",
-    "Restore this version" : "Diese Version wiederherstellen"
+    "Viewing a previous version" : "Anzeigen einer früheren Version",
+    "Restoring..." : "Wiederherstellung…",
+    "Restore this version" : "Diese Version wiederherstellen",
+    "Version {version}" : "Version {version}",
+    "Stored in trash history" : "Gespeichert im Papierkorbverlauf",
+    "Stored in file history" : "Gespeichert im Dateiverlauf",
+    "Could not restore this version" : "Diese Version konnte nicht wiederhergestellt werden",
+    "Version restored" : "Version wiederhergestellt"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }
