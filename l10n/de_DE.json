@@ -73,11 +73,11 @@
     "Stop Recording" : "Aufnahme anhalten",
     "Start Recording" : "Aufnahme starten",
     "Viewing a previous version" : "Anzeigen einer früheren Version",
-    "Restoring..." : "Wiederherstellung…",
+    "Restoring..." : "Wiederherstellen...",
     "Restore this version" : "Diese Version wiederherstellen",
     "Version {version}" : "Version {version}",
-    "Stored in trash history" : "Gespeichert im Papierkorbverlauf",
-    "Stored in file history" : "Gespeichert im Dateiverlauf",
+    "Stored in trash history" : "Im Papierkorbverlauf gespeichert",
+    "Stored in file history" : "Im Dateiverlauf gespeichert",
     "Could not restore this version" : "Diese Version konnte nicht wiederhergestellt werden",
     "Version restored" : "Version wiederhergestellt"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
