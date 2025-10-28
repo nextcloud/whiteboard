@@ -74,8 +74,13 @@ OC.L10N.register(
     "• This may take a few seconds" : "• Isso pode demorar alguns segundos",
     "Stop Recording" : "Encerrar Gravação",
     "Start Recording" : "Iniciar Gravação",
+    "Viewing a previous version" : "Exibindo a versão anterior",
+    "Restoring..." : "Restaurando …",
     "Restore this version" : "Restaurar esta versão",
     "Version {version}" : "Versão {version}",
+    "Stored in trash history" : "Armazenada no histórico da lixeira",
+    "Stored in file history" : "Armazenada no histórico dos arquivos",
+    "Could not restore this version" : "Não foi possível restaurar esta versão",
     "Version restored" : "Versão restaurada"
 },
 "nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
