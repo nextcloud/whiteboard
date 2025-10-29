@@ -75,6 +75,7 @@ OC.L10N.register(
     "Stop Recording" : "停止錄製",
     "Start Recording" : "開始錄製",
     "Viewing a previous version" : "檢視上一版本",
+    "Restoring..." : "正在還原…",
     "Restore this version" : "還原此版本",
     "Version {version}" : "版本 {version}",
     "Stored in trash history" : "已存儲於垃圾歷史",
