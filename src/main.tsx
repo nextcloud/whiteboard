@@ -81,7 +81,7 @@ const renderApp = (rootElement, props) => {
 	const root = createRoot(rootElement)
 	root.render(
 		<StrictMode>
-			<Suspense fallback={<div>Loading...</div>}>
+			<Suspense fallback={<div>Loading…</div>}>
 				<App {...props} />
 			</Suspense>
 		</StrictMode>,
