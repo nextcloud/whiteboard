@@ -53,13 +53,13 @@ const RecordingStartingStatus = memo(({ startingPhase }: { startingPhase: 'prepa
 		</div>
 		<div className="nc-notecard__content">
 			<div className="nc-notecard__text">
-				<strong>{t('whiteboard', 'Starting recording...')}</strong>
+				<strong>{t('whiteboard', 'Starting recording…')}</strong>
 				<div className="recording-starting-details">
 					<div>
-						{startingPhase === 'preparing' ? t('whiteboard', '• Preparing recording session...') : t('whiteboard', '✓ Recording session prepared')}
+						{startingPhase === 'preparing' ? t('whiteboard', '• Preparing recording session…') : t('whiteboard', '✓ Recording session prepared')}
 					</div>
 					<div>
-						{startingPhase === 'initializing' ? t('whiteboard', '• Initializing capture engine...') : startingPhase === 'preparing' ? t('whiteboard', '• Waiting for capture engine...') : t('whiteboard', '✓ Capture engine ready')}
+						{startingPhase === 'initializing' ? t('whiteboard', '• Initializing capture engine…') : startingPhase === 'preparing' ? t('whiteboard', '• Waiting for capture engine…') : t('whiteboard', '✓ Capture engine ready')}
 					</div>
 					<div>{t('whiteboard', '• This may take a few seconds')}</div>
 				</div>
@@ -84,7 +84,7 @@ const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, s
 		return (
 			<div className="recording-status">
 				<div className="recording-spinner" />
-				<span>Stopping recording...</span>
+				<span>Stopping recording…</span>
 			</div>
 		)
 	}
@@ -121,7 +121,7 @@ const RecordingUploadStatus = memo(({ onDismiss }: { onDismiss: () => void }) =>
 		</div>
 		<div className="nc-notecard__content">
 			<div className="nc-notecard__text">
-				Uploading recording...
+				Uploading recording…
 			</div>
 		</div>
 		<button
@@ -362,7 +362,7 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 		} else if (isAvailable === null) {
 			// Still checking availability
 			isDisabled = true
-			tooltipMessage = 'Checking recording availability...'
+			tooltipMessage = 'Checking recording availability…'
 		}
 	}
 
