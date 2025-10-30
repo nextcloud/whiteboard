@@ -6,6 +6,36 @@ import { test } from '../support/fixtures/random-user'
 import { expect } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
+	let taskIdCounter = 1
+
+	await page.route(
+		'**/ocs/v2.php/taskprocessing/schedule',
+		async (route) => {
+			const taskId = taskIdCounter++
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					ocs: {
+						meta: {
+							status: 'ok',
+							statuscode: 200,
+							message: 'OK',
+						},
+						data: {
+							task: {
+								id: taskId,
+								type: 'core:text2text',
+								status: 'STATUS_RUNNING',
+								appId: 'whiteboard',
+							},
+						},
+					},
+				}),
+			})
+		},
+	)
+
 	await page.route(
 		'**/ocs/v2.php/taskprocessing/task/*',
 		(route, request) => {
