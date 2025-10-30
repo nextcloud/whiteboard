@@ -54,7 +54,7 @@ export const VersionPreviewBanner: FC<VersionPreviewBannerProps> = ({
 					aria-busy={isRestoring}
 				>
 					{isRestoring
-						? t('whiteboard', 'Restoring...')
+						? t('whiteboard', 'Restoring…')
 						: t('whiteboard', 'Restore this version')}
 				</button>
 			</div>
