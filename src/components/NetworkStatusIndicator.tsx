@@ -100,9 +100,9 @@ const NetworkStatusIndicatorComponent = () => {
 
 		// Add auth error context if there's a persistent auth issue
 		if (authError.isPersistent && authError.type === 'jwt_secret_mismatch') {
-			baseDescription += t('whiteboard', ' Authentication configuration issue detected.')
+			baseDescription += t('whiteboard', 'Authentication configuration issue detected.')
 		} else if (authError.consecutiveFailures >= 2) {
-			baseDescription += t('whiteboard', ' Authentication issues detected.')
+			baseDescription += t('whiteboard', 'Authentication issues detected.')
 		}
 
 		return baseDescription
