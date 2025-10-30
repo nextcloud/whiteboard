@@ -126,7 +126,7 @@ const PresentationStatus = memo(function PresentationStatus({
 							title={t('whiteboard', 'Stop presentation')}
 						>
 							<Icon path={mdiStop} size={0.9} />
-							{status === 'stopping' ? t('whiteboard', 'Stopping...') : t('whiteboard', 'Stop')}
+							{status === 'stopping' ? t('whiteboard', 'Stopping…') : t('whiteboard', 'Stop')}
 						</button>
 					)}
 				</div>
@@ -188,14 +188,14 @@ export const PresentationMenuItem = memo(function PresentationMenuItem({
 
 	if (isPresenting) {
 		icon = mdiStop
-		text = isStopping ? t('whiteboard', 'Stopping...') : t('whiteboard', 'Stop Presentation')
+		text = isStopping ? t('whiteboard', 'Stopping…') : t('whiteboard', 'Stop Presentation')
 		className += ' presentation-button--presenting'
 		tooltip = t('whiteboard', 'Stop presenting')
 	} else if (isStarting) {
 		icon = mdiPresentationPlay
-		text = t('whiteboard', 'Starting...')
+		text = t('whiteboard', 'Starting…')
 		className += ' presentation-button--starting'
-		tooltip = t('whiteboard', 'Starting presentation...')
+		tooltip = t('whiteboard', 'Starting presentation….')
 	} else if (isPresentationMode && presenterName) {
 		icon = mdiPresentation
 		text = t('whiteboard', '%s is presenting', [presenterName])
