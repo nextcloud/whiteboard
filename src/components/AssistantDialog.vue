@@ -101,7 +101,7 @@ export default defineComponent({
 					<NcTextField ref="assistantDialog"
 						v-model="assistantQuery"
 						label="Prompt to generate diagram"
-						placeholder="Flowchart, sequence diagram..."
+						placeholder="Flowchart, sequence diagram…"
 						type="text"
 						:disabled="waitingForTask" />
 					<div class="dialog-buttons">
@@ -109,7 +109,7 @@ export default defineComponent({
 							Close
 						</NcButton>
 						<NcButton :disabled="waitingForTask" type="submit">
-							{{ waitingForTask ? 'Generating...' : 'Generate' }}
+							{{ waitingForTask ? 'Generating…' : 'Generate' }}
 						</NcButton>
 					</div>
 				</form>

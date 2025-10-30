@@ -103,7 +103,7 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				icon={<Icon path={mdiImageMultiple} size={0.75} />}
 				onSelect={openExportDialog}
 				shortcut={isMacPlatform ? '⌘+⇧+E' : 'Ctrl+Shift+E'}>
-				{t('whiteboard', 'Export image...')}
+				{t('whiteboard', 'Export image…')}
 			</MainMenu.Item>
 			<MainMenu.Item
 				icon={<Icon path={mdiMonitorScreenshot} size={0.75} />}

@@ -34,14 +34,14 @@ const getStatusConfig = (status: CollaborationConnectionStatus): StatusConfig =>
 			icon: mdiWifiStrength1, // Or mdiLoading directly?
 			text: t('whiteboard', 'Connecting'),
 			className: 'network-status--connecting',
-			description: t('whiteboard', 'Connecting to collaboration server...'),
+			description: t('whiteboard', 'Connecting to collaboration server…'),
 		}
 	case 'reconnecting':
 		return {
 			icon: mdiWifiStrength2, // Or mdiLoading directly?
 			text: t('whiteboard', 'Reconnecting'),
 			className: 'network-status--reconnecting',
-			description: t('whiteboard', 'Attempting to reconnect...'),
+			description: t('whiteboard', 'Attempting to reconnect…'),
 		}
 	case 'online':
 		return {
@@ -100,9 +100,9 @@ const NetworkStatusIndicatorComponent = () => {
 
 		// Add auth error context if there's a persistent auth issue
 		if (authError.isPersistent && authError.type === 'jwt_secret_mismatch') {
-			baseDescription += t('whiteboard', ' Authentication configuration issue detected.')
+			baseDescription += t('whiteboard', 'Authentication configuration issue detected.')
 		} else if (authError.consecutiveFailures >= 2) {
-			baseDescription += t('whiteboard', ' Authentication issues detected.')
+			baseDescription += t('whiteboard', 'Authentication issues detected.')
 		}
 
 		return baseDescription
