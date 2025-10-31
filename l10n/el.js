@@ -28,6 +28,8 @@ OC.L10N.register(
     "Online" : "Σε σύνδεση",
     "Unknown" : "Άγνωστο",
     "Stop" : "Διακοπή",
-    "Restore this version" : "Επαναφορά αυτής της έκδοσης"
+    "Restore this version" : "Επαναφορά αυτής της έκδοσης",
+    "Version {version}" : "Έκδοση {version}",
+    "Version restored" : "Η έκδοση επαναφέρθηκε"
 },
 "nplurals=2; plural=(n != 1);");
