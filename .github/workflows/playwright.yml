@@ -7,8 +7,15 @@ on:
 
 jobs:
   test:
+    strategy:
+      matrix:
+        server_version: [stable29, stable30, stable31, stable32, master]
+      fail-fast: false
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      SERVER_VERSION: ${{ matrix.server_version }}
+    name: Playwright Tests on Nextcloud ${{ matrix.server_version }}
     steps:
       - name: Checkout app
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -53,6 +60,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.server_version }}
           path: playwright-report/
           retention-days: 30

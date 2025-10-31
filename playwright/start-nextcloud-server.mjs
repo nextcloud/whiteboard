@@ -13,6 +13,11 @@ const start = async () => {
 }
 
 const getBranch = () => {
+	const serverVersion = process.env.SERVER_VERSION
+	if (serverVersion) {
+		return serverVersion
+	}
+
 	try {
 		const appinfo = readFileSync('appinfo/info.xml').toString()
 		const maxVersion = appinfo.match(
@@ -21,7 +26,7 @@ const getBranch = () => {
 		return maxVersion ? `stable${maxVersion}` : undefined
 	} catch (err) {
 		if (err.code === 'ENOENT') {
-			console.warn('No appinfo/info.xml found. Using default server banch.')
+			console.warn('No appinfo/info.xml found. Using default server branch.')
 		}
 	}
 }
