@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.1
+
+### Features
+* Add keyboard shortcuts to download the whiteboard screenshot #751
+
+### Fixed
+* Restore compatibility with Nextcloud 29 #754
+
+### Other
+* Update translations from Transifex and unify ellipses in strings #757
+* Keep Nextcloud OCP development dependency up to date #748 #765
+* Dependency updates: Node.js base image, axios, vitest, puppeteer-core, browserslist config, @nextcloud/e2e-test-server, @nextcloud/dialogs, @vitejs/plugin-react, phpunit #763 #761 #762 #764 #740 #742 #743 #745 #744 #741 #739 #759
+* Run Playwright end-to-end tests across supported server versions #752
+
 ## 1.4.0
 
 ### Features
