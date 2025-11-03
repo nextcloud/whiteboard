@@ -24,7 +24,7 @@ OC.L10N.register(
     "Max file size" : "Tamaño máximo do ficheiro",
     "Authentication Configuration Issue" : "Problema de configuración de autenticación",
     "Authentication Error" : "Produciuse un erro de autenticación",
-    "Unable to connect to collaboration server. The JWT secret may be misconfigured. You can continue working locally, and your changes will be saved to your device." : "Non foi posíbel conectarse ao servidor de colaboración. O segredo de JWT pode estar mal configurado. Pode seguir traballando localmente e os seus cambios gardaranse no seu dispositivo.",
+    "Unable to connect to collaboration server. The JWT secret may be misconfigured. You can continue working locally, and your changes will be saved to your device." : "Non é posíbel conectarse ao servidor de colaboración. O segredo de JWT pode estar mal configurado. Pode seguir traballando localmente e os seus cambios gardaranse no seu dispositivo.",
     "Temporary authentication issue. Retrying connection…" : "Problema temporal de autenticación. Tentando de novo a conexión…",
     "Open Admin Settings" : "Abrir a configuración da administración",
     "Session Expired" : "A sesión caducou",
