@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand'
-import { resolvablePromise } from '../utils'
+import { createResolvablePromise } from '../utils/createResolvablePromise'
 import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
 
 interface WhiteboardConfigState {
@@ -14,7 +14,7 @@ interface WhiteboardConfigState {
 	publicSharingToken: string | null
 	isReadOnly: boolean // Single source of truth for read-only state, determined by JWT
 	isEmbedded: boolean
-	initialDataPromise: ReturnType<typeof resolvablePromise>
+	initialDataPromise: ReturnType<typeof createResolvablePromise>
 	collabBackendUrl: string // URL of the collaboration backend server
 	isVersionPreview: boolean
 	versionSource: string | null
@@ -60,7 +60,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	publicSharingToken: null,
 	isReadOnly: false,
 	isEmbedded: false,
-	initialDataPromise: resolvablePromise(),
+	initialDataPromise: createResolvablePromise(),
 	collabBackendUrl: '', // Will be initialized from initial state
 	isVersionPreview: false,
 	versionSource: null,
@@ -90,7 +90,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	},
 
 	resetInitialDataPromise: () =>
-		set({ initialDataPromise: resolvablePromise() }),
+		set({ initialDataPromise: createResolvablePromise() }),
 
 	// Reset the entire store to its initial state
 	resetStore: () => {
@@ -108,7 +108,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 			fileVersion: null,
 			// Reset these values
 			isReadOnly: false,
-			initialDataPromise: resolvablePromise(),
+			initialDataPromise: createResolvablePromise(),
 			zenModeEnabled: false,
 			gridModeEnabled: false,
 		})

@@ -1,0 +1,14 @@
+/**
+ * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+$grid-unit: var(--default-grid-baseline);
+$border-radius: var(--border-radius);
+$border-radius-large: var(--border-radius-large);
+$focus-color: var(--color-primary);
+
+@mixin focus-ring($color: $focus-color) {
+	outline: 2px solid $color;
+	outline-offset: 2px;
+}

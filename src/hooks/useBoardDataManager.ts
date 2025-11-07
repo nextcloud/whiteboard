@@ -11,11 +11,11 @@ import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useSyncStore } from '../stores/useSyncStore'
 import { db } from '../database/db'
-// @ts-expect-error - Type definitions issue with @nextcloud/router
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
-import { initialDataState } from '../App'
-import logger from '../logger'
+import { initialDataState } from '../constants/excalidraw'
+import logger from '../utils/logger'
+import { computeElementVersionHash, mergeSceneElements } from '../utils/syncSceneData'
 
 export function useBoardDataManager() {
 	const [isLoading, setIsLoading] = useState(true)
@@ -189,17 +189,16 @@ export function useBoardDataManager() {
 
 			if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
 				// Server has data
-				const { hashElementsVersion, reconcileElements } = await import('../util')
 				const { restoreElements } = await import('@nextcloud/excalidraw')
 
 				const restoredServerElements = restoreElements(serverData.elements, null)
-				const serverHash = hashElementsVersion(restoredServerElements)
+				const serverHash = computeElementVersionHash(restoredServerElements)
 				const serverScrollToContent = serverData.scrollToContent ?? true
 
 				if (localData && localData.elements && Array.isArray(localData.elements) && hasPendingLocalChanges) {
 					// Local has pending changes – reconcile to avoid losing unsynced work
 					const restoredLocalElements = restoreElements(localData.elements, null)
-					const reconciledElements = reconcileElements(restoredLocalElements, restoredServerElements, {})
+					const reconciledElements = mergeSceneElements(restoredLocalElements, restoredServerElements, {})
 
 					const mergedFiles = { ...localData.files, ...serverData.files }
 					const mergedAppState = { ...localData.appState, ...serverData.appState }

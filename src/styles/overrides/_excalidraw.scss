@@ -1,0 +1,149 @@
+/**
+ * SPDX-FileCopyrightText: 2020 Excalidraw
+ * SPDX-License-Identifier: MIT
+ */
+
+// https://github.com/excalidraw/excalidraw/blob/4dc4590f247a0a0d9c3f5d39fe09c00c5cef87bf/examples/excalidraw
+.excalidraw,
+.App .excalidraw {
+	--zIndex-modal: 100010;
+	--zIndex-popup: 100020;
+	--ui-font: var(--font-face);
+
+	--color-brand: var(--color-primary-element) !important;
+	--color-brand-hover: var(--color-primary-element-hover) !important;
+	--color-primary: var(--color-primary-element) !important;
+	--color-primary-darker: var(--color-primary-element-hover) !important;
+	--color-primary-darkest: var(----color-primary-element-hover) !important;
+	--color-primary-light: var(--color-primary-element-light) !important;
+	--color-surface-primary-container: var(--color-primary-element-light);
+	--color-surface-low: var(--color-primary-element-light);
+	--color-surface-high: var(--color-primary-element-light-hover) !important;
+	--border-radius-lg: var(--border-radius-large);
+	--border-radius-md: var(--border-radius);
+
+	.Stack button {
+		margin: 0;
+		min-width: 34px;
+	}
+
+	.color-picker__top-picks {
+		gap: var(--default-grid-baseline);
+	}
+
+	.App-menu__left {
+		width: 270px;
+	}
+}
+
+.excalidraw-wrapper {
+	height: 100%;
+	position: relative;
+	overflow: hidden;
+}
+
+:root[dir='ltr']
+	.excalidraw
+	.layer-ui__wrapper
+	.zen-mode-transition.App-menu_bottom--transition-left {
+	transform: none;
+}
+
+.excalidraw .panelColumn {
+	text-align: left;
+}
+
+.excalidraw .Switch input,
+.excalidraw .RadioGroup__choice input {
+	opacity: 0;
+}
+
+// Custom Context Menu
+.excalidraw .context-menu-item__label {
+	font-weight: normal !important;
+}
+
+// Fix Export image icon and shortcut styling to match other menu items
+.excalidraw {
+	// Target all menu items to ensure consistent icon and shortcut styling
+	.dropdown-menu-item,
+	[role="menuitem"] {
+		svg {
+			opacity: 1 !important;
+			color: var(--color-main-text) !important;
+			width: 18px !important;
+			height: 18px !important;
+		}
+
+		kbd {
+			opacity: 1 !important;
+			color: var(--color-text-maxcontrast) !important;
+			font-family: inherit !important;
+
+			// Hide verbose text and show symbols instead
+			&::before {
+				content: attr(data-key) !important;
+			}
+		}
+	}
+
+	// Specifically target the SaveAsImage default item
+	.dropdown-menu [role="menuitem"]:has(svg) {
+		svg {
+			opacity: 1 !important;
+			color: var(--color-main-text) !important;
+			width: 18px !important;
+			height: 18px !important;
+			min-width: 18px !important;
+			min-height: 18px !important;
+		}
+	}
+}
+
+.excalidraw .context-menu {
+	position: relative !important;
+	border-radius: var(--border-radius-large) !important;
+	box-shadow: none !important;
+	filter: drop-shadow(
+		0 calc(var(--default-grid-baseline) / 4)
+			calc(var(--default-grid-baseline) * 2.5) var(--color-box-shadow)
+	) !important;
+	list-style: none !important;
+	-webkit-user-select: none !important;
+	user-select: none !important;
+	margin: calc(var(--default-grid-baseline) * -1) 0 0
+		calc(var(--default-grid-baseline) / 2) !important;
+	padding: calc(var(--default-grid-baseline))
+		calc(var(--default-grid-baseline)) !important;
+	background-color: var(--color-main-background) !important;
+	cursor: default !important;
+	border: none !important;
+
+	kbd:empty {
+		display: none !important;
+	}
+}
+
+.excalidraw .context-menu-item-separator {
+	border-top: calc(var(--default-grid-baseline) / 8) solid var(--color-border) !important;
+	margin-top: calc(var(--default-grid-baseline)) !important;
+	margin-bottom: calc(var(--default-grid-baseline)) !important;
+}
+
+.excalidraw .context-menu-item {
+	color: var(--popup-text-color) !important;
+	margin-top: 0 !important;
+	margin-bottom: 0 !important;
+	padding-left: calc(var(--default-grid-baseline) * 3) !important;
+}
+
+.excalidraw .context-menu-item:hover {
+	background-color: var(--color-background-hover) !important;
+	border-radius: var(--border-radius-large) !important;
+}
+
+.App--version-preview {
+	.excalidraw .layer-ui__wrapper {
+		display: none !important;
+	}
+}

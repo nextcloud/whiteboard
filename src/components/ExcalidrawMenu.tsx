@@ -15,50 +15,12 @@ import { t } from '@nextcloud/l10n'
 import { useShallow } from 'zustand/react/shallow'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-
-interface RecordingState {
-	isRecording: boolean
-	error: string | null
-	startTime: number | null
-	status: 'idle' | 'starting' | 'recording' | 'stopping'
-	duration: number | null
-	otherUsers: Array<{ userId: string; username: string }>
-	fileUrl: string | null
-	showSuccess: boolean
-	hasError: boolean
-	isStarting: boolean
-	isStopping: boolean
-	hasOtherRecordingUsers: boolean
-	isConnected: boolean
-	isAvailable: boolean | null
-	unavailableReason: string | null
-	showUnavailableInfo: boolean
-	startRecording: () => Promise<void>
-	stopRecording: () => Promise<void>
-	resetError: () => void
-	dismissSuccess: () => void
-	dismissUnavailableInfo: () => void
-}
-
-interface PresentationState {
-	isPresenting: boolean
-	isPresentationMode: boolean
-	presenterId: string | null
-	presenterName: string | null
-	presentationStartTime: number | null
-	autoFollowPresenter: boolean
-	status: 'idle' | 'starting' | 'presenting' | 'stopping'
-	error: string | null
-	isConnected: boolean
-	startPresentation: () => Promise<void>
-	stopPresentation: () => Promise<void>
-	toggleAutoFollow: () => void
-	resetError: () => void
-}
+import type { RecordingHookState } from '../types/recording'
+import type { PresentationState } from '../types/presentation'
 
 interface ExcalidrawMenuProps {
 	fileNameWithoutExtension: string
-	recordingState: RecordingState
+	recordingState: RecordingHookState
 	presentationState: PresentationState
 }
 
