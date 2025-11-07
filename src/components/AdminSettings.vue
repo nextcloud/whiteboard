@@ -70,7 +70,7 @@ import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 
 export default {
-	name: 'Settings',
+	name: 'AdminSettings',
 	components: {
 		NcTextField,
 		NcButton,

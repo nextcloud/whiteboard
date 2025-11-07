@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-.creator-display-overlay {
+.overlay {
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -13,7 +13,7 @@
 	z-index: 100;
 }
 
-.creator-label {
+.label {
 	position: absolute;
 	display: inline-flex;
 	align-items: center;
@@ -33,20 +33,13 @@
 		transform: translateX(-50%) scale(1.05);
 		background: rgba(25, 118, 210, 0.9);
 	}
-	
-	&.selected {
+
+	&[data-selected='true'] {
 		background: rgba(25, 118, 210, 0.95);
 		font-weight: 600;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 	}
-	
-	.creator-name {
-		display: inline-block;
-		max-width: 150px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	
+
 	&::after {
 		content: '';
 		position: absolute;
@@ -59,8 +52,15 @@
 		border-right: 4px solid transparent;
 		border-top: 6px solid rgba(25, 118, 210, 0.8);
 	}
-	
-	&.selected::after {
+
+	&[data-selected='true']::after {
 		border-top-color: rgba(25, 118, 210, 0.95);
 	}
+}
+
+.name {
+	display: inline-block;
+	max-width: 150px;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }

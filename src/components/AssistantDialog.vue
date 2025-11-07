@@ -4,7 +4,7 @@
 -->
 <script>
 import { NcTextField, NcButton, NcModal } from '@nextcloud/vue'
-import { ScheduleTask } from '../api/assistantAPI'
+import { ScheduleTask } from '../services/assistant/api'
 import { parseMermaidToExcalidraw } from '@excalidraw/mermaid-to-excalidraw'
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 import { defineComponent } from 'vue'

@@ -3,12 +3,15 @@
 
 import { createAppConfig } from '@nextcloud/vite-config'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, normalizePath } from 'vite'
 import { join, resolve } from 'path'
+import { viteStaticCopy } from 'vite-plugin-static-copy'
+
+const EXCALIDRAW_FONTS_DIR = normalizePath(resolve('node_modules/@nextcloud/excalidraw/dist/prod/fonts'))
 
 const AppConfig = createAppConfig({
-	main: resolve(join('src', 'main.tsx')),
-	settings: resolve(join('src', 'settings.js')),
+	main: resolve(join('src', 'main.ts')),
+	settings: resolve(join('src', 'admin.ts')),
 }, {
 	config: defineConfig({
 		resolve: {
@@ -62,7 +65,14 @@ const AppConfig = createAppConfig({
 			react({
 				jsxRuntime: 'classic',
 			}),
-
+			viteStaticCopy({
+				targets: [
+					{
+						src: EXCALIDRAW_FONTS_DIR,
+						dest: 'dist',
+					},
+				],
+			}),
 		],
 
 	}),

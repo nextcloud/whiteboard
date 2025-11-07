@@ -9,12 +9,12 @@ import type { AppState } from '@excalidraw/excalidraw/types/types'
 import type { WhiteboardElement } from '../types/whiteboard'
 
 /**
- * Custom reconcileElements that preserves creator information
+ * Reconciles elements while preserving creator metadata coming from the server.
  * @param localElements - The local elements from the client
  * @param remoteElements - The remote elements from the server
  * @param appState - The current application state
  */
-export function reconcileElements(
+export function mergeElementsWithMetadata(
 	localElements: readonly ExcalidrawElement[],
 	remoteElements: readonly ExcalidrawElement[],
 	appState: AppState,

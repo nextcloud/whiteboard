@@ -5,7 +5,7 @@
 
 /* eslint-disable no-console */
 
-import puppeteer from 'puppeteer-core'
+import { launch as launchChromium } from 'puppeteer-core'
 import fs from 'fs/promises'
 import { constants as fsConstants } from 'fs'
 import os from 'os'
@@ -87,7 +87,7 @@ export default class RecordingService extends EventEmitter {
 			await fs.mkdir(crashpadDir, { recursive: true })
 
 			// Use Config-based Chrome detection
-			browser = await puppeteer.launch({
+			browser = await launchChromium({
 				headless: 'new',
 				executablePath: Config.CHROME_EXECUTABLE_PATH,
 				args: [

@@ -4,7 +4,7 @@
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
-  "main": "src/main.tsx",
+  "main": "src/main.ts",
   "scripts": {
     "build": "NODE_OPTIONS='--max-old-space-size=8192' vite --mode production build",
     "dev": "NODE_OPTIONS='--max-old-space-size=8192' vite --mode development build",

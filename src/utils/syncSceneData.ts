@@ -11,7 +11,7 @@ import { isObject } from 'lodash'
  * Hashes elements' version and isDeleted status (using djb2 algo principle). Order of elements matters.
  * @param elements all Elements, potentially including deleted ones
  */
-export const hashElementsVersion = (
+export const computeElementVersionHash = (
 	elements: readonly ExcalidrawElement[],
 ): number => {
 	let hash = 5381 // djb2 starting point
@@ -79,7 +79,7 @@ function isDeepEqual(obj1:any, obj2: any, exceptions: Array<string>) {
  * @param localElement element of local state
  * @param remoteElement remote received element
  */
-export function shouldDiscardRemoteElement(localAppState: Readonly<AppState>, localElement: ExcalidrawElement | undefined, remoteElement: ExcalidrawElement) {
+function shouldDiscardRemoteElement(localAppState: Readonly<AppState>, localElement: ExcalidrawElement | undefined, remoteElement: ExcalidrawElement) {
 	if (
 		localElement
         // local element is being edited
@@ -110,7 +110,7 @@ export function shouldDiscardRemoteElement(localAppState: Readonly<AppState>, lo
  * or array of ids (strings), into a Map, keyd by `id`.
  * @param items array of objects which have the `id` attribute
  */
-export function arrayToMap <T extends { id: string } | string>(items: readonly T[] | Map<string, T>) {
+function arrayToMap <T extends { id: string } | string>(items: readonly T[] | Map<string, T>) {
 	if (items instanceof Map) {
 		return items
 	}
@@ -126,7 +126,7 @@ export function arrayToMap <T extends { id: string } | string>(items: readonly T
  * @param remoteElements Elements received from remote
  * @param appState state of the local app
  */
-export function reconcileElements(localElements: readonly ExcalidrawElement[], remoteElements: ExcalidrawElement[], appState: Readonly<AppState>) {
+export function mergeSceneElements(localElements: readonly ExcalidrawElement[], remoteElements: ExcalidrawElement[], appState: Readonly<AppState>) {
 	const added = new Set<string>()
 	const localElementsMap = arrayToMap(localElements)
 	const reconciledElements: ExcalidrawElement[] = []
