@@ -28,7 +28,7 @@
     "@nextcloud/axios": "^2.5.2",
     "@nextcloud/capabilities": "^1.2.1",
     "@nextcloud/dialogs": "^6.4.1",
-    "@nextcloud/event-bus": "^3.3.2",
+    "@nextcloud/event-bus": "^3.3.3",
     "@nextcloud/excalidraw": "^0.18.0-f1fbd3f",
     "@nextcloud/files": "^3.12.0",
     "@nextcloud/initial-state": "^3.0.0",
