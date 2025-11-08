@@ -37,7 +37,7 @@
     "@nextcloud/sharing": "^0.3.0",
     "@nextcloud/vue": "^8.32.0",
     "@socket.io/redis-streams-adapter": "^0.2.2",
-    "axios": "^1.13.1",
+    "axios": "^1.13.2",
     "dexie": "^4.2.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
