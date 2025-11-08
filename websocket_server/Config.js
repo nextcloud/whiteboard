@@ -16,6 +16,7 @@ import {
 	DEFAULT_REDIS_URL,
 	DEFAULT_CACHED_TOKEN_TTL,
 	DEFAULT_COMPRESSION_ENABLED,
+	DEFAULT_HOST,
 } from './Constants.js'
 import Utils from './Utils.js'
 
@@ -25,6 +26,8 @@ const Config = {
 	IS_TEST_ENV: process.env.NODE_ENV === 'test',
 
 	PORT: process.env.PORT || DEFAULT_PORT,
+
+	HOST: process.env.HOST || DEFAULT_HOST,
 
 	USE_TLS: Utils.parseBooleanFromEnv(process.env.TLS),
 

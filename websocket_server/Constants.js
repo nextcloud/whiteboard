@@ -7,6 +7,8 @@ export const DEFAULT_NEXTCLOUD_URL = 'http://nextcloud.local'
 
 export const DEFAULT_PORT = 3002
 
+export const DEFAULT_HOST = '0.0.0.0'
+
 export const DEFAULT_STORAGE_STRATEGY = 'lru'
 
 export const DEFAULT_FORCE_CLOSE_TIMEOUT = 60 * 60 * 1000
