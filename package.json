@@ -70,7 +70,7 @@
     "@vitejs/plugin-react": "^5.1.0",
     "@vue/tsconfig": "^0.5.1",
     "browserslist": "^4.27.0",
-    "nodemon": "^3.1.10",
+    "nodemon": "^3.1.11",
     "prettier": "^3.6.2",
     "stylelint-config-css-modules": "^4.5.1",
     "typescript": "^5.9.3",
