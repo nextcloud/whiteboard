@@ -3,25 +3,19 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { db } from '../database/db'
-import { hashElementsVersion } from '../util'
+import { computeElementVersionHash } from '../utils/syncSceneData'
+import type { WorkerInboundMessage, WorkerOutboundMessage } from '../types/protocol'
 
-const ctx: Worker = self as any
-
-interface SyncWorkerMessage {
-	type: string
-	[key: string]: any
-}
+const ctx: Worker = self as unknown as Worker
 
 let performance: Performance
 try {
 	performance = self.performance
-} catch (e) {
+} catch {
 	performance = {
 		now: () => Date.now(),
-	} as any
+	} as Performance
 }
 
 // Logging disabled in production to reduce noise
@@ -30,70 +24,40 @@ const log = () => {
 	// No-op
 }
 
-const error = (message: string, ...args: any[]) => {
+const error = (message: string, ...args: unknown[]) => {
 	try {
-		// Only log errors as they are critical
 		globalThis.console.error(`[SyncWorker] ${message}`, ...args)
-	} catch (e) {}
-}
-
-const sendMessage = (type: string, data: any = {}) => {
-	try {
-		ctx.postMessage({
-			type,
-			...data,
-		})
-	} catch (e) {
-		error(`Failed to send message: ${type}`, e)
+	} catch {
+		// Ignore logging errors inside worker
 	}
 }
 
-const handleMessage = async (event: MessageEvent<SyncWorkerMessage>) => {
-	const { type, ...data } = event.data
-
+const sendMessage = (message: WorkerOutboundMessage) => {
 	try {
-		switch (type) {
-		case 'INIT':
-			initWorker()
-			break
-		case 'SYNC_TO_LOCAL':
-			await handleSyncToLocal(data)
-			break
-		case 'SYNC_TO_SERVER':
-			await handleSyncToServer(data)
-			break
-		default:
-			// Unknown message type - ignore
-		}
+		ctx.postMessage(message)
 	} catch (e) {
-		error(`Error handling message ${type}:`, e)
-		sendMessage(
-			`${type === 'SYNC_TO_LOCAL' ? 'LOCAL_SYNC_ERROR' : 'SERVER_SYNC_ERROR'}`,
-			{
-				error: e instanceof Error ? e.message : String(e),
-			},
-		)
+		error(`Failed to send message: ${message.type}`, e)
 	}
 }
 
-const handleSyncToLocal = async (data: any) => {
+type SyncToLocalMessage = Extract<WorkerInboundMessage, { type: 'SYNC_TO_LOCAL' }>
+type SyncToServerMessage = Extract<WorkerInboundMessage, { type: 'SYNC_TO_SERVER' }>
+
+const handleSyncToLocal = async (data: SyncToLocalMessage) => {
 	const { fileId, elements, files, appState } = data
 
 	if (!fileId) {
 		error('Missing fileId for local sync')
-		sendMessage('LOCAL_SYNC_ERROR', {
+		sendMessage({
+			type: 'LOCAL_SYNC_ERROR',
 			error: 'Missing fileId for local sync',
 		})
 		return
 	}
 
-	// We used to prevent syncing empty whiteboards, but this caused issues with deleting all elements
-	// Now we allow empty element arrays to be saved, which is necessary when all elements are deleted
-
 	const startTime = performance.now()
 
 	try {
-
 		const filteredAppState = appState ? { ...appState } : appState
 
 		if (filteredAppState && filteredAppState.collaborators) {
@@ -104,45 +68,43 @@ const handleSyncToLocal = async (data: any) => {
 			hasPendingLocalChanges: true,
 		})
 
-		const endTime = performance.now()
-		const duration = endTime - startTime
+		const duration = performance.now() - startTime
 
-		sendMessage('LOCAL_SYNC_COMPLETE', {
+		sendMessage({
+			type: 'LOCAL_SYNC_COMPLETE',
 			duration,
 			elementsCount: elements.length,
 		})
 	} catch (e) {
 		error('Error syncing to local storage:', e)
-		sendMessage('LOCAL_SYNC_ERROR', {
+		sendMessage({
+			type: 'LOCAL_SYNC_ERROR',
 			error: e instanceof Error ? e.message : String(e),
 		})
 	}
 }
 
-const handleSyncToServer = async (data: any) => {
+const handleSyncToServer = async (data: SyncToServerMessage) => {
 	const { fileId, url, jwt, elements, files } = data
 
 	if (!fileId || !url || !jwt) {
 		error('Missing required data for server sync', { fileId, url: !!url, jwt: !!jwt })
-		sendMessage('SERVER_SYNC_ERROR', {
+		sendMessage({
+			type: 'SERVER_SYNC_ERROR',
 			error: 'Missing required data for server sync',
 		})
 		return
 	}
 
 	const startTime = performance.now()
-	// Logging disabled in production
-	// console.log('[SyncWorker] Starting server sync, fileId:', fileId, 'elements:', elements?.length)
 
 	try {
-
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 			'X-Requested-With': 'XMLHttpRequest',
 			Authorization: `Bearer ${jwt}`,
 		}
 
-		// console.log('[SyncWorker] Sending PUT request to:', url)
 		const response = await globalThis.fetch(url, {
 			method: 'PUT',
 			headers,
@@ -152,10 +114,12 @@ const handleSyncToServer = async (data: any) => {
 		})
 
 		if (response.status === 409) {
-			// Another sync in progress - just treat as success
-			sendMessage('SERVER_SYNC_COMPLETE', {
+			sendMessage({
+				type: 'SERVER_SYNC_COMPLETE',
 				success: true,
 				skipped: true,
+				duration: 0,
+				elementsCount: elements?.length ?? 0,
 			})
 			return
 		}
@@ -165,21 +129,18 @@ const handleSyncToServer = async (data: any) => {
 			try {
 				const responseText = await response.text()
 				errorMessage += ` - ${responseText}`
-			} catch (textError) {
-
+			} catch {
+				// Ignore parse errors
 			}
 			throw new Error(errorMessage)
 		}
 
-		let responseData
+		let responseData: unknown
 		try {
 			responseData = await response.json()
-		} catch (parseError) {
-			// Could not parse server response, but sync was successful
+		} catch {
+			// Non-JSON response still counts as success
 		}
-
-		const endTime = performance.now()
-		const duration = endTime - startTime
 
 		try {
 			const existing = await db.get(fileId)
@@ -190,14 +151,17 @@ const handleSyncToServer = async (data: any) => {
 				existing?.appState,
 				{
 					hasPendingLocalChanges: false,
-					lastSyncedHash: hashElementsVersion(elements || []),
+					lastSyncedHash: computeElementVersionHash(elements || []),
 				},
 			)
 		} catch (dbError) {
 			error('Error updating local metadata after server sync:', dbError)
 		}
 
-		sendMessage('SERVER_SYNC_COMPLETE', {
+		const duration = performance.now() - startTime
+
+		sendMessage({
+			type: 'SERVER_SYNC_COMPLETE',
 			success: true,
 			duration,
 			elementsCount: elements.length,
@@ -205,7 +169,8 @@ const handleSyncToServer = async (data: any) => {
 		})
 	} catch (e) {
 		error('Error syncing to server:', e)
-		sendMessage('SERVER_SYNC_ERROR', {
+		sendMessage({
+			type: 'SERVER_SYNC_ERROR',
 			error: e instanceof Error ? e.message : String(e),
 		})
 	}
@@ -213,12 +178,44 @@ const handleSyncToServer = async (data: any) => {
 
 const initWorker = () => {
 	try {
-		sendMessage('INIT_COMPLETE')
+		sendMessage({ type: 'INIT_COMPLETE' })
 	} catch (e) {
 		error('Failed to initialize worker:', e)
-		sendMessage('INIT_ERROR', {
+		sendMessage({
+			type: 'INIT_ERROR',
 			error: e instanceof Error ? e.message : String(e),
 		})
+	}
+}
+
+const handleMessage = async (event: MessageEvent<WorkerInboundMessage>) => {
+	const message = event.data
+
+	try {
+		switch (message.type) {
+		case 'INIT':
+			initWorker()
+			break
+		case 'SYNC_TO_LOCAL':
+			await handleSyncToLocal(message)
+			break
+		case 'SYNC_TO_SERVER':
+			await handleSyncToServer(message)
+			break
+		default:
+			// Unknown message type - ignore
+		}
+	} catch (e) {
+		error(`Error handling message ${message.type}:`, e)
+		const errorMessage = e instanceof Error ? e.message : String(e)
+
+		if (message.type === 'SYNC_TO_LOCAL') {
+			sendMessage({ type: 'LOCAL_SYNC_ERROR', error: errorMessage })
+		} else if (message.type === 'SYNC_TO_SERVER') {
+			sendMessage({ type: 'SERVER_SYNC_ERROR', error: errorMessage })
+		} else {
+			sendMessage({ type: 'INIT_ERROR', error: errorMessage })
+		}
 	}
 }
 

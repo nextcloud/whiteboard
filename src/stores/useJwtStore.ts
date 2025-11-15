@@ -9,7 +9,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import axios from '@nextcloud/axios'
-// @ts-expect-error - Type definitions issue with @nextcloud/router
 import { generateUrl } from '@nextcloud/router'
 import { useWhiteboardConfigStore } from './useWhiteboardConfigStore'
 import { useCollaborationStore } from './useCollaborationStore'

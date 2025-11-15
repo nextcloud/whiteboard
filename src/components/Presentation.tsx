@@ -18,30 +18,17 @@ import {
 import { MainMenu } from '@nextcloud/excalidraw'
 import { DraggableDialog } from './DraggableDialog'
 import { t } from '@nextcloud/l10n'
+import type { PresentationState } from '../types/presentation'
 
-interface PresentationState {
-	isPresenting: boolean
-	isPresentationMode: boolean
-	presenterId: string | null
-	presenterName: string | null
-	presentationStartTime: number | null
-	autoFollowPresenter: boolean
-	status: 'idle' | 'starting' | 'presenting' | 'stopping'
-	error: string | null
-	isConnected: boolean
-	startPresentation: () => Promise<void>
-	stopPresentation: () => Promise<void>
-	toggleAutoFollow: () => void
-	resetError: () => void
-}
-
-interface PresentationStatusProps {
-	isPresenting: boolean
-	isPresentationMode: boolean
-	presenterName: string | null
-	presentationStartTime: number | null
-	autoFollowPresenter: boolean
-	status: 'idle' | 'starting' | 'presenting' | 'stopping'
+type PresentationStatusProps = Pick<
+PresentationState,
+	'isPresenting'
+	| 'isPresentationMode'
+	| 'presenterName'
+	| 'presentationStartTime'
+	| 'autoFollowPresenter'
+	| 'status'
+> & {
 	onToggleAutoFollow: () => void
 	onStopPresentation?: () => void
 }
@@ -51,15 +38,17 @@ interface PresentationErrorProps {
 	onDismiss: () => void
 }
 
-interface PresentationMenuItemProps {
-	isPresenting: boolean
-	isPresentationMode: boolean
-	presenterName: string | null
+type PresentationMenuItemProps = Pick<
+PresentationState,
+	'isPresenting'
+	| 'isPresentationMode'
+	| 'presenterName'
+	| 'startPresentation'
+	| 'stopPresentation'
+	| 'isConnected'
+> & {
 	isStarting: boolean
 	isStopping: boolean
-	startPresentation: () => Promise<void>
-	stopPresentation: () => Promise<void>
-	isConnected: boolean
 }
 
 // Error notification component

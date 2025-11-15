@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import type { CreatorDisplaySettings, WhiteboardElement } from '../types/whiteboard'
-import './CreatorDisplay.scss'
+import styles from './CreatorDisplay.module.scss'
 import { sceneCoordsToViewportCoords } from '@nextcloud/excalidraw'
 
 interface CreatorDisplayProps {
@@ -174,18 +174,19 @@ export const CreatorDisplay = ({ excalidrawAPI, settings }: CreatorDisplayProps)
 	}
 
 	return (
-		<div ref={containerRef} className="creator-display-overlay">
+		<div ref={containerRef} className={styles.overlay}>
 			{creatorLabels.map(label => (
 				<div
 					key={label.elementId}
-					className={`creator-label ${label.isSelected ? 'selected' : ''}`}
+					className={styles.label}
 					style={{
 						...labelStyle,
 						left: `${label.x}px`,
 						top: `${label.y}px`,
 					}}
+					data-selected={label.isSelected}
 				>
-					<span className="creator-name">{label.creatorName}</span>
+					<span className={styles.name}>{label.creatorName}</span>
 				</div>
 			))}
 		</div>

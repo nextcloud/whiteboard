@@ -15,8 +15,8 @@ import type {
 	ExcalidrawImageElement,
 } from '@excalidraw/excalidraw/types/types'
 import { restoreElements } from '@nextcloud/excalidraw'
-import { reconcileElements } from '../utils/reconcileElements'
-import { io, type Socket } from 'socket.io-client'
+import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata'
+import { io } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
@@ -24,7 +24,8 @@ import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
 import { db } from '../database/db'
-import { hashElementsVersion } from '../util'
+import { computeElementVersionHash } from '../utils/syncSceneData'
+import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } from '../types/collaboration'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT', // Incoming scene data from others
@@ -95,7 +96,7 @@ export function useCollaboration() {
 				const restoredRemoteElements = restoreElements(remoteElements, null)
 				const localElements = excalidrawAPI.getSceneElementsIncludingDeleted() || []
 				const appState = excalidrawAPI.getAppState()
-				const reconciledElements = reconcileElements(localElements, restoredRemoteElements, appState)
+				const reconciledElements = mergeElementsWithMetadata(localElements, restoredRemoteElements, appState)
 				excalidrawAPI.updateScene({ elements: reconciledElements })
 
 				// Request any missing images
@@ -472,7 +473,7 @@ export function useCollaboration() {
 
 	// Create a debounced version of the room join function to prevent multiple rapid joins
 	const debouncedJoinRoom = useMemo(() =>
-		debounce((socket: Socket, roomId: string) => {
+		debounce((socket: CollaborationSocket, roomId: string) => {
 			console.log(`[Collaboration] Debounced join room ${roomId}`)
 			socket.emit('join-room', roomId)
 		}, 300, { leading: true, trailing: false }),
@@ -558,7 +559,7 @@ export function useCollaboration() {
 									appStatePatch,
 									{
 										hasPendingLocalChanges: false,
-										lastSyncedHash: hashElementsVersion(restoredElements),
+										lastSyncedHash: computeElementVersionHash(restoredElements),
 									},
 								)
 							} catch (persistError) {
@@ -664,7 +665,7 @@ export function useCollaboration() {
 
 	// --- Socket Event Handlers Setup ---
 	const setupSocketEventHandlers = useCallback(
-		(socketInstance: Socket) => {
+		(socketInstance: CollaborationSocket) => {
 			// Clear all listeners for safety when reusing a socket instance
 			socketInstance.removeAllListeners()
 
@@ -911,7 +912,7 @@ export function useCollaboration() {
 
 	// --- Socket Connection Logic ---
 	const connectSocketRef = useRef(() => Promise.resolve())
-	const socketInstanceRef = useRef<Socket | null>(null)
+	const socketInstanceRef = useRef<CollaborationSocket | null>(null)
 
 	const connectSocket = useCallback(async () => {
 		if (useWhiteboardConfigStore.getState().isVersionPreview) {
@@ -982,7 +983,7 @@ export function useCollaboration() {
 			}
 
 			console.log('[Collaboration] Creating new socket instance')
-			const newSocket = io(url.origin, {
+			const newSocket: CollaborationSocket = io<ServerToClientEvents, ClientToServerEvents>(url.origin, {
 				path,
 				auth: { token },
 				transports: ['websocket'],

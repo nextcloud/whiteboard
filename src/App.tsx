@@ -9,8 +9,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
-import './App.scss'
-import type { ExcalidrawInitialDataState, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
@@ -18,7 +17,7 @@ import { useCollaboration } from './hooks/useCollaboration'
 import { useSmartPicker } from './hooks/useSmartPicker'
 import { useReadOnlyState } from './hooks/useReadOnlyState'
 import { ExcalidrawMenu } from './components/ExcalidrawMenu'
-import Embeddable from './Embeddable'
+import Embeddable from './components/Embeddable'
 import { useLangStore } from './stores/useLangStore'
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
 import { AuthErrorNotification } from './components/AuthErrorNotification'
@@ -30,7 +29,7 @@ import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { Icon } from '@mdi/react'
 import { mdiGrid } from '@mdi/js'
 import { useAssistant } from './hooks/useAssistant'
-import logger from './logger'
+import logger from './utils/logger'
 import { useRecording } from './hooks/useRecording'
 import { RecordingOverlay } from './components/Recording'
 import { usePresentation } from './hooks/usePresentation'
@@ -46,21 +45,11 @@ import { useVersionPreview } from './hooks/useVersionPreview'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
-export const initialDataState: ExcalidrawInitialDataState = {
-	elements: [],
-	appState: {
-		currentItemFontFamily: 3,
-		currentItemStrokeWidth: 1,
-		currentItemRoughness: 0,
-	},
-	files: {},
-}
-
 const MemoizedNetworkStatusIndicator = memo(NetworkStatusIndicator)
 const MemoizedAuthErrorNotification = memo(AuthErrorNotification)
 const MemoizedExcalidrawMenu = memo(ExcalidrawMenu)
 
-interface WhiteboardAppProps {
+export interface WhiteboardAppProps {
 	fileId: number
 	fileName: string
 	isEmbedded: boolean

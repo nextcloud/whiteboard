@@ -13,11 +13,10 @@ import { useShallow } from 'zustand/react/shallow'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { db } from '../database/db'
-import { hashElementsVersion } from '../util'
+import { computeElementVersionHash } from '../utils/syncSceneData'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
-import logger from '../logger'
+import logger from '../utils/logger'
 
-// @ts-expect-error - Type definitions issue with @nextcloud/router
 import { generateUrl } from '@nextcloud/router'
 
 type RestoredSnapshot = {
@@ -245,7 +244,7 @@ export function useVersionPreview({
 			sanitizedAppState,
 			{
 				hasPendingLocalChanges: false,
-				lastSyncedHash: hashElementsVersion(elements),
+				lastSyncedHash: computeElementVersionHash(elements),
 			},
 		)
 
