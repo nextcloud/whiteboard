@@ -4,45 +4,17 @@
  */
 
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { useEffect, useState, useCallback, useRef } from 'react'
-import type { Socket } from 'socket.io-client'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
-// @ts-expect-error - Type definitions issue with @nextcloud/router
 import { generateUrl } from '@nextcloud/router'
+import type { CollaborationSocket } from '../types/collaboration'
+import type { RecordingHookState, RecordingState, RecordingUser } from '../types/recording'
 
 interface UseRecordingProps {
 	fileId: number
-}
-
-interface RecordingUser {
-	userId: string
-	username: string
-}
-
-type RecordingStatus = 'idle' | 'starting' | 'recording' | 'stopping'
-
-interface RecordingState {
-	isRecording: boolean
-	error: string | null
-	startTime: number | null
-	status: RecordingStatus
-	duration: number | null
-	otherUsers: RecordingUser[]
-	fileUrl: string | null
-	showSuccess: boolean
-	isUploading: boolean
-	filename: string | null
-	recordingDuration: number | null
-	successTimestamp: number | null
-	startingPhase: 'preparing' | 'initializing' | null
-	isAvailable: boolean | null
-	unavailableReason: string | null
-	showUnavailableInfo: boolean
 }
 
 const INITIAL_STATE: RecordingState = {
@@ -71,19 +43,6 @@ export function formatDuration(ms: number) {
 	return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`
 }
 
-interface UseRecordingActions {
-	startRecording: () => Promise<void>
-	stopRecording: () => Promise<void>
-	resetError: () => void
-	dismissSuccess: () => void
-	dismissUnavailableInfo: () => void
-	hasError: boolean
-	isStarting: boolean
-	isStopping: boolean
-	hasOtherRecordingUsers: boolean
-	isConnected: boolean
-}
-
 const SOCKET_EVENTS = [
 	'recording-started',
 	'recording-stopped',
@@ -94,8 +53,9 @@ const SOCKET_EVENTS = [
 	'connect',
 	'disconnect',
 ] as const
+type RecordingSocketEvent = typeof SOCKET_EVENTS[number]
 
-export function useRecording({ fileId }: UseRecordingProps): RecordingState & UseRecordingActions {
+export function useRecording({ fileId }: UseRecordingProps): RecordingHookState {
 	const [state, setState] = useState<RecordingState>(INITIAL_STATE)
 	const durationIntervalRef = useRef<NodeJS.Timeout | null>(null)
 	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -103,7 +63,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingState & Us
 	stateRef.current = state
 
 	const { socket, status } = useCollaborationStore(useShallow(state => ({
-		socket: state.socket,
+		socket: state.socket as CollaborationSocket | null,
 		status: state.status,
 	})))
 
@@ -144,19 +104,30 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingState & Us
 	}, [state.isRecording, state.startTime, updateState])
 
 	const handleSocketEvent = useCallback((
-		socket: Socket,
-		handlers: Record<string, (...args: any[]) => void>,
+		socketInstance: CollaborationSocket,
+		handlers: Partial<Record<RecordingSocketEvent, (...args: unknown[]) => void | Promise<void>>>,
 	) => {
-		SOCKET_EVENTS.forEach(event => socket.off(event))
-		Object.entries(handlers).forEach(([event, handler]) => socket.on(event, handler))
+		SOCKET_EVENTS.forEach(event => socketInstance.off(event))
+		Object.entries(handlers).forEach(([event, handler]) => {
+			if (handler) {
+				socketInstance.on(event as RecordingSocketEvent, (...args: unknown[]) => {
+					const result = handler(...args)
+					if (result instanceof Promise) {
+						result.catch((err) => {
+							console.error('[Recording] Socket handler error:', err)
+						})
+					}
+				})
+			}
+		})
 	}, [])
 
-	const setupSocketListeners = useCallback((socket: Socket) => {
+	const setupSocketListeners = useCallback((socketInstance: CollaborationSocket) => {
 		// Check recording availability when socket connects
-		socket.emit('check-recording-availability')
+		socketInstance.emit('check-recording-availability')
 
-		handleSocketEvent(socket, {
-			'recording-availability': (data: { available: boolean; reason: string | null }) => {
+		handleSocketEvent(socketInstance, {
+			'recording-availability': (data) => {
 				console.log('[Recording] Availability check result:', data)
 				updateState({
 					isAvailable: data.available,
@@ -312,7 +283,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingState & Us
 			connect: () => {
 				// Socket reconnected, check availability again
 				console.log('[Recording] Socket reconnected, checking availability')
-				socket.emit('check-recording-availability')
+				socketInstance.emit('check-recording-availability')
 			},
 			disconnect: () => stateRef.current.isRecording && updateState({ error: 'Connection lost', status: 'idle' }),
 		})

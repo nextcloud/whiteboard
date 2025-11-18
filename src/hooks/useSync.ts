@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { throttle } from 'lodash'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
@@ -12,10 +10,13 @@ import { useSyncStore, logSyncResult } from '../stores/useSyncStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
-// @ts-expect-error - Type definitions issue with @nextcloud/router
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
-import logger from '../logger'
+import logger from '../utils/logger'
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { CollaborationSocket } from '../types/collaboration'
+import type { WorkerInboundMessage } from '../types/protocol'
 
 enum SyncMessageType {
 	SceneInit = 'SCENE_INIT',
@@ -69,7 +70,7 @@ export function useSync() {
 		useShallow(state => ({
 			isDedicatedSyncer: state.isDedicatedSyncer,
 			status: state.status,
-			socket: state.socket,
+			socket: state.socket as CollaborationSocket | null,
 		})),
 	)
 
@@ -98,14 +99,15 @@ export function useSync() {
 		}
 
 		try {
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as any
-			const appState = excalidrawAPI.getAppState() as any
-			const files = excalidrawAPI.getFiles() as any
-			const filteredAppState = { ...appState }
+			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+			const appState = excalidrawAPI.getAppState()
+			const files = excalidrawAPI.getFiles() as BinaryFiles
+			const filteredAppState: Partial<AppState> = { ...appState }
 			delete filteredAppState?.collaborators
 			delete filteredAppState?.selectedElementIds
 
-			worker.postMessage({ type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState })
+			const message: WorkerInboundMessage = { type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState }
+			worker.postMessage(message)
 			logSyncResult('local', { status: 'syncing' })
 		} catch (error) {
 			logger.error('[Sync] Local sync failed:', error)
@@ -143,12 +145,19 @@ export function useSync() {
 				throw new Error('FileId changed during server sync preparation.')
 			}
 
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as any
-			const files = excalidrawAPI.getFiles() as any
+			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+			const files = excalidrawAPI.getFiles() as BinaryFiles
 
-			worker.postMessage({
-				type: 'SYNC_TO_SERVER', fileId, url: generateUrl(`apps/whiteboard/${fileId}`), jwt, elements, files,
-			})
+			const message: WorkerInboundMessage = {
+				type: 'SYNC_TO_SERVER',
+				fileId,
+				url: generateUrl(`apps/whiteboard/${fileId}`),
+				jwt,
+				elements,
+				files,
+			}
+
+			worker.postMessage(message)
 			logger.debug('[Sync] SYNC_TO_SERVER message sent to worker')
 		} catch (error) {
 			logger.error('[Sync] Server API sync failed:', error)
@@ -172,8 +181,8 @@ export function useSync() {
 		}
 
 		try {
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
-			const files = excalidrawAPI.getFiles()
+			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+			const files = excalidrawAPI.getFiles() as BinaryFiles
 
 			// 1. Send Scene
 			const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
@@ -244,7 +253,7 @@ export function useSync() {
 				}
 				const json = JSON.stringify(data)
 				const encodedBuffer = new TextEncoder().encode(json)
-				socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer, [])
+				socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer)
 				logSyncResult('cursor', { status: 'sync success' })
 			} catch (error) {
 				logger.error('[Sync] Error syncing cursor:', error)
@@ -290,7 +299,7 @@ export function useSync() {
 					}
 					const json = JSON.stringify(data)
 					const encodedBuffer = new TextEncoder().encode(json)
-					socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer, [])
+					socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer)
 
 					lastBroadcastedViewportRef.current = { scrollX, scrollY, zoom: zoom.value }
 				} catch (error) {
@@ -355,7 +364,7 @@ export function useSync() {
 	}, [isDedicatedSyncer])
 
 	// Cache the latest state for final sync - update on EVERY change
-	const cachedStateRef = useRef<{ elements: any[], files: any }>({ elements: [], files: {} })
+	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[]; files: BinaryFiles }>({ elements: [], files: {} as BinaryFiles })
 
 	// Direct sync when leaving - synchronous to ensure it completes
 	const doFinalServerSync = useCallback(() => {

@@ -7,35 +7,10 @@ import { Icon } from '@mdi/react'
 import { mdiSlashForwardBox, mdiRecordCircle, mdiStopCircle, mdiCheckCircle, mdiFolder, mdiClose } from '@mdi/js'
 import { formatDuration } from '../hooks/useRecording'
 import { MainMenu } from '@nextcloud/excalidraw'
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
 import { DraggableDialog } from './DraggableDialog'
 import { t } from '@nextcloud/l10n'
-
-interface RecordingProps {
-	isStarting: boolean
-	isStopping: boolean
-	isRecording: boolean
-	hasError: boolean
-	error: string | null
-	duration: number | null
-	otherRecordingUsers: Array<{ userId: string; username: string }>
-	hasOtherRecordingUsers: boolean
-	fileUrl: string | null
-	showSuccess: boolean
-	isUploading: boolean
-	filename: string | null
-	recordingDuration: number | null
-	startingPhase: 'preparing' | 'initializing' | null
-	startRecording: () => void
-	stopRecording: () => void
-	resetError: () => void
-	dismissSuccess: () => void
-	dismissUnavailableInfo: () => void
-	isConnected: boolean
-	isAvailable: boolean | null
-	unavailableReason: string | null
-	showUnavailableInfo: boolean
-}
+import type { RecordingMenuState, RecordingOverlayProps } from '../types/recording'
 
 const RecordingError = memo(({ error, resetError }: { error: string, resetError: () => void }) => (
 	<div className="recording-error" onClick={resetError}>
@@ -102,7 +77,7 @@ const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, s
 })
 RecordingStatus.displayName = 'RecordingStatus'
 
-const OtherRecordingUsers = memo(({ users }: { users: RecordingProps['otherRecordingUsers'] }) => (
+const OtherRecordingUsers = memo(({ users }: { users: RecordingOverlayProps['otherRecordingUsers'] }) => (
 	<div className="other-recording-users">
 		<Icon path={mdiRecordCircle} size={0.8} />
 		<span>
@@ -211,27 +186,28 @@ const RecordingUnavailable = memo(({ reason, onDismiss }: { reason: string; onDi
 ))
 RecordingUnavailable.displayName = 'RecordingUnavailable'
 
-export const RecordingOverlay = memo(function RecordingOverlay({
-	isStarting,
-	isStopping,
-	isRecording,
-	hasError,
-	error,
-	duration,
-	otherRecordingUsers,
-	hasOtherRecordingUsers,
-	fileUrl,
-	showSuccess,
-	isUploading,
-	filename,
-	recordingDuration,
-	startingPhase,
-	resetError,
-	dismissSuccess,
-	dismissUnavailableInfo,
-	showUnavailableInfo,
-	unavailableReason,
-}: RecordingProps) {
+export const RecordingOverlay = memo(function RecordingOverlay(props: RecordingOverlayProps) {
+	const {
+		isStarting,
+		isStopping,
+		isRecording,
+		hasError,
+		error,
+		duration,
+		otherRecordingUsers,
+		hasOtherRecordingUsers,
+		fileUrl,
+		showSuccess,
+		isUploading,
+		filename,
+		recordingDuration,
+		startingPhase,
+		resetError,
+		dismissSuccess,
+		dismissUnavailableInfo,
+		showUnavailableInfo,
+		unavailableReason,
+	} = props
 	// Show unavailable info if recording is not available
 	if (showUnavailableInfo && unavailableReason) {
 		return (
@@ -345,9 +321,7 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 	isConnected,
 	isAvailable,
 	unavailableReason,
-}: Pick<RecordingProps, 'isRecording' | 'isStarting' | 'isStopping' | 'startRecording' | 'stopRecording' | 'isAvailable' | 'unavailableReason'> & {
-	isConnected: boolean
-}) {
+}: RecordingMenuState) {
 	// Determine disabled state and tooltip
 	let isDisabled = isStarting || isStopping
 	let tooltipMessage: string | undefined
@@ -366,11 +340,18 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 		}
 	}
 
+	const handleSelect = useCallback(() => {
+		const action = isRecording ? stopRecording : startRecording
+		action().catch((error) => {
+			console.error('[Recording] Failed to toggle recording:', error)
+		})
+	}, [isRecording, startRecording, stopRecording])
+
 	return (
 		<MainMenu.Item
 			className={`recording-button ${isRecording ? 'recording' : ''} ${!isConnected || isAvailable === false ? 'disconnected' : ''}`}
 			icon={<Icon path={isRecording ? mdiStopCircle : mdiRecordCircle} size={1} />}
-			onSelect={isRecording ? stopRecording : startRecording}
+			onSelect={handleSelect}
 			disabled={isDisabled}
 			title={tooltipMessage}
 		>

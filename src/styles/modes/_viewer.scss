@@ -21,3 +21,15 @@
 		right: 0;
 	}
 }
+
+.viewer--split {
+	.whiteboard.viewer__file--active {
+		width: 100%;
+		max-width: none;
+
+		.App,
+		.excalidraw-wrapper {
+			width: 100%;
+		}
+	}
+}

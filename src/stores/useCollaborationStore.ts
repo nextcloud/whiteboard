@@ -6,7 +6,7 @@
 /* eslint-disable no-console */
 
 import { create } from 'zustand'
-import type { Socket } from 'socket.io-client'
+import type { CollaborationSocket } from '../types/collaboration'
 
 export type CollaborationConnectionStatus = 'online' | 'offline' | 'connecting' | 'reconnecting'
 
@@ -22,7 +22,7 @@ interface AuthErrorState {
 
 interface CollaborationStore {
 	status: CollaborationConnectionStatus
-	socket: Socket | null
+	socket: CollaborationSocket | null
 	isDedicatedSyncer: boolean // Is this client responsible for syncing to server/broadcasting?
 	authError: AuthErrorState
 	followedUserId: string | null // User ID being followed for viewport synchronization
@@ -36,7 +36,7 @@ interface CollaborationStore {
 
 	// Actions
 	setStatus: (status: CollaborationConnectionStatus) => void
-	setSocket: (socket: Socket | null) => void
+	setSocket: (socket: CollaborationSocket | null) => void
 	setDedicatedSyncer: (isSyncer: boolean) => void
 	setAuthError: (error: Partial<AuthErrorState>) => void
 	incrementAuthFailure: (errorType: AuthErrorType, message: string) => void

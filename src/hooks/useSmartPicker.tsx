@@ -3,14 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { useCallback, useRef, useEffect } from 'react'
 import * as ReactDOM from 'react-dom'
 import { Icon } from '@mdi/react'
 import { mdiSlashForwardBox } from '@mdi/js'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
-// @ts-expect-error - Type definitions issue with @nextcloud/vue
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -67,10 +64,9 @@ export function useSmartPicker() {
 	const pickFile = useCallback(() => {
 		getLinkWithPicker(null, true)
 			.then((link: string) => addWebEmbed(link))
-			.catch((error: any) => {
-				// ignore user cancellations
-				const msg = typeof error === 'string' ? error : error?.message
-				if (msg?.includes('User cancellation')) {
+			.catch((error: unknown) => {
+				const message = typeof error === 'string' ? error : (error as { message?: string } | null)?.message
+				if (message?.includes('User cancellation')) {
 					console.debug('[SmartPicker] Picker cancelled by user')
 				} else {
 					console.error('[SmartPicker] Error during picking:', error)

@@ -5,7 +5,7 @@
 
 /* eslint-disable no-console */
 
-import puppeteer from 'puppeteer-core'
+import { launch as launchChromium } from 'puppeteer-core'
 import Config from './Config.js'
 
 const CHECK_INTERVAL_MS = 60_000
@@ -40,7 +40,7 @@ function buildReasonMessage(error) {
 async function runLaunchCheck() {
 	try {
 		// Use Config-based Chrome detection
-		const browser = await puppeteer.launch({
+		const browser = await launchChromium({
 			headless: 'new',
 			args: ['--no-sandbox', '--disable-setuid-sandbox'],
 			timeout: TEST_TIMEOUT_MS,

@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand'
-import logger from '../logger'
+import logger from '../utils/logger'
 
 export type SyncOperation = 'local' | 'server' | 'websocket' | 'cursor'
 

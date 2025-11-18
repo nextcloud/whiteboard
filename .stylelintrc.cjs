@@ -7,4 +7,12 @@ const stylelintConfig = require('@nextcloud/stylelint-config')
 
 stylelintConfig.rules['no-invalid-position-at-import-rule'] = null
 
+stylelintConfig.overrides = stylelintConfig.overrides || []
+stylelintConfig.overrides.push({
+	files: ['src/**/*.module.scss'],
+	rules: {
+		'selector-pseudo-class-disallowed-list': ['global'],
+	},
+})
+
 module.exports = stylelintConfig

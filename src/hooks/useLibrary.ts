@@ -8,7 +8,7 @@ import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
 import type { LibraryItem, LibraryItems } from '@excalidraw/excalidraw/types/types'
-import logger from '../logger'
+import logger from '../utils/logger'
 
 type LibraryItemExtended = LibraryItem & {
 	filename?: string;

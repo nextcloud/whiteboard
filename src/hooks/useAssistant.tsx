@@ -11,7 +11,7 @@ import { mdiCreation } from '@mdi/js'
 import AssistantDialog from '../components/AssistantDialog.vue'
 import Vue from 'vue'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
-import { getViewPortCenter, moveElementsAroundCoords } from '../utils'
+import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
 import { getCapabilities } from '@nextcloud/capabilities'
@@ -65,7 +65,7 @@ export function useAssistant() {
 
 		// copy elements from the current scene and add the new elements
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
-		const movedElements = moveElementsAroundCoords(generatedElements.elements, viewportCoordsToSceneCoords(getViewPortCenter(), excalidrawAPI.getAppState()))
+		const movedElements = moveElementsToViewport(generatedElements.elements, viewportCoordsToSceneCoords(getViewportCenterPoint(), excalidrawAPI.getAppState()))
 		elements.push(...movedElements)
 
 		// update selected elements
@@ -81,7 +81,7 @@ export function useAssistant() {
 				selectedElementIds,
 			},
 		})
-	}, [excalidrawAPI, viewportCoordsToSceneCoords, getViewPortCenter, moveElementsAroundCoords])
+	}, [excalidrawAPI, viewportCoordsToSceneCoords, getViewportCenterPoint, moveElementsToViewport])
 
 	const handleAssistantToMermaid = useCallback(() => {
 		getMermaidFromAssistant().then((generatedElements) => {

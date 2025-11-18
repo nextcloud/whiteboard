@@ -9,27 +9,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useJWTStore } from '../stores/useJwtStore'
-
-interface PresentationState {
-	// Current state
-	isPresenting: boolean
-	isPresentationMode: boolean
-	presenterId: string | null
-	presenterName: string | null
-	presentationStartTime: number | null
-	autoFollowPresenter: boolean
-
-	// Status indicators
-	status: 'idle' | 'starting' | 'presenting' | 'stopping'
-	error: string | null
-	isConnected: boolean
-
-	// Actions
-	startPresentation: () => Promise<void>
-	stopPresentation: () => Promise<void>
-	toggleAutoFollow: () => void
-	resetError: () => void
-}
+import type { PresentationState } from '../types/presentation'
+import type { CollaborationSocket } from '../types/collaboration'
 
 interface UsePresentationProps {
 	fileId: number
@@ -54,7 +35,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		setAutoFollowPresenter,
 	} = useCollaborationStore(
 		useShallow((state) => ({
-			socket: state.socket,
+			socket: state.socket as CollaborationSocket | null,
 			status: state.status,
 			presenterId: state.presenterId,
 			isPresentationMode: state.isPresentationMode,
