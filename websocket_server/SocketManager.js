@@ -37,6 +37,8 @@ export default class SocketManager {
 		this.cachedTokenStorage = cachedTokenStorage
 		this.redisClient = redisClient
 		this.recordingServices = new Map()
+		// Track timers per room: roomId -> { status, durationMs, remainingMs, endsAt, startedBy, timeoutId }
+		this.timers = new Map()
 		// Track presentation state per room: roomId -> { presenterId, presenterName, startTime }
 		this.presentationSessions = new Map()
 		this.io = this.createSocketServer(server)
@@ -203,6 +205,12 @@ export default class SocketManager {
 			'stop-recording': this.stopRecordingHandler,
 			'presentation-start': this.presentationStartHandler,
 			'presentation-stop': this.presentationStopHandler,
+			'timer-start': this.timerStartHandler,
+			'timer-pause': this.timerPauseHandler,
+			'timer-resume': this.timerResumeHandler,
+			'timer-reset': this.timerResetHandler,
+			'timer-extend': this.timerExtendHandler,
+			'timer-state-request': this.timerStateRequestHandler,
 			'request-presenter-viewport': this.requestPresenterViewportHandler,
 			'follow-user': this.followUserHandler,
 			'request-viewport': this.requestViewportHandler,
@@ -325,6 +333,9 @@ export default class SocketManager {
 				username: presentationSession.presenterName,
 			})
 		}
+
+		// Send current timer state to the new user
+		this.emitTimerState(roomID, socket)
 	}
 
 	async serverBroadcastHandler(socket, roomID, encryptedData, iv) {
@@ -485,6 +496,321 @@ export default class SocketManager {
 			const roomUsers = await this.getUserSocketsAndIds(roomID)
 			socket.to(roomID).emit('room-user-change', roomUsers)
 		}
+	}
+
+	async getSocketUserInfo(socketId) {
+		const socketData = await this.socketDataStorage.get(socketId)
+		const userId = socketData?.user?.id || 'unknown'
+		const userName = socketData?.user?.displayName || socketData?.user?.name || 'Unknown'
+
+		return { userId, userName }
+	}
+
+	clearTimerTimeout(roomID) {
+		const timerState = this.timers.get(roomID)
+		if (timerState?.timeoutId) {
+			clearTimeout(timerState.timeoutId)
+			timerState.timeoutId = null
+		}
+	}
+
+	getTimerPayload(roomID) {
+		const timerState = this.timers.get(roomID)
+		const now = Date.now()
+		const updatedAt = timerState?.updatedAt ?? now
+
+		if (!timerState) {
+			return {
+				status: 'idle',
+				remainingMs: 0,
+				durationMs: null,
+				endsAt: null,
+				startedBy: null,
+				startedAt: null,
+				pausedBy: null,
+				updatedAt,
+			}
+		}
+
+		const remainingMs = timerState.status === 'running' && timerState.endsAt
+			? Math.max(timerState.endsAt - now, 0)
+			: Math.max(timerState.remainingMs || 0, 0)
+
+		return {
+			status: timerState.status,
+			remainingMs,
+			durationMs: timerState.durationMs ?? null,
+			endsAt: timerState.status === 'running' ? timerState.endsAt : null,
+			startedBy: timerState.startedBy || null,
+			startedAt: timerState.startedAt || null,
+			pausedBy: timerState.pausedBy || null,
+			updatedAt,
+		}
+	}
+
+	emitTimerState(roomID, targetSocket = null) {
+		const payload = this.getTimerPayload(roomID)
+
+		if (targetSocket) {
+			targetSocket.emit('timer-state', payload)
+		} else {
+			this.io.to(roomID).emit('timer-state', payload)
+		}
+	}
+
+	handleTimerFinished(roomID) {
+		const timerState = this.timers.get(roomID)
+		if (!timerState) {
+			return
+		}
+
+		this.clearTimerTimeout(roomID)
+
+		this.timers.set(roomID, {
+			...timerState,
+			status: 'finished',
+			remainingMs: 0,
+			endsAt: null,
+			timeoutId: null,
+			updatedAt: Date.now(),
+		})
+
+		console.log(`[${roomID}] Timer finished`)
+		this.emitTimerState(roomID)
+	}
+
+	async timerStartHandler(socket, data) {
+		const roomID = data?.fileId !== undefined ? `${data.fileId}` : null
+		const rawDuration = Number(data?.durationMs)
+
+		if (!roomID || !Number.isFinite(rawDuration)) {
+			socket.emit('timer-error', 'Invalid timer start payload')
+			return
+		}
+
+		if (await this.isSocketReadOnly(socket.id)) {
+			socket.emit('timer-error', 'Read-only users cannot control the timer')
+			return
+		}
+
+		if (!socket.rooms.has(roomID)) {
+			socket.emit('timer-error', 'Cannot control timer outside the room')
+			return
+		}
+
+		const durationMs = Math.max(Math.floor(rawDuration), 1000)
+		const now = Date.now()
+		const userInfo = await this.getSocketUserInfo(socket.id)
+
+		this.clearTimerTimeout(roomID)
+
+		const timeoutId = setTimeout(() => this.handleTimerFinished(roomID), durationMs)
+
+		this.timers.set(roomID, {
+			status: 'running',
+			durationMs,
+			remainingMs: durationMs,
+			endsAt: now + durationMs,
+			startedAt: now,
+			startedBy: userInfo,
+			pausedBy: null,
+			timeoutId,
+			updatedAt: now,
+		})
+
+		console.log(`[${roomID}] Timer started for ${durationMs}ms by ${userInfo.userName}`)
+		this.emitTimerState(roomID)
+	}
+
+	async timerPauseHandler(socket, data) {
+		const roomID = data?.fileId !== undefined ? `${data.fileId}` : null
+
+		if (!roomID) {
+			socket.emit('timer-error', 'Invalid timer pause payload')
+			return
+		}
+
+		if (await this.isSocketReadOnly(socket.id)) {
+			socket.emit('timer-error', 'Read-only users cannot control the timer')
+			return
+		}
+
+		if (!socket.rooms.has(roomID)) {
+			socket.emit('timer-error', 'Cannot control timer outside the room')
+			return
+		}
+
+		const timerState = this.timers.get(roomID)
+		if (!timerState || timerState.status !== 'running') {
+			socket.emit('timer-error', 'No active timer to pause')
+			return
+		}
+
+		const remainingMs = timerState.endsAt
+			? Math.max(timerState.endsAt - Date.now(), 0)
+			: timerState.remainingMs || 0
+
+		this.clearTimerTimeout(roomID)
+
+		this.timers.set(roomID, {
+			...timerState,
+			status: 'paused',
+			remainingMs,
+			endsAt: null,
+			pausedBy: await this.getSocketUserInfo(socket.id),
+			timeoutId: null,
+			updatedAt: Date.now(),
+		})
+
+		console.log(`[${roomID}] Timer paused with ${remainingMs}ms remaining`)
+		this.emitTimerState(roomID)
+	}
+
+	async timerResumeHandler(socket, data) {
+		const roomID = data?.fileId !== undefined ? `${data.fileId}` : null
+
+		if (!roomID) {
+			socket.emit('timer-error', 'Invalid timer resume payload')
+			return
+		}
+
+		if (await this.isSocketReadOnly(socket.id)) {
+			socket.emit('timer-error', 'Read-only users cannot control the timer')
+			return
+		}
+
+		if (!socket.rooms.has(roomID)) {
+			socket.emit('timer-error', 'Cannot control timer outside the room')
+			return
+		}
+
+		const timerState = this.timers.get(roomID)
+		if (!timerState || timerState.status !== 'paused') {
+			socket.emit('timer-error', 'No paused timer to resume')
+			return
+		}
+
+		const remainingMs = Math.max(timerState.remainingMs || 0, 0)
+		if (remainingMs === 0) {
+			this.handleTimerFinished(roomID)
+			return
+		}
+
+		const endsAt = Date.now() + remainingMs
+		const timeoutId = setTimeout(() => this.handleTimerFinished(roomID), remainingMs)
+
+		this.timers.set(roomID, {
+			...timerState,
+			status: 'running',
+			endsAt,
+			pausedBy: null,
+			timeoutId,
+			updatedAt: Date.now(),
+		})
+
+		console.log(`[${roomID}] Timer resumed with ${remainingMs}ms remaining`)
+		this.emitTimerState(roomID)
+	}
+
+	async timerExtendHandler(socket, data) {
+		const roomID = data?.fileId !== undefined ? `${data.fileId}` : null
+		const additionalMs = Number(data?.additionalMs)
+
+		if (!roomID || !Number.isFinite(additionalMs)) {
+			socket.emit('timer-error', 'Invalid timer extend payload')
+			return
+		}
+
+		if (await this.isSocketReadOnly(socket.id)) {
+			socket.emit('timer-error', 'Read-only users cannot control the timer')
+			return
+		}
+
+		if (!socket.rooms.has(roomID)) {
+			socket.emit('timer-error', 'Cannot control timer outside the room')
+			return
+		}
+
+		const timerState = this.timers.get(roomID)
+		if (!timerState || (timerState.status !== 'running' && timerState.status !== 'paused')) {
+			socket.emit('timer-error', 'No timer to extend')
+			return
+		}
+
+		const extraTime = Math.max(Math.floor(additionalMs), 1000)
+		const now = Date.now()
+
+		let endsAt = timerState.endsAt
+		let remainingMs = timerState.remainingMs || 0
+		let timeoutId = timerState.timeoutId || null
+
+		if (timerState.status === 'running') {
+			const currentRemaining = endsAt
+				? Math.max(endsAt - now, 0)
+				: remainingMs
+
+			endsAt = now + currentRemaining + extraTime
+			remainingMs = Math.max(endsAt - now, 0)
+
+			this.clearTimerTimeout(roomID)
+			timeoutId = setTimeout(() => this.handleTimerFinished(roomID), remainingMs)
+		} else {
+			remainingMs = (timerState.remainingMs || 0) + extraTime
+			endsAt = null
+			this.clearTimerTimeout(roomID)
+			timeoutId = null
+		}
+
+		this.timers.set(roomID, {
+			...timerState,
+			durationMs: (timerState.durationMs || 0) + extraTime,
+			remainingMs,
+			endsAt,
+			timeoutId,
+			updatedAt: now,
+		})
+
+		console.log(`[${roomID}] Timer extended by ${extraTime}ms`)
+		this.emitTimerState(roomID)
+	}
+
+	async timerResetHandler(socket, data) {
+		const roomID = data?.fileId !== undefined ? `${data.fileId}` : null
+
+		if (!roomID) {
+			socket.emit('timer-error', 'Invalid timer reset payload')
+			return
+		}
+
+		if (await this.isSocketReadOnly(socket.id)) {
+			socket.emit('timer-error', 'Read-only users cannot control the timer')
+			return
+		}
+
+		if (!socket.rooms.has(roomID)) {
+			socket.emit('timer-error', 'Cannot control timer outside the room')
+			return
+		}
+
+		this.clearTimerTimeout(roomID)
+		this.timers.delete(roomID)
+
+		console.log(`[${roomID}] Timer reset`)
+		this.emitTimerState(roomID)
+	}
+
+	async timerStateRequestHandler(socket, data) {
+		const roomID = data?.fileId !== undefined ? `${data.fileId}` : null
+		if (!roomID) {
+			socket.emit('timer-error', 'Invalid timer state request')
+			return
+		}
+
+		if (!socket.rooms.has(roomID)) {
+			return
+		}
+
+		this.emitTimerState(roomID, socket)
 	}
 
 	async findNewSyncer(roomID) {
