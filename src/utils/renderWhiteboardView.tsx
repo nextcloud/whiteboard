@@ -3,21 +3,21 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { StrictMode, Suspense, lazy, type ComponentType } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom'
 
 import type { WhiteboardAppProps } from '../App'
 
 const App = lazy(() => import('../App'))
-const CompareViewer = lazy(() => import('../components/CompareViewer'))
+const ReadOnlyViewer = lazy(() => import('../components/ReadOnlyViewer'))
 
 type ViewerFileInfo = {
-	source?: string
-	fileVersion?: string | null
+    source?: string
+    fileVersion?: string | null
 }
 
 type ComparisonMatchContext = {
-	isViewerContext: boolean
+    isViewerContext: boolean
 }
 
 const normalizeVersionSource = (source: string | null): string | null => {
@@ -47,8 +47,8 @@ const matchesComparisonRequest = (versionSource: string | null, fileVersion: str
 	const compareVersion = compareInfo.fileVersion ?? null
 	if (
 		fileVersion
-		&& compareVersion
-		&& String(compareVersion) === String(fileVersion)
+        && compareVersion
+        && String(compareVersion) === String(fileVersion)
 	) {
 		return true
 	}
@@ -57,11 +57,11 @@ const matchesComparisonRequest = (versionSource: string | null, fileVersion: str
 }
 
 export type RenderWhiteboardViewOptions = WhiteboardAppProps & {
-	isComparisonView?: boolean
+    isComparisonView?: boolean
 }
 
 export type WhiteboardRootHandle = {
-	unmount: () => void
+    unmount: () => void
 }
 
 const shouldRenderComparison = (
@@ -80,6 +80,7 @@ const shouldRenderComparison = (
 export const renderWhiteboardView = (rootElement: HTMLElement, props: RenderWhiteboardViewOptions): WhiteboardRootHandle => {
 	const root = createRoot(rootElement)
 	const { isComparisonView, ...componentProps } = props
+
 	const comparisonMode = shouldRenderComparison(
 		{
 			isComparisonView,
@@ -89,7 +90,9 @@ export const renderWhiteboardView = (rootElement: HTMLElement, props: RenderWhit
 		{ isViewerContext: Boolean(rootElement.closest('.viewer__content')) },
 	)
 
-	const ComponentToRender = (comparisonMode ? CompareViewer : App) as ComponentType<WhiteboardAppProps>
+	const ComponentToRender = (componentProps.isEmbedded || comparisonMode)
+		? ReadOnlyViewer
+		: App
 
 	root.render(
 		<StrictMode>
@@ -105,11 +108,11 @@ export const renderWhiteboardView = (rootElement: HTMLElement, props: RenderWhit
 }
 
 declare global {
-	interface Window {
-		OCA?: {
-			Viewer?: {
-				compareFileInfo?: ViewerFileInfo
-			}
-		}
-	}
+    interface Window {
+        OCA?: {
+            Viewer?: {
+                compareFileInfo?: ViewerFileInfo
+            }
+        }
+    }
 }
