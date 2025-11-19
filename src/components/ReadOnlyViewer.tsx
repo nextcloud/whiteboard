@@ -70,7 +70,7 @@ const resolveVersionSource = (source: string) => {
 	}
 }
 
-export default function CompareViewer({
+export default function ReadOnlyViewer({
 	fileName,
 	versionSource,
 	fileVersion,
@@ -136,7 +136,7 @@ export default function CompareViewer({
 				if (abortController.signal.aborted) {
 					return
 				}
-				logger.error('[CompareViewer] Failed to load comparison scene', fetchError)
+				logger.error('[ReadOnlyViewer] Failed to load scene', fetchError)
 				setError(t('whiteboard', 'Could not load this version'))
 				setScene(null)
 			} finally {
