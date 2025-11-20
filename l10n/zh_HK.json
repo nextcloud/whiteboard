@@ -32,6 +32,8 @@
     "You do not have permission to access this whiteboard for collaboration. You can continue working locally." : "您沒有權限訪問此白板進行協作。您可以繼續在近端工作。",
     "Authentication issue detected. Retrying…" : "檢測到身份驗證問題。正在重試 ...",
     "Local changes are automatically saved to your device. Collaboration features will be unavailable until this issue is resolved." : "近端更改會自動保存在您的設備上。在此問題解決之前，協作功能將無法使用。",
+    "This version is missing its source file" : "此版本缺少原始檔案",
+    "Could not load this version" : "無法載入此版本",
     "Show element creators" : "顯示元素創建者",
     "Display Mode" : "顯示模式",
     "On Selection" : "在選擇時",

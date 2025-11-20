@@ -1,0 +1,15 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Whiteboard" : "Whiteboard",
+    "Shared secret" : "Shared secret",
+    "Advanced settings" : "ການຕັ້ງຄ່າຂັ້ນສູງ",
+    "Offline" : "Offline",
+    "Connecting" : "Connecting",
+    "Online" : "ອອນລາຍ",
+    "Unknown" : "ບໍ່ຮູ້",
+    "Stop" : "Stop",
+    "Version {version}" : "Version {version}",
+    "Version restored" : "Version restored"
+},
+"nplurals=1; plural=0;");
