@@ -85,7 +85,7 @@ jobs:
           script: |
             const fs = require('fs');
             
-            // Read and parse results with error handling
+            // Read and parse current results with error handling
             let results;
             try {
               const data = fs.readFileSync('results.json', 'utf8');
@@ -101,9 +101,46 @@ jobs:
               throw error;
             }
             
+            // Read baseline results
+            let baseline = null;
+            try {
+              const baselineData = fs.readFileSync('tools/benchmarks/results.json', 'utf8');
+              const baselineJson = JSON.parse(baselineData);
+              if (baselineJson.scenarios) {
+                baseline = {};
+                for (const scenario of baselineJson.scenarios) {
+                  baseline[scenario.concurrency] = scenario;
+                }
+              }
+            } catch (error) {
+              console.log('No baseline found or error reading baseline:', error.message);
+            }
+            
+            // Helper function to format diff
+            const formatDiff = (current, base, decimals = 2) => {
+              if (base === undefined || base === null) return current.toFixed(decimals);
+              const diff = current - base;
+              const sign = diff > 0 ? '+' : '';
+              const color = diff > 0 ? '🔴' : (diff < 0 ? '🟢' : '⚪');
+              return `${current.toFixed(decimals)} (${color}${sign}${diff.toFixed(decimals)})`;
+            };
+            
+            const formatPercent = (current, base, decimals = 2) => {
+              if (base === undefined || base === null) return `${current.toFixed(decimals)}%`;
+              const diff = current - base;
+              const sign = diff > 0 ? '+' : '';
+              const color = diff > 0 ? '🔴' : (diff < 0 ? '🟢' : '⚪');
+              return `${current.toFixed(decimals)}% (${color}${sign}${diff.toFixed(decimals)}%)`;
+            };
+            
             // Format the results as a markdown table
             let comment = '## 🚀 Benchmark Load Test Results\n\n';
-            comment += 'These results show the performance characteristics of the websocket server under load.\n\n';
+            if (baseline) {
+              comment += 'Comparison with baseline from `tools/benchmarks/results.json`.\n';
+              comment += 'Legend: 🟢 improvement, 🔴 regression, ⚪ no change\n\n';
+            } else {
+              comment += 'These results show the performance characteristics of the websocket server under load.\n\n';
+            }
             
             // Create a table for each concurrency level
             comment += '| Concurrent Users | Avg CPU | Peak CPU | Avg Memory (MB) | Peak Memory (MB) | Dropped Connections |\n';
@@ -111,7 +148,15 @@ jobs:
             
             for (const result of results) {
               const { concurrency, cpu, memory, loadSummary } = result;
-              comment += `| ${concurrency} | ${cpu.average.toFixed(2)}% | ${cpu.peak.toFixed(2)}% | ${memory.averageRssMb.toFixed(2)} | ${memory.peakRssMb.toFixed(2)} | ${loadSummary.droppedConnections} |\n`;
+              const base = baseline ? baseline[concurrency] : null;
+              
+              const avgCpu = base ? formatPercent(cpu.average, base.cpu.average) : `${cpu.average.toFixed(2)}%`;
+              const peakCpu = base ? formatPercent(cpu.peak, base.cpu.peak) : `${cpu.peak.toFixed(2)}%`;
+              const avgMem = base ? formatDiff(memory.averageRssMb, base.memory.averageRssMb) : memory.averageRssMb.toFixed(2);
+              const peakMem = base ? formatDiff(memory.peakRssMb, base.memory.peakRssMb) : memory.peakRssMb.toFixed(2);
+              const dropped = base ? formatDiff(loadSummary.droppedConnections, base.droppedConnections, 0) : loadSummary.droppedConnections;
+              
+              comment += `| ${concurrency} | ${avgCpu} | ${peakCpu} | ${avgMem} | ${peakMem} | ${dropped} |\n`;
             }
             
             comment += '\n### Details\n\n';
