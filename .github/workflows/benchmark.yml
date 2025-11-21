@@ -116,6 +116,11 @@ jobs:
               console.log('No baseline found or error reading baseline:', error.message);
             }
             
+            // Helper function to format numbers with thousand separators
+            const formatNumber = (num) => {
+              return Math.round(num).toLocaleString('en-US');
+            };
+            
             // Helper function to format diff
             const formatDiff = (current, base, decimals = 2) => {
               if (base === undefined || base === null) return current.toFixed(decimals);
@@ -123,6 +128,14 @@ jobs:
               const sign = diff > 0 ? '+' : '';
               const color = diff > 0 ? '🔴' : (diff < 0 ? '🟢' : '⚪');
               return `${current.toFixed(decimals)} (${color}${sign}${diff.toFixed(decimals)})`;
+            };
+            
+            const formatDiffInt = (current, base) => {
+              if (base === undefined || base === null) return formatNumber(current);
+              const diff = current - base;
+              const sign = diff > 0 ? '+' : '';
+              const color = diff > 0 ? '🔴' : (diff < 0 ? '🟢' : '⚪');
+              return `${formatNumber(current)} (${color}${sign}${formatNumber(diff)})`;
             };
             
             const formatPercent = (current, base, decimals = 2) => {
@@ -143,8 +156,8 @@ jobs:
             }
             
             // Create a table for each concurrency level
-            comment += '| Concurrent Users | Avg CPU | Peak CPU | Avg Memory (MB) | Peak Memory (MB) | Dropped Connections |\n';
-            comment += '|------------------|---------|----------|-----------------|------------------|--------------------|\n';
+            comment += '| Concurrent Users | Avg CPU | Peak CPU | Avg Memory (MB) | Peak Memory (MB) | Bytes Sent | Bytes Received | Messages Sent | Messages Received | Dropped Connections |\n';
+            comment += '|------------------|---------|----------|-----------------|------------------|------------|----------------|---------------|-------------------|--------------------|\n';
             
             for (const result of results) {
               const { concurrency, cpu, memory, loadSummary } = result;
@@ -154,11 +167,19 @@ jobs:
               const peakCpu = base ? formatPercent(cpu.peak, base.cpu.peak) : `${cpu.peak.toFixed(2)}%`;
               const avgMem = base ? formatDiff(memory.averageRssMb, base.memory.averageRssMb) : memory.averageRssMb.toFixed(2);
               const peakMem = base ? formatDiff(memory.peakRssMb, base.memory.peakRssMb) : memory.peakRssMb.toFixed(2);
+              
+              // Network/message metrics - use formatDiffInt for large numbers with thousand separators
+              const bytesSent = base ? formatDiffInt(loadSummary.bytesSent, base.network?.ingressBytes) : formatNumber(loadSummary.bytesSent);
+              const bytesReceived = base ? formatDiffInt(loadSummary.bytesReceived, base.network?.egressBytes) : formatNumber(loadSummary.bytesReceived);
+              // Messages are new metrics, show without diff if baseline doesn't have them
+              const messagesSent = formatNumber(loadSummary.messagesSent);
+              const messagesReceived = formatNumber(loadSummary.messagesReceived);
+              
               // Note: baseline has droppedConnections at top level, not in loadSummary
               const baseDropped = base ? base.droppedConnections : null;
               const dropped = base ? formatDiff(loadSummary.droppedConnections, baseDropped, 0) : loadSummary.droppedConnections;
               
-              comment += `| ${concurrency} | ${avgCpu} | ${peakCpu} | ${avgMem} | ${peakMem} | ${dropped} |\n`;
+              comment += `| ${concurrency} | ${avgCpu} | ${peakCpu} | ${avgMem} | ${peakMem} | ${bytesSent} | ${bytesReceived} | ${messagesSent} | ${messagesReceived} | ${dropped} |\n`;
             }
             
             comment += '\n### Details\n\n';
