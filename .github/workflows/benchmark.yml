@@ -169,6 +169,9 @@ jobs:
               const peakMem = base ? formatDiff(memory.peakRssMb, base.memory.peakRssMb) : memory.peakRssMb.toFixed(2);
               
               // Network/message metrics - use formatDiffInt for large numbers with thousand separators
+              // Note: baseline stores network bytes from server perspective (ingress=from clients, egress=to clients)
+              // Current results are from client perspective (sent=to server, received=from server)
+              // So: bytesSent maps to ingressBytes, bytesReceived maps to egressBytes
               const bytesSent = base ? formatDiffInt(loadSummary.bytesSent, base.network?.ingressBytes) : formatNumber(loadSummary.bytesSent);
               const bytesReceived = base ? formatDiffInt(loadSummary.bytesReceived, base.network?.egressBytes) : formatNumber(loadSummary.bytesReceived);
               // Messages are new metrics, show without diff if baseline doesn't have them
