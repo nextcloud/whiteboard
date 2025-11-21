@@ -64,7 +64,7 @@ jobs:
           sed -n '/=== Benchmark Summary ===/,$ p' benchmark_output.txt | tail -n +2 > results.json
           
           # Validate JSON format using Node.js
-          if ! node -e "JSON.parse(require('fs').readFileSync('results.json', 'utf8'))" 2>&1; then
+          if ! node -e "JSON.parse(require('fs').readFileSync('results.json', 'utf8'))" > /dev/null 2>&1; then
             echo "Error: Failed to extract valid JSON from benchmark output"
             cat benchmark_output.txt
             exit 1
@@ -129,7 +129,7 @@ jobs:
             comment += `For full benchmarks, see the [README](https://github.com/${context.repo.owner}/${context.repo.repo}#benchmarking--capacity-planning).*`;
             
             // Post the comment
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
