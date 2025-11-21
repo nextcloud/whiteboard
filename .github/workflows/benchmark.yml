@@ -63,8 +63,8 @@ jobs:
           # The script outputs JSON after the "=== Benchmark Summary ===" line
           sed -n '/=== Benchmark Summary ===/,$ p' benchmark_output.txt | tail -n +2 > results.json
           
-          # Validate JSON format
-          if ! jq '.' results.json > /dev/null 2>&1; then
+          # Validate JSON format using Node.js
+          if ! node -e "JSON.parse(require('fs').readFileSync('results.json', 'utf8'))" 2>&1; then
             echo "Error: Failed to extract valid JSON from benchmark output"
             cat benchmark_output.txt
             exit 1
@@ -76,7 +76,7 @@ jobs:
       - name: Display benchmark results
         run: |
           echo "## Benchmark Results"
-          cat results.json | jq '.'
+          node -pe "JSON.stringify(JSON.parse(require('fs').readFileSync('results.json', 'utf8')), null, 2)"
 
       - name: Comment PR with results
         if: github.event_name == 'pull_request'
