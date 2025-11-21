@@ -1,0 +1,129 @@
+# SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Benchmark Load Test
+
+on:
+  pull_request:
+    paths:
+      - 'websocket_server/**'
+      - 'tools/benchmarks/**'
+      - '.github/workflows/benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    name: Run Load Test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Read package.json node and npm engines version
+        uses: skjnldsv/read-package-engines-version-actions@06d6baf7d8f41934ab630e97d9e6c0bc9c9ac5e4 # v3
+        id: versions
+        with:
+          fallbackNode: '^20'
+          fallbackNpm: '^10'
+
+      - name: Set up node ${{ steps.versions.outputs.nodeVersion }}
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: ${{ steps.versions.outputs.nodeVersion }}
+
+      - name: Set up npm ${{ steps.versions.outputs.npmVersion }}
+        run: npm i -g 'npm@${{ steps.versions.outputs.npmVersion }}'
+
+      - name: Install dependencies
+        env:
+          CYPRESS_INSTALL_BINARY: 0
+          PUPPETEER_SKIP_DOWNLOAD: true
+        run: npm ci
+
+      - name: Run benchmark load test
+        id: benchmark
+        run: |
+          # Run benchmark with smaller load for CI
+          export TLS=false
+          export JWT_SECRET_KEY=benchmark-secret
+          export NEXTCLOUD_URL=http://localhost
+          export LOAD_TEST_CONCURRENCY=50,100
+          export LOAD_TEST_DURATION=45
+          export NODE_OPTIONS=--max-old-space-size=8192
+          
+          # Run the benchmark and capture output
+          node tools/benchmarks/runBenchmarks.mjs > benchmark_output.txt 2>&1
+          
+          # Extract the JSON results from the output
+          # The script outputs JSON after the "=== Benchmark Summary ===" line
+          sed -n '/=== Benchmark Summary ===/,$ p' benchmark_output.txt | tail -n +2 > results.json
+          
+          # Display the full output
+          cat benchmark_output.txt
+          
+          # Store results for next step
+          echo "RESULTS<<EOF" >> $GITHUB_OUTPUT
+          cat results.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Display benchmark results
+        run: |
+          echo "## Benchmark Results"
+          cat results.json | jq '.'
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('results.json', 'utf8'));
+            
+            // Format the results as a markdown table
+            let comment = '## 🚀 Benchmark Load Test Results\n\n';
+            comment += 'These results show the performance characteristics of the websocket server under load.\n\n';
+            
+            // Create a table for each concurrency level
+            comment += '| Concurrent Users | Avg CPU | Peak CPU | Avg Memory (MB) | Peak Memory (MB) | Dropped Connections |\n';
+            comment += '|------------------|---------|----------|-----------------|------------------|--------------------|\n';
+            
+            for (const result of results) {
+              const { concurrency, cpu, memory, loadSummary } = result;
+              comment += `| ${concurrency} | ${cpu.average.toFixed(2)}% | ${cpu.peak.toFixed(2)}% | ${memory.averageRssMb.toFixed(2)} | ${memory.peakRssMb.toFixed(2)} | ${loadSummary.droppedConnections} |\n`;
+            }
+            
+            comment += '\n### Details\n\n';
+            for (const result of results) {
+              const { concurrency, loadSummary } = result;
+              comment += `<details>\n<summary>📊 ${concurrency} concurrent users</summary>\n\n`;
+              comment += '```json\n';
+              comment += JSON.stringify(result, null, 2);
+              comment += '\n```\n\n';
+              comment += '</details>\n\n';
+            }
+            
+            comment += '\n---\n';
+            comment += '*Note: These benchmarks run with reduced load (50, 100 users) for CI efficiency. ';
+            comment += 'For full benchmarks, see the [README](https://github.com/nextcloud/whiteboard#benchmarking--capacity-planning).*';
+            
+            // Post the comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        if: always()
+        with:
+          name: benchmark-results
+          path: |
+            results.json
+            benchmark_output.txt
