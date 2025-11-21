@@ -63,13 +63,15 @@ jobs:
           # The script outputs JSON after the "=== Benchmark Summary ===" line
           sed -n '/=== Benchmark Summary ===/,$ p' benchmark_output.txt | tail -n +2 > results.json
           
+          # Validate JSON format
+          if ! jq '.' results.json > /dev/null 2>&1; then
+            echo "Error: Failed to extract valid JSON from benchmark output"
+            cat benchmark_output.txt
+            exit 1
+          fi
+          
           # Display the full output
           cat benchmark_output.txt
-          
-          # Store results for next step
-          echo "RESULTS<<EOF" >> $GITHUB_OUTPUT
-          cat results.json >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Display benchmark results
         run: |
@@ -82,7 +84,22 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const results = JSON.parse(fs.readFileSync('results.json', 'utf8'));
+            
+            // Read and parse results with error handling
+            let results;
+            try {
+              const data = fs.readFileSync('results.json', 'utf8');
+              results = JSON.parse(data);
+            } catch (error) {
+              console.error('Failed to read or parse results.json:', error);
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## ❌ Benchmark Load Test Failed\n\nFailed to parse benchmark results. Please check the workflow logs for details.'
+              });
+              throw error;
+            }
             
             // Format the results as a markdown table
             let comment = '## 🚀 Benchmark Load Test Results\n\n';
@@ -109,7 +126,7 @@ jobs:
             
             comment += '\n---\n';
             comment += '*Note: These benchmarks run with reduced load (50, 100 users) for CI efficiency. ';
-            comment += 'For full benchmarks, see the [README](https://github.com/nextcloud/whiteboard#benchmarking--capacity-planning).*';
+            comment += `For full benchmarks, see the [README](https://github.com/${context.repo.owner}/${context.repo.repo}#benchmarking--capacity-planning).*`;
             
             // Post the comment
             github.rest.issues.createComment({
