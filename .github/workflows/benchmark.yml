@@ -154,7 +154,9 @@ jobs:
               const peakCpu = base ? formatPercent(cpu.peak, base.cpu.peak) : `${cpu.peak.toFixed(2)}%`;
               const avgMem = base ? formatDiff(memory.averageRssMb, base.memory.averageRssMb) : memory.averageRssMb.toFixed(2);
               const peakMem = base ? formatDiff(memory.peakRssMb, base.memory.peakRssMb) : memory.peakRssMb.toFixed(2);
-              const dropped = base ? formatDiff(loadSummary.droppedConnections, base.droppedConnections, 0) : loadSummary.droppedConnections;
+              // Note: baseline has droppedConnections at top level, not in loadSummary
+              const baseDropped = base ? base.droppedConnections : null;
+              const dropped = base ? formatDiff(loadSummary.droppedConnections, baseDropped, 0) : loadSummary.droppedConnections;
               
               comment += `| ${concurrency} | ${avgCpu} | ${peakCpu} | ${avgMem} | ${peakMem} | ${dropped} |\n`;
             }
