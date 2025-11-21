@@ -64,7 +64,7 @@ jobs:
           sed -n '/=== Benchmark Summary ===/,$ p' benchmark_output.txt | tail -n +2 > results.json
           
           # Validate JSON format using Node.js
-          if ! node -e "JSON.parse(require('fs').readFileSync('results.json', 'utf8'))" > /dev/null 2>&1; then
+          if ! node -e "JSON.parse(require('fs').readFileSync('results.json', 'utf8'))" 2>/dev/null; then
             echo "Error: Failed to extract valid JSON from benchmark output"
             cat benchmark_output.txt
             exit 1
@@ -116,7 +116,7 @@ jobs:
             
             comment += '\n### Details\n\n';
             for (const result of results) {
-              const { concurrency, loadSummary } = result;
+              const { concurrency } = result;
               comment += `<details>\n<summary>📊 ${concurrency} concurrent users</summary>\n\n`;
               comment += '```json\n';
               comment += JSON.stringify(result, null, 2);
