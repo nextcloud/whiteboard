@@ -357,7 +357,7 @@ export default class RecordingService extends EventEmitter {
 			const { page } = session
 			session.isRecording = false
 			const sessionPath = session.sessionPath || path.join(this.recordingsPath, sessionKey)
-			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ')
+			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-')
 			const outputPath = path.join(sessionPath, `${formattedDate}.webm`)
 			session.lastRecordingPath = outputPath
 
