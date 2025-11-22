@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-FROM node:25.2.0-alpine AS build
+FROM node:25.2.1-alpine AS build
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 ARG NODE_ENV=production
 ENV PUPPETEER_SKIP_DOWNLOAD=1
@@ -14,7 +14,7 @@ RUN npm install --global clean-modules && \
     npm cache clean --force
 COPY . .
 
-FROM node:25.2.0-alpine
+FROM node:25.2.1-alpine
 WORKDIR /app
 ENV NODE_ENV=production \
     HOME=/app \
