@@ -185,7 +185,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 						const url = URL.createObjectURL(blob)
 						const link = document.createElement('a')
 						link.href = url
-						link.download = `whiteboard_${data.fileId}_${new Date().toISOString().slice(0, 16).replace('T', '_')}.webm`
+						link.download = `whiteboard_${data.fileId}_${new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')}.webm`
 						document.body.appendChild(link)
 						link.click()
 						document.body.removeChild(link)
