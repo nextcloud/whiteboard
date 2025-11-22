@@ -50,7 +50,7 @@
 }
 
 .excalidraw .panelColumn {
-	text-align: left;
+	text-align: start;
 }
 
 .excalidraw .Switch input,
@@ -134,7 +134,7 @@
 	color: var(--popup-text-color) !important;
 	margin-top: 0 !important;
 	margin-bottom: 0 !important;
-	padding-left: calc(var(--default-grid-baseline) * 3) !important;
+	padding-inline-start: calc(var(--default-grid-baseline) * 3) !important;
 }
 
 .excalidraw .context-menu-item:hover {
