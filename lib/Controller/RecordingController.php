@@ -182,7 +182,7 @@ final class RecordingController extends Controller {
 
 	private function generateRecordingFilename(string $filename): string {
 		$sanitizedName = preg_replace('/[^a-zA-Z0-9_\- ]/', '_', pathinfo($filename, PATHINFO_FILENAME)) ?: 'recording';
-		$timestamp = date('Y-m-d H:i') ?: 'unknown-time';
+		$timestamp = date('Y-m-d H-i') ?: 'unknown-time';
 		return sprintf('%s (%s).webm', $sanitizedName, $timestamp);
 	}
 
