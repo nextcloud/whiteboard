@@ -8,6 +8,7 @@
     "Unknown" : "Неизвестен",
     "Stop" : "Спиране /на/",
     "Restore this version" : "Възстановяване на тази версия",
+    "Version {version}" : "Версия {version}",
     "Version restored" : "Версията е възстановена"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

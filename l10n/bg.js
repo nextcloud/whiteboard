@@ -10,6 +10,7 @@ OC.L10N.register(
     "Unknown" : "Неизвестен",
     "Stop" : "Спиране /на/",
     "Restore this version" : "Възстановяване на тази версия",
+    "Version {version}" : "Версия {version}",
     "Version restored" : "Версията е възстановена"
 },
 "nplurals=2; plural=(n != 1);");
