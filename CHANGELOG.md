@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.2
+
+### Features
+* Add read-only EmbeddedViewer component for whiteboard nesting #800
+
+### Fixed
+* Fix recordings' file names for Windows compatibility #809
+* Fix versions comparison, regular clean-ups, improve structure #774
+
+### Other
+* Add host environment variable to the websocket server #784
+* Update node and npm engines versions #771
+* Keep Nextcloud OCP development dependency up to date #785 #797 #810
+
 ## 1.4.1
 
 ### Features
