@@ -11,6 +11,7 @@ OC.L10N.register(
     "Shared secret" : "已分享密码",
     "Save settings" : "保存设置",
     "Advanced settings" : "高级选项",
+    "Offline" : "离线",
     "Connecting" : "正在连接",
     "Online" : "在线",
     "Unknown" : "未知",

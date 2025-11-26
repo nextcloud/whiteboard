@@ -3,13 +3,13 @@ OC.L10N.register(
     {
     "Advanced settings" : "Пашыраныя налады",
     "Authentication Error" : "Памылка аўтэнтыфікацыі",
-    "Could not load this version" : "Не ўдалося загрузіць гэту версію",
-    "{fileName} – Version {version}" : "{fileName} – Версія {version}",
-    "Loading version..." : "Загрузка версіі...",
     "Offline" : "Па-за сеткай",
     "Online" : "У сетцы",
     "Unknown" : "Невядомы",
     "Stop" : "Спыніць",
+    "Could not load this version" : "Не ўдалося загрузіць гэту версію",
+    "{fileName} – Version {version}" : "{fileName} – Версія {version}",
+    "Loading version..." : "Загрузка версіі...",
     "Version {version}" : "Версія {version}",
     "Version restored" : "Версія адноўлена"
 },
