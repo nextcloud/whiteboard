@@ -19,8 +19,11 @@ import {
 	DEFAULT_HOST,
 } from './Constants.js'
 import Utils from './Utils.js'
+import { createRequire } from 'module'
 
 dotenv.config()
+
+const require = createRequire(import.meta.url)
 
 const Config = {
 	IS_TEST_ENV: process.env.NODE_ENV === 'test',
@@ -130,8 +133,19 @@ const Config = {
 			}
 		}
 
-		// If no Chrome found, return undefined to let puppeteer-core try its own detection
-		console.log('[Config] No Chrome found in common paths, letting puppeteer-core auto-detect')
+		// Fallback to Playwright Chromium if installed
+		try {
+			const { chromium } = require('playwright-core')
+			const pwPath = chromium.executablePath()
+			if (pwPath && fs.existsSync(pwPath)) {
+				console.log(`[Config] Using Playwright Chromium at: ${pwPath}`)
+				return pwPath
+			}
+		} catch (error) {
+			console.warn('[Config] Playwright Chromium lookup failed:', error?.message || error)
+		}
+
+		console.warn('[Config] No Chromium found. Set CHROME_EXECUTABLE_PATH to a valid browser binary.')
 		return undefined
 	},
 }
