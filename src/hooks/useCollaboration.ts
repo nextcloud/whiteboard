@@ -504,6 +504,8 @@ export function useCollaboration() {
 		debouncedJoinRoom(currentSocket, roomIdStr)
 	}, [fileId, debouncedJoinRoom]) // Dependencies read via store state
 
+	let lastElementsString = null
+
 	const handleClientBroadcast = useCallback(
 		async (data: ArrayBuffer) => {
 			try {
@@ -573,7 +575,13 @@ export function useCollaboration() {
 				}
 				case BroadcastType.SceneInit:
 					if (Array.isArray(decoded.payload?.elements)) {
+						const elementsString = JSON.stringify(decoded.payload.elements)
+						if (elementsString === lastElementsString) {
+							console.warn('[Collaboration] Received identical SceneInit payload, skipping update')
+							break
+						}
 						queueSceneUpdate(decoded.payload.elements)
+						lastElementsString = JSON.stringify(decoded.payload.elements)
 					} else {
 						console.warn('[Collaboration] Invalid SceneInit payload:', decoded.payload)
 					}
