@@ -25,7 +25,17 @@ export const test = base.extend<RandomUserFixture>({
 			baseURL,
 		})
 
-		await login(page.request, user)
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				await login(page.request, user)
+				break
+			} catch (error) {
+				if (attempt === 2) {
+					throw error
+				}
+				await page.waitForTimeout(1000)
+			}
+		}
 
 		await use(page)
 		await page.close()
