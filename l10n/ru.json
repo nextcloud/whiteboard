@@ -1,5 +1,6 @@
 { "translations": {
     "Whiteboard" : "Доска",
+    "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Общий секрет сервера WebSocket не настроен. Это необходимо для безопасной аутентификации между Nextcloud и сервером WebSocket для совместной работы в режиме реального времени.",
     "Shared secret" : "Общая секретная фраза",
     "Save settings" : "Сохранить изменения",
     "Advanced settings" : "Расширенные параметры",
