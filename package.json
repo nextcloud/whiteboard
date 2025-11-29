@@ -20,7 +20,7 @@
     "start:nextcloud": "node playwright/start-nextcloud-server.mjs"
   },
   "dependencies": {
-    "@excalidraw/mermaid-to-excalidraw": "^1.1.4",
+    "@excalidraw/mermaid-to-excalidraw": "^2.0.0",
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
     "@mdi/svg": "^7.4.47",
