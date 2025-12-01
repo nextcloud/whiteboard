@@ -138,12 +138,12 @@ function parseInlineMarkdown(text: string): string {
 }
 
 /**
- * Convert HTML to a data URL using canvas rendering
+ * Convert HTML to an SVG data URL
  * @param html - The HTML content to convert
- * @return Data URL of the rendered image
+ * @return SVG data URL of the rendered image
  */
 async function htmlToDataUrl(html: string): Promise<string> {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve) => {
 		// Create a temporary container
 		const container = document.createElement('div')
 		container.innerHTML = html
@@ -156,28 +156,9 @@ async function htmlToDataUrl(html: string): Promise<string> {
 
 		// Wait for next frame to ensure rendering
 		requestAnimationFrame(() => {
-			const cleanup = () => document.body.removeChild(container)
-			try {
-				// Use html2canvas if available, otherwise use a simple SVG approach
-				if (typeof window.html2canvas === 'function') {
-					window.html2canvas(container).then(canvas => {
-						const dataUrl = canvas.toDataURL('image/png')
-						cleanup()
-						resolve(dataUrl)
-					}).catch(error => {
-						cleanup()
-						reject(error)
-					})
-				} else {
-					// Fallback: create SVG with foreignObject
-					const svgDataUrl = createSvgDataUrl(container)
-					cleanup()
-					resolve(svgDataUrl)
-				}
-			} catch (error) {
-				cleanup()
-				reject(error)
-			}
+			const svgDataUrl = createSvgDataUrl(container)
+			document.body.removeChild(container)
+			resolve(svgDataUrl)
 		})
 	})
 }
@@ -229,10 +210,4 @@ async function getImageDimensions(dataUrl: string): Promise<{ width: number; hei
  */
 function generateFileId(): string {
 	return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-}
-
-declare global {
-	interface Window {
-		html2canvas?: (element: HTMLElement) => Promise<HTMLCanvasElement>
-	}
 }
