@@ -10,8 +10,6 @@ import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px;'
 const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600; text-align: left;`
 const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px;'
-const CODE_STYLE = 'background-color: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;'
-const LINK_STYLE = 'color: #00679e; text-decoration: none;'
 
 /**
  * Convert markdown table to an image element for Excalidraw
@@ -82,7 +80,7 @@ async function renderMarkdownToHtml(markdown: string): Promise<string> {
 	const headerCells = lines[0].split('|').slice(1, -1) // Remove first and last empty strings from pipes to allow empty cells
 	html += '<thead><tr>'
 	headerCells.forEach(cell => {
-		html += `<th style="${HEADER_CELL_STYLE}">${parseInlineMarkdown(cell.trim())}</th>`
+		html += `<th style="${HEADER_CELL_STYLE}">${escapeHtml(cell.trim())}</th>`
 	})
 	html += '</tr></thead>'
 
@@ -100,7 +98,7 @@ async function renderMarkdownToHtml(markdown: string): Promise<string> {
 			if (cells.length > 0) {
 				html += '<tr>'
 				cells.forEach(cell => {
-					html += `<td style="${CELL_BASE_STYLE}">${parseInlineMarkdown(cell.trim())}</td>`
+					html += `<td style="${CELL_BASE_STYLE}">${escapeHtml(cell.trim())}</td>`
 				})
 				html += '</tr>'
 			}
@@ -111,7 +109,7 @@ async function renderMarkdownToHtml(markdown: string): Promise<string> {
 			cells.forEach(cell => {
 				const trimmed = cell.trim()
 				if (trimmed) { // Only create cell if not empty
-					html += `<td style="${CELL_BASE_STYLE}">${parseInlineMarkdown(trimmed)}</td>`
+					html += `<td style="${CELL_BASE_STYLE}">${escapeHtml(trimmed)}</td>`
 				}
 			})
 			html += '</tr>'
@@ -123,36 +121,17 @@ async function renderMarkdownToHtml(markdown: string): Promise<string> {
 }
 
 /**
- * Parse inline markdown formatting (bold, italic, code, strikethrough, etc.)
- * @param text - The text to parse
- * @return HTML string with inline formatting
+ * Escape HTML special characters to prevent XSS
+ * @param text - The text to escape
+ * @return Escaped HTML string
  */
-function parseInlineMarkdown(text: string): string {
-	let result = text
-
-	// Escape HTML special characters first (except & which might be part of existing entities)
-	result = result
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')
-
-	// Bold with ** or __
-	result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-	result = result.replace(/__(.+?)__/g, '<strong>$1</strong>')
-
-	// Italic with * or _
-	result = result.replace(/\*(.+?)\*/g, '<em>$1</em>')
-	result = result.replace(/_(.+?)_/g, '<em>$1</em>')
-
-	// Strikethrough with ~~
-	result = result.replace(/~~(.+?)~~/g, '<del>$1</del>')
-
-	// Inline code with `
-	result = result.replace(/`(.+?)`/g, `<code style="${CODE_STYLE}">$1</code>`)
-
-	// Links [text](url)
-	result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, `<a href="$2" style="${LINK_STYLE}">$1</a>`)
-
-	return result
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;')
 }
 
 /**
