@@ -79,7 +79,7 @@ async function renderMarkdownToHtml(markdown: string): Promise<string> {
 	let html = `<table style="${TABLE_STYLE}">`
 
 	// Parse header
-	const headerCells = lines[0].split('|').filter(cell => cell.trim())
+	const headerCells = lines[0].split('|').slice(1, -1) // Remove first and last empty strings from pipes to allow empty cells
 	html += '<thead><tr>'
 	headerCells.forEach(cell => {
 		html += `<th style="${HEADER_CELL_STYLE}">${parseInlineMarkdown(cell.trim())}</th>`
@@ -90,11 +90,29 @@ async function renderMarkdownToHtml(markdown: string): Promise<string> {
 	// Parse body rows
 	html += '<tbody>'
 	for (let i = 2; i < lines.length; i++) {
-		const cells = lines[i].split('|').filter(cell => cell.trim())
-		if (cells.length > 0) {
+		const line = lines[i].trim()
+		if (!line) continue // Skip empty lines
+
+		// Check if line looks like a table row (starts and ends with |)
+		if (line.startsWith('|') && line.endsWith('|')) {
+			// Standard table row - split by pipes
+			const cells = line.split('|').slice(1, -1) // Remove first and last empty strings from pipes to allow empty cells
+			if (cells.length > 0) {
+				html += '<tr>'
+				cells.forEach(cell => {
+					html += `<td style="${CELL_BASE_STYLE}">${parseInlineMarkdown(cell.trim())}</td>`
+				})
+				html += '</tr>'
+			}
+		} else {
+			// Non-table line - split by | to create cells
+			const cells = line.split('|')
 			html += '<tr>'
 			cells.forEach(cell => {
-				html += `<td style="${CELL_BASE_STYLE}">${parseInlineMarkdown(cell.trim())}</td>`
+				const trimmed = cell.trim()
+				if (trimmed) { // Only create cell if not empty
+					html += `<td style="${CELL_BASE_STYLE}">${parseInlineMarkdown(trimmed)}</td>`
+				}
 			})
 			html += '</tr>'
 		}
