@@ -150,7 +150,7 @@ export default defineComponent({
 				<h2>
 					{{ isEditing ? t('whiteboard', 'Edit Table') : t('whiteboard', 'Insert Table') }}
 				</h2>
-				<p>{{ t('whiteboard', 'Use the table feature in the editor to create or edit your table') }}</p>
+				<p>{{ t('whiteboard', 'All content will be rendered as table rows.') }}</p>
 			</div>
 
 			<NcNoteCard v-if="error" type="error">
