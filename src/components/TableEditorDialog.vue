@@ -27,7 +27,7 @@ export default defineComponent({
 			editor: null,
 			isLoading: true,
 			error: null,
-			currentMarkdown: this.initialMarkdown || this.getDefaultTable(),
+			currentMarkdown: this.initialMarkdown || '',
 		}
 	},
 	computed: {
@@ -60,8 +60,8 @@ export default defineComponent({
 					return
 				}
 
-				// Create the Text editor instance with callbacks
-				this.editor = await window.OCA.Text.createEditor({
+				// Use the dedicated createTable function for table-only editing
+				this.editor = await window.OCA.Text.createTable({
 					el: editorContainer,
 					content: this.currentMarkdown,
 					// Track content changes
@@ -88,13 +88,6 @@ export default defineComponent({
 			}
 		},
 
-		getDefaultTable() {
-			return `| Column 1 | Column 2 | Column 3 |
-| -------- | -------- | -------- |
-| Cell 1   | Cell 2   | Cell 3   |
-| Cell 4   | Cell 5   | Cell 6   |`
-		},
-
 		onCancel() {
 			this.show = false
 			this.$emit('cancel')
@@ -107,7 +100,6 @@ export default defineComponent({
 			}
 
 			try {
-				// Use the tracked markdown content
 				const markdown = this.currentMarkdown
 
 				if (!markdown || !markdown.trim()) {
@@ -150,7 +142,6 @@ export default defineComponent({
 				<h2>
 					{{ isEditing ? t('whiteboard', 'Edit Table') : t('whiteboard', 'Insert Table') }}
 				</h2>
-				<p>{{ t('whiteboard', 'All content will be rendered as table rows.') }}</p>
 			</div>
 
 			<NcNoteCard v-if="error" type="error">
