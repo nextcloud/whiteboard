@@ -75,6 +75,7 @@ export function useCollaboration() {
 		incrementAuthFailure,
 		clearAuthError,
 		resetStore, // Use resetStore for full cleanup
+		setIsInRoom,
 	} = useCollaborationStore(
 		useShallow(state => ({
 			setStatus: state.setStatus,
@@ -83,6 +84,7 @@ export function useCollaboration() {
 			incrementAuthFailure: state.incrementAuthFailure,
 			clearAuthError: state.clearAuthError,
 			resetStore: state.resetStore,
+			setIsInRoom: state.setIsInRoom,
 		})),
 	)
 
@@ -516,6 +518,11 @@ export function useCollaboration() {
 					return
 				}
 
+				if (useWhiteboardConfigStore.getState().isVersionPreview) {
+					console.log('[Collaboration] Ignoring broadcast while in version preview')
+					return
+				}
+
 				switch (decoded.type) {
 				case BroadcastType.SceneRestore: {
 					const payload = decoded.payload || {}
@@ -709,6 +716,7 @@ export function useCollaboration() {
 			socketInstance.on('connect', () => {
 				console.log('[Collaboration] Socket connect event fired - setting status to online')
 				setStatus('online')
+				setIsInRoom(false) // not joined yet
 
 				// Only clear auth errors if this was not a JWT secret mismatch
 				// JWT secret mismatch is a persistent configuration issue that won't be resolved by connection success
@@ -728,6 +736,7 @@ export function useCollaboration() {
 			socketInstance.on('disconnect', (reason) => {
 				console.warn(`[Collaboration] Socket disconnect event fired: ${reason}`)
 				clearExcalidrawCollaborators()
+				setIsInRoom(false)
 
 				// Only set to offline if this is an intentional disconnect
 				// For server disconnects, Socket.IO will automatically try to reconnect
@@ -749,6 +758,7 @@ export function useCollaboration() {
 
 				// Update status to online on successful reconnect
 				setStatus('online')
+				setIsInRoom(false) // will join again
 
 				// Clear auth errors since we're successfully reconnected
 				const { authError } = useCollaborationStore.getState()
@@ -811,6 +821,7 @@ export function useCollaboration() {
 
 			socketInstance.on('room-user-change', (data) => {
 				console.log(`[Collaboration] Room user change: ${data.length} users`)
+				setIsInRoom(true)
 				updateCollaboratorsState(data)
 			})
 
@@ -923,11 +934,6 @@ export function useCollaboration() {
 	const socketInstanceRef = useRef<CollaborationSocket | null>(null)
 
 	const connectSocket = useCallback(async () => {
-		if (useWhiteboardConfigStore.getState().isVersionPreview) {
-			console.log('[Collaboration] Skipping socket connection for version preview')
-			setStatus('offline')
-			return
-		}
 		// Use the fileId from our selective subscription instead of getState
 		const { socket: currentSocket, status: currentStatus } = useCollaborationStore.getState()
 
@@ -1052,6 +1058,7 @@ export function useCollaboration() {
 			setSocket(null)
 			setStatus('offline') // This will also clear collaborators in the store
 			clearExcalidrawCollaborators() // Clear from Excalidraw UI
+			setIsInRoom(false)
 
 			// Reset room join tracking
 			joinedRoomRef.current = null
@@ -1065,11 +1072,12 @@ export function useCollaboration() {
 	// Connect/Disconnect based on fileId
 	useEffect(() => {
 		if (fileId) {
-			console.log(`[Collaboration] FileId changed to ${fileId}, connecting socket`)
+			console.log(`[Collaboration] FileId ${fileId} active, connecting socket`)
 			connectSocket()
 		} else {
 			console.log('[Collaboration] No fileId, disconnecting socket')
 			disconnectSocket()
+			setIsInRoom(false)
 		}
 
 		// Cleanup when fileId changes
