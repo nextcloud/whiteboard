@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, memo } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline, mdiTable} from '@mdi/js'
+import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline } from '@mdi/js'
 import { MainMenu, CaptureUpdateAction } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
@@ -17,7 +17,6 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import type { RecordingHookState } from '../types/recording'
 import type { PresentationState } from '../types/presentation'
-import { useTableInsertion } from '../hooks/useTableInsertion'
 
 interface ExcalidrawMenuProps {
 	fileNameWithoutExtension: string
@@ -32,7 +31,6 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 	const { excalidrawAPI } = useExcalidrawStore(useShallow(state => ({
 		excalidrawAPI: state.excalidrawAPI,
 	})))
-	const { insertTable } = useTableInsertion()
 
 	const openExportDialog = useCallback(() => {
 		// Trigger export by dispatching the keyboard shortcut to the Excalidraw canvas
@@ -153,11 +151,6 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 		<MainMenu>
 			<MainMenu.DefaultItems.ToggleTheme />
 			<MainMenu.DefaultItems.ChangeCanvasBackground />
-			<MainMenu.Item
-				icon={<Icon path={mdiTable} size={0.75} />}
-				onSelect={() => insertTable()}>
-				{t('whiteboard', 'Insert table')}
-			</MainMenu.Item>
 			<MainMenu.Item
 				icon={<Icon path={mdiImageMultiple} size={0.75} />}
 				onSelect={openExportDialog}
