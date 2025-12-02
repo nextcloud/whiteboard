@@ -5,9 +5,9 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
-import { Excalidraw as ExcalidrawComponent, useHandleLibrary } from '@nextcloud/excalidraw'
+import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
@@ -43,6 +43,9 @@ import type { ElementCreatorInfo } from './types/whiteboard'
 import { VersionPreviewBanner } from './components/VersionPreviewBanner'
 import { useVersionPreview } from './hooks/useVersionPreview'
 import { subscribe, unsubscribe } from '@nextcloud/event-bus'
+import { useComment } from './hooks/useComment'
+import { CommentSidebar } from './components/CommentSidebar'
+import { t } from '@nextcloud/l10n'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -295,6 +298,22 @@ export default function App({
 		}
 	}, [resetInitialDataPromise, resetStore, resetExcalidrawAPI, terminateWorker, saveOnUnmount])
 
+	const [activeCommentThreadId, setActiveCommentThreadId] = useState<string | null>(null)
+	const [commentSidebarDocked, setCommentSidebarDocked] = useState(false)
+	const { renderComment, commentThreads, panToThread, deleteThread } = useComment({
+		activeCommentThreadId,
+		isReadOnly,
+		onCommentThreadClick: (commentThreadId) => {
+			setActiveCommentThreadId(commentThreadId)
+			if (commentThreadId) {
+				excalidrawAPI?.toggleSidebar({ name: 'commentSidebar', tab: 'comments', force: true })
+			}
+		},
+		onOpenSidebar: () => {
+			excalidrawAPI?.toggleSidebar({ name: 'commentSidebar', tab: 'comments', force: true })
+		},
+	})
+
 	useLayoutEffect(() => {
 		setConfig({
 			fileId: normalizedFileId,
@@ -310,6 +329,7 @@ export default function App({
 		updateLang()
 		renderSmartPicker()
 		renderAssistant()
+		renderComment()
 	}, [updateLang, renderSmartPicker, renderAssistant])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
@@ -453,6 +473,25 @@ export default function App({
 					langCode={lang}
 					libraryReturnUrl={libraryReturnUrl}
 				>
+					<Sidebar name="commentSidebar" docked={commentSidebarDocked} onDock={setCommentSidebarDocked}>
+						<Sidebar.Header>
+							{t('whiteboard', 'Comments')}
+						</Sidebar.Header>
+						<Sidebar.Tabs style={{ padding: '0.5rem' }}>
+							<Sidebar.Tab tab="comments">
+								<CommentSidebar
+									threads={commentThreads}
+									activeThreadId={activeCommentThreadId}
+									isReadOnly={isReadOnly}
+									onThreadClick={panToThread}
+									onDeleteThread={(threadId) => {
+										activeCommentThreadId === threadId && setActiveCommentThreadId(null)
+										deleteThread(threadId)
+									}}
+								/>
+							</Sidebar.Tab>
+						</Sidebar.Tabs>
+					</Sidebar>
 					{!isVersionPreview && (
 						<MemoizedExcalidrawMenu
 							fileNameWithoutExtension={fileNameWithoutExtension}
