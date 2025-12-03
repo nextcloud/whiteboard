@@ -55,6 +55,7 @@ export async function convertMarkdownTableToImage(
 			customData: {
 				tableMarkdown: markdown,
 				isTable: true,
+				tableLock: undefined,
 			},
 		},
 	])
