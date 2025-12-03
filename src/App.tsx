@@ -42,6 +42,7 @@ import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalid
 import type { ElementCreatorInfo } from './types/whiteboard'
 import { VersionPreviewBanner } from './components/VersionPreviewBanner'
 import { useVersionPreview } from './hooks/useVersionPreview'
+import { useEmojiPicker } from './hooks/useEmojiPicker'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -107,6 +108,7 @@ export default function App({
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
 	const { renderAssistant } = useAssistant()
+	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
 	useCollaboration()
@@ -250,7 +252,8 @@ export default function App({
 		updateLang()
 		renderSmartPicker()
 		renderAssistant()
-	}, [updateLang, renderSmartPicker, renderAssistant])
+		renderEmojiPicker()
+	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
 		if (!isLibraryLoaded) {
