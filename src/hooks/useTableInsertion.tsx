@@ -11,6 +11,7 @@ import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
 import TableEditorDialog from '../components/TableEditorDialog.vue'
 import { convertMarkdownTableToImage } from '../utils/tableToImage'
+import { tryAcquireLock, releaseLock } from '../utils/tableLocking'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
@@ -18,6 +19,13 @@ import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/ex
 
 const DOUBLE_CLICK_THRESHOLD_MS = 500
 
+/**
+ * Features:
+ * - Insert new markdown tables as image elements
+ * - Edit existing tables via double-click
+ * - Collaborative locking to prevent concurrent edits
+ * - Automatic sync with other users via normal Excalidraw onChange flow
+ */
 export function useTableInsertion() {
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow((state) => ({
@@ -36,6 +44,8 @@ export function useTableInsertion() {
 		return new Promise<{ markdown: string }>((resolve, reject) => {
 			const element = document.createElement('div')
 			document.body.appendChild(element)
+
+			// Instantiate the Vue component with initial markdown data
 			const View = Vue.extend(TableEditorDialog)
 			const view = new View({
 				propsData: {
@@ -56,7 +66,19 @@ export function useTableInsertion() {
 	}, [])
 
 	/**
-	 * Edits an existing table element
+	 * Edits an existing table element by opening the editor dialog.
+	 *
+	 * Flow:
+	 * 1. Validate the table element has markdown data
+	 * 2. Acquire a collaborative lock (shows error if locked by another user)
+	 * 3. Open the editor dialog with the current markdown
+	 * 4. On save: convert markdown to new image, update element, clear lock
+	 * 5. On cancel/error: release the lock
+	 *
+	 * The updated element is synced to other users via the normal Excalidraw onChange flow,
+	 * which triggers throttled websocket broadcasts and server API persistence.
+	 *
+	 * @param tableElement - The table image element to edit
 	 */
 	const editTable = useCallback(async (tableElement: ExcalidrawImageElement) => {
 		if (!excalidrawAPI) {
@@ -71,24 +93,57 @@ export function useTableInsertion() {
 			return
 		}
 
+		// Acquire a collaborative lock to prevent simultaneous editing by multiple users
+		// Lock is stored in element.customData.tableLock with user info and timestamp
+		// If another user has a non-expired lock, shows an error and returns false
+		const lockAcquired = tryAcquireLock(excalidrawAPI, tableElement)
+		if (!lockAcquired) {
+			return
+		}
+
 		try {
 			const tableData = await openTableEditor(initialMarkdown)
 			const newImageElement = await convertMarkdownTableToImage(tableData.markdown, excalidrawAPI)
 
-			// Replace the existing element with the updated one
+			// Replace the existing element with the updated one while preserving position
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
 			const elementIndex = elements.findIndex(el => el.id === tableElement.id)
 			if (elementIndex !== -1) {
-				elements[elementIndex] = {
+				const currentElement = elements[elementIndex]
+
+				const updatedElement = {
 					...newImageElement,
+					// Preserve the original element's ID and position
 					id: tableElement.id,
 					x: tableElement.x,
 					y: tableElement.y,
 					angle: tableElement.angle,
+					// Increment version numbers to ensure this update wins during collaborative reconciliation
+					// Excalidraw uses these to resolve conflicts when multiple users edit simultaneously
+					version: (currentElement.version || 0) + 1,
+					versionNonce: (currentElement.versionNonce || 0) + 1,
+					customData: {
+						// Include the new markdown and isTable flag from the newly generated element
+						...(newImageElement.customData || {}),
+						// Explicitly clear the lock so other users can edit
+						tableLock: undefined,
+					},
 				}
+
+				elements[elementIndex] = updatedElement
+				// Trigger Excalidraw's onChange which handles all sync (websocket, server API, local storage)
 				excalidrawAPI.updateScene({ elements })
+
+				// Verify the update was applied
+				setTimeout(() => {
+					const verifyElements = excalidrawAPI.getSceneElementsIncludingDeleted()
+					verifyElements.find(el => el.id === tableElement.id)
+				}, 100)
 			}
 		} catch (error) {
+			// Release lock on cancel or failure
+			releaseLock(excalidrawAPI, tableElement.id)
+
 			if (error instanceof Error && error.message !== 'Table editor was cancelled') {
 				console.error('Failed to edit table:', error)
 			}
@@ -96,7 +151,15 @@ export function useTableInsertion() {
 	}, [excalidrawAPI, openTableEditor])
 
 	/**
-	 * Inserts a table image into the whiteboard at the viewport center
+	 * Inserts a new table into the whiteboard at the viewport center.
+	 *
+	 * Flow:
+	 * 1. Open the table editor dialog (optionally with initial markdown)
+	 * 2. Convert the markdown to an image element
+	 * 3. Position the element at the center of the current viewport
+	 * 4. Add to the scene (syncs automatically via onChange)
+	 *
+	 * @param initialMarkdown - Optional initial markdown content for the table
 	 */
 	const insertTable = useCallback(async (initialMarkdown?: string) => {
 		if (!excalidrawAPI) {
@@ -116,6 +179,7 @@ export function useTableInsertion() {
 			)
 			elements.push(...movedElements)
 
+			// Add to scene - this triggers onChange which syncs to other users
 			excalidrawAPI.updateScene({ elements })
 		} catch (error) {
 			if (error instanceof Error && error.message !== 'Table editor was cancelled') {
@@ -124,10 +188,11 @@ export function useTableInsertion() {
 		}
 	}, [excalidrawAPI, openTableEditor])
 
-	// Set up pointer down handler to detect clicks on table elements
+	// Set up pointer down handler to detect double-clicks on table elements for editing
 	useEffect(() => {
 		if (!excalidrawAPI) return
 
+		// Register a handler for pointer down events on the canvas
 		// activeTool: current tool (selection, rectangle, etc.) - unused but required by API signature
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const pointerDownHandler = (_activeTool: any, state: any) => {
@@ -136,7 +201,6 @@ export function useTableInsertion() {
 				return
 			}
 
-			// Check if this is a table element
 			if (clickedElement.customData.isTable && clickedElement.type === 'image') {
 				// Double-click detection: check if it's a quick second click
 				const now = Date.now()
@@ -150,6 +214,7 @@ export function useTableInsertion() {
 					editTable(clickedElement).catch((error) => {
 						console.error('Error editing table:', error)
 					})
+					// Reset to allow next double-click
 					lastClickRef.current = null
 				} else {
 					// First click
@@ -158,6 +223,7 @@ export function useTableInsertion() {
 			}
 		}
 
+		// Register the handler with Excalidraw's pointer down event system
 		excalidrawAPI.onPointerDown(pointerDownHandler)
 	}, [excalidrawAPI, editTable])
 
@@ -169,10 +235,18 @@ export function useTableInsertion() {
 		)
 	}, [])
 
+	// Prevent double-insertion of the table button in the toolbar
 	const hasInsertedRef = useRef(false)
+
+	/**
+	 * Injects the "Insert Table" button into Excalidraw's toolbar.
+	 */
 	const renderTable = useCallback(() => {
+		// Only insert once to avoid duplicate buttons
 		if (hasInsertedRef.current) return
 
+		// Find the extra tools trigger element in the toolbar
+		// We insert our button before this element
 		const extraTools = Array.from(document.getElementsByClassName('App-toolbar__extra-tools-trigger'))
 			.find(el => !el.classList.contains('table-trigger'))
 		if (!extraTools) return
@@ -193,6 +267,7 @@ export function useTableInsertion() {
 			tableButton,
 			extraTools.previousSibling,
 		)
+		// Render the React icon component into the button
 		ReactDOM.render(renderTableButton(), tableButton)
 		hasInsertedRef.current = true
 	}, [renderTableButton, insertTable])
