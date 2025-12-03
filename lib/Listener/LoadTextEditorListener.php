@@ -16,6 +16,9 @@ use OCP\EventDispatcher\IEventListener;
 
 /** @template-implements IEventListener<LoadViewer|Event> */
 class LoadTextEditorListener implements IEventListener {
+	/**
+	 * @psalm-suppress PossiblyUnusedMethod
+	 */
 	public function __construct(
 		private IEventDispatcher $eventDispatcher,
 	) {
