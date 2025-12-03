@@ -46,6 +46,7 @@ import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { useComment } from './hooks/useComment'
 import { CommentSidebar } from './components/CommentSidebar'
 import { t } from '@nextcloud/l10n'
+import { useEmojiPicker } from './hooks/useEmojiPicker'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -111,6 +112,7 @@ export default function App({
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
 	const { renderAssistant } = useAssistant()
+	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
 	useCollaboration()
@@ -330,7 +332,8 @@ export default function App({
 		renderSmartPicker()
 		renderAssistant()
 		renderComment()
-	}, [updateLang, renderSmartPicker, renderAssistant])
+		renderEmojiPicker()
+	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
 		if (!isLibraryLoaded) {
