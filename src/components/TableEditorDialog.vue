@@ -168,7 +168,6 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .table-editor-dialog {
-	padding: 20px;
 	display: flex;
 	flex-direction: column;
 	min-height: 500px;
@@ -176,6 +175,7 @@ export default defineComponent({
 
 .editor-header {
 	margin-bottom: 16px;
+	padding: 20px;
 
 	h2 {
 		margin: 0 0 8px 0;
@@ -197,12 +197,12 @@ export default defineComponent({
 .editor-container {
 	flex: 1;
 	min-height: 400px;
-	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius);
 	overflow: hidden;
 }
 
 .dialog-buttons {
+	padding: 20px;
 	display: flex;
 	justify-content: flex-end;
 	gap: 8px;
