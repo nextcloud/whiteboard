@@ -16,3 +16,5 @@
 
 .DS_Store
 /recordings/
+/playwright-report/
+/test-results/

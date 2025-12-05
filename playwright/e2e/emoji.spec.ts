@@ -27,5 +27,5 @@ test('Add reaction Button', async ({ page }) => {
 			y: 249,
 		},
 	})
-	await expect(page.getByText('StrokeFont family')).toBeVisible()
+	await expect(page.getByText('EdgesOpacity')).toBeVisible()
 })

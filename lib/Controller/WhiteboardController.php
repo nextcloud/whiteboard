@@ -135,6 +135,31 @@ final class WhiteboardController extends ApiController {
 		}
 	}
 
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    #[PublicPage]
+    public function getSvgmoji(string $hexcode): void
+    {
+        $file = file_get_contents(__DIR__ . '/../../img/svgmoji/' . $hexcode . '.svg');
+
+        if (false === $file) {
+            header('HTTP/1.1 404 Not Found');
+            exit;
+        }
+
+        // Detect gzip-compressed SVG (svgz) by gzip magic bytes 0x1F 0x8B 0x08
+        $isGzip = (substr($file, 0, 3) === "\x1f\x8b\x08");
+
+        header('Content-Type: image/svg+xml');
+        if ($isGzip) {
+            header('Content-Encoding: gzip');
+        }
+        header('Content-Length: ' . strlen($file));
+
+        echo $file;
+        exit;
+    }
+
 	private function getJwtFromRequest(): string {
 		$authHeader = $this->request->getHeader('Authorization');
 		if (sscanf($authHeader, 'Bearer %s', $jwt) !== 1) {
