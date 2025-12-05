@@ -5,12 +5,21 @@
 
 import { useCallback, useRef } from 'react'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import type { BinaryFileData, DataURL, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import type { FileId } from '@excalidraw/excalidraw/types/element/types'
 import { useShallow } from 'zustand/react/shallow'
 import { convertToExcalidrawElements, viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
 import EmojiPickerButton from '../components/EmojiPickerButton.vue'
 import Vue from 'vue'
+import { Notomoji } from '@svgmoji/noto'
+import EmojiData from 'svgmoji/emoji.json'
+import { generateUrl } from '@nextcloud/router'
+
+type EmojiObj = {
+	native: string
+	unified?: string
+}
 
 export function useEmojiPicker() {
 	const { excalidrawAPI } = useExcalidrawStore(
@@ -21,11 +30,38 @@ export function useEmojiPicker() {
 
 	const currentCursorPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
-	const loadToExcalidraw = useCallback((emoji: string) => {
+	const loadToExcalidraw = useCallback(async (emoji: EmojiObj) => {
 		if (!excalidrawAPI) {
 			console.error('Excalidraw API is not available')
 			return
 		}
+
+		const notomoji = new Notomoji({ data: EmojiData, type: 'all' })
+		let emojiObj = notomoji.find(emoji.native)
+
+		if (!emojiObj) {
+			emojiObj = notomoji.find(emoji.unified?.toUpperCase() || '')
+		}
+
+		// Fetch the SVG data for the selected emoji
+		const url = generateUrl('apps/whiteboard/svgmoji/' + emojiObj.hexcode)
+		const emojiSvg = await (await fetch(url)).text()
+		const emojiBlob = new Blob([emojiSvg], { type: 'image/svg+xml' })
+		const fr = new FileReader()
+		fr.readAsDataURL(emojiBlob)
+		const emojiDataURL: DataURL = await new Promise((resolve) => {
+			fr.onload = () => {
+				resolve(fr.result as string)
+			}
+		})
+
+		const constructedFile: BinaryFileData = {
+			id: (Math.random() + 1).toString(36).substring(7) as FileId,
+			created: Date.now(),
+			mimeType: 'image/svg+xml',
+			dataURL: emojiDataURL,
+		}
+		excalidrawAPI.addFiles([constructedFile])
 
 		const sceneCoords = viewportCoordsToSceneCoords({
 			clientX: currentCursorPos.current.x,
@@ -33,10 +69,12 @@ export function useEmojiPicker() {
 		}, excalidrawAPI.getAppState())
 		const [elem] = convertToExcalidrawElements([
 			{
-				type: 'text',
-				text: emoji,
+				type: 'image',
+				fileId: constructedFile.id,
 				x: sceneCoords.x,
 				y: sceneCoords.y,
+				width: 40,
+				height: 40,
 				fontSize: 20,
 			},
 		])

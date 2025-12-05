@@ -31,7 +31,7 @@ export default defineComponent({
 <template>
 	<NcEmojiPicker :aria-label="t('whiteboard', 'Add reaction')"
 		:title="t('whiteboard', 'Add reaction')"
-		@select="onSelectEmoji">
+		@select-data="onSelectEmoji">
 		<button class="dropdown-menu-button">
 			<svg viewBox="0 0 24 24" role="presentation" style="width: 1.5rem; height: 1.5rem;">
 				<path :d="mdiStickerEmoji" style="fill: currentcolor" />

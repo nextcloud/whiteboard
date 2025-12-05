@@ -16,6 +16,8 @@ return [
 	'routes' => [
 		/** @see JWTController::getJWT() */
 		['name' => 'JWT#getJWT', 'url' => '{fileId}/token', 'verb' => 'GET'],
+		/** @see WhiteboardController::getSvgmoji() */
+		['name' => 'Whiteboard#getSvgmoji', 'url' => 'svgmoji/{hexcode}', 'verb' => 'GET'],
 		/** @see WhiteboardController::getLib() */
 		['name' => 'Whiteboard#getLib', 'url' => 'library', 'verb' => 'GET'],
 		/** @see WhiteboardController::updateLib() */
