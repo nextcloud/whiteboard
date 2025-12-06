@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, memo } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiMonitorScreenshot, mdiImageMultiple } from '@mdi/js'
+import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline } from '@mdi/js'
 import { MainMenu, CaptureUpdateAction } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
@@ -22,9 +22,11 @@ interface ExcalidrawMenuProps {
 	fileNameWithoutExtension: string
 	recordingState: RecordingHookState
 	presentationState: PresentationState
+	isTimerVisible: boolean
+	onToggleTimer: () => void
 }
 
-export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState }: ExcalidrawMenuProps) {
+export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState, isTimerVisible, onToggleTimer }: ExcalidrawMenuProps) {
 	const isMacPlatform = typeof navigator !== 'undefined' && (navigator.userAgentData?.platform === 'macOS' || /Mac|iPhone|iPad/.test(navigator.platform ?? ''))
 	const { excalidrawAPI } = useExcalidrawStore(useShallow(state => ({
 		excalidrawAPI: state.excalidrawAPI,
@@ -172,6 +174,11 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				isAvailable={recordingState.isAvailable}
 				unavailableReason={recordingState.unavailableReason}
 			/>
+			<MainMenu.Item
+				icon={<Icon path={mdiTimerOutline} size={0.9} />}
+				onSelect={onToggleTimer}>
+				{isTimerVisible ? t('whiteboard', 'Hide timer') : t('whiteboard', 'Show timer')}
+			</MainMenu.Item>
 			<PresentationMenuItem
 				isPresenting={presentationState.isPresenting}
 				isPresentationMode={presentationState.isPresentationMode}
