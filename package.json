@@ -42,7 +42,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.0",
     "form-data": "^4.0.5",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.21",
     "lru-cache": "^11.2.4",
     "node-fetch": "^3.3.2",
