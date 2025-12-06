@@ -42,6 +42,7 @@ import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalid
 import type { ElementCreatorInfo } from './types/whiteboard'
 import { VersionPreviewBanner } from './components/VersionPreviewBanner'
 import { useVersionPreview } from './hooks/useVersionPreview'
+import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -118,6 +119,7 @@ export default function App({
 		versionSourceLabel,
 		exitVersionPreview,
 		handleRestoreVersion,
+		handleExternalRestore,
 		isRestoringVersion,
 	} = useVersionPreview({
 		fileId: normalizedFileId,
@@ -176,6 +178,46 @@ export default function App({
 	useHandleLibrary({
 		excalidrawAPI,
 	})
+
+	useEffect(() => {
+		const onRestoreRequested = (payload: any) => {
+			const payloadFileId = Number(payload?.fileInfo?.id)
+			const mimetype = payload?.fileInfo?.mimetype
+			const fileName = payload?.fileInfo?.name ?? ''
+			const source = payload?.version?.source ?? payload?.version?.url ?? null
+			const versionId = payload?.version?.fileVersion ?? null
+
+			const isWhiteboard = mimetype === 'application/vnd.excalidraw+json'
+				|| (typeof fileName === 'string' && fileName.toLowerCase().endsWith('.whiteboard'))
+
+			if (!payload || !isWhiteboard) {
+				return
+			}
+
+			if (!Number.isFinite(payloadFileId) || payloadFileId !== normalizedFileId) {
+				return
+			}
+
+			if (!source) {
+				logger.error('[App] Missing version source for whiteboard restore request', { payload })
+				return
+			}
+
+			if (payload && typeof payload === 'object') {
+				payload.preventDefault = true
+			}
+
+			handleExternalRestore(source, versionId).catch(error => {
+				logger.error('[App] Failed to handle whiteboard restore from sidebar', { error, source, versionId })
+			})
+		}
+
+		subscribe('files_versions:restore:requested', onRestoreRequested)
+
+		return () => {
+			unsubscribe('files_versions:restore:requested', onRestoreRequested)
+		}
+	}, [handleExternalRestore, normalizedFileId])
 
 	// Use the board data manager hook
 	const { saveOnUnmount, isLoading } = useBoardDataManager()
