@@ -11,10 +11,13 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Listener;
 
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
+use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
+use OCP\Files\File;
 use OCP\Files\NotFoundException;
+use OCP\Util;
 
 /** @template-implements IEventListener<BeforeTemplateRenderedEvent|Event> */
 /**
@@ -24,21 +27,35 @@ use OCP\Files\NotFoundException;
 class BeforeTemplateRenderedListener implements IEventListener {
 	public function __construct(
 		private IInitialState $initialState,
+		private ConfigService $configService,
 	) {
 	}
 
-	/**
-	 * @throws NotFoundException
-	 */
 	#[\Override]
 	public function handle(Event $event): void {
 		if (!($event instanceof BeforeTemplateRenderedEvent)) {
 			return;
 		}
 
-		$this->initialState->provideInitialState(
-			'file_id',
-			$event->getShare()->getNodeId()
-		);
+		try {
+			$node = $event->getShare()->getNode();
+		} catch (NotFoundException) {
+			return;
+		}
+
+		if (!($node instanceof File)) {
+			return;
+		}
+
+		if ($node->getMimetype() !== 'application/vnd.excalidraw+json') {
+			return;
+		}
+
+		Util::addScript('whiteboard', 'whiteboard-main');
+		Util::addStyle('whiteboard', 'whiteboard-main');
+
+		$this->initialState->provideInitialState('file_id', $node->getId());
+		$this->initialState->provideInitialState('collabBackendUrl', $this->configService->getCollabBackendUrl());
+		$this->initialState->provideInitialState('maxFileSize', $this->configService->getMaxFileSize());
 	}
 }

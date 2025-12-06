@@ -32,7 +32,7 @@ const normalizeVersionSource = (source: string | null): string | null => {
 	}
 }
 
-const matchesComparisonRequest = (versionSource: string | null, fileVersion: string | null): boolean => {
+export const matchesComparisonRequest = (versionSource: string | null, fileVersion: string | null): boolean => {
 	const compareInfo = window?.OCA?.Viewer?.compareFileInfo as ViewerFileInfo | undefined
 	if (!compareInfo || typeof compareInfo !== 'object') {
 		return false
