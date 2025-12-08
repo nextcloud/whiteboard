@@ -28,6 +28,7 @@ OC.L10N.register(
     "Unknown" : "Sconosciuto",
     "Stop" : "Ferma",
     "Restore this version" : "Ripristina questa versione",
+    "Version {version}" : "Versione {version}",
     "Version restored" : "Versione ripristinata"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
