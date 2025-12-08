@@ -133,12 +133,6 @@ export function useTableInsertion() {
 				elements[elementIndex] = updatedElement
 				// Trigger Excalidraw's onChange which handles all sync (websocket, server API, local storage)
 				excalidrawAPI.updateScene({ elements })
-
-				// Verify the update was applied
-				setTimeout(() => {
-					const verifyElements = excalidrawAPI.getSceneElementsIncludingDeleted()
-					verifyElements.find(el => el.id === tableElement.id)
-				}, 100)
 			}
 		} catch (error) {
 			// Release lock on cancel or failure

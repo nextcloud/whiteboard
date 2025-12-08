@@ -7,9 +7,9 @@ import type { FileId, ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 
 // Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)
-const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px;'
+const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4;'
 const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600; text-align: left;`
-const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px;'
+const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px; display: block;'
 
 /**
  * Convert markdown table to an image element for Excalidraw
@@ -146,9 +146,6 @@ async function htmlToDataUrl(html: string): Promise<string> {
 		const container = document.createElement('div')
 		container.innerHTML = html
 		container.style.position = 'absolute'
-		container.style.left = '-9999px'
-		container.style.top = '-9999px'
-		container.style.padding = '16px'
 		container.style.backgroundColor = 'white'
 		document.body.appendChild(container)
 
@@ -168,13 +165,13 @@ async function htmlToDataUrl(html: string): Promise<string> {
  */
 function createSvgDataUrl(element: HTMLElement): string {
 	const bbox = element.getBoundingClientRect()
-	const width = Math.max(bbox.width, 400)
-	const height = Math.max(bbox.height, 200)
+	const width = Math.max(bbox.width)
+	const height = Math.max(bbox.height)
 
 	const svg = `
 		<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
 			<foreignObject width="100%" height="100%">
-				<div xmlns="http://www.w3.org/1999/xhtml" style="padding: 16px; background: white;">
+				<div xmlns="http://www.w3.org/1999/xhtml" style="background: white;">
 					${element.innerHTML}
 				</div>
 			</foreignObject>
