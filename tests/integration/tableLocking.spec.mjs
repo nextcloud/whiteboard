@@ -109,7 +109,7 @@ describe('tableLocking utilities', () => {
 		it('should preserve other customData properties', () => {
 			mockElements[1].customData = {
 				isTable: true,
-				tableMarkdown: '| test |',
+				tableHtml: '<table><tr><td>test</td></tr></table>',
 			}
 
 			const lock = {
@@ -122,7 +122,7 @@ describe('tableLocking utilities', () => {
 
 			const updateCall = mockAPI.updateScene.mock.calls[0][0]
 			expect(updateCall.elements[1].customData.isTable).toBe(true)
-			expect(updateCall.elements[1].customData.tableMarkdown).toBe('| test |')
+			expect(updateCall.elements[1].customData.tableHtml).toBe('<table><tr><td>test</td></tr></table>')
 			expect(updateCall.elements[1].customData.tableLock).toEqual(lock)
 		})
 	})

@@ -10,7 +10,7 @@ import { mdiTable } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
 import TableEditorDialog from '../components/TableEditorDialog.vue'
-import { convertMarkdownTableToImage } from '../utils/tableToImage'
+import { convertHtmlTableToImage } from '../utils/tableToImage'
 import { tryAcquireLock, releaseLock } from '../utils/tableLocking'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
@@ -19,13 +19,6 @@ import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/ex
 
 const DOUBLE_CLICK_THRESHOLD_MS = 500
 
-/**
- * Features:
- * - Insert new markdown tables as image elements
- * - Edit existing tables via double-click
- * - Collaborative locking to prevent concurrent edits
- * - Automatic sync with other users via normal Excalidraw onChange flow
- */
 export function useTableInsertion() {
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow((state) => ({
@@ -37,19 +30,18 @@ export function useTableInsertion() {
 	const lastClickRef = useRef<{ elementId: string; timestamp: number } | null>(null)
 
 	/**
-	 * Opens the table editor dialog
-	 * Resolves Promise with markdown content after dialog is submitted
+	 * Resolves Promise with HTML content after dialog is submitted
 	 */
-	const openTableEditor = useCallback((initialMarkdown?: string) => {
-		return new Promise<{ markdown: string }>((resolve, reject) => {
+	const openTableEditor = useCallback((initialHtml?: string) => {
+		return new Promise<{ html: string }>((resolve, reject) => {
 			const element = document.createElement('div')
 			document.body.appendChild(element)
 
-			// Instantiate the Vue component with initial markdown data
+			// Instantiate the Vue component with initial data
 			const View = Vue.extend(TableEditorDialog)
 			const view = new View({
 				propsData: {
-					initialMarkdown,
+					initialHtml,
 				},
 			}).$mount(element)
 
@@ -58,7 +50,7 @@ export function useTableInsertion() {
 				reject(new Error('Table editor was cancelled'))
 			})
 
-			view.$on('submit', (tableData: { markdown: string }) => {
+			view.$on('submit', (tableData: { html: string }) => {
 				view.$destroy()
 				resolve(tableData)
 			})
@@ -67,13 +59,6 @@ export function useTableInsertion() {
 
 	/**
 	 * Edits an existing table element by opening the editor dialog.
-	 *
-	 * Flow:
-	 * 1. Validate the table element has markdown data
-	 * 2. Acquire a collaborative lock (shows error if locked by another user)
-	 * 3. Open the editor dialog with the current markdown
-	 * 4. On save: convert markdown to new image, update element, clear lock
-	 * 5. On cancel/error: release the lock
 	 *
 	 * The updated element is synced to other users via the normal Excalidraw onChange flow,
 	 * which triggers throttled websocket broadcasts and server API persistence.
@@ -86,10 +71,11 @@ export function useTableInsertion() {
 			return
 		}
 
-		// Get the markdown from customData
-		const initialMarkdown = tableElement.customData?.tableMarkdown as string | undefined
-		if (!initialMarkdown) {
-			console.error('Table element does not have markdown data')
+		// Get the HTML from customData
+		const initialHtml = tableElement.customData?.tableHtml as string | undefined
+
+		if (!initialHtml) {
+			console.error('Table element does not have HTML data')
 			return
 		}
 
@@ -102,8 +88,8 @@ export function useTableInsertion() {
 		}
 
 		try {
-			const tableData = await openTableEditor(initialMarkdown)
-			const newImageElement = await convertMarkdownTableToImage(tableData.markdown, excalidrawAPI)
+			const tableData = await openTableEditor(initialHtml)
+			const newImageElement = await convertHtmlTableToImage(excalidrawAPI, tableData.html)
 
 			// Replace the existing element with the updated one while preserving position
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
@@ -146,24 +132,16 @@ export function useTableInsertion() {
 
 	/**
 	 * Inserts a new table into the whiteboard at the viewport center.
-	 *
-	 * Flow:
-	 * 1. Open the table editor dialog (optionally with initial markdown)
-	 * 2. Convert the markdown to an image element
-	 * 3. Position the element at the center of the current viewport
-	 * 4. Add to the scene (syncs automatically via onChange)
-	 *
-	 * @param initialMarkdown - Optional initial markdown content for the table
 	 */
-	const insertTable = useCallback(async (initialMarkdown?: string) => {
+	const insertTable = useCallback(async () => {
 		if (!excalidrawAPI) {
 			console.error('Excalidraw API is not available')
 			return
 		}
 
 		try {
-			const tableData = await openTableEditor(initialMarkdown)
-			const imageElement = await convertMarkdownTableToImage(tableData.markdown, excalidrawAPI)
+			const tableData = await openTableEditor()
+			const imageElement = await convertHtmlTableToImage(excalidrawAPI, tableData.html)
 
 			// Add the image element to the scene at the viewport center
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()

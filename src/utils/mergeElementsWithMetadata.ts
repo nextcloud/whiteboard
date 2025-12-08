@@ -74,7 +74,7 @@ export function mergeElementsWithMetadata(
 		}
 
 		// Preserve table-specific custom data from whichever version won reconciliation
-		// This ensures tableMarkdown, isTable, and tableLock are not lost
+		// This ensures tableHtml, isTable, and tableLock are not lost
 		const sourceElement = remoteElement || localElement
 		if (sourceElement?.customData) {
 			if (!whiteboardElement.customData) {
@@ -85,8 +85,8 @@ export function mergeElementsWithMetadata(
 			if (sourceElement.customData.isTable !== undefined) {
 				whiteboardElement.customData.isTable = sourceElement.customData.isTable
 			}
-			if (sourceElement.customData.tableMarkdown !== undefined) {
-				whiteboardElement.customData.tableMarkdown = sourceElement.customData.tableMarkdown
+			if (sourceElement.customData.tableHtml !== undefined) {
+				whiteboardElement.customData.tableHtml = sourceElement.customData.tableHtml
 			}
 			// Preserve or clear lock status from the source element
 			if ('tableLock' in sourceElement.customData) {

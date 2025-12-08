@@ -12,20 +12,20 @@ const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-we
 const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px; display: block;'
 
 /**
- * Convert markdown table to an image element for Excalidraw
- * @param markdown - The markdown table content
+ * Convert HTML table to an image element for Excalidraw
  * @param excalidrawAPI - The Excalidraw API instance
+ * @param html - HTML content from Tiptap (source of truth)
  * @return The image element to be added to the canvas
  */
-export async function convertMarkdownTableToImage(
-	markdown: string,
+export async function convertHtmlTableToImage(
 	excalidrawAPI: ExcalidrawImperativeAPI,
+	html: string,
 ): Promise<ExcalidrawImageElement> {
-	// Render the markdown table to HTML
-	const html = await renderMarkdownToHtml(markdown)
+	// Apply styles to the HTML table for image rendering
+	const tableHtml = applyStylesToHtml(html)
 
 	// Convert HTML to canvas/image
-	const dataUrl = await htmlToDataUrl(html)
+	const dataUrl = await htmlToDataUrl(tableHtml)
 
 	// Get dimensions from the rendered content
 	const { width, height } = await getImageDimensions(dataUrl)
@@ -51,9 +51,9 @@ export async function convertMarkdownTableToImage(
 			y: 0,
 			width,
 			height,
-			// Store original markdown for re-editing
+			// Store HTML as source of truth for re-editing
 			customData: {
-				tableMarkdown: markdown,
+				tableHtml: html,
 				isTable: true,
 				tableLock: undefined,
 			},
@@ -64,75 +64,30 @@ export async function convertMarkdownTableToImage(
 }
 
 /**
- * Render markdown to HTML using a simple markdown parser
- * @param markdown - The markdown table content
- * @return HTML string
+ * Extract table from HTML and apply styles
+ * @param html - Full HTML from Tiptap editor
+ * @return Styled table HTML
  */
-async function renderMarkdownToHtml(markdown: string): Promise<string> {
-	// Parse markdown table to HTML
-	const lines = markdown.trim().split('\n')
-	if (lines.length < 2) {
-		throw new Error('Invalid table format')
+function applyStylesToHtml(html: string): string {
+	const parser = new DOMParser()
+	const doc = parser.parseFromString(html, 'text/html')
+	const table = doc.querySelector('table')
+
+	if (!table) {
+		throw new Error('No table found in HTML')
 	}
 
-	let html = `<table style="${TABLE_STYLE}">`
-
-	// Parse header
-	const headerCells = lines[0].split('|').slice(1, -1) // Remove first and last empty strings from pipes to allow empty cells
-	html += '<thead><tr>'
+	table.setAttribute('style', TABLE_STYLE)
+	const headerCells = table.querySelectorAll('th')
 	headerCells.forEach(cell => {
-		html += `<th style="${HEADER_CELL_STYLE}">${escapeHtml(cell.trim())}</th>`
+		cell.setAttribute('style', HEADER_CELL_STYLE)
 	})
-	html += '</tr></thead>'
+	const bodyCells = table.querySelectorAll('td')
+	bodyCells.forEach(cell => {
+		cell.setAttribute('style', CELL_BASE_STYLE)
+	})
 
-	// Skip separator line (index 1)
-	// Parse body rows
-	html += '<tbody>'
-	for (let i = 2; i < lines.length; i++) {
-		const line = lines[i].trim()
-		if (!line) continue // Skip empty lines
-
-		// Check if line looks like a table row (starts and ends with |)
-		if (line.startsWith('|') && line.endsWith('|')) {
-			// Standard table row - split by pipes
-			const cells = line.split('|').slice(1, -1) // Remove first and last empty strings from pipes to allow empty cells
-			if (cells.length > 0) {
-				html += '<tr>'
-				cells.forEach(cell => {
-					html += `<td style="${CELL_BASE_STYLE}">${escapeHtml(cell.trim())}</td>`
-				})
-				html += '</tr>'
-			}
-		} else {
-			// Non-table line - split by | to create cells
-			const cells = line.split('|')
-			html += '<tr>'
-			cells.forEach(cell => {
-				const trimmed = cell.trim()
-				if (trimmed) { // Only create cell if not empty
-					html += `<td style="${CELL_BASE_STYLE}">${escapeHtml(trimmed)}</td>`
-				}
-			})
-			html += '</tr>'
-		}
-	}
-	html += '</tbody></table>'
-
-	return html
-}
-
-/**
- * Escape HTML special characters to prevent XSS
- * @param text - The text to escape
- * @return Escaped HTML string
- */
-function escapeHtml(text: string): string {
-	return text
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;')
+	return table.outerHTML
 }
 
 /**

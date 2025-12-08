@@ -15,7 +15,7 @@ export default defineComponent({
 		NcNoteCard,
 	},
 	props: {
-		initialMarkdown: {
+		initialHtml: {
 			type: String,
 			default: '',
 		},
@@ -27,12 +27,12 @@ export default defineComponent({
 			editor: null,
 			isLoading: true,
 			error: null,
-			currentMarkdown: this.initialMarkdown || '',
+			currentHtml: this.initialHtml || '',
 		}
 	},
 	computed: {
 		isEditing() {
-			return Boolean(this.initialMarkdown)
+			return Boolean(this.initialHtml)
 		},
 	},
 	async mounted() {
@@ -60,21 +60,18 @@ export default defineComponent({
 					return
 				}
 
+				// Convert HTML to markdown for the Text editor input
+				const contentForEditor = this.currentHtml && this.currentHtml.trim()
+					? this.generateMarkdownFromHtml(this.currentHtml)
+					: ''
+
 				// Use the dedicated createTable function for table-only editing
 				this.editor = await window.OCA.Text.createTable({
 					el: editorContainer,
-					content: this.currentMarkdown,
-					// Track content changes
-					onUpdate: ({ markdown }) => {
-						this.currentMarkdown = markdown
-					},
-					onCreate: ({ markdown }) => {
-						this.currentMarkdown = markdown
-					},
+					content: contentForEditor,
 				})
 
 				this.isLoading = false
-
 				// Focus the editor after a short delay
 				setTimeout(() => {
 					if (this.editor) {
@@ -100,21 +97,100 @@ export default defineComponent({
 			}
 
 			try {
-				const markdown = this.currentMarkdown
+			// Extract HTML from the Text app's Tiptap editor to preserve all content (including pipe characters)
+			// The Text app's createTable() returns a wrapper object with a 'vm' property
+			// that contains the Vue instance rendering the editor component
+				let html = ''
 
-				if (!markdown || !markdown.trim()) {
-					this.error = t('whiteboard', 'Please enter some table content')
+				// Access the Vue instance created by the Text app
+				const vm = this.editor.vm
+
+				// Navigate the component tree to find the Tiptap editor instance:
+				// vm.$children[0] is the Text app's table editor component
+				// which has an 'editor' property that is the actual Tiptap editor instance
+				if (vm && vm.$children && vm.$children.length > 0) {
+					const editorComponent = vm.$children[0]
+
+					if (editorComponent && editorComponent.editor) {
+					// Get raw HTML from Tiptap editor (this is the reliable source of content)
+						const fullHtml = editorComponent.editor.getHTML()
+						const parser = new DOMParser()
+						const doc = parser.parseFromString(fullHtml, 'text/html')
+						const table = doc.querySelector('table')
+
+						if (table) {
+							html = table.outerHTML
+						} else {
+							console.warn('No table found in HTML, using full HTML')
+							html = fullHtml
+						}
+					}
+				}
+
+				if (!html) {
+					console.error('Could not extract HTML from Tiptap editor')
+				}
+
+				if (!html || !html.trim()) {
+					this.error = t('whiteboard', 'Failed to extract table content')
 					return
 				}
 
 				this.$emit('submit', {
-					markdown: markdown.trim(),
+					html: html.trim(),
 				})
 
 				this.show = false
 			} catch (error) {
 				console.error('Failed to get editor content:', error)
 				this.error = t('whiteboard', 'Failed to get content: {error}', { error: error.message })
+			}
+		},
+
+		/**
+		 * Generate simple markdown from HTML table
+		 * This is a basic conversion - not perfect but sufficient for Text editor input
+		 * @param html - The HTML table content to convert
+		 */
+		generateMarkdownFromHtml(html) {
+			try {
+				const parser = new DOMParser()
+				const doc = parser.parseFromString(html, 'text/html')
+				const table = doc.querySelector('table')
+
+				if (!table) {
+					return ''
+				}
+
+				const rows = Array.from(table.querySelectorAll('tr'))
+				if (rows.length === 0) {
+					return ''
+				}
+
+				let markdown = ''
+
+				// Process first row as header
+				const firstRow = rows[0]
+				const headerCells = Array.from(firstRow.querySelectorAll('th, td'))
+				// Escape pipe characters in cell content for markdown
+				const headers = headerCells.map(cell => cell.textContent.trim().replace(/\|/g, '\\|'))
+				markdown += '| ' + headers.join(' | ') + ' |\n'
+
+				// Add separator
+				markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n'
+
+				// Process remaining rows as body
+				for (let i = 1; i < rows.length; i++) {
+					const cells = Array.from(rows[i].querySelectorAll('td, th'))
+					// Escape pipe characters in cell content for markdown
+					const values = cells.map(cell => cell.textContent.trim().replace(/\|/g, '\\|'))
+					markdown += '| ' + values.join(' | ') + ' |\n'
+				}
+
+				return markdown
+			} catch (error) {
+				console.error('Failed to generate markdown from HTML:', error)
+				return ''
 			}
 		},
 
