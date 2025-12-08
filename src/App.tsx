@@ -170,6 +170,24 @@ export default function App({
 		}
 	}, [excalidrawAPI])
 
+	useEffect(() => {
+		const handleVideoError = (e: Event) => {
+			const target = e.target as HTMLElement
+			if (target?.tagName === 'VIDEO') {
+				logger.error('[App] Caught video embed error:', e)
+				e.stopPropagation()
+				e.stopImmediatePropagation()
+				e.preventDefault()
+			}
+		}
+
+		window.addEventListener('error', handleVideoError, true)
+
+		return () => {
+			window.removeEventListener('error', handleVideoError, true)
+		}
+	}, [])
+
 	const recordingState = useRecording({ fileId: normalizedFileId })
 	const presentationState = usePresentation({ fileId: normalizedFileId })
 
