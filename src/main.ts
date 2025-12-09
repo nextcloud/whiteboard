@@ -12,7 +12,7 @@ import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 
 import './styles/index.scss'
 import logger from './utils/logger'
-import { renderWhiteboardView } from './utils/renderWhiteboardView'
+import { matchesComparisonRequest, renderWhiteboardView } from './utils/renderWhiteboardView'
 import type { WhiteboardRootHandle } from './utils/renderWhiteboardView'
 
 declare global {
@@ -122,33 +122,37 @@ function runRecordingRuntime(context: RecordingContext): void {
 }
 
 function runPublicShareRuntime(context: PublicShareContext): void {
-	const filesTable = document.querySelector('.files-list__table')
-		|| document.querySelector('#preview table.files-filestable')
+	let hasRegisteredViewer = false
 
-	if (filesTable) {
+	const ensureViewerRegistered = () => {
+		if (hasRegisteredViewer) {
+			return
+		}
+		hasRegisteredViewer = true
+
 		runDefaultViewerRuntime({
 			collabBackendUrl: context.collabBackendUrl,
 			resolveSharingToken: () => context.sharingToken,
 		})
-		return
 	}
 
-	runWhenDomReady(() => {
-		const imgframeElement = document.getElementById('preview')
-		if (!imgframeElement) {
-			logger.error('#imgframe element not found')
-			return
-		}
-		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement
-		const isWhiteboard = mimetypeElmt && mimetypeElmt.value === 'application/vnd.excalidraw+json'
-		if (isPublicShare() && !isWhiteboard) {
-			return
+	const tryBootstrap = (): boolean => {
+		const previewHost = document.getElementById('preview') || document.getElementById('imgframe')
+
+		if (!previewHost) {
+			return false
 		}
 
-		imgframeElement.innerHTML = ''
+		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
+		const isWhiteboard = mimetypeElmt?.value === 'application/vnd.excalidraw+json'
+		if (isPublicShare() && !isWhiteboard) {
+			return true
+		}
+
+		previewHost.innerHTML = ''
 
 		const whiteboardElement = createWhiteboardElement()
-		imgframeElement.appendChild(whiteboardElement)
+		previewHost.appendChild(whiteboardElement)
 
 		renderWhiteboardView(whiteboardElement, {
 			fileId: context.fileId,
@@ -159,6 +163,25 @@ function runPublicShareRuntime(context: PublicShareContext): void {
 			versionSource: null,
 			fileVersion: null,
 		})
+		return true
+	}
+
+	runWhenDomReady(() => {
+		ensureViewerRegistered()
+
+		if (tryBootstrap()) {
+			return
+		}
+
+		const observer = new MutationObserver(() => {
+			ensureViewerRegistered()
+			if (tryBootstrap()) {
+				observer.disconnect()
+			}
+		})
+
+		observer.observe(document.body, { childList: true, subtree: true })
+		window.setTimeout(() => observer.disconnect(), 20000)
 	})
 }
 
@@ -226,14 +249,23 @@ const createWhiteboardComponent = (options: ViewerComponentOptions): VueComponen
 			})
 
 			const normalizedFileId = Number(this.fileid ?? this.fileId ?? 0) || 0
-			const versionSource = this.source ?? null
-			const fileVersion = this.fileVersion ?? null
 			const isComparisonView = Boolean(this.isComparisonView)
+			const isEmbedded = Boolean(this.isEmbedded)
+			const rawVersionSource = this.source ?? null
+			const rawFileVersion = this.fileVersion ?? null
+			const shouldUseVersionPreview = isComparisonView
+				|| matchesComparisonRequest(rawVersionSource, rawFileVersion ?? null)
+			const versionSource = isEmbedded
+				? rawVersionSource
+				: (shouldUseVersionPreview ? rawVersionSource : null)
+			const fileVersion = isEmbedded
+				? rawFileVersion
+				: (shouldUseVersionPreview ? rawFileVersion : null)
 			const fileName = typeof this.basename === 'string' ? this.basename : ''
 
 			this.root = renderWhiteboardView(rootElement, {
 				fileId: normalizedFileId,
-				isEmbedded: Boolean(this.isEmbedded),
+				isEmbedded,
 				fileName,
 				publicSharingToken: options.resolveSharingToken(),
 				collabBackendUrl: options.collabBackendUrl,

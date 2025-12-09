@@ -66,8 +66,8 @@ export default defineConfig({
 			timeout: 5 * 60 * 1000, // max. 5 minutes for creating the container
 		},
 		{
-			// Starts the Nextcloud docker container
-			command: 'METRICS_TOKEN=secret JWT_SECRET_KEY=secret NEXTCLOUD_URL=http://127.0.0.1:8089 npm run server:start',
+			// Starts the whiteboard websocket server without TLS for tests
+			command: 'TLS=false METRICS_TOKEN=secret JWT_SECRET_KEY=secret NEXTCLOUD_URL=http://127.0.0.1:8089 npm run server:start',
 			reuseExistingServer: !process.env.CI,
 			url: 'http://127.0.0.1:3002',
 			stderr: 'pipe',

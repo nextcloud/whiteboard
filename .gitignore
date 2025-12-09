@@ -9,6 +9,8 @@
 /vendor/
 /node_modules/
 /recordings/
+/playwright-report/
+/test-results/
 
 .php-cs-fixer.cache
 .phpunit.result.cache
