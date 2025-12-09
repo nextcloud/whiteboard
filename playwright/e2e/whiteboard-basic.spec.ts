@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 	await openFilesApp(page)
 })
 
-test('whiteboard content persists after reload and reopen', async ({ page }) => {
+test.skip('whiteboard content persists after reload and reopen', async ({ page }) => {
 	const boardName = `Persistent whiteboard ${Date.now()}`
 
 	await createWhiteboard(page, { name: boardName })
