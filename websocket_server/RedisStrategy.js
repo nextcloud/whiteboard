@@ -11,6 +11,10 @@ import Config from './Config.js'
 
 export default class RedisStrategy extends StorageStrategy {
 
+	static isClientClosedError(error) {
+		return error?.name === 'ClientClosedError' || error?.message?.includes('The client is closed')
+	}
+
 	static createRedisClient() {
 		console.log(`Creating Redis client with URL: ${Config.REDIS_URL}`)
 
@@ -41,6 +45,9 @@ export default class RedisStrategy extends StorageStrategy {
 			if (!data) return null
 			return JSON.parse(data)
 		} catch (error) {
+			if (RedisStrategy.isClientClosedError(error)) {
+				return null
+			}
 			console.error(`Error getting data for key ${key}:`, error)
 			return null
 		}
@@ -50,13 +57,17 @@ export default class RedisStrategy extends StorageStrategy {
 		try {
 			const serializedData = JSON.stringify(value)
 			if (this.ttl) {
+				const ttlSeconds = Math.max(1, Math.ceil(this.ttl / 1000))
 				await this.client.set(`${this.prefix}${key}`, serializedData, {
-					EX: this.ttl,
+					EX: ttlSeconds,
 				})
 			} else {
 				await this.client.set(`${this.prefix}${key}`, serializedData)
 			}
 		} catch (error) {
+			if (RedisStrategy.isClientClosedError(error)) {
+				return
+			}
 			console.error(`Error setting data for key ${key}:`, error)
 		}
 	}
@@ -65,6 +76,9 @@ export default class RedisStrategy extends StorageStrategy {
 		try {
 			await this.client.del(`${this.prefix}${key}`)
 		} catch (error) {
+			if (RedisStrategy.isClientClosedError(error)) {
+				return
+			}
 			console.error(`Error deleting key ${key}:`, error)
 		}
 	}
@@ -76,6 +90,9 @@ export default class RedisStrategy extends StorageStrategy {
 				await this.client.del(keys)
 			}
 		} catch (error) {
+			if (RedisStrategy.isClientClosedError(error)) {
+				return
+			}
 			console.error('Error clearing general data:', error)
 		}
 	}

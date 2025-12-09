@@ -125,6 +125,19 @@ class VotingManager {
 		return Array.from(this.#votings[roomId].values())
 	}
 
+	setRoomVotings(roomId, votings = []) {
+		this.#votings[roomId] = new Map()
+		for (const voting of votings) {
+			if (voting?.uuid) {
+				this.#votings[roomId].set(voting.uuid, voting)
+			}
+		}
+	}
+
+	exportRoomVotings(roomId) {
+		return this.getAllVotings(roomId)
+	}
+
 	cleanupRoom(roomId) {
 		if (this.#votings[roomId]) {
 			delete this.#votings[roomId]

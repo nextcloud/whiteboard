@@ -17,5 +17,7 @@ export const DEFAULT_REDIS_URL = 'redis://localhost:6379'
 
 export const DEFAULT_CACHED_TOKEN_TTL = 10 * 60 * 1000
 
+export const DEFAULT_SESSION_TTL = 24 * 60 * 60 * 1000
+
 // WebSocket compression default
 export const DEFAULT_COMPRESSION_ENABLED = true

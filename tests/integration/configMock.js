@@ -10,6 +10,7 @@ const defaultMockValues = {
 	JWT_SECRET_KEY: null,
 	// WebSocket compression setting
 	COMPRESSION_ENABLED: true,
+	SESSION_TTL: 6 * 60 * 60 * 1000,
 }
 
 export function createConfigMock(customValues = {}) {

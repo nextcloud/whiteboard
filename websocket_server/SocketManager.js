@@ -8,6 +8,7 @@
 import { Server as SocketIO } from 'socket.io'
 import prometheusMetrics from 'socket.io-prometheus'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import Utils from './Utils.js'
 import { createAdapter } from '@socket.io/redis-streams-adapter'
 import Config from './Config.js'
@@ -15,11 +16,26 @@ import RecordingService from './RecordingService.js'
 import { checkPuppeteerAvailability } from './PuppeteerEnvironment.js'
 import VotingManager from './VotingManager.js'
 import { SOCKET_MSG } from '../src/shared/constants.js'
+import DistributedState from './DistributedState.js'
+import NodePresence from './NodePresence.js'
+import ClusterState from './ClusterState.js'
 
 export default class SocketManager {
 
+	static HEARTBEAT_KEY_PREFIX = 'node:'
+
+	static HEARTBEAT_TTL_MS = 15000
+
 	#getRecordingKey(roomId, userId) {
 		return `${roomId}_${userId}`
+	}
+
+	#getTimerKey(roomId) {
+		return `room:${roomId}:timer`
+	}
+
+	#getVotingKey(roomId) {
+		return `room:${roomId}:votings`
 	}
 
 	// Debug method to check recording services state
@@ -29,9 +45,15 @@ export default class SocketManager {
 	}
 
 	// Debug method to check presentation sessions state
-	debugPresentationSessions() {
-		console.log('Active presentation sessions:', Array.from(this.presentationSessions.entries()))
-		return this.presentationSessions
+	async debugPresentationSessions() {
+		const keys = await this.distributedState.listValueKeys('room:*:presentation')
+		const sessions = []
+		for (const key of keys) {
+			const value = await this.distributedState.getValue(key)
+			sessions.push([key, value])
+		}
+		console.log('Active presentation sessions:', sessions)
+		return sessions
 	}
 
 	constructor(server, socketDataStorage, cachedTokenStorage, redisClient) {
@@ -41,8 +63,25 @@ export default class SocketManager {
 		this.recordingServices = new Map()
 		// Track timers per room: roomId -> { status, durationMs, remainingMs, endsAt, startedBy, timeoutId }
 		this.timers = new Map()
-		// Track presentation state per room: roomId -> { presenterId, presenterName, startTime }
-		this.presentationSessions = new Map()
+		this.nodeId = process.env.WEBSOCKET_NODE_ID || process.env.HOSTNAME || `node-${crypto.randomUUID()}`
+		this.shuttingDown = false
+		this.nodePresence = new NodePresence(redisClient, {
+			nodeId: this.nodeId,
+			ttlMs: SocketManager.HEARTBEAT_TTL_MS,
+			keyPrefix: SocketManager.HEARTBEAT_KEY_PREFIX,
+		})
+		this.stateSweepInterval = null
+		this.distributedState = new DistributedState({
+			redisClient,
+			prefix: this.socketDataStorage?.strategy?.prefix || 'socket_',
+			defaultTtlMs: Config.SESSION_TTL,
+		})
+		this.clusterState = new ClusterState({
+			distributedState: this.distributedState,
+			nodePresence: this.nodePresence,
+			nodeId: this.nodeId,
+			sessionTtl: Config.SESSION_TTL,
+		})
 		this.io = this.createSocketServer(server)
 		this.votingManager = new VotingManager()
 		this.init()
@@ -80,8 +119,52 @@ export default class SocketManager {
 		return new SocketIO(server, socketOptions)
 	}
 
+	async getPresentationSession(roomID) {
+		return this.clusterState.getPresentation(roomID)
+	}
+
+	async setPresentationSession(roomID, session) {
+		return this.clusterState.setPresentation(roomID, session)
+	}
+
+	async clearPresentationSession(roomID) {
+		await this.clusterState.clearPresentation(roomID)
+	}
+
+	async getRecordingState(roomID) {
+		return this.clusterState.getRecordingState(roomID)
+	}
+
+	async setRecordingEntry(roomID, userId, entry) {
+		return this.clusterState.setRecordingEntry(roomID, userId, entry)
+	}
+
+	async getRecordingEntry(roomID, userId) {
+		const state = await this.getRecordingState(roomID)
+		return state[userId]
+	}
+
+	async removeRecordingEntry(roomID, userId) {
+		return this.clusterState.removeRecordingEntry(roomID, userId)
+	}
+
+	async getRoomSyncer(roomID) {
+		return this.clusterState.getSyncer(roomID)
+	}
+
+	async setRoomSyncer(roomID, userId) {
+		await this.clusterState.setSyncer(roomID, userId)
+	}
+
+	async clearRoomSyncer(roomID) {
+		await this.clusterState.clearSyncer(roomID)
+	}
+
 	async init() {
 		await this.setupAdapter()
+		await this.nodePresence.start()
+		this.startStateSweeper()
+		this.setupServerSideEvents()
 		this.setupEventHandlers()
 	}
 
@@ -106,6 +189,214 @@ export default class SocketManager {
 
 	shouldUseRedis() {
 		return !!this.redisClient
+	}
+
+	startStateSweeper() {
+		if (!this.shouldUseRedis() || this.stateSweepInterval) {
+			return
+		}
+		const intervalMs = Math.max(2000, Math.floor(SocketManager.HEARTBEAT_TTL_MS / 2))
+		this.stateSweepInterval = setInterval(() => {
+			this.runSweep().catch((error) => {
+				console.error('Failed to sweep cluster state:', error)
+			})
+		}, intervalMs)
+	}
+
+	stopStateSweeper() {
+		if (this.stateSweepInterval) {
+			clearInterval(this.stateSweepInterval)
+			this.stateSweepInterval = null
+		}
+	}
+
+	async isNodeAlive(nodeId) {
+		return this.nodePresence.isAlive(nodeId)
+	}
+
+	async runSweep() {
+		if (!this.shouldUseRedis()) return
+		const results = await this.clusterState.sweep()
+		await this.handleSweepResults(results)
+	}
+
+	async handleSweepResults(results) {
+		const { presentationsCleared = [], recordingsCleared = [], syncersCleared = [] } = results || {}
+
+		for (const entry of presentationsCleared) {
+			this.io.to(entry.roomId).emit('user-stopped-presenting', {
+				userId: entry.presenterId,
+				username: entry.presenterName,
+			})
+		}
+
+		for (const entry of recordingsCleared) {
+			this.io.to(entry.roomId).emit('user-stopped-recording', {
+				userId: entry.userId,
+				username: entry.username || 'Unknown User',
+			})
+		}
+
+		for (const entry of syncersCleared) {
+			await this.findNewSyncer(entry.roomId)
+		}
+	}
+
+	setupServerSideEvents() {
+		if (!this.io || !this.io.on) {
+			return
+		}
+
+		this.io.on('recording-stop-request', async (payload) => {
+			const { roomID, userId, requesterSocketId } = payload || {}
+			if (!roomID || !userId) {
+				return
+			}
+
+			const recordingEntry = await this.getRecordingEntry(roomID, userId)
+			if (!recordingEntry || recordingEntry.nodeId !== this.nodeId) {
+				return
+			}
+
+			const recordingKey = this.#getRecordingKey(roomID, userId)
+			const recordingService = this.recordingServices.get(recordingKey)
+			const username = recordingEntry.username || 'Unknown User'
+
+			if (!recordingService) {
+				await this.removeRecordingEntry(roomID, userId)
+				if (requesterSocketId) {
+					this.io.to(requesterSocketId).emit('recording-error', 'No active recording found')
+				}
+				return
+			}
+
+			await this.finalizeRecordingStop({
+				roomID,
+				userId,
+				username,
+				recordingKey,
+				recordingService,
+				requesterSocketId,
+			})
+		})
+	}
+
+	async finalizeRecordingStop({
+		roomID,
+		userId,
+		username,
+		recordingKey,
+		recordingService,
+		initiatorSocket = null,
+		requesterSocketId = null,
+	}) {
+		const { recorder, uploadToken } = recordingService
+		try {
+			const result = await recorder.stopRecording(roomID, userId)
+			if (!result) {
+				throw new Error('Failed to stop recording')
+			}
+
+			await recorder.cleanup(roomID, userId)
+
+			const payload = {
+				filePath: result.localPath,
+				recordingData: result.recordingData,
+				uploadToken,
+				fileId: roomID,
+			}
+
+			if (initiatorSocket) {
+				initiatorSocket.emit('recording-stopped', payload)
+				initiatorSocket.to(roomID).emit('user-stopped-recording', {
+					userId,
+					username,
+				})
+			} else if (requesterSocketId) {
+				this.io.to(requesterSocketId).emit('recording-stopped', payload)
+				this.io.to(roomID).emit('user-stopped-recording', {
+					userId,
+					username,
+				})
+			} else {
+				this.io.to(roomID).emit('user-stopped-recording', {
+					userId,
+					username,
+				})
+			}
+		} catch (error) {
+			console.error(`[${roomID}_${userId}] Stop recording failed:`, error)
+			if (initiatorSocket) {
+				initiatorSocket.emit('recording-error', error.message)
+			} else if (requesterSocketId) {
+				this.io.to(requesterSocketId).emit('recording-error', error.message)
+			}
+		} finally {
+			if (recordingKey && this.recordingServices.has(recordingKey)) {
+				this.recordingServices.delete(recordingKey)
+			}
+			await this.removeRecordingEntry(roomID, userId)
+		}
+	}
+
+	async forwardRecordingStop(roomID, userId, requesterSocketId) {
+		if (!this.shouldUseRedis() || !this.io?.serverSideEmit) {
+			return false
+		}
+		this.io.serverSideEmit('recording-stop-request', {
+			roomID,
+			userId,
+			requesterSocketId,
+		})
+		return true
+	}
+
+	async cleanupLocalSessionData() {
+		this.shuttingDown = true
+		const socketIds = this.io?.sockets ? Array.from(this.io.sockets.sockets.keys()) : []
+		const cleanupTasks = []
+		const syncerRoomsToClear = new Set()
+
+		for (const socketId of socketIds) {
+			const socketData = await this.socketDataStorage.get(socketId)
+			const socket = this.io.sockets.sockets.get(socketId)
+			const rooms = socket ? Array.from(socket.rooms).filter((room) => room !== socketId) : []
+
+			for (const roomId of rooms) {
+				const currentSyncer = await this.getRoomSyncer(roomId)
+				const currentSyncerUserId = currentSyncer?.userId
+
+				if (!currentSyncerUserId || !socketData?.user?.id || socketData.user.id !== currentSyncerUserId) {
+					continue
+				}
+
+				const roomSockets = await this.getUserSocketsInRoom(roomId)
+				const otherActiveSocket = roomSockets
+					.filter(Boolean)
+					.some((entry) => entry.userId === currentSyncerUserId && entry.socketId !== socketId)
+
+				if (!otherActiveSocket) {
+					syncerRoomsToClear.add(roomId)
+				}
+			}
+		}
+
+		for (const socketId of socketIds) {
+			cleanupTasks.push(this.socketDataStorage.delete(socketId))
+			cleanupTasks.push(this.socketDataStorage.delete(`${socketId}:connected_at`))
+			cleanupTasks.push(this.socketDataStorage.delete(`${socketId}:following`))
+		}
+
+		await Promise.all(cleanupTasks)
+
+		const cleared = await this.clusterState.clearNodeState(this.nodeId)
+		await this.handleSweepResults(cleared)
+
+		for (const roomId of syncerRoomsToClear) {
+			await this.findNewSyncer(roomId)
+		}
+		this.stopStateSweeper()
+		await this.nodePresence.stop()
 	}
 
 	async socketAuthenticateHandler(socket, next) {
@@ -265,8 +556,12 @@ export default class SocketManager {
 		await socket.join(roomID)
 
 		// Check if this user is already the syncer for this room
-		const roomSyncerKey = `room:${roomID}:syncer`
-		const currentSyncerUserId = await this.socketDataStorage.get(roomSyncerKey)
+		const currentSyncer = await this.getRoomSyncer(roomID)
+		let currentSyncerUserId = currentSyncer?.userId
+		if (currentSyncer?.nodeId && !(await this.isNodeAlive(currentSyncer.nodeId))) {
+			await this.clearRoomSyncer(roomID)
+			currentSyncerUserId = null
+		}
 		const isReadOnly = await this.isSocketReadOnly(socket.id)
 
 		let isSyncer = false
@@ -283,7 +578,7 @@ export default class SocketManager {
 			socket.emit('sync-designate', { isSyncer: true })
 			console.log(`[${roomID}] User ${userName} reconnected as existing syncer`)
 		} else if (!currentSyncerUserId && !isReadOnly) {
-			await this.socketDataStorage.set(roomSyncerKey, userId)
+			await this.setRoomSyncer(roomID, userId)
 
 			await this.socketDataStorage.set(socket.id, {
 				...socketData,
@@ -331,7 +626,7 @@ export default class SocketManager {
 		})
 
 		// Check if there's an active presentation session and notify the new user
-		const presentationSession = this.presentationSessions.get(roomID)
+		const presentationSession = await this.getPresentationSession(roomID)
 		if (presentationSession) {
 			console.log(`[${roomID}] Notifying new user ${userName} about active presentation by ${presentationSession.presenterName}`)
 			socket.emit('user-started-presenting', {
@@ -340,15 +635,28 @@ export default class SocketManager {
 			})
 		}
 
-		// Send current timer state to the new user
+		// Rehydrate timer and voting state from distributed storage
+		await this.loadTimerState(roomID)
 		this.emitTimerState(roomID, socket)
 
-		// Send existing votings to the newly joined user
+		await this.loadVotings(roomID)
 		const existingVotings = this.votingManager.getAllVotings(roomID)
 		if (existingVotings && existingVotings.length > 0) {
 			console.log(`[${roomID}] Sending ${existingVotings.length} existing voting(s) to new user ${userName}`)
 			socket.emit(SOCKET_MSG.VOTINGS_INIT, existingVotings)
 		}
+
+		// Rehydrate active recordings so late joiners on any node are aware
+		const recordingState = await this.getRecordingState(roomID)
+		Object.values(recordingState).forEach((entry) => {
+			if (!entry) {
+				return
+			}
+			socket.emit('user-started-recording', {
+				userId: entry.userId,
+				username: entry.username,
+			})
+		})
 	}
 
 	async serverBroadcastHandler(socket, roomID, encryptedData, iv) {
@@ -446,6 +754,7 @@ export default class SocketManager {
 			Utils.logOperation(roomID, `Started voting: ${JSON.stringify(votingData)}`)
 
 			this.io.to(roomID).emit(SOCKET_MSG.VOTING_STARTED, voting)
+			await this.persistVotings(roomID)
 		} catch (error) {
 			console.error(`[${roomID}] Error starting voting:`, error.message)
 			socket.emit('error', { message: error.message, context: 'voting-start' })
@@ -470,6 +779,7 @@ export default class SocketManager {
 			Utils.logOperation(roomID, `${socketData.user.id} voted: ${JSON.stringify(voting)}`)
 
 			this.io.to(roomID).emit(SOCKET_MSG.VOTING_VOTED, voting)
+			await this.persistVotings(roomID)
 		} catch (error) {
 			console.error(`[${roomID}] Error voting:`, error.message)
 			socket.emit('error', { message: error.message, context: 'voting-vote' })
@@ -494,6 +804,7 @@ export default class SocketManager {
 			Utils.logOperation(roomID, `Voting closed: ${JSON.stringify(voting)}`)
 
 			this.io.to(roomID).emit(SOCKET_MSG.VOTING_ENDED, voting)
+			await this.persistVotings(roomID)
 		} catch (error) {
 			console.error(`[${roomID}] Error ending voting:`, error.message)
 			socket.emit('error', { message: error.message, context: 'voting-end' })
@@ -507,7 +818,11 @@ export default class SocketManager {
 	 */
 	async disconnectHandler(socket) {
 		try {
-			await this.socketDataStorage.delete(socket.id)
+			await Promise.all([
+				this.socketDataStorage.delete(socket.id),
+				this.socketDataStorage.delete(`${socket.id}:connected_at`),
+				this.socketDataStorage.delete(`${socket.id}:following`),
+			])
 
 			socket.removeAllListeners()
 
@@ -526,6 +841,9 @@ export default class SocketManager {
 	}
 
 	async disconnectingHandler(socket, rooms) {
+		if (this.shuttingDown) {
+			return
+		}
 		for (const roomID of rooms) {
 			if (roomID === socket.id) continue
 
@@ -536,8 +854,8 @@ export default class SocketManager {
 			console.log(`[${roomID}] User ${userName} disconnecting`)
 
 			// Check if user was syncer and if they have other active connections in the room
-			const roomSyncerKey = `room:${roomID}:syncer`
-			const currentSyncerUserId = await this.socketDataStorage.get(roomSyncerKey)
+			const currentSyncer = await this.getRoomSyncer(roomID)
+			const currentSyncerUserId = currentSyncer?.userId
 			const wasSyncer = currentSyncerUserId === userId
 
 			if (wasSyncer) {
@@ -556,7 +874,7 @@ export default class SocketManager {
 			}
 
 			// Check if user was presenting and clean up presentation session
-			const presentationSession = this.presentationSessions.get(roomID)
+			const presentationSession = await this.getPresentationSession(roomID)
 			if (presentationSession) {
 				const isPublicSharingUser = userId.startsWith('shared_')
 				let shouldEndPresentation = false
@@ -573,8 +891,18 @@ export default class SocketManager {
 				}
 
 				if (shouldEndPresentation) {
+					const roomSockets = await this.getUserSocketsInRoom(roomID)
+					const presenterStillConnected = roomSockets
+						.filter(Boolean)
+						.some((s) => s.userId === presentationSession.presenterId && s.socketId !== socket.id)
+
+					if (presenterStillConnected) {
+						console.log(`[${roomID}] Presenter still connected on another socket, skipping presentation end`)
+						continue
+					}
+
 					console.log(`[${roomID}] Presenter ${userName} disconnected, ending presentation`)
-					this.presentationSessions.delete(roomID)
+					await this.clearPresentationSession(roomID)
 
 					// Notify all participants that presentation ended
 					socket.to(roomID).emit('user-stopped-presenting', {
@@ -649,6 +977,56 @@ export default class SocketManager {
 		}
 	}
 
+	async loadTimerState(roomID) {
+		const stored = await this.distributedState.getValue(this.#getTimerKey(roomID))
+		if (!stored) {
+			return
+		}
+
+		this.clearTimerTimeout(roomID)
+
+		const now = Date.now()
+		let timeoutId = null
+		let remainingMs = stored.remainingMs || 0
+		let endsAt = stored.endsAt || null
+
+		if (stored.status === 'running' && stored.endsAt) {
+			const remaining = Math.max(stored.endsAt - now, 0)
+			if (remaining === 0) {
+				this.handleTimerFinished(roomID)
+				return
+			}
+			timeoutId = setTimeout(() => this.handleTimerFinished(roomID), remaining)
+			remainingMs = remaining
+			endsAt = now + remaining
+		}
+
+		this.timers.set(roomID, {
+			...stored,
+			remainingMs,
+			endsAt,
+			timeoutId,
+		})
+	}
+
+	async persistTimerState(roomID) {
+		const timerState = this.timers.get(roomID)
+		if (!timerState) {
+			await this.distributedState.deleteValue(this.#getTimerKey(roomID))
+			return
+		}
+		const { timeoutId, ...serializable } = timerState
+		await this.distributedState.setValue(this.#getTimerKey(roomID), serializable, {
+			ttlMs: Config.SESSION_TTL,
+		})
+	}
+
+	async clearTimerState(roomID) {
+		this.clearTimerTimeout(roomID)
+		this.timers.delete(roomID)
+		await this.distributedState.deleteValue(this.#getTimerKey(roomID))
+	}
+
 	handleTimerFinished(roomID) {
 		const timerState = this.timers.get(roomID)
 		if (!timerState) {
@@ -667,6 +1045,7 @@ export default class SocketManager {
 		})
 
 		console.log(`[${roomID}] Timer finished`)
+		this.persistTimerState(roomID).catch(() => {})
 		this.emitTimerState(roomID)
 	}
 
@@ -710,6 +1089,7 @@ export default class SocketManager {
 		})
 
 		console.log(`[${roomID}] Timer started for ${durationMs}ms by ${userInfo.userName}`)
+		await this.persistTimerState(roomID)
 		this.emitTimerState(roomID)
 	}
 
@@ -754,6 +1134,7 @@ export default class SocketManager {
 		})
 
 		console.log(`[${roomID}] Timer paused with ${remainingMs}ms remaining`)
+		await this.persistTimerState(roomID)
 		this.emitTimerState(roomID)
 	}
 
@@ -800,6 +1181,7 @@ export default class SocketManager {
 		})
 
 		console.log(`[${roomID}] Timer resumed with ${remainingMs}ms remaining`)
+		await this.persistTimerState(roomID)
 		this.emitTimerState(roomID)
 	}
 
@@ -862,6 +1244,7 @@ export default class SocketManager {
 		})
 
 		console.log(`[${roomID}] Timer extended by ${extraTime}ms`)
+		await this.persistTimerState(roomID)
 		this.emitTimerState(roomID)
 	}
 
@@ -883,8 +1266,7 @@ export default class SocketManager {
 			return
 		}
 
-		this.clearTimerTimeout(roomID)
-		this.timers.delete(roomID)
+		await this.clearTimerState(roomID)
 
 		console.log(`[${roomID}] Timer reset`)
 		this.emitTimerState(roomID)
@@ -901,19 +1283,43 @@ export default class SocketManager {
 			return
 		}
 
+		await this.loadTimerState(roomID)
 		this.emitTimerState(roomID, socket)
+	}
+
+	async loadVotings(roomID) {
+		const stored = await this.distributedState.getValue(this.#getVotingKey(roomID))
+		if (stored && Array.isArray(stored)) {
+			this.votingManager.setRoomVotings(roomID, stored)
+		}
+	}
+
+	async persistVotings(roomID) {
+		const votings = this.votingManager.getAllVotings(roomID)
+		if (votings.length === 0) {
+			await this.distributedState.deleteValue(this.#getVotingKey(roomID))
+			return
+		}
+		await this.distributedState.setValue(this.#getVotingKey(roomID), votings, {
+			ttlMs: Config.SESSION_TTL,
+		})
+	}
+
+	async clearVotingState(roomID) {
+		this.votingManager.cleanupRoom(roomID)
+		await this.distributedState.deleteValue(this.#getVotingKey(roomID))
 	}
 
 	async findNewSyncer(roomID) {
 		const userSockets = await this.getUserSocketsInRoom(roomID)
-		const roomSyncerKey = `room:${roomID}:syncer`
 
 		console.log(`[${roomID}] Finding new syncer. Users in room: ${userSockets.length}`)
 
 		if (userSockets.length === 0) {
 			console.log(`[${roomID}] No users left in room, no syncer needed`)
-			await this.socketDataStorage.delete(roomSyncerKey)
-			this.votingManager.cleanupRoom(roomID)
+			await this.clearRoomSyncer(roomID)
+			await this.clearTimerState(roomID)
+			await this.clearVotingState(roomID)
 			return
 		}
 
@@ -934,7 +1340,7 @@ export default class SocketManager {
 
 				if (!isReadOnly) {
 					// Found an eligible user, make them the syncer
-					await this.socketDataStorage.set(roomSyncerKey, userId)
+					await this.setRoomSyncer(roomID, userId)
 
 					// Update all sockets for this user
 					for (const s of sockets) {
@@ -946,11 +1352,7 @@ export default class SocketManager {
 								syncerFor: roomID,
 							})
 
-							// Get the actual socket instance to emit to it
-							const socket = this.io.sockets.sockets.get(s.socketId)
-							if (socket) {
-								socket.emit('sync-designate', { isSyncer: true })
-							}
+							this.io.to(s.socketId).emit('sync-designate', { isSyncer: true })
 						}
 					}
 
@@ -961,7 +1363,7 @@ export default class SocketManager {
 		}
 
 		console.log(`[${roomID}] No eligible users found for syncer role`)
-		await this.socketDataStorage.delete(roomSyncerKey)
+		await this.clearRoomSyncer(roomID)
 	}
 
 	async safeSocketHandler(socket, handler) {
@@ -1101,6 +1503,11 @@ export default class SocketManager {
 			const socketData = await this.socketDataStorage.get(socket.id)
 			if (!socketData?.user?.id) throw new Error('Unauthorized')
 
+			const existingRecording = await this.getRecordingEntry(roomID, socketData.user.id)
+			if (existingRecording) {
+				throw new Error('Recording already in progress')
+			}
+
 			// Check if recording already in progress
 			const recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
 			if (this.recordingServices.has(recordingKey)) {
@@ -1121,6 +1528,14 @@ export default class SocketManager {
 
 			// Store recorder with upload token for later use
 			this.recordingServices.set(recordingKey, { recorder, uploadToken })
+			await this.setRecordingEntry(roomID, socketData.user.id, {
+				userId: socketData.user.id,
+				username: socketData.user.displayName || socketData.user.name || 'Unknown User',
+				uploadToken,
+				status: 'recording',
+				nodeId: this.nodeId,
+				startedAt: Date.now(),
+			})
 
 			// Notify participants
 			socket.emit('recording-started')
@@ -1151,55 +1566,55 @@ export default class SocketManager {
 			const recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
 			console.log(`[${sessionKey}] Looking for recorder with key: ${recordingKey}`)
 			const recordingService = this.recordingServices.get(recordingKey)
+			const recordingEntry = await this.getRecordingEntry(roomID, socketData.user.id)
+
+			if (!recordingService && recordingEntry?.nodeId && recordingEntry.nodeId !== this.nodeId) {
+				console.log(`[${sessionKey}] Forwarding stop request to node ${recordingEntry.nodeId}`)
+				const forwarded = await this.forwardRecordingStop(roomID, socketData.user.id, socket.id)
+				if (!forwarded) {
+					throw new Error('No active recording found')
+				}
+				setTimeout(async () => {
+					try {
+						const latestEntry = await this.getRecordingEntry(roomID, socketData.user.id)
+						if (latestEntry && latestEntry.nodeId === recordingEntry.nodeId) {
+							await this.removeRecordingEntry(roomID, socketData.user.id)
+							socket.emit('recording-error', 'Recording host unavailable, please try again')
+						}
+					} catch (err) {
+						console.error(`[${sessionKey}] Failed to clear stale recording entry:`, err)
+					}
+				}, 3000)
+				return
+			}
+
 			if (!recordingService) {
 				console.log(`[${sessionKey}] Available recording keys:`, Array.from(this.recordingServices.keys()))
+				await this.removeRecordingEntry(roomID, socketData.user.id)
 				throw new Error('No active recording found')
 			}
 
-			const { recorder, uploadToken } = recordingService
+			const username = recordingEntry?.username
+				|| socketData.user.displayName
+				|| socketData.user.name
+				|| 'Unknown User'
 
-			// Stop recording and cleanup
-			console.log(`[${sessionKey}] Stopping recording`)
-			const result = await recorder.stopRecording(roomID, socketData.user.id)
-			await recorder.cleanup(roomID, socketData.user.id)
-			this.recordingServices.delete(recordingKey)
-			console.log(`[${sessionKey}] Removed recorder from services map`)
-
-			console.log(`[${sessionKey}] Notifying participants of recording stop`)
-			// Notify participants with recording data and upload token
-			socket.emit('recording-stopped', {
-				filePath: result.localPath,
-				recordingData: result.recordingData,
-				uploadToken,
-				fileId: roomID,
-			})
-			console.log(`[${sessionKey}] Emitted recording-stopped to ${socketData.user.id}`)
-
-			socket.to(roomID).emit('user-stopped-recording', {
+			console.log(`[${sessionKey}] Stopping recording locally on node ${this.nodeId}`)
+			await this.finalizeRecordingStop({
+				roomID,
 				userId: socketData.user.id,
-				username: socketData.user.displayName,
+				username,
+				recordingKey,
+				recordingService,
+				initiatorSocket: socket,
+				requesterSocketId: socket.id,
 			})
-			console.log(`[${sessionKey}] Emitted user-stopped-recording to room ${roomID}`)
-
 			console.log(`[${sessionKey}] Stop recording completed successfully`)
 
 		} catch (error) {
 			console.error(`[${sessionKey}] Stop recording failed:`, error)
 			console.error(`[${sessionKey}] Error stack:`, error.stack)
 			socket.emit('recording-error', error.message)
-		} finally {
-			// Ensure cleanup even if errors occur
-			const socketData = await this.socketDataStorage.get(socket.id)
-			if (socketData?.user?.id) {
-				const recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
-				if (this.recordingServices.has(recordingKey)) {
-					const recordingService = this.recordingServices.get(recordingKey)
-					if (recordingService?.recorder?.cleanup) {
-						await recordingService.recorder.cleanup()
-					}
-					this.recordingServices.delete(recordingKey)
-				}
-			}
 		}
 	}
 
@@ -1246,20 +1661,20 @@ export default class SocketManager {
 			}
 
 			// Check if presentation already in progress
-			if (this.presentationSessions.has(roomID)) {
-				const currentSession = this.presentationSessions.get(roomID)
+			const existingSession = await this.getPresentationSession(roomID)
+			if (existingSession) {
 				// If the same user is trying to start again, allow it (might be a reconnection)
-				if (currentSession.presenterId === authoritativeUserId) {
+				if (existingSession.presenterId === authoritativeUserId) {
 					console.log(`[${sessionKey}] User ${socketData.user.displayName} restarting their presentation`)
 					// Update the session timestamp
-					currentSession.startTime = Date.now()
-					this.presentationSessions.set(roomID, currentSession)
+					existingSession.startTime = Date.now()
+					await this.setPresentationSession(roomID, existingSession)
 
 					// Notify the presenter
 					socket.emit('presentation-started')
 					return // Exit early, no need to create new session
 				} else {
-					throw new Error(`Presentation already in progress by ${currentSession.presenterName}`)
+					throw new Error(`Presentation already in progress by ${existingSession.presenterName}`)
 				}
 			}
 
@@ -1273,7 +1688,10 @@ export default class SocketManager {
 
 			console.log(`[${sessionKey}] Creating presentation session:`, presentationSession)
 
-			this.presentationSessions.set(roomID, presentationSession)
+			await this.setPresentationSession(roomID, {
+				...presentationSession,
+				nodeId: this.nodeId,
+			})
 			console.log(`[${sessionKey}] Started presentation by ${presenterName}`)
 
 			// Notify the presenter
@@ -1311,7 +1729,7 @@ export default class SocketManager {
 			if (!socketData?.user?.id) throw new Error('Unauthorized')
 
 			// Check if presentation exists and user is the presenter
-			const presentationSession = this.presentationSessions.get(roomID)
+			const presentationSession = await this.getPresentationSession(roomID)
 			if (!presentationSession) {
 				throw new Error('No active presentation found')
 			}
@@ -1347,7 +1765,7 @@ export default class SocketManager {
 
 			// Stop presentation session
 			const presenterName = socketData.user.displayName || socketData.user.name || 'Unknown User'
-			this.presentationSessions.delete(roomID)
+			await this.clearPresentationSession(roomID)
 			console.log(`[${sessionKey}] Stopped presentation by ${presenterName}`)
 
 			// Notify the presenter
@@ -1381,7 +1799,7 @@ export default class SocketManager {
 			console.log(`[${sessionKey}] Presenter viewport requested`)
 
 			// Check if there's an active presentation
-			const presentationSession = this.presentationSessions.get(roomID)
+			const presentationSession = await this.getPresentationSession(roomID)
 			if (!presentationSession) {
 				console.log(`[${sessionKey}] No active presentation found`)
 				return

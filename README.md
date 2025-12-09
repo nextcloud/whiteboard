@@ -212,6 +212,7 @@ For high-traffic environments with multiple websocket servers:
 1. Use Redis for shared session state
 2. Configure load balancer with session stickiness
 3. Redis Streams handles WebSocket scaling automatically
+4. Redis is required for multi-node clusters; socket and room session keys use TTLs instead of global clears so restarting a node does not erase active state on its peers
 
 ## Benchmarking & Capacity Planning
 

@@ -34,12 +34,12 @@ export default class ServerManager {
 		}
 
 		this.socketDataStorage = Config.STORAGE_STRATEGY === 'redis'
-			? StorageManager.create('redis', this.redisClient, { prefix: 'socket_' })
+			? StorageManager.create('redis', this.redisClient, { prefix: 'socket_', ttl: Config.SESSION_TTL })
 			: StorageManager.create('in-mem')
 
 		this.cachedTokenStorage = Config.STORAGE_STRATEGY === 'redis'
-			? StorageManager.create('redis', this.redisClient, { prefix: 'token_' })
-			: StorageManager.create('lru', null)
+			? StorageManager.create('redis', this.redisClient, { prefix: 'token_', ttl: Config.CACHED_TOKEN_TTL })
+			: StorageManager.create('lru', null, { ttl: Config.CACHED_TOKEN_TTL })
 
 		// Initialize monitoring components
 		this.systemMonitor = new SystemMonitor(null, this.cachedTokenStorage)
@@ -124,16 +124,24 @@ export default class ServerManager {
 
 			// Close socket connections
 			if (this.socketManager && this.socketManager.io) {
+				await this.socketManager.cleanupLocalSessionData()
 				await this.socketManager.io.close()
 				console.log('Stopped accepting new connections')
 			}
 
 			await Promise.all([
-				// Clear storage
+				// Clear local caches only when not using shared redis
 				(async () => {
-					if (this.socketDataStorage) await this.socketDataStorage.clear()
-					if (this.cachedTokenStorage) await this.cachedTokenStorage.clear()
-					console.log('Storage cleared')
+					if (Config.STORAGE_STRATEGY !== 'redis') {
+						if (this.socketDataStorage) {
+							await this.socketDataStorage.clear()
+							console.log('Local socket data cleared')
+						}
+						if (this.cachedTokenStorage) {
+							await this.cachedTokenStorage.clear()
+							console.log('Local token cache cleared')
+						}
+					}
 				})(),
 
 				// Close Redis client if it exists

@@ -8,7 +8,7 @@
 export default class Utils {
 
 	static convertStringToArrayBuffer(string) {
-		return new TextEncoder().encode(string).buffer
+		return new TextEncoder().encode(string)
 	}
 
 	static convertArrayBufferToString(arrayBuffer) {

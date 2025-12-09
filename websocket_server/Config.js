@@ -17,6 +17,7 @@ import {
 	DEFAULT_CACHED_TOKEN_TTL,
 	DEFAULT_COMPRESSION_ENABLED,
 	DEFAULT_HOST,
+	DEFAULT_SESSION_TTL,
 } from './Constants.js'
 import Utils from './Utils.js'
 import { createRequire } from 'module'
@@ -48,7 +49,9 @@ const Config = {
 
 	MAX_UPLOAD_FILE_SIZE: process.env.MAX_UPLOAD_FILE_SIZE * (1e6) || 2e6,
 
-	CACHED_TOKEN_TTL: process.env.CACHED_TOKEN_TTL || DEFAULT_CACHED_TOKEN_TTL,
+	CACHED_TOKEN_TTL: Number(process.env.CACHED_TOKEN_TTL || DEFAULT_CACHED_TOKEN_TTL),
+
+	SESSION_TTL: Number(process.env.SESSION_TTL || DEFAULT_SESSION_TTL),
 
 	// WebSocket compression setting
 	COMPRESSION_ENABLED: process.env.COMPRESSION_ENABLED !== undefined
