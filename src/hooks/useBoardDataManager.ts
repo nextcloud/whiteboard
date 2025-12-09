@@ -16,6 +16,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { initialDataState } from '../constants/excalidraw'
 import logger from '../utils/logger'
 import { computeElementVersionHash, mergeSceneElements } from '../utils/syncSceneData'
+import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 export function useBoardDataManager() {
 	const [isLoading, setIsLoading] = useState(true)
@@ -132,9 +133,10 @@ export function useBoardDataManager() {
 					return
 				}
 
+				const sanitizedAppState = sanitizeAppStateForSync(parsedContent.appState)
 				const finalAppState = {
 					...initialDataState.appState,
-					...(parsedContent.appState || {}),
+					...sanitizedAppState,
 				}
 
 				resolveInitialData({
@@ -194,6 +196,8 @@ export function useBoardDataManager() {
 				const restoredServerElements = restoreElements(serverData.elements, null)
 				const serverHash = computeElementVersionHash(restoredServerElements)
 				const serverScrollToContent = serverData.scrollToContent ?? true
+				const sanitizedServerAppState = sanitizeAppStateForSync(serverData.appState)
+				const sanitizedLocalAppState = sanitizeAppStateForSync(localData?.appState)
 
 				if (localData && localData.elements && Array.isArray(localData.elements) && hasPendingLocalChanges) {
 					// Local has pending changes – reconcile to avoid losing unsynced work
@@ -201,7 +205,7 @@ export function useBoardDataManager() {
 					const reconciledElements = mergeSceneElements(restoredLocalElements, restoredServerElements, {})
 
 					const mergedFiles = { ...localData.files, ...serverData.files }
-					const mergedAppState = { ...localData.appState, ...serverData.appState }
+					const mergedAppState = { ...sanitizedLocalAppState, ...sanitizedServerAppState }
 
 					dataToUse = {
 						elements: reconciledElements,
@@ -222,7 +226,7 @@ export function useBoardDataManager() {
 					)
 				} else {
 					// Use server content as source of truth (restores, clean loads, etc.)
-					const mergedAppState = { ...localData?.appState, ...serverData.appState }
+					const mergedAppState = { ...sanitizedLocalAppState, ...sanitizedServerAppState }
 					const files = serverData.files || {}
 
 					dataToUse = {
@@ -259,7 +263,8 @@ export function useBoardDataManager() {
 			// Use the reconciled/fetched data
 			if (dataToUse && dataToUse.elements) {
 				const elements = dataToUse.elements
-				const finalAppState = { ...defaultSettings, ...(dataToUse.appState || {}) }
+				const sanitizedAppState = sanitizeAppStateForSync(dataToUse.appState)
+				const finalAppState = { ...defaultSettings, ...sanitizedAppState }
 				const files = dataToUse.files || {}
 
 				// Force a small delay to ensure the component is ready to receive the data
@@ -324,12 +329,7 @@ export function useBoardDataManager() {
 					const elements = api.getSceneElementsIncludingDeleted()
 					const appState = api.getAppState()
 					const files = api.getFiles()
-					// Create a new object without the properties we want to exclude
-					const filteredAppState = {
-						...appState,
-						collaborators: undefined,
-						selectedElementIds: undefined,
-					}
+					const filteredAppState = sanitizeAppStateForSync(appState)
 
 					// Set up a one-time message handler to detect when sync is complete
 					const messageHandler = (event: MessageEvent) => {

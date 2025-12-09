@@ -21,6 +21,7 @@ import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
 import { db } from '../database/db'
@@ -185,9 +186,10 @@ export function useCollaboration() {
 				excalidrawAPI.resetScene()
 
 				const currentAppState = excalidrawAPI.getAppState()
+				const sanitizedPayloadAppState = sanitizeAppStateForSync(payload.appState)
 				const mergedAppState = {
 					...currentAppState,
-					...payload.appState,
+					...sanitizedPayloadAppState,
 					scrollToContent: payload.scrollToContent,
 				}
 
@@ -535,7 +537,7 @@ export function useCollaboration() {
 					try {
 						const restoredElements = restoreElements(payload.elements, null) as ExcalidrawElement[]
 						const files = (payload.files || {}) as BinaryFiles
-						const appStatePatch: Partial<AppState> = payload.appState || {}
+						const appStatePatch: Partial<AppState> = sanitizeAppStateForSync(payload.appState)
 						const scrollToContent = payload.scrollToContent ?? true
 
 						// Clear pending queue state since we have an authoritative snapshot

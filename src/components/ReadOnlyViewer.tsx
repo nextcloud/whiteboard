@@ -19,6 +19,7 @@ import logger from '../utils/logger'
 import type { WhiteboardAppProps } from '../App'
 import { initialDataState } from '../constants/excalidraw'
 import { useThemeHandling } from '../hooks/useThemeHandling'
+import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 const ReadOnlyExcalidraw = memo(ExcalidrawComponent)
 
@@ -52,9 +53,7 @@ const sanitizeAppState = (state: unknown): Partial<AppState> => {
 	if (!state || typeof state !== 'object') {
 		return fallback
 	}
-	const parsed = { ...(state as Partial<AppState>) }
-	delete parsed.collaborators
-	delete parsed.selectedElementIds
+	const parsed = sanitizeAppStateForSync(state as Partial<AppState>)
 	return {
 		...fallback,
 		...parsed,
