@@ -17,6 +17,7 @@ import { db } from '../database/db'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import logger from '../utils/logger'
+import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 import { generateUrl } from '@nextcloud/router'
 
@@ -159,9 +160,7 @@ export function useVersionPreview({
 				const rawFiles = excalidrawAPI.getFiles?.() || {}
 				const filesCopy: BinaryFiles = { ...rawFiles }
 				const rawAppState = excalidrawAPI.getAppState?.() || {}
-				const appStateCopy: Partial<AppState> = { ...rawAppState }
-				delete appStateCopy.collaborators
-				delete appStateCopy.selectedElementIds
+				const appStateCopy = sanitizeAppStateForSync(rawAppState)
 				appStateCopy.viewModeEnabled = false
 				const scrollToContent = typeof rawAppState.scrollToContent === 'boolean'
 					? rawAppState.scrollToContent
@@ -218,10 +217,8 @@ export function useVersionPreview({
 				const rawAppState = (parsedContent.appState && typeof parsedContent.appState === 'object')
 					? parsedContent.appState
 					: {}
-				const parsedAppState = rawAppState as Partial<AppState>
+				const parsedAppState = sanitizeAppStateForSync(rawAppState)
 				const appStateCopy: Partial<AppState> = { ...parsedAppState }
-				delete appStateCopy.collaborators
-				delete appStateCopy.selectedElementIds
 				appStateCopy.viewModeEnabled = false
 
 				return {
@@ -245,8 +242,10 @@ export function useVersionPreview({
 		}
 
 		const { elements, files, appState, scrollToContent } = snapshot
-		const sanitizedAppState: Partial<AppState> = { ...appState }
-		sanitizedAppState.viewModeEnabled = false
+		const sanitizedAppState: Partial<AppState> = {
+			...sanitizeAppStateForSync(appState),
+			viewModeEnabled: false,
+		}
 
 		excalidrawAPI.updateScene?.({
 			elements,
@@ -266,12 +265,16 @@ export function useVersionPreview({
 
 		try {
 			const encoder = new TextEncoder()
+			const sanitizedAppState = {
+				...sanitizeAppStateForSync(snapshot.appState),
+				viewModeEnabled: false,
+			}
 			const scenePayload = {
 				type: 'SCENE_RESTORE',
 				payload: {
 					elements: snapshot.elements,
 					files: snapshot.files || {},
-					appState: snapshot.appState,
+					appState: sanitizedAppState,
 					scrollToContent: snapshot.scrollToContent,
 				},
 			}
@@ -302,9 +305,10 @@ export function useVersionPreview({
 		}
 
 		const { elements, files, appState, scrollToContent } = snapshot
-		const sanitizedAppState: Partial<AppState> = { ...appState }
-		delete sanitizedAppState.collaborators
-		delete sanitizedAppState.selectedElementIds
+		const sanitizedAppState: Partial<AppState> = {
+			...sanitizeAppStateForSync(appState),
+			viewModeEnabled: false,
+		}
 		const filesToStore: BinaryFiles = files || {}
 
 		await db.put(
