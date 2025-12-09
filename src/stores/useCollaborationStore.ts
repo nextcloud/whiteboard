@@ -26,6 +26,7 @@ interface CollaborationStore {
 	isDedicatedSyncer: boolean // Is this client responsible for syncing to server/broadcasting?
 	authError: AuthErrorState
 	followedUserId: string | null // User ID being followed for viewport synchronization
+	isInRoom: boolean // Whether the socket has joined the current room
 
 	// Presentation state
 	presenterId: string | null // User ID of current presenter
@@ -38,6 +39,7 @@ interface CollaborationStore {
 	setStatus: (status: CollaborationConnectionStatus) => void
 	setSocket: (socket: CollaborationSocket | null) => void
 	setDedicatedSyncer: (isSyncer: boolean) => void
+	setIsInRoom: (inRoom: boolean) => void
 	setAuthError: (error: Partial<AuthErrorState>) => void
 	incrementAuthFailure: (errorType: AuthErrorType, message: string) => void
 	clearAuthError: () => void
@@ -67,6 +69,7 @@ const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDed
 	isDedicatedSyncer: false,
 	authError: initialAuthErrorState,
 	followedUserId: null,
+	isInRoom: false,
 
 	// Presentation initial state
 	presenterId: null,
@@ -86,6 +89,7 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	setStatus: (status) => set((state) => (state.status === status ? {} : { status })),
 	setSocket: (socket) => set({ socket }),
 	setDedicatedSyncer: (isSyncer) => set({ isDedicatedSyncer: isSyncer }),
+	setIsInRoom: (inRoom) => set({ isInRoom: inRoom }),
 
 	setAuthError: (error) => set((state) => ({
 		authError: { ...state.authError, ...error },
