@@ -1,0 +1,140 @@
+/**
+ * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+.comment-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--sidebar-bg-color);
+  height: calc(100vh - 133px);
+  user-select: text;
+
+  @supports (height: 100dvh) {
+    height: calc(100dvh - 133px);
+  }
+
+  &__header {
+    margin: 0;
+    padding: 1rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  &__empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--color-text-maxcontrast);
+  }
+
+  &__list {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border-dark);
+
+    &:hover {
+      background: var(--color-background-hover);
+    }
+
+    &.active {
+      background: var(--color-primary-element-light);
+    }
+  }
+
+  &__avatar {
+    flex-shrink: 0;
+    border-radius: 50%;
+    margin-top: 0.125rem;
+    width: 40px;
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &__header-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  &__author {
+    font-weight: 600;
+    color: var(--color-main-text);
+  }
+
+  &__time {
+    font-size: 0.875rem;
+    color: var(--color-text-maxcontrast);
+  }
+
+  &__text {
+    color: var(--color-main-text);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  &__replies {
+    font-size: 0.875rem;
+    color: var(--color-info-text);
+  }
+
+  &__menu {
+    position: relative;
+    margin-inline-start: auto;
+  }
+
+  &__menu-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    color: var(--color-text-maxcontrast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      color: var(--color-main-text);
+    }
+  }
+
+  &__menu-dropdown {
+    position: absolute;
+    inset-inline-end: 0;
+    background: var(--color-main-background);
+    border: 1px solid var(--color-border-dark);
+    border-radius: var(--border-radius-large);
+    box-shadow: 0 4px 12px var(--color-box-shadow);
+    z-index: 10000;
+    min-width: 120px;
+
+    button {
+      width: 100%;
+      padding: 0.625rem 1rem;
+      background: none;
+      border: none;
+      text-align: start;
+      cursor: pointer;
+      color: var(--color-main-text);
+      font-size: 0.875rem;
+
+      &:hover {
+        background: var(--color-primary-element-light);
+      }
+    }
+  }
+}
