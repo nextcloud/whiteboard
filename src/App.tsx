@@ -34,6 +34,8 @@ import { useRecording } from './hooks/useRecording'
 import { RecordingOverlay } from './components/Recording'
 import { usePresentation } from './hooks/usePresentation'
 import { PresentationOverlay } from './components/Presentation'
+import { useTimer } from './hooks/useTimer'
+import { TimerOverlay } from './components/Timer'
 import { useCollaborationStore } from './stores/useCollaborationStore'
 import { useElementCreatorTracking } from './hooks/useElementCreatorTracking'
 import { CreatorDisplay } from './components/CreatorDisplay'
@@ -197,6 +199,8 @@ export default function App({
 
 	const recordingState = useRecording({ fileId: normalizedFileId })
 	const presentationState = usePresentation({ fileId: normalizedFileId })
+	const timerState = useTimer({ fileId: normalizedFileId })
+	const [isTimerPinned, setIsTimerPinned] = useState(false)
 
 	useHandleLibrary({
 		excalidrawAPI,
@@ -500,6 +504,8 @@ export default function App({
 							fileNameWithoutExtension={fileNameWithoutExtension}
 							recordingState={recordingState}
 							presentationState={presentationState}
+							isTimerVisible={isTimerPinned || timerState.status !== 'idle'}
+							onToggleTimer={() => setIsTimerPinned(prev => !prev)}
 						/>
 					)}
 				</Excalidraw>
@@ -516,6 +522,11 @@ export default function App({
 				{!isVersionPreview && (
 					<PresentationOverlay
 						presentationState={presentationState}
+					/>
+				)}
+				{!isVersionPreview && (isTimerPinned || timerState.status !== 'idle') && (
+					<TimerOverlay
+						timer={timerState}
 					/>
 				)}
 				{!isVersionPreview && (

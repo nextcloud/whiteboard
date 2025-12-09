@@ -106,8 +106,8 @@
 	z-index: 10000; /* Ensure it's above other UI elements */
 	position: absolute;
 	bottom: 140px; /* Position above the network status */
-	right: 14px;
-	margin-right: 0;
+	inset-inline-end: 14px;
+	margin-inline-end: 0;
 
 	&:hover,
 	&.active {
@@ -124,7 +124,7 @@
 	transition: all 0.2s ease;
 	position: absolute;
 	bottom: 80px; /* Position at the bottom with enough space for other UI elements */
-	right: 16px;
+	inset-inline-end: 16px;
 	z-index: 10000; /* Increased z-index to ensure it's above all other UI elements */
 	max-width: 40px;
 	cursor: pointer;
@@ -144,8 +144,7 @@
 	&__loading-spinner {
 		position: absolute;
 		top: 0;
-		left: 0;
-		right: 0;
+		inset-inline: 0;
 		bottom: 0;
 		display: flex;
 		align-items: center;
@@ -163,7 +162,7 @@
 
 	&__text {
 		white-space: nowrap;
-		margin-left: 8px;
+		margin-inline-start: 8px;
 		font-weight: 600;
 		font-size: 13px;
 	}
@@ -242,7 +241,7 @@
 .version-preview-banner {
 	position: absolute;
 	top: calc(var(--default-grid-baseline) * 2);
-	left: 50%;
+	inset-inline-start: 50%;
 	transform: translateX(-50%);
 	display: flex;
 	flex-wrap: wrap;
@@ -385,7 +384,7 @@
 @media (max-width: 768px) {
 	.network-status {
 		bottom: 90px;
-		right: 8px;
+		inset-inline-end: 8px;
 		padding: 6px;
 		max-width: 36px;
 		z-index: 10001; /* Ensure it's above all UI elements on mobile */
@@ -419,7 +418,7 @@
 .auth-error-notification {
 	position: fixed;
 	top: 80px;
-	right: 20px;
+	inset-inline-end: 20px;
 	max-width: 400px;
 	min-width: 300px;
 	z-index: 10000;
@@ -526,8 +525,7 @@
 @media (max-width: 768px) {
 	.auth-error-notification {
 		top: 70px;
-		right: 10px;
-		left: 10px;
+		inset-inline: 10px;
 		max-width: none;
 		min-width: 0;
 
@@ -605,7 +603,7 @@
 
 		small {
 			opacity: 0.8;
-			margin-left: auto;
+			margin-inline-start: auto;
 		}
 	}
 
@@ -674,7 +672,7 @@
 		.nc-notecard__dismiss {
 			position: absolute;
 			top: 8px;
-			right: 8px;
+			inset-inline-end: 8px;
 			background: transparent;
 			border: none;
 			color: var(--color-text-maxcontrast);
@@ -862,7 +860,7 @@
 	&__handle {
 		position: absolute;
 		top: -30px;
-		left: 50%;
+		inset-inline-start: 50%;
 		transform: translateX(-50%);
 		background: var(--color-main-background);
 		border: 1px solid var(--color-border);
@@ -1054,7 +1052,7 @@
 		margin: -8px -8px -8px 0; /* Negative margin to extend click area */
 		border-radius: 4px;
 		color: var(--color-error);
-		margin-left: auto;
+		margin-inline-start: auto;
 		flex-shrink: 0;
 		display: flex;
 		align-items: center;
