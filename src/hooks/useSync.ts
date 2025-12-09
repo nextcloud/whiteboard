@@ -13,8 +13,9 @@ import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import logger from '../utils/logger'
+import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { BinaryFiles } from '@excalidraw/excalidraw/types/types'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { WorkerInboundMessage } from '../types/protocol'
 
@@ -102,9 +103,7 @@ export function useSync() {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
 			const appState = excalidrawAPI.getAppState()
 			const files = excalidrawAPI.getFiles() as BinaryFiles
-			const filteredAppState: Partial<AppState> = { ...appState }
-			delete filteredAppState?.collaborators
-			delete filteredAppState?.selectedElementIds
+			const filteredAppState = sanitizeAppStateForSync(appState)
 
 			const message: WorkerInboundMessage = { type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState }
 			worker.postMessage(message)
