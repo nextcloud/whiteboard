@@ -22,3 +22,9 @@ path = ["img/app.svg", "img/app-dark.svg", "img/app-filetype.svg"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2019 Simran-B <https://pictogrammers.com/contributor/Simran-B/>"
 SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["img/svgmoji/**.svg"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2020 KickJump Ltd"
+SPDX-License-Identifier = "MIT"

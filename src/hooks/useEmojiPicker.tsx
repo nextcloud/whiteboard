@@ -14,7 +14,7 @@ import EmojiPickerButton from '../components/EmojiPickerButton.vue'
 import Vue from 'vue'
 import { Notomoji } from '@svgmoji/noto'
 import EmojiData from 'svgmoji/emoji.json'
-import { generateUrl } from '@nextcloud/router'
+import { imagePath } from '@nextcloud/router'
 
 type EmojiObj = {
 	native: string
@@ -44,7 +44,7 @@ export function useEmojiPicker() {
 		}
 
 		// Fetch the SVG data for the selected emoji
-		const url = generateUrl('apps/whiteboard/svgmoji/' + emojiObj.hexcode)
+		const url = imagePath('whiteboard', 'svgmoji/' + emojiObj.hexcode + '.svg')
 		const emojiSvg = await (await fetch(url)).text()
 		const emojiBlob = new Blob([emojiSvg], { type: 'image/svg+xml' })
 		const fr = new FileReader()

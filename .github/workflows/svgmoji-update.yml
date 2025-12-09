@@ -1,0 +1,62 @@
+# This workflow is provided via the organization template repository
+#
+# https://github.com/nextcloud/.github
+# https://docs.github.com/en/actions/learn-github-actions/sharing-workflows-with-your-organization
+#
+# SPDX-FileCopyrightText: 2023-2024 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Update svg files from svgmoji
+
+on:
+  workflow_dispatch:
+  schedule:
+    # At 3:30 on Sundays
+    - cron: '30 3 * * 0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        branches: ['main', 'master']
+
+    name: svgmoji-update-${{ matrix.branches }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ matrix.branches }}
+
+      - name: Checkout upstream svgmoji repository
+        uses: actions/checkout@v4
+        with:
+          repository: svgmoji/svgmoji
+          path: upstream
+          ref: main
+
+      - name: Copy svg files
+        run: |
+          rm -rf img/svgmoji
+          mkdir -p img/svgmoji
+          cp -a upstream/packages/svgmoji__noto/svg/. img/svgmoji/
+          rm -rf upstream/
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
+        with:
+          token: ${{ secrets.COMMAND_BOT_PAT }}
+          commit-message: 'chore: update svgmoji svgs'
+          committer: GitHub <noreply@github.com>
+          author: nextcloud-command <nextcloud-command@users.noreply.github.com>
+          signoff: true
+          branch: automated/noid/${{ matrix.branches }}-svgmoji-update
+          base: ${{ matrix.branches }}
+          title: '[${{ matrix.branches }}] Update svgmoji svgs'
+          body: This is an automated pull request to update the svg files from the upstream svgmoji repository.
+          labels: |
+            dependencies
+            3. to review
