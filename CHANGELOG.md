@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.5.0-beta.1
+
+### Added
+
+- Comment threads @benjaminfrueh [#828](https://github.com/nextcloud/whiteboard/pull/828)
+- Emoji sticker reactions @luka-nextcloud [#831](https://github.com/nextcloud/whiteboard/pull/831)
+- Timers @hweihwang [#799](https://github.com/nextcloud/whiteboard/pull/799)
+- Insert markdown tables @silverkszlo [#816](https://github.com/nextcloud/whiteboard/pull/816)
+- Voting @juliusknorr [#351](https://github.com/nextcloud/whiteboard/pull/351)
+
+### Fixed
+
+- avoid updating scene with same elements data @luka-nextcloud [#815](https://github.com/nextcloud/whiteboard/pull/815)
+- prevent video embed errors from crashing whiteboard @benjaminfrueh [#844](https://github.com/nextcloud/whiteboard/pull/844)
+- version-restoring @hweihwang [#830](https://github.com/nextcloud/whiteboard/pull/830)
+- Sanitize app state before broadcasting restores @hweihwang [#847](https://github.com/nextcloud/whiteboard/pull/847)
+- Reposition buttons and polishing @juliusknorr [#854](https://github.com/nextcloud/whiteboard/pull/854)
+
+### Other
+
+- Improve test coverage @hweihwang [#817](https://github.com/nextcloud/whiteboard/pull/817)
+
 ## 1.4.2
 
 ### Features
