@@ -14,6 +14,7 @@ use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
+use OCA\Whiteboard\Listener\LoadTextEditorListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
 use OCA\Whiteboard\Settings\SetupCheck;
@@ -44,6 +45,7 @@ class Application extends App implements IBootstrap {
 
 		$context->registerEventListener(AddContentSecurityPolicyEvent::class, AddContentSecurityPolicyListener::class);
 		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
+		$context->registerEventListener(LoadViewer::class, LoadTextEditorListener::class);
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerSetupCheck(SetupCheck::class);

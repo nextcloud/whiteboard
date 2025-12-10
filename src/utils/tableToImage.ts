@@ -1,0 +1,163 @@
+/**
+ * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+import type { ExcalidrawImperativeAPI, BinaryFileData, DataURL } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { FileId, ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
+
+// Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)
+const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4;'
+const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600; text-align: left;`
+const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px; display: block;'
+
+/**
+ * Convert HTML table to an image element for Excalidraw
+ * @param excalidrawAPI - The Excalidraw API instance
+ * @param html - HTML content from Tiptap (source of truth)
+ * @return The image element to be added to the canvas
+ */
+export async function convertHtmlTableToImage(
+	excalidrawAPI: ExcalidrawImperativeAPI,
+	html: string,
+): Promise<ExcalidrawImageElement> {
+	// Apply styles to the HTML table for image rendering
+	const tableHtml = applyStylesToHtml(html)
+
+	// Convert HTML to canvas/image
+	const dataUrl = await htmlToDataUrl(tableHtml)
+
+	// Get dimensions from the rendered content
+	const { width, height } = await getImageDimensions(dataUrl)
+
+	// Create file data for Excalidraw
+	const fileId = generateFileId() as FileId
+	const file: BinaryFileData = {
+		mimeType: 'image/png',
+		id: fileId,
+		dataURL: dataUrl as DataURL,
+		created: Date.now(),
+	}
+
+	// Add file to excalidraw
+	excalidrawAPI.addFiles([file])
+
+	// Create image element using convertToExcalidrawElements to ensure proper structure
+	const elements = convertToExcalidrawElements([
+		{
+			type: 'image',
+			fileId,
+			x: 0,
+			y: 0,
+			width,
+			height,
+			// Store HTML as source of truth for re-editing
+			customData: {
+				tableHtml: html,
+				isTable: true,
+				tableLock: undefined,
+			},
+		},
+	])
+
+	return elements[0] as ExcalidrawImageElement
+}
+
+/**
+ * Extract table from HTML and apply styles
+ * @param html - Full HTML from Tiptap editor
+ * @return Styled table HTML
+ */
+function applyStylesToHtml(html: string): string {
+	const parser = new DOMParser()
+	const doc = parser.parseFromString(html, 'text/html')
+	const table = doc.querySelector('table')
+
+	if (!table) {
+		throw new Error('No table found in HTML')
+	}
+
+	table.setAttribute('style', TABLE_STYLE)
+	const headerCells = table.querySelectorAll('th')
+	headerCells.forEach(cell => {
+		cell.setAttribute('style', HEADER_CELL_STYLE)
+	})
+	const bodyCells = table.querySelectorAll('td')
+	bodyCells.forEach(cell => {
+		cell.setAttribute('style', CELL_BASE_STYLE)
+	})
+
+	return table.outerHTML
+}
+
+/**
+ * Convert HTML to an SVG data URL
+ * @param html - The HTML content to convert
+ * @return SVG data URL of the rendered image
+ */
+async function htmlToDataUrl(html: string): Promise<string> {
+	return new Promise((resolve) => {
+		// Create a temporary container
+		const container = document.createElement('div')
+		container.innerHTML = html
+		container.style.position = 'absolute'
+		container.style.backgroundColor = 'white'
+		document.body.appendChild(container)
+
+		// Wait for next frame to ensure rendering
+		requestAnimationFrame(() => {
+			const svgDataUrl = createSvgDataUrl(container)
+			document.body.removeChild(container)
+			resolve(svgDataUrl)
+		})
+	})
+}
+
+/**
+ * Create an SVG data URL with foreignObject containing the HTML
+ * @param element - The HTML element to convert
+ * @return SVG data URL
+ */
+function createSvgDataUrl(element: HTMLElement): string {
+	const bbox = element.getBoundingClientRect()
+	const width = Math.max(bbox.width)
+	const height = Math.max(bbox.height)
+
+	const svg = `
+		<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+			<foreignObject width="100%" height="100%">
+				<div xmlns="http://www.w3.org/1999/xhtml" style="background: white;">
+					${element.innerHTML}
+				</div>
+			</foreignObject>
+		</svg>
+	`
+
+	// Encode SVG to base64 - using TextEncoder for proper UTF-8 handling
+	const bytes = new TextEncoder().encode(svg)
+	const base64 = btoa(String.fromCharCode(...bytes))
+	return 'data:image/svg+xml;base64,' + base64
+}
+
+/**
+ * Get image dimensions from data URL
+ * @param dataUrl - The data URL of the image
+ * @return Object with width and height
+ */
+async function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
+	return new Promise((resolve, reject) => {
+		const img = new Image()
+		img.onload = () => {
+			resolve({ width: img.width, height: img.height })
+		}
+		img.onerror = reject
+		img.src = dataUrl
+	})
+}
+
+/**
+ * Generate a unique file ID
+ */
+function generateFileId(): string {
+	return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+}

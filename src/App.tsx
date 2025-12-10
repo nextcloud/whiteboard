@@ -15,6 +15,7 @@ import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
 import { useCollaboration } from './hooks/useCollaboration'
 import { useSmartPicker } from './hooks/useSmartPicker'
+import { useTableInsertion } from './hooks/useTableInsertion'
 import { useReadOnlyState } from './hooks/useReadOnlyState'
 import { ExcalidrawMenu } from './components/ExcalidrawMenu'
 import Embeddable from './components/Embeddable'
@@ -113,6 +114,7 @@ export default function App({
 
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
+	const { renderTable } = useTableInsertion()
 	const { renderAssistant } = useAssistant()
 	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
@@ -334,10 +336,11 @@ export default function App({
 	useEffect(() => {
 		updateLang()
 		renderSmartPicker()
+		renderTable()
 		renderAssistant()
 		renderComment()
 		renderEmojiPicker()
-	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker])
+	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker, renderTable])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
 		if (!isLibraryLoaded) {

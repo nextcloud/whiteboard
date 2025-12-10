@@ -151,7 +151,6 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 		<MainMenu>
 			<MainMenu.DefaultItems.ToggleTheme />
 			<MainMenu.DefaultItems.ChangeCanvasBackground />
-			<MainMenu.Separator />
 			<MainMenu.Item
 				icon={<Icon path={mdiImageMultiple} size={0.75} />}
 				onSelect={openExportDialog}
