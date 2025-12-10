@@ -207,6 +207,7 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				onSelect={onToggleGrid}>
 				{gridModeEnabled ? t('whiteboard', 'Hide grid') : t('whiteboard', 'Show grid')}
 			</MainMenu.Item>
+			<MainMenu.DefaultItems.Help />
 		</MainMenu>
 	)
 })
