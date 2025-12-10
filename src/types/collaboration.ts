@@ -6,6 +6,7 @@
 import type { Socket } from 'socket.io-client'
 import type { AppState } from '@excalidraw/excalidraw/types/types'
 import type { RecordingUser } from './recording'
+import type { Voting } from './voting'
 
 export interface RecordingStoppedPayload {
 	filePath: string
@@ -53,6 +54,12 @@ export interface ServerToClientEvents {
 	'presentation-error': (message: string) => void
 	'user-started-presenting': (payload: { userId: string; username: string }) => void
 	'user-stopped-presenting': (payload: { userId: string; username: string }) => void
+
+	// Voting
+	'votings-init': (votings: Voting[]) => void
+	'voting-started': (voting: Voting) => void
+	'voting-voted': (voting: Voting) => void
+	'voting-ended': (voting: Voting) => void
 }
 
 export interface ClientToServerEvents {
@@ -70,6 +77,11 @@ export interface ClientToServerEvents {
 	// Presentation
 	'presentation-start': (payload: { fileId: string; userId: string }) => void
 	'presentation-stop': (payload: { fileId: string }) => void
+
+	// Voting
+	'voting-start': (roomId: string, votingData: { question: string; type: string; options: string[] }) => void
+	'voting-vote': (roomId: string, votingId: string, optionId: string) => void
+	'voting-end': (roomId: string, votingId: string) => void
 }
 
 export type CollaborationSocket = Socket<ServerToClientEvents, ClientToServerEvents>

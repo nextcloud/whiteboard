@@ -7,6 +7,7 @@
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
+import { translate as t } from '@nextcloud/l10n'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
@@ -48,8 +49,9 @@ import { useVersionPreview } from './hooks/useVersionPreview'
 import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { useComment } from './hooks/useComment'
 import { CommentSidebar } from './components/CommentSidebar'
-import { t } from '@nextcloud/l10n'
 import { useEmojiPicker } from './hooks/useEmojiPicker'
+import { VotingSidebar } from './components/VotingSidebar'
+import { useVoting } from './hooks/useVoting'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -203,6 +205,10 @@ export default function App({
 	const presentationState = usePresentation({ fileId: normalizedFileId })
 	const timerState = useTimer({ fileId: normalizedFileId })
 	const [isTimerPinned, setIsTimerPinned] = useState(false)
+
+	// Voting
+	const { startVoting, vote, endVoting } = useVoting()
+	const votings = useCollaborationStore(state => state.votings)
 
 	useHandleLibrary({
 		excalidrawAPI,
@@ -498,6 +504,23 @@ export default function App({
 										activeCommentThreadId === threadId && setActiveCommentThreadId(null)
 										deleteThread(threadId)
 									}}
+								/>
+							</Sidebar.Tab>
+						</Sidebar.Tabs>
+					</Sidebar>
+					<Sidebar name="custom">
+						<Sidebar.Header>
+							{t('whiteboard', 'Voting')}
+						</Sidebar.Header>
+						<Sidebar.Tabs style={{ padding: '0.5rem' }}>
+							<Sidebar.Tab tab="voting">
+								<VotingSidebar
+									votings={votings}
+									onVote={vote}
+									onEndVoting={endVoting}
+									onStartVoting={startVoting}
+									excalidrawAPI={excalidrawAPI}
+									isReadOnly={isReadOnly}
 								/>
 							</Sidebar.Tab>
 						</Sidebar.Tabs>

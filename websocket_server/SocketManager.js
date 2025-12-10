@@ -13,6 +13,8 @@ import { createAdapter } from '@socket.io/redis-streams-adapter'
 import Config from './Config.js'
 import RecordingService from './RecordingService.js'
 import { checkPuppeteerAvailability } from './PuppeteerEnvironment.js'
+import VotingManager from './VotingManager.js'
+import { SOCKET_MSG } from '../src/shared/constants.js'
 
 export default class SocketManager {
 
@@ -42,6 +44,7 @@ export default class SocketManager {
 		// Track presentation state per room: roomId -> { presenterId, presenterName, startTime }
 		this.presentationSessions = new Map()
 		this.io = this.createSocketServer(server)
+		this.votingManager = new VotingManager()
 		this.init()
 	}
 
@@ -215,6 +218,9 @@ export default class SocketManager {
 			'follow-user': this.followUserHandler,
 			'request-viewport': this.requestViewportHandler,
 			'viewport-change': this.viewportChangeHandler,
+			[SOCKET_MSG.VOTING_START]: this.votingStartHandler,
+			[SOCKET_MSG.VOTING_VOTE]: this.votingVoteHandler,
+			[SOCKET_MSG.VOTING_END]: this.votingEndHandler,
 			disconnect: this.disconnectHandler,
 		}
 
@@ -336,6 +342,13 @@ export default class SocketManager {
 
 		// Send current timer state to the new user
 		this.emitTimerState(roomID, socket)
+
+		// Send existing votings to the newly joined user
+		const existingVotings = this.votingManager.getAllVotings(roomID)
+		if (existingVotings && existingVotings.length > 0) {
+			console.log(`[${roomID}] Sending ${existingVotings.length} existing voting(s) to new user ${userName}`)
+			socket.emit(SOCKET_MSG.VOTINGS_INIT, existingVotings)
+		}
 	}
 
 	async serverBroadcastHandler(socket, roomID, encryptedData, iv) {
@@ -414,6 +427,84 @@ export default class SocketManager {
 		}
 	}
 
+	// VOTING HANDLERS
+	/**
+	 * Handles starting a voting
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {object} votingData - Voting data containing question and options
+	 */
+	async votingStartHandler(socket, roomID, votingData) {
+		try {
+			const isReadOnly = await this.isSocketReadOnly(socket.id)
+			if (!socket.rooms.has(roomID) || isReadOnly) return
+
+			const { question, type, options } = votingData
+			const socketData = await this.socketDataStorage.get(socket.id)
+			const voting = this.votingManager.createVoting(roomID, question, socketData.user.id, type, options)
+
+			Utils.logOperation(roomID, `Started voting: ${JSON.stringify(votingData)}`)
+
+			this.io.to(roomID).emit(SOCKET_MSG.VOTING_STARTED, voting)
+		} catch (error) {
+			console.error(`[${roomID}] Error starting voting:`, error.message)
+			socket.emit('error', { message: error.message, context: 'voting-start' })
+		}
+	}
+
+	/**
+	 * Handles voting
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {string} votingId - Unique identifier of the voting
+	 * @param {string} optionId - Unique identifier of the option
+	 */
+	async votingVoteHandler(socket, roomID, votingId, optionId) {
+		try {
+			const isReadOnly = await this.isSocketReadOnly(socket.id)
+			if (!socket.rooms.has(roomID) || isReadOnly) return
+
+			const socketData = await this.socketDataStorage.get(socket.id)
+			const voting = this.votingManager.addVote(roomID, votingId, optionId, socketData.user.id)
+
+			Utils.logOperation(roomID, `${socketData.user.id} voted: ${JSON.stringify(voting)}`)
+
+			this.io.to(roomID).emit(SOCKET_MSG.VOTING_VOTED, voting)
+		} catch (error) {
+			console.error(`[${roomID}] Error voting:`, error.message)
+			socket.emit('error', { message: error.message, context: 'voting-vote' })
+		}
+	}
+
+	/**
+	 * Handles ending a voting
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 * @param {string} roomID - Room identifier
+	 * @param {string} votingId - Unique identifier of the voting to end
+	 */
+	async votingEndHandler(socket, roomID, votingId) {
+		try {
+			const isReadOnly = await this.isSocketReadOnly(socket.id)
+			if (!socket.rooms.has(roomID) || isReadOnly) return
+
+			const socketData = await this.socketDataStorage.get(socket.id)
+
+			const voting = this.votingManager.endVoting(roomID, votingId, socketData.user.id)
+
+			Utils.logOperation(roomID, `Voting closed: ${JSON.stringify(voting)}`)
+
+			this.io.to(roomID).emit(SOCKET_MSG.VOTING_ENDED, voting)
+		} catch (error) {
+			console.error(`[${roomID}] Error ending voting:`, error.message)
+			socket.emit('error', { message: error.message, context: 'voting-end' })
+		}
+	}
+
+	// DISCONNECTION HANDLERS
+	/**
+	 * Handles socket disconnection
+	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
+	 */
 	async disconnectHandler(socket) {
 		try {
 			await this.socketDataStorage.delete(socket.id)
@@ -822,6 +913,7 @@ export default class SocketManager {
 		if (userSockets.length === 0) {
 			console.log(`[${roomID}] No users left in room, no syncer needed`)
 			await this.socketDataStorage.delete(roomSyncerKey)
+			this.votingManager.cleanupRoom(roomID)
 			return
 		}
 

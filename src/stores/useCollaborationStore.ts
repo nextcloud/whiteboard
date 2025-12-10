@@ -7,6 +7,7 @@
 
 import { create } from 'zustand'
 import type { CollaborationSocket } from '../types/collaboration'
+import type { Voting } from '../types/voting'
 
 export type CollaborationConnectionStatus = 'online' | 'offline' | 'connecting' | 'reconnecting'
 
@@ -35,6 +36,8 @@ interface CollaborationStore {
 	presentationStartTime: number | null // When presentation started
 	autoFollowPresenter: boolean // Whether to automatically follow presenter (can be disabled by user)
 
+	votings: Voting[]
+
 	// Actions
 	setStatus: (status: CollaborationConnectionStatus) => void
 	setSocket: (socket: CollaborationSocket | null) => void
@@ -53,6 +56,11 @@ interface CollaborationStore {
 		presentationStartTime?: number | null
 	}) => void
 	setAutoFollowPresenter: (autoFollow: boolean) => void
+
+	// Voting actions
+	addVoting: (voting: Voting) => void
+	updateVoting: (voting: Voting) => void
+	setVotings: (votings: Voting[]) => void
 }
 
 const initialAuthErrorState: AuthErrorState = {
@@ -63,7 +71,7 @@ const initialAuthErrorState: AuthErrorState = {
 	isPersistent: false,
 }
 
-const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'setAuthError' | 'incrementAuthFailure' | 'clearAuthError' | 'resetStore' | 'setPresentationState' | 'setAutoFollowPresenter'> = {
+const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'setAuthError' | 'incrementAuthFailure' | 'clearAuthError' | 'resetStore' | 'setPresentationState' | 'setAutoFollowPresenter' | 'addVoting' | 'updateVoting' | 'setVotings'> = {
 	status: 'offline',
 	socket: null,
 	isDedicatedSyncer: false,
@@ -77,6 +85,8 @@ const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDed
 	isPresenting: false,
 	presentationStartTime: null,
 	autoFollowPresenter: true,
+
+	votings: [],
 }
 
 // Constants for auth failure detection
@@ -126,4 +136,15 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	})),
 
 	setAutoFollowPresenter: (autoFollow) => set({ autoFollowPresenter: autoFollow }),
+
+	// Voting actions
+	addVoting: (voting) => set((state) => ({
+		votings: [...state.votings, voting],
+	})),
+
+	updateVoting: (voting) => set((state) => ({
+		votings: state.votings.map(v => v.uuid === voting.uuid ? voting : v),
+	})),
+
+	setVotings: (votings) => set({ votings }),
 }))

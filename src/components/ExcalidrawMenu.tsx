@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, memo } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline } from '@mdi/js'
+import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline, mdiVote } from '@mdi/js'
 import { MainMenu, CaptureUpdateAction } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
@@ -93,6 +93,12 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 		takeScreenshotRef.current = takeScreenshot
 	}, [takeScreenshot])
 
+	const showVotings = useCallback(() => {
+		if (excalidrawAPI) {
+			excalidrawAPI.toggleSidebar({ name: 'custom', tab: 'voting', force: true })
+		}
+	}, [excalidrawAPI])
+
 	const isMacPlatformRef = useRef(isMacPlatform)
 	useEffect(() => {
 		isMacPlatformRef.current = isMacPlatform
@@ -162,6 +168,11 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				onSelect={takeScreenshot}
 				shortcut={isMacPlatform ? '⌘+⌥+S' : 'Ctrl+Alt+S'}>
 				{t('whiteboard', 'Download screenshot')}
+			</MainMenu.Item>
+			<MainMenu.Item
+				icon={<Icon path={mdiVote} size="16px" />}
+				onSelect={() => showVotings()}>
+				{t('whiteboard', 'Votings')}
 			</MainMenu.Item>
 			<RecordingMenuItem
 				isRecording={recordingState.isRecording}
