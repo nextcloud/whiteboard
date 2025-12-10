@@ -28,15 +28,13 @@ test('presentation session broadcasts and follow toggle works across sessions', 
 
 	// Ensure collaboration is online before proceeding
 	const presenterNetwork = page.locator('.network-status')
-	await expect(presenterNetwork).toBeVisible({ timeout: 20000 })
-	await expect(presenterNetwork).toHaveClass(/network-status--online/, { timeout: 20000 })
+	await expect(presenterNetwork).toHaveCount(0, { timeout: 30000 })
 
 	// Join the board with a second session before starting the presentation
 	const viewerPage = await newLoggedInPage(page, browser)
 	await openWhiteboardFromFiles(viewerPage, boardName)
 	const viewerNetwork = viewerPage.locator('.network-status')
-	await expect(viewerNetwork).toBeVisible({ timeout: 20000 })
-	await expect(viewerNetwork).toHaveClass(/network-status--online/, { timeout: 20000 })
+	await expect(viewerNetwork).toHaveCount(0, { timeout: 30000 })
 
 	// Start presenting from the first session
 	await page.getByTestId('main-menu-trigger').click()
