@@ -147,3 +147,18 @@
 		display: none !important;
 	}
 }
+
+.excalidraw button.help-icon {
+	display: none !important;
+}
+
+.excalidraw .dropdown-menu-button {
+	background: transparent !important;
+	border: none !important;
+
+	&:hover,
+	&.active {
+		background: var(--button-hover-bg) !important;
+		border: none !important;
+	}
+}

@@ -71,7 +71,6 @@ const NetworkStatusIndicatorComponent = () => {
 		})),
 	)
 	const [expanded, setExpanded] = useState(false)
-	const [visible] = useState(true) // Assume visible initially
 
 	// Refs to track previous status to avoid unnecessary effects
 	const prevStatusRef = useRef(status)
@@ -119,7 +118,8 @@ const NetworkStatusIndicatorComponent = () => {
 		}
 	}, [toggleExpanded])
 
-	if (!visible) return null // Render nothing if not visible (though currently always true)
+	// Hide the indicator when status is online
+	if (status === 'online') return null
 
 	return (
 		<div

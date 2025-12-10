@@ -46,7 +46,7 @@ test('offline edits sync after reconnect', async ({ page }) => {
 	await page.waitForTimeout(2000)
 
 	await page.context().setOffline(false)
-	await expect(status).toHaveClass(/network-status--online/, { timeout: 20000 })
+	await expect(status).toHaveCount(0, { timeout: 30000 })
 
 	await expect.poll(async () => JSON.stringify(await fetchBoardContent(page, auth)), {
 		timeout: 45000,
