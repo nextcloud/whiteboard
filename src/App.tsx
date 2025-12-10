@@ -28,8 +28,6 @@ import { useSyncStore } from './stores/useSyncStore'
 import { useLibrary } from './hooks/useLibrary'
 import { useShallow } from 'zustand/react/shallow'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
-import { Icon } from '@mdi/react'
-import { mdiGrid } from '@mdi/js'
 import { useAssistant } from './hooks/useAssistant'
 import logger from './utils/logger'
 import { useRecording } from './hooks/useRecording'
@@ -448,16 +446,6 @@ export default function App({
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				{!isVersionPreview && <MemoizedNetworkStatusIndicator />}
 				<MemoizedAuthErrorNotification />
-				{!isVersionPreview && (
-					<button
-						className={`grid-toggle-button ${gridModeEnabled ? 'active' : ''}`}
-						onClick={() => setGridModeEnabled(!gridModeEnabled)}
-						aria-pressed={gridModeEnabled}
-						title="Toggle grid mode"
-					>
-						<Icon path={mdiGrid} size={1} />
-					</button>
-				)}
 				{isVersionPreview && (
 					<VersionPreviewBanner
 						versionLabel={versionLabel}
@@ -532,6 +520,8 @@ export default function App({
 							presentationState={presentationState}
 							isTimerVisible={isTimerPinned || timerState.status !== 'idle'}
 							onToggleTimer={() => setIsTimerPinned(prev => !prev)}
+							gridModeEnabled={gridModeEnabled}
+							onToggleGrid={() => setGridModeEnabled(!gridModeEnabled)}
 						/>
 					)}
 				</Excalidraw>

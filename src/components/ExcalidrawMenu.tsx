@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, memo } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline, mdiVote } from '@mdi/js'
+import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline, mdiVote, mdiGrid } from '@mdi/js'
 import { MainMenu, CaptureUpdateAction } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
@@ -24,9 +24,11 @@ interface ExcalidrawMenuProps {
 	presentationState: PresentationState
 	isTimerVisible: boolean
 	onToggleTimer: () => void
+	gridModeEnabled: boolean
+	onToggleGrid: () => void
 }
 
-export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState, isTimerVisible, onToggleTimer }: ExcalidrawMenuProps) {
+export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState, isTimerVisible, onToggleTimer, gridModeEnabled, onToggleGrid }: ExcalidrawMenuProps) {
 	const isMacPlatform = typeof navigator !== 'undefined' && (navigator.userAgentData?.platform === 'macOS' || /Mac|iPhone|iPad/.test(navigator.platform ?? ''))
 	const { excalidrawAPI } = useExcalidrawStore(useShallow(state => ({
 		excalidrawAPI: state.excalidrawAPI,
@@ -200,6 +202,11 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				isConnected={presentationState.isConnected}
 			/>
 			<CreatorMenuItem />
+			<MainMenu.Item
+				icon={<Icon path={mdiGrid} size={0.75} />}
+				onSelect={onToggleGrid}>
+				{gridModeEnabled ? t('whiteboard', 'Hide grid') : t('whiteboard', 'Show grid')}
+			</MainMenu.Item>
 		</MainMenu>
 	)
 })
