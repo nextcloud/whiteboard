@@ -225,7 +225,7 @@ export function useTableInsertion() {
 
 		const tableButton = document.createElement('button')
 		tableButton.type = 'button'
-		tableButton.className = 'ToolIcon_type_button ToolIcon table-trigger'
+		tableButton.className = 'ToolIcon_type_button ToolIcon dropdown-menu-button table-trigger'
 		tableButton.setAttribute('data-testid', 'toolbar-table')
 		tableButton.setAttribute('aria-label', 'Insert table')
 		tableButton.setAttribute('title', 'Insert table')
