@@ -4,6 +4,7 @@ OC.L10N.register(
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuraciones",
     "Advanced settings" : "Configuraciones avanzados",
+    "Edit" : "Editar",
     "Connecting" : "Conectando",
     "Unknown" : "Desconocido"
 },

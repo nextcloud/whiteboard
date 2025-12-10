@@ -4,9 +4,17 @@ OC.L10N.register(
     "Whiteboard" : "Bảng viết",
     "Shared secret" : "Chia sẽ mật khẩu",
     "Advanced settings" : "Cài đặt nâng cao",
+    "Comments" : "Bình luận",
+    "Edit" : "Chỉnh sửa",
+    "Save" : "Lưu",
+    "Send" : "Gửi",
     "Offline" : "Ngoại tuyến",
     "Online" : "Trực tuyến",
     "Unknown" : "Không xác định",
-    "Version restored" : "Đã khôi phục phiên bản"
+    "Running" : "Chạy bộ",
+    "Start" : "Bắt đầu",
+    "Reset" : "Đặt lại",
+    "Version restored" : "Đã khôi phục phiên bản",
+    "Just now" : "Ngay bây giờ"
 },
 "nplurals=1; plural=0;");

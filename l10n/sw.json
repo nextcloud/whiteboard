@@ -20,9 +20,17 @@
     "Save settings" : "Hifadhi mipangilio",
     "Advanced settings" : "Mipangilio ya kiwangi cha juu",
     "Max file size" : "Kiwango cha juu cha ukubwa wa faili",
+    "Comments" : "Maoni",
+    "Edit" : "Hariri",
+    "Save" : "Hifadhi",
+    "Send" : "Tuma",
     "Offline" : "Nje ya mtandao",
     "Online" : "Mtandaoni",
     "Unknown" : "Haijulikani",
+    "Running" : "Inafanya kazi",
+    "Start" : "Anza",
+    "Reset" : "Pangilia upya",
+    "Resume" : "Rejea",
     "Restore this version" : "Rejesha toleo hili",
     "Version restored" : "Toleo limerejeshwa"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"

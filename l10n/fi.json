@@ -9,11 +9,15 @@
     "Save settings" : "Tallenna asetukset",
     "Advanced settings" : "Lisäasetukset",
     "Access Denied" : "Pääsy estetty",
+    "Edit" : "Muokkaa",
+    "Send" : "Lähetä",
     "Offline" : "Poissa",
     "Connecting" : "Yhdistetään",
     "Online" : "Online",
     "Unknown" : "Tuntematon",
     "Stop" : "Pysäytä",
+    "Start" : "Alku",
+    "Resume" : "Palauta",
     "Version {version}" : "Versio {version}",
     "Version restored" : "Versio palautettu"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"

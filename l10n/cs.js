@@ -77,6 +77,7 @@ OC.L10N.register(
     "• This may take a few seconds" : "• Toto může pár sekund trvat",
     "Stop Recording" : "Zastavit nahrávání",
     "Start Recording" : "Spustit nahrávání",
+    "Resume" : "Navázat",
     "Viewing a previous version" : "Zobrazování předchozí verze",
     "Restoring…" : "Obnovování …",
     "Restore this version" : "Obnovit do podoby v této verzi",

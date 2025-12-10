@@ -28,6 +28,7 @@ OC.L10N.register(
     "Online" : "Σε σύνδεση",
     "Unknown" : "Άγνωστο",
     "Stop" : "Διακοπή",
+    "Resume" : "Συνέχιση",
     "Restore this version" : "Επαναφορά αυτής της έκδοσης",
     "Version {version}" : "Έκδοση {version}",
     "Version restored" : "Η έκδοση επαναφέρθηκε"

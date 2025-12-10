@@ -5,10 +5,12 @@ OC.L10N.register(
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuraciones",
     "Advanced settings" : "Configuraciones avanzados",
+    "Edit" : "Editar",
     "Connecting" : "Conectando",
     "Online" : "En línea",
     "Unknown" : "Desconocido",
     "Stop" : " detener",
+    "Resume" : "Continuar",
     "Restore this version" : "Restaurar esta versión",
     "Version restored" : "Versión restaurada"
 },

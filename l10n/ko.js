@@ -10,8 +10,12 @@ OC.L10N.register(
     "Shared secret" : "공유된 비밀 값",
     "Save settings" : "설정 저장",
     "Advanced settings" : "고급 설정",
+    "Edit" : "편집",
+    "Save" : "저장",
+    "Send" : "전송",
     "Connecting" : "연결 중",
     "Unknown" : "알 수 없음",
+    "Resume" : "다시 시작",
     "Version restored" : "버전이 복원됨"
 },
 "nplurals=1; plural=0;");

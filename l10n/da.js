@@ -17,6 +17,7 @@ OC.L10N.register(
     "Connecting" : "Frobinder",
     "Online" : "Online",
     "Unknown" : "Ukendt",
+    "Resume" : "Fortsæt",
     "Restore this version" : "Gendan denne version",
     "Version {version}" : "Version {version}",
     "Version restored" : "Version genoprettet"

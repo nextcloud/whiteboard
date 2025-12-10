@@ -3,10 +3,14 @@
     "Shared secret" : "Sameiginlegur leynilykill",
     "Save settings" : "Vista stillingar",
     "Advanced settings" : "Ítarlegri valkostir",
+    "Edit" : "Breyta",
+    "Send" : "Senda",
     "Offline" : "Ótengdur neti",
     "Connecting" : "Tengist",
     "Online" : "Á netinu",
     "Unknown" : "Óþekkt",
+    "Start" : "Byrjun",
+    "Resume" : "Halda áfram",
     "Version {version}" : "Útgáfa {version}",
     "Version restored" : "Útgáfa endurheimt"
 },"pluralForm" :"nplurals=2; plural=(n % 10 != 1 || n % 100 == 11);"

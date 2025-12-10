@@ -4,8 +4,14 @@ OC.L10N.register(
     "Whiteboard" : "Tablă de scris",
     "Save settings" : "Salvează setări",
     "Advanced settings" : "Setări avansate",
+    "Comments" : "Comentarii",
+    "Edit" : "Editează",
+    "Save" : "Salvează",
+    "Send" : "Trimite",
     "Offline" : "Offline",
     "Connecting" : "Se conectează",
-    "Unknown" : "Necunoscut"
+    "Unknown" : "Necunoscut",
+    "Running" : "Alergat",
+    "Resume" : "Reia"
 },
 "nplurals=3; plural=(n==1?0:(((n%100>19)||((n%100==0)&&(n!=0)))?2:1));");

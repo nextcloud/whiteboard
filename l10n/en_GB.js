@@ -78,6 +78,7 @@ OC.L10N.register(
     "• This may take a few seconds" : "• This may take a few seconds",
     "Stop Recording" : "Stop Recording",
     "Start Recording" : "Start Recording",
+    "Resume" : "Resume",
     "Viewing a previous version" : "Viewing a previous version",
     "Restoring…" : "Restoring…",
     "Restore this version" : "Restore this version",
