@@ -11,7 +11,7 @@ import { constants as fsConstants } from 'fs'
 import os from 'os'
 import path from 'path'
 import EventEmitter from 'events'
-import Config from './Config.js'
+import Config from '../Utilities/ConfigUtility.js'
 
 const DEFAULT_CONFIG = {
 	viewport: { width: 1920, height: 1080 },

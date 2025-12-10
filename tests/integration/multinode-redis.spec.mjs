@@ -3,8 +3,10 @@ import { io } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
 import { RedisMemoryServer } from 'redis-memory-server'
 
-import ServerManagerModule from '../../websocket_server/ServerManager.js'
-import ConfigModule from '../../websocket_server/Config.js'
+import ServerManagerModule from '../../websocket_server/Services/ServerService.js'
+import ConfigModule from '../../websocket_server/Utilities/ConfigUtility.js'
+
+const ServerService = ServerManagerModule
 
 const configState = vi.hoisted(() => ({
 	IS_TEST_ENV: true,
@@ -25,7 +27,7 @@ const configState = vi.hoisted(() => ({
 	NEXTCLOUD_URL: '',
 }))
 
-vi.mock('../../websocket_server/Config.js', () => {
+vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => {
 
 	const proxy = {}
 	Object.keys(configState).forEach((key) => {
@@ -42,7 +44,7 @@ vi.mock('../../websocket_server/Config.js', () => {
 	return { default: proxy }
 })
 
-vi.mock('../../websocket_server/RecordingService.js', () => {
+vi.mock('../../websocket_server/Services/RecordingService.js', () => {
 	class FakeRecordingService {
 
 		async init() { return true }
@@ -61,7 +63,6 @@ vi.mock('../../websocket_server/RecordingService.js', () => {
 })
 
 const Config = ConfigModule
-const ServerManager = ServerManagerModule
 
 vi.setConfig({ testTimeout: 30000 })
 
@@ -92,7 +93,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 		}
 		configState.PORT = serverAPort.toString()
 		configState.NEXTCLOUD_URL = serverAUrl
-		serverA = new ServerManager()
+		serverA = new ServerService()
 		await serverA.start()
 	}
 
@@ -123,12 +124,12 @@ describe('Multi node websocket cluster with redis streams', () => {
 
 		configState.PORT = serverAPort.toString()
 		configState.NEXTCLOUD_URL = serverAUrl
-		serverA = new ServerManager()
+		serverA = new ServerService()
 		await serverA.start()
 
 		configState.PORT = serverBPort.toString()
 		configState.NEXTCLOUD_URL = serverBUrl
-		serverB = new ServerManager()
+		serverB = new ServerService()
 		await serverB.start()
 	})
 
@@ -328,7 +329,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 
 	it('removes stale presentation entries during the cluster sweep', async () => {
 		const roomID = 'room-stale-presentation'
-		await serverB.socketManager.distributedState.setValue(
+		await serverB.socketService.roomStateStore.setValue(
 			`room:${roomID}:presentation`,
 			{
 				presenterId: 'ghost',
@@ -339,9 +340,9 @@ describe('Multi node websocket cluster with redis streams', () => {
 			{ ttlMs: Config.SESSION_TTL },
 		)
 
-		await serverB.socketManager.runSweep()
+		await serverB.socketService.runSweep()
 
-		const remaining = await serverB.socketManager.distributedState.getValue(`room:${roomID}:presentation`)
+		const remaining = await serverB.socketService.roomStateStore.getValue(`room:${roomID}:presentation`)
 		expect(remaining).toBeNull()
 	})
 
@@ -374,7 +375,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 	it('cleans stale recording entries from dead nodes before notifying joiners', async () => {
 		const roomID = 'room-stale-recording'
 
-		await serverA.socketManager.setRecordingEntry(roomID, 'ghost-user', {
+		await serverA.socketService.setRecordingEntry(roomID, 'ghost-user', {
 			userId: 'ghost-user',
 			username: 'Ghost',
 			uploadToken: 'ghost-upload',

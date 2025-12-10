@@ -4,9 +4,9 @@
  */
 
 import crypto from 'crypto'
-import Config from './Config.js'
+import Config from './ConfigUtility.js'
 
-export default class SharedTokenGenerator {
+export default class SharedTokenUtility {
 
 	handle(roomId) {
 		const timestamp = Date.now()

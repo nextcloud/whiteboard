@@ -6,9 +6,9 @@
  */
 
 import { LRUCache } from 'lru-cache'
-import StorageStrategy from './StorageStrategy.js'
+import StorageAdapter from './StorageAdapter.js'
 
-export default class LRUStrategy extends StorageStrategy {
+export default class LruAdapter extends StorageAdapter {
 
 	constructor(options = {}) {
 		const { max = 1000, ttl = 1000 * 60 * 60 * 24, ttlAutopurge = true } = options

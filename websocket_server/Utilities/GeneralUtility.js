@@ -5,7 +5,7 @@
 
 /* eslint-disable no-console */
 
-export default class Utils {
+export default class GeneralUtility {
 
 	static convertStringToArrayBuffer(string) {
 		return new TextEncoder().encode(string)

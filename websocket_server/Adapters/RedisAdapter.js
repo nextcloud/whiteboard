@@ -5,11 +5,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import StorageStrategy from './StorageStrategy.js'
+import StorageAdapter from './StorageAdapter.js'
 import { createClient } from 'redis'
-import Config from './Config.js'
+import Config from '../Utilities/ConfigUtility.js'
 
-export default class RedisStrategy extends StorageStrategy {
+export default class RedisAdapter extends StorageAdapter {
 
 	static isClientClosedError(error) {
 		return error?.name === 'ClientClosedError' || error?.message?.includes('The client is closed')
@@ -45,7 +45,7 @@ export default class RedisStrategy extends StorageStrategy {
 			if (!data) return null
 			return JSON.parse(data)
 		} catch (error) {
-			if (RedisStrategy.isClientClosedError(error)) {
+			if (RedisAdapter.isClientClosedError(error)) {
 				return null
 			}
 			console.error(`Error getting data for key ${key}:`, error)
@@ -65,7 +65,7 @@ export default class RedisStrategy extends StorageStrategy {
 				await this.client.set(`${this.prefix}${key}`, serializedData)
 			}
 		} catch (error) {
-			if (RedisStrategy.isClientClosedError(error)) {
+			if (RedisAdapter.isClientClosedError(error)) {
 				return
 			}
 			console.error(`Error setting data for key ${key}:`, error)
@@ -76,7 +76,7 @@ export default class RedisStrategy extends StorageStrategy {
 		try {
 			await this.client.del(`${this.prefix}${key}`)
 		} catch (error) {
-			if (RedisStrategy.isClientClosedError(error)) {
+			if (RedisAdapter.isClientClosedError(error)) {
 				return
 			}
 			console.error(`Error deleting key ${key}:`, error)
@@ -90,7 +90,7 @@ export default class RedisStrategy extends StorageStrategy {
 				await this.client.del(keys)
 			}
 		} catch (error) {
-			if (RedisStrategy.isClientClosedError(error)) {
+			if (RedisAdapter.isClientClosedError(error)) {
 				return
 			}
 			console.error('Error clearing general data:', error)

@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import StorageStrategy from './StorageStrategy.js'
+import StorageAdapter from './StorageAdapter.js'
 
-export default class InMemoryStrategy extends StorageStrategy {
+export default class MemoryAdapter extends StorageAdapter {
 
 	constructor() {
 		super()

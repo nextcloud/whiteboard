@@ -5,19 +5,19 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import StorageStrategy from './StorageStrategy.js'
-import LRUStrategy from './LRUStrategy.js'
-import RedisStrategy from './RedisStrategy.js'
-import InMemoryStrategy from './InMemoryStrategy.js'
+import StorageAdapter from '../Adapters/StorageAdapter.js'
+import LruAdapter from '../Adapters/LruAdapter.js'
+import RedisAdapter from '../Adapters/RedisAdapter.js'
+import MemoryAdapter from '../Adapters/MemoryAdapter.js'
 
-export default class StorageManager {
+export default class StorageService {
 
 	constructor(strategy) {
 		this.setStrategy(strategy)
 	}
 
 	setStrategy(strategy) {
-		if (strategy instanceof StorageStrategy) {
+		if (strategy instanceof StorageAdapter) {
 			this.strategy = strategy
 		} else {
 			throw new Error('Invalid strategy')
@@ -45,19 +45,19 @@ export default class StorageManager {
 
 		switch (strategyType) {
 		case 'lru':
-			strategy = new LRUStrategy(options)
+			strategy = new LruAdapter(options)
 			break
 		case 'redis':
-			strategy = new RedisStrategy(redisClient, options)
+			strategy = new RedisAdapter(redisClient, options)
 			break
 		case 'in-mem':
-			strategy = new InMemoryStrategy()
+			strategy = new MemoryAdapter()
 			break
 		default:
 			throw new Error('Invalid storage strategy type')
 		}
 
-		return new StorageManager(strategy)
+		return new StorageService(strategy)
 	}
 
 }

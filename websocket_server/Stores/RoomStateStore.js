@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-export default class DistributedState {
+export default class RoomStateStore {
 
 	constructor({ redisClient = null, prefix = 'state_', defaultTtlMs = null } = {}) {
 		this.redisClient = redisClient

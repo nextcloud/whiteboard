@@ -2,22 +2,28 @@ import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest'
 import { io } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
 import { createConfigMock } from './configMock.js'
-import ServerManagerModule from '../../websocket_server/ServerManager.js'
-import ConfigModule from '../../websocket_server/Config.js'
+import ServerManagerModule from '../../websocket_server/Services/ServerService.js'
+import ConfigModule from '../../websocket_server/Utilities/ConfigUtility.js'
 
 // Set a longer timeout for socket tests
 vi.setConfig({ testTimeout: 10000 })
 
-vi.mock('../../websocket_server/Config.js', () => ({
+vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => ({
 	default: createConfigMock({
-		NEXTCLOUD_URL: 'http://localhost:3009',
+		NEXTCLOUD_URL: 'http://127.0.0.1:3009',
 		PORT: '3009',
+		HOST: '127.0.0.1',
 		JWT_SECRET_KEY: 'secret',
+		USE_TLS: false,
+		STORAGE_STRATEGY: 'lru',
+		MAX_UPLOAD_FILE_SIZE: 2e6,
+		CACHED_TOKEN_TTL: 5 * 60 * 1000,
+		COMPRESSION_ENABLED: false,
 	}),
 }))
 
 const Config = ConfigModule
-const ServerManager = ServerManagerModule
+const ServerService = ServerManagerModule
 
 function waitFor(socket, event) {
 	return new Promise((resolve) => {
@@ -29,7 +35,7 @@ describe('Socket handling', () => {
 	let serverManager, socket
 
 	beforeAll(async () => {
-		serverManager = new ServerManager()
+		serverManager = new ServerService()
 		await serverManager.start()
 
 		socket = io(Config.NEXTCLOUD_URL, {
@@ -48,13 +54,17 @@ describe('Socket handling', () => {
 
 	afterAll(async () => {
 		// Disconnect the main socket
-		socket.disconnect()
+		if (socket) {
+			socket.disconnect()
+		}
 
 		// Allow some time for socket cleanup
 		await new Promise(resolve => setTimeout(resolve, 500))
 
 		// Shutdown the server
-		await serverManager.gracefulShutdown()
+		if (serverManager) {
+			await serverManager.gracefulShutdown()
+		}
 	})
 
 	it('socket invalid jwt', async () => {

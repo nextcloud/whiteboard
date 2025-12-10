@@ -6,14 +6,14 @@
 /* eslint-disable no-console */
 
 import express from 'express'
-import Config from './Config.js'
+import Config from '../Utilities/ConfigUtility.js'
 
-export default class AppManager {
+export default class AppService {
 
-	constructor(systemMonitor, metricsManager) {
+	constructor(systemMonitor, metricsService) {
 		this.app = express()
 		this.systemMonitor = systemMonitor
-		this.metricsManager = metricsManager
+		this.metricsService = metricsService
 		this.setupRoutes()
 	}
 
@@ -39,16 +39,16 @@ export default class AppManager {
 			return res.status(403).send('Unauthorized')
 		}
 
-		// Check if metrics manager is available
-		if (!this.metricsManager) {
+		// Check if metrics service is available
+		if (!this.metricsService) {
 			return res.status(500).send('Metrics not configured')
 		}
 
 		// Update metrics before sending
-		this.metricsManager.updateMetrics()
+		this.metricsService.updateMetrics()
 
 		// Get the Prometheus register and send metrics
-		const register = this.metricsManager.getRegister()
+		const register = this.metricsService.getRegister()
 		res.set('Content-Type', register.contentType)
 		register.metrics().then(metrics => {
 			res.send(metrics)
