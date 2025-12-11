@@ -1,0 +1,22 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Advanced settings" : "Pengaturan Lanjutan",
+    "Cancel" : "Cancel",
+    "Update" : "Perbarui",
+    "Comments" : "Komentar",
+    "Edit" : "Sunting",
+    "Save" : "Simpan",
+    "Add a comment" : "Tambah komentar",
+    "Send" : "Kirim",
+    "No comments yet" : "Belum ada komentar",
+    "Connecting" : "Menyambungkan",
+    "Online" : "Online",
+    "Unknown" : "Tidak diketahui",
+    "Paused" : "Dihentikan",
+    "Finished" : "Selesai",
+    "Start" : "Mulai",
+    "Reset" : "Setel ulang",
+    "Pause" : "Jeda"
+},
+"nplurals=1; plural=0;");

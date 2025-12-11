@@ -1,0 +1,25 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Save settings" : "Ruaj konfigurimet",
+    "Advanced settings" : "Rregullime të mëtejshme",
+    "Insert Table" : "Fut tabelë",
+    "Cancel" : "Cancel",
+    "Update" : "Përditëso",
+    "Comments" : "Komentet",
+    "Edit" : "Përpuno",
+    "Save" : "Ruaje",
+    "Add a comment" : "Shtoni një koment",
+    "Send" : "Dërgo",
+    "Connecting" : "Duke u lidhur",
+    "Unknown" : "I panjohur",
+    "Paused" : "Pushuar",
+    "Finished" : "Përfunduar",
+    "Start" : "Fillo",
+    "Reset" : "Rivendos",
+    "Pause" : "Pauzë",
+    "Status" : "Statusi",
+    "Closed" : "I mbyllur",
+    "Just now" : "Mu tani"
+},
+"nplurals=2; plural=(n != 1);");

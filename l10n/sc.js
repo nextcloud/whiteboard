@@ -1,0 +1,27 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Shared secret" : "Segretu cumpartzidu",
+    "Advanced settings" : "Cunfiguratzione avantzada",
+    "Cancel" : "Cancel",
+    "Update" : "Agiorna",
+    "Multiple choice" : "Sèberu mùltiplu",
+    "Add option" : "Agiunghe sèberu",
+    "Comments" : "Cummentos",
+    "Delete thread" : "Cantzella dibata",
+    "Edit" : "Modìfica",
+    "Save" : "Sarva",
+    "Reply" : "Risponde",
+    "No comments yet" : "Perunu cummentu ancora",
+    "Unknown" : "Disconnotu",
+    "Running" : "Cursa",
+    "Paused" : "Suspèndidos",
+    "Finished" : "Agabbadu",
+    "Reset" : "Riprìstinu",
+    "Pause" : "Pàusa",
+    "Resume" : "Torra a cumintzare",
+    "Status" : "Status",
+    "Open" : "Aberi",
+    "Closed" : "Serradu"
+},
+"nplurals=2; plural=(n != 1);");

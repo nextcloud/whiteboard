@@ -1,0 +1,20 @@
+{ "translations": {
+    "Save settings" : "тохиргоог хадгалах",
+    "Advanced settings" : "Нарийвчилсан тохиргоо",
+    "Cancel" : "Cancel",
+    "Comments" : "Сэтгэгдлүүд",
+    "Edit" : "Өөрчлөх",
+    "Save" : "Хадгалах",
+    "Add a comment" : "сэтгэгдэл нэмэх",
+    "Send" : "илгээх",
+    "Connecting" : "холбож байгаа",
+    "Unknown" : "Үл танигдах зүйл",
+    "Paused" : "Зогсоосон",
+    "Finished" : "Дууссан",
+    "Start" : "эхлэх",
+    "Reset" : "тохируулах",
+    "Pause" : "Түр зогсоох",
+    "Open" : "Нээх",
+    "Just now" : "яг одоо"
+},"pluralForm" :"nplurals=2; plural=(n != 1);"
+}

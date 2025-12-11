@@ -1,0 +1,27 @@
+{ "translations": {
+    "Shared secret" : "סוד משותף",
+    "Advanced settings" : "הגדרות מתקדמות",
+    "Cancel" : "ביטול",
+    "Update" : "עדכון",
+    "Comments" : "תגובות",
+    "Delete thread" : "מחיקת שרשור",
+    "Edit" : "עריכה",
+    "Save" : "שמירה",
+    "Add a comment" : "הוספת תגובה",
+    "Send" : "שליחה",
+    "No comments yet" : "אין הערות עדיין",
+    "Offline" : "בלתי מקוון",
+    "Connecting" : "מתבצע חיבור",
+    "Online" : "מקוון",
+    "Unknown" : "לא ידוע",
+    "Running" : "ריצה",
+    "Paused" : "מושהה",
+    "Finished" : "הסתיים",
+    "Start" : "התחלה",
+    "Reset" : "איפוס",
+    "Pause" : "השהה",
+    "Resume" : "להמשיך",
+    "Closed" : "סגור",
+    "Just now" : "הרגע"
+},"pluralForm" :"nplurals=3; plural=(n == 1 && n % 1 == 0) ? 0 : (n == 2 && n % 1 == 0) ? 1: 2;"
+}

@@ -1,10 +1,25 @@
 { "translations": {
     "Whiteboard" : "Pizarra",
     "Advanced settings" : "Configuración avanzada",
+    "Cancel" : "Cancel",
+    "Comments" : "Comentarios",
+    "Delete thread" : "Desaniciar el filu",
+    "Edit" : "Editar",
+    "Save" : "Guardar",
+    "Reply" : "Responder",
+    "Add a comment" : "Amestar un comentariu",
+    "Send" : "Unviar",
+    "No comments yet" : "Entá nun hai nengún mensaxe",
     "Offline" : "Desconectáu",
     "Online" : "En llinia",
     "Unknown" : "Desconocí­u",
+    "Paused" : "En posa",
+    "Finished" : "Finó",
+    "Reset" : "Reafitar",
+    "Pause" : "Posar",
+    "Resume" : "Siguir",
     "Restore this version" : "Restaurar esta versión",
-    "Version restored" : "Restauróse la versión"
+    "Version restored" : "Restauróse la versión",
+    "Just now" : "Puramente agora"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

@@ -4,8 +4,19 @@ OC.L10N.register(
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuraciones",
     "Advanced settings" : "Configuraciones avanzados",
+    "Cancel" : "Cancel",
+    "Update" : "Actualizar",
+    "Comments" : "Comentarios",
     "Edit" : "Editar",
+    "Save" : "Guardar",
+    "Add a comment" : "Agregar un comentario",
+    "Send" : "Enviar",
     "Connecting" : "Conectando",
-    "Unknown" : "Desconocido"
+    "Unknown" : "Desconocido",
+    "Paused" : "Pausado",
+    "Finished" : "Terminado",
+    "Reset" : "Reiniciar",
+    "Pause" : "Pausar",
+    "Just now" : "Justo ahora"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");

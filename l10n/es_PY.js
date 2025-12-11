@@ -1,0 +1,22 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Shared secret" : "Secreto compartido",
+    "Save settings" : "Guardar configuraciones",
+    "Advanced settings" : "Configuraciones avanzados",
+    "Cancel" : "Cancel",
+    "Update" : "Actualizar",
+    "Comments" : "Comentarios",
+    "Edit" : "Editar",
+    "Save" : "Guardar",
+    "Add a comment" : "Agregar un comentario",
+    "Send" : "Enviar",
+    "Connecting" : "Conectando",
+    "Paused" : "Pausado",
+    "Finished" : "Terminado",
+    "Reset" : "Restablecer",
+    "Pause" : "Pausar",
+    "Closed" : "Cerrado",
+    "Just now" : "Justo ahora"
+},
+"nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");

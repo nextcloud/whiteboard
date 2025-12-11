@@ -1,0 +1,14 @@
+{ "translations": {
+    "Advanced settings" : "İrəliləmiş quraşdırmalar",
+    "Cancel" : "Cancel",
+    "Comments" : "Şərhlər",
+    "Edit" : "Dəyişiklik et",
+    "Save" : "Saxla",
+    "Add a comment" : "Komentariya əlavə et",
+    "Send" : "Göndər",
+    "Finished" : "Bitdi",
+    "Reset" : "Sıfırla",
+    "Pause" : "Ara ver",
+    "Version restored" : "Versiya geri qaytarıldı"
+},"pluralForm" :"nplurals=2; plural=(n != 1);"
+}

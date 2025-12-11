@@ -1,0 +1,28 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Whiteboard" : "Tāfele",
+    "Shared secret" : "Koplietojams noslēpums",
+    "Save settings" : "Saglabāt iestatījumus",
+    "Advanced settings" : "Paplašināti iestatījumi",
+    "Insert Table" : "Ievietot tabulu",
+    "Cancel" : "Atcelt",
+    "Update" : "Atjaunināt",
+    "Comments" : "Piebildes",
+    "Edit" : "Labot",
+    "Save" : "Saglabāt",
+    "Add a comment" : "Pievienot komentāru",
+    "Send" : "Sūtīt",
+    "No comments yet" : "Vēl nav piebilžu",
+    "Connecting" : "Savienojuma izveide",
+    "Unknown" : "Nezināms",
+    "Running" : "Skriešana",
+    "Paused" : "Apturēts",
+    "Finished" : "Pabeigts",
+    "Start" : "Sākums",
+    "Reset" : "Atiestatīt",
+    "Pause" : "Pauzēt",
+    "Open" : "Atvērt",
+    "Just now" : "Tagad"
+},
+"nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);");

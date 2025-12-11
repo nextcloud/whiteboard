@@ -1,14 +1,26 @@
 { "translations": {
     "Shared secret" : "Segredo partilhado",
     "Advanced settings" : "Definições avançadas",
+    "Cancel" : "Cancelar",
+    "Update" : "Atualizar",
+    "Multiple choice" : "Escolha múltipla",
     "Comments" : "Comentários",
     "Edit" : "Editar",
     "Save" : "Guardar",
+    "Reply" : "Responder",
+    "Add a comment" : "Adicionar um comentário",
     "Send" : "Enviar",
     "Connecting" : "A ligar",
     "Online" : "On-line",
     "Unknown" : "Desconhecido",
     "Running" : "Correr",
-    "Start" : "Início"
+    "Paused" : "Em pausa",
+    "Finished" : "Terminado",
+    "Start" : "Início",
+    "Reset" : "Reiniciar",
+    "Pause" : "Pausar",
+    "Open" : "Abrir",
+    "Closed" : "Fechado",
+    "Just now" : "Agora mesmo"
 },"pluralForm" :"nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;"
 }

@@ -2,9 +2,21 @@ OC.L10N.register(
     "whiteboard",
     {
     "Advanced settings" : "Configuraciones avanzadas",
+    "Cancel" : "Cancel",
+    "Update" : "Actualizar",
+    "Comments" : "Comentarios",
+    "Edit" : "Editar",
+    "Save" : "Guardar",
+    "Add a comment" : "Agregar un comentario",
+    "Send" : "Enviar",
     "Connecting" : "Conectando",
     "Online" : "En línea",
     "Unknown" : "Desconocido",
-    "Version {version}" : "Versión {version}"
+    "Paused" : "Pausado",
+    "Finished" : "Terminado",
+    "Reset" : "Restablecer",
+    "Pause" : "Pausar",
+    "Version {version}" : "Versión {version}",
+    "Just now" : "Justo ahora"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");

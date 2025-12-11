@@ -1,0 +1,11 @@
+{ "translations": {
+    "Cancel" : "Cancel",
+    "Update" : "Täzelemek",
+    "Edit" : "Redaktirläň",
+    "Save" : "Saklamak",
+    "Send" : "Iber",
+    "Online" : "Onlaýn",
+    "Unknown" : "Näbelli",
+    "Finished" : "Tamamlandy"
+},"pluralForm" :"nplurals=2; plural=(n != 1);"
+}

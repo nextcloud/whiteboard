@@ -1,0 +1,13 @@
+{ "translations": {
+    "Advanced settings" : "Avanserte innstillingar",
+    "Cancel" : "Cancel",
+    "Update" : "Oppdater",
+    "Comments" : "Kommentarar",
+    "Edit" : "Rediger",
+    "Save" : "Lagre",
+    "Reply" : "Svare",
+    "Send" : "Send",
+    "Unknown" : "Ukjend",
+    "Pause" : "Pause"
+},"pluralForm" :"nplurals=2; plural=(n != 1);"
+}
