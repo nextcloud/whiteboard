@@ -165,6 +165,42 @@ export default class RoomStateStore {
 		this.memoryStore.delete(fullKey)
 	}
 
+	async setValueIfNotExists(key, value, { ttlMs } = {}) {
+		const fullKey = this.#fullKey(key)
+		const ttlToUse = ttlMs || this.defaultTtlMs
+
+		if (this.shouldUseRedis()) {
+			try {
+				const serialized = this.#stringify(value)
+				const ttlSeconds = this.#ttlSeconds(ttlToUse)
+				const options = { NX: true }
+				if (ttlSeconds) {
+					options.EX = ttlSeconds
+				}
+				const result = await this.redisClient.set(fullKey, serialized, options)
+				return result === 'OK'
+			} catch (error) {
+				if (this.#isClientClosedError(error)) {
+					return false
+				}
+				throw error
+			}
+		}
+
+		if (this.memoryStore.has(fullKey)) {
+			const entry = this.memoryStore.get(fullKey)
+			if (!this.#isExpired(entry.expiresAt)) {
+				return false
+			}
+		}
+
+		this.memoryStore.set(fullKey, {
+			value,
+			expiresAt: this.#expiresAt(ttlToUse),
+		})
+		return true
+	}
+
 	async getHash(key, { isStale } = {}) {
 		const fullKey = this.#fullKey(key)
 

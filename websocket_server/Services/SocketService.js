@@ -106,6 +106,7 @@ export default class SocketService {
 			cluster: {
 				getRoomSyncer: this.getRoomSyncer.bind(this),
 				setRoomSyncer: this.setRoomSyncer.bind(this),
+				trySetRoomSyncer: this.trySetRoomSyncer.bind(this),
 				clearRoomSyncer: this.clearRoomSyncer.bind(this),
 				isNodeAlive: this.isNodeAlive.bind(this),
 			},
@@ -190,6 +191,10 @@ export default class SocketService {
 
 	async setRoomSyncer(roomID, userId) {
 		await this.clusterService.setSyncer(roomID, userId)
+	}
+
+	async trySetRoomSyncer(roomID, userId) {
+		return this.clusterService.trySetSyncer(roomID, userId)
 	}
 
 	async clearRoomSyncer(roomID) {
@@ -429,7 +434,11 @@ export default class SocketService {
 					)
 					return reject(new Error('Authentication error'))
 				}
-				await this.cachedTokenStorage.set(token, decoded)
+				const now = Math.floor(Date.now() / 1000)
+				const ttlMs = decoded.exp ? (decoded.exp - now) * 1000 : Config.CACHED_TOKEN_TTL
+				if (ttlMs > 0) {
+					await this.cachedTokenStorage.set(token, decoded, { ttl: ttlMs })
+				}
 				resolve(decoded)
 			})
 		})

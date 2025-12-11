@@ -217,6 +217,14 @@ export default class ClusterService {
 		)
 	}
 
+	async trySetSyncer(roomId, userId) {
+		return this.roomStateStore.setValueIfNotExists(
+			this.getRoomSyncerKey(roomId),
+			{ userId, nodeId: this.nodeId },
+			{ ttlMs: this.sessionTtl },
+		)
+	}
+
 	async clearSyncer(roomId) {
 		await this.roomStateStore.deleteValue(this.getRoomSyncerKey(roomId))
 	}

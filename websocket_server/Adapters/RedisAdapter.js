@@ -53,11 +53,12 @@ export default class RedisAdapter extends StorageAdapter {
 		}
 	}
 
-	async set(key, value) {
+	async set(key, value, options = {}) {
 		try {
 			const serializedData = JSON.stringify(value)
-			if (this.ttl) {
-				const ttlSeconds = Math.max(1, Math.ceil(this.ttl / 1000))
+			const ttlMs = options.ttl || this.ttl
+			if (ttlMs) {
+				const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000))
 				await this.client.set(`${this.prefix}${key}`, serializedData, {
 					EX: ttlSeconds,
 				})
@@ -85,7 +86,15 @@ export default class RedisAdapter extends StorageAdapter {
 
 	async clear() {
 		try {
-			const keys = await this.client.keys(`${this.prefix}*`)
+			const batchSize = 100
+			let keys = []
+			for await (const key of this.client.scanIterator({ MATCH: `${this.prefix}*`, COUNT: batchSize })) {
+				keys.push(key)
+				if (keys.length >= batchSize) {
+					await this.client.del(keys)
+					keys = []
+				}
+			}
 			if (keys.length > 0) {
 				await this.client.del(keys)
 			}

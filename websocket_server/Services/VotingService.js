@@ -12,11 +12,45 @@ import { SOCKET_MSG } from '../../src/shared/constants.js'
 
 export default class VotingService {
 
+	static CLEANUP_INTERVAL_MS = 60000
+	static STALE_THRESHOLD_MS = 3600000
+
 	constructor({ io, sessionStore, roomStateStore }) {
 		this.io = io
 		this.sessionStore = sessionStore
 		this.roomStateStore = roomStateStore
 		this.votings = new Map()
+		this.cleanupInterval = null
+		this.startCleanupInterval()
+	}
+
+	startCleanupInterval() {
+		if (this.cleanupInterval) return
+		this.cleanupInterval = setInterval(() => {
+			this.cleanupStaleVotings()
+		}, VotingService.CLEANUP_INTERVAL_MS)
+	}
+
+	stopCleanupInterval() {
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval)
+			this.cleanupInterval = null
+		}
+	}
+
+	cleanupStaleVotings() {
+		const now = Date.now()
+		for (const [roomId, roomVotings] of this.votings.entries()) {
+			const allClosed = Array.from(roomVotings.values()).every(v => v.state === 'closed')
+			if (allClosed && roomVotings.size > 0) {
+				const oldestVoting = Array.from(roomVotings.values())
+					.reduce((oldest, v) => (!oldest || v.startedAt < oldest.startedAt ? v : oldest), null)
+				if (oldestVoting && now - oldestVoting.startedAt > VotingService.STALE_THRESHOLD_MS) {
+					this.votings.delete(roomId)
+					console.log(`[${roomId}] Cleaned up stale votings`)
+				}
+			}
+		}
 	}
 
 	#getVotingKey(roomId) {
@@ -82,6 +116,8 @@ export default class VotingService {
 			const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
 			if (!socket.rooms.has(roomID) || isReadOnly) return
 
+			await this.loadVotings(roomID)
+
 			const { question, type, options } = votingData
 			const socketData = await this.sessionStore.getSocketData(socket.id)
 			const voting = this.createVoting(roomID, question, socketData.user.id, type, options)
@@ -101,6 +137,8 @@ export default class VotingService {
 			const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
 			if (!socket.rooms.has(roomID) || isReadOnly) return
 
+			await this.loadVotings(roomID)
+
 			const socketData = await this.sessionStore.getSocketData(socket.id)
 			const voting = this.addVote(roomID, votingId, optionId, socketData.user.id)
 
@@ -118,6 +156,8 @@ export default class VotingService {
 		try {
 			const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
 			if (!socket.rooms.has(roomID) || isReadOnly) return
+
+			await this.loadVotings(roomID)
 
 			const socketData = await this.sessionStore.getSocketData(socket.id)
 

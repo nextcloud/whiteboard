@@ -6,7 +6,6 @@
 /* eslint-disable no-console */
 
 import dotenv from 'dotenv'
-import crypto from 'crypto'
 import fs from 'fs'
 import {
 	DEFAULT_NEXTCLOUD_URL,
@@ -60,8 +59,10 @@ const Config = {
 
 	get JWT_SECRET_KEY() {
 		if (!process.env.JWT_SECRET_KEY) {
-			const newSecret = crypto.randomBytes(32).toString('hex')
-			process.env.JWT_SECRET_KEY = newSecret
+			throw new Error(
+				'[FATAL] JWT_SECRET_KEY environment variable is required but not set. '
+				+ 'Generate one with: openssl rand -hex 32',
+			)
 		}
 
 		return process.env.JWT_SECRET_KEY

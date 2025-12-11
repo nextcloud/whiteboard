@@ -53,8 +53,18 @@ export default class RecordingControlService {
 		const { fileId, recordingUrl, uploadToken } = data
 		const roomID = fileId.toString()
 		const sessionKey = `${roomID}_${socket.id}`
+		const startedAt = Date.now()
 
 		try {
+			if (!socket.rooms.has(roomID)) {
+				throw new Error('Not joined to room')
+			}
+
+			const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
+			if (isReadOnly) {
+				throw new Error('Read-only users cannot start recordings')
+			}
+
 			const socketData = await this.sessionStore.getSocketData(socket.id)
 			if (!socketData?.user?.id) throw new Error('Unauthorized')
 
@@ -78,20 +88,21 @@ export default class RecordingControlService {
 			console.log(`[${sessionKey}] Starting recording`)
 			await recorder.startRecording(roomID, socketData.user.id)
 
+			const username = socketData.user.displayName || socketData.user.name || 'Unknown User'
 			this.recordingServices.set(recordingKey, { recorder, uploadToken })
 			await this.cluster.setRecordingEntry(roomID, socketData.user.id, {
 				userId: socketData.user.id,
-				username: socketData.user.displayName || socketData.user.name || 'Unknown User',
+				username,
 				uploadToken,
 				status: 'recording',
 				nodeId: this.nodeId,
-				startedAt: Date.now(),
+				startedAt,
 			})
 
-			socket.emit('recording-started')
+			socket.emit('recording-started', { startedAt })
 			socket.to(roomID).emit('user-started-recording', {
 				userId: socketData.user.id,
-				username: socketData.user.displayName,
+				username,
 			})
 
 		} catch (error) {
@@ -103,6 +114,10 @@ export default class RecordingControlService {
 	async stopRecording(socket, roomID) {
 		const sessionKey = `${roomID}_${socket.id}`
 		try {
+			if (!socket.rooms.has(roomID)) {
+				throw new Error('Not joined to room')
+			}
+
 			const socketData = await this.sessionStore.getSocketData(socket.id)
 			if (!socketData?.user?.id) throw new Error('Unauthorized')
 

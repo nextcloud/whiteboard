@@ -52,7 +52,7 @@ export default class RecordingService extends EventEmitter {
 		this.configuredRecordingsPath = Config.RECORDINGS_DIR ? path.resolve(Config.RECORDINGS_DIR) : null
 		this.fallbackRecordingsPath = path.join(os.tmpdir(), 'whiteboard-recordings')
 		this.recordingsPath = null
-		this.profilePath = null
+		this.profileRootPath = null
 	}
 
 	getStatus(roomId, userId) {
@@ -79,12 +79,7 @@ export default class RecordingService extends EventEmitter {
 		let browser
 
 		try {
-			await this.#ensureRecordingEnvironment(sessionKey)
-			await fs.mkdir(this.profilePath, { recursive: true })
-			const runtimeDir = path.join(this.profilePath, 'runtime')
-			const crashpadDir = path.join(this.profilePath, 'crashpad')
-			await fs.mkdir(runtimeDir, { recursive: true })
-			await fs.mkdir(crashpadDir, { recursive: true })
+			const { profilePath, runtimeDir, crashpadDir } = await this.#prepareSessionProfile(sessionKey)
 
 			// Use Config-based Chrome detection
 			browser = await launchChromium({
@@ -96,7 +91,7 @@ export default class RecordingService extends EventEmitter {
 				],
 				ignoreDefaultArgs: ['--mute-audio'],
 				defaultViewport: this.config.viewport,
-				userDataDir: this.profilePath,
+				userDataDir: profilePath,
 				env: {
 					...process.env,
 					XDG_RUNTIME_DIR: runtimeDir,
@@ -122,7 +117,7 @@ export default class RecordingService extends EventEmitter {
 			await this.#waitForWhiteboardReady(page, sessionKey)
 			await this.#initializeUserTracking(page, userId)
 
-			this.#sessions.set(sessionKey, { browser, page, isRecording: false })
+			this.#sessions.set(sessionKey, { browser, page, isRecording: false, profilePath })
 			this.#updateStatus(sessionKey, { isInitialized: true })
 
 			this.emit('initialized', { recordingUrl, roomId, userId })
@@ -136,6 +131,9 @@ export default class RecordingService extends EventEmitter {
 
 	async #ensureRecordingEnvironment(sessionKey) {
 		if (this.recordingsPath) {
+			if (!this.profileRootPath) {
+				this.profileRootPath = path.join(this.recordingsPath, '.chromium-profiles')
+			}
 			return
 		}
 
@@ -152,7 +150,23 @@ export default class RecordingService extends EventEmitter {
 		}
 
 		this.recordingsPath = resolvedPath
-		this.profilePath = path.join(this.recordingsPath, '.chromium-profile')
+		this.profileRootPath = path.join(this.recordingsPath, '.chromium-profiles')
+	}
+
+	async #prepareSessionProfile(sessionKey) {
+		await this.#ensureRecordingEnvironment(sessionKey)
+
+		const profilePath = path.join(this.profileRootPath, sessionKey)
+		const runtimeDir = path.join(profilePath, 'runtime')
+		const crashpadDir = path.join(profilePath, 'crashpad')
+
+		await Promise.all([
+			fs.mkdir(profilePath, { recursive: true }),
+			fs.mkdir(runtimeDir, { recursive: true }),
+			fs.mkdir(crashpadDir, { recursive: true }),
+		])
+
+		return { profilePath, runtimeDir, crashpadDir }
 	}
 
 	async #resolveRecordingsPath(sessionKey) {
@@ -428,6 +442,14 @@ export default class RecordingService extends EventEmitter {
 					console.log(`[Recording] Removed session directory: ${sessionDir}`)
 				} catch (error) {
 					console.warn(`[Recording] Failed to remove session directory '${sessionDir}':`, error)
+				}
+				if (session.profilePath) {
+					try {
+						await fs.rm(session.profilePath, { recursive: true, force: true })
+						console.log(`[Recording] Removed session profile: ${session.profilePath}`)
+					} catch (error) {
+						console.warn(`[Recording] Failed to remove session profile '${session.profilePath}':`, error)
+					}
 				}
 			}
 			this.#sessions.delete(sessionKey)

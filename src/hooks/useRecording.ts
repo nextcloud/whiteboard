@@ -61,6 +61,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const stateRef = useRef(state)
 	stateRef.current = state
+	const currentUserIdRef = useRef<string | null>(null)
 
 	const { socket, status } = useCollaborationStore(useShallow(state => ({
 		socket: state.socket as CollaborationSocket | null,
@@ -91,6 +92,33 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 	}, [])
 
 	useEffect(() => () => clearTimers(), [clearTimers])
+
+	const resolveCurrentUserId = useCallback(async () => {
+		if (currentUserIdRef.current) {
+			return currentUserIdRef.current
+		}
+
+		try {
+			const jwt = await useJWTStore.getState().getJWT()
+			if (!jwt) {
+				return null
+			}
+			const payload = useJWTStore.getState().parseJwt(jwt)
+			const userId = payload?.user?.id || payload?.userid || null
+			currentUserIdRef.current = userId
+			return userId
+		} catch (error) {
+			console.error('[Recording] Failed to resolve current user ID:', error)
+			return null
+		}
+	}, [])
+
+	useEffect(() => {
+		currentUserIdRef.current = null
+		resolveCurrentUserId().catch((error) => {
+			console.error('[Recording] Failed to prime current user ID:', error)
+		})
+	}, [fileId, resolveCurrentUserId])
 
 	// Duration tracking
 	useEffect(() => {
@@ -136,12 +164,14 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 					showUnavailableInfo: data.available === false && !!data.reason,
 				})
 			},
-			'recording-started': () => {
+			'recording-started': (data?: { startedAt?: number }) => {
+				const startTime = typeof data?.startedAt === 'number' ? data.startedAt : Date.now()
 				updateState({
 					isRecording: true,
 					error: null,
 					status: 'recording',
-					startTime: Date.now(),
+					startTime,
+					duration: Math.max(0, Date.now() - startTime),
 					fileUrl: null,
 					showSuccess: false,
 					startingPhase: null,
@@ -274,9 +304,21 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 				startTime: null,
 				duration: null,
 			}),
-			'user-started-recording': (user: RecordingUser) => updateState({
-				otherUsers: [...stateRef.current.otherUsers, user],
-			}),
+			'user-started-recording': async (user: RecordingUser) => {
+				const currentUserId = await resolveCurrentUserId()
+				if (currentUserId && user.userId === currentUserId) {
+					return
+				}
+				const username = user.username?.trim() || 'Unknown user'
+				const sanitizedUser: RecordingUser = { ...user, username }
+				const alreadyTracked = stateRef.current.otherUsers.some(u => u.userId === user.userId)
+				if (alreadyTracked) {
+					return
+				}
+				updateState({
+					otherUsers: [...stateRef.current.otherUsers, sanitizedUser],
+				})
+			},
 			'user-stopped-recording': (user: RecordingUser) => updateState({
 				otherUsers: stateRef.current.otherUsers.filter(u => u.userId !== user.userId),
 			}),
@@ -287,7 +329,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 			},
 			disconnect: () => stateRef.current.isRecording && updateState({ error: 'Connection lost', status: 'idle' }),
 		})
-	}, [handleSocketEvent, updateState, clearTimers])
+	}, [handleSocketEvent, updateState, clearTimers, resolveCurrentUserId])
 
 	useEffect(() => {
 		if (!socket) return

@@ -25,9 +25,17 @@ export default class ViewportService {
 	}
 
 	async serverVolatileBroadcast(socket, roomID, encryptedData) {
-		const payload = JSON.parse(
-			GeneralUtility.convertArrayBufferToString(encryptedData),
-		)
+		if (!socket.rooms.has(roomID)) return
+
+		let payload
+		try {
+			payload = JSON.parse(
+				GeneralUtility.convertArrayBufferToString(encryptedData),
+			)
+		} catch (error) {
+			console.warn(`[${roomID}] Invalid JSON payload from socket ${socket.id}`)
+			return
+		}
 
 		if (payload.type === 'MOUSE_LOCATION') {
 			const socketData = await this.sessionStore.getSocketData(socket.id)
@@ -93,6 +101,8 @@ export default class ViewportService {
 	async requestViewport(socket, data) {
 		const { fileId, userId } = data
 		const roomID = fileId
+
+		if (!roomID || !socket.rooms.has(roomID)) return
 
 		try {
 			const socketData = await this.sessionStore.getSocketData(socket.id)

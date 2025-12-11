@@ -80,11 +80,13 @@ RecordingStatus.displayName = 'RecordingStatus'
 const OtherRecordingUsers = memo(({ users }: { users: RecordingOverlayProps['otherRecordingUsers'] }) => (
 	<div className="other-recording-users">
 		<Icon path={mdiRecordCircle} size={0.8} />
-		<span>
-			{users.length === 1
-				? `${users[0].username} is recording`
-				: `${users.length} users are recording`}
-		</span>
+		{(() => {
+			const displayName = users[0]?.username?.trim() || 'Unknown user'
+			const label = users.length === 1
+				? `${displayName} is recording`
+				: `${users.length} users are recording`
+			return <span>{label}</span>
+		})()}
 	</div>
 ))
 OtherRecordingUsers.displayName = 'OtherRecordingUsers'

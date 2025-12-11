@@ -68,7 +68,12 @@ vi.setConfig({ testTimeout: 30000 })
 
 const waitFor = (socket, event) => {
 	return new Promise((resolve, reject) => {
-		const timer = setTimeout(() => reject(new Error(`Timeout waiting for ${event}`)), 5000)
+		const timer = setTimeout(() => {
+			const lastError = event === 'connect' && socket?.lastConnectError
+				? `: ${socket.lastConnectError.message || socket.lastConnectError}`
+				: ''
+			reject(new Error(`Timeout waiting for ${event}${lastError}`))
+		}, 5000)
 		socket.once(event, (data) => {
 			clearTimeout(timer)
 			resolve(data)
@@ -101,11 +106,14 @@ describe('Multi node websocket cluster with redis streams', () => {
 		const socket = io(url, {
 			transports: ['websocket'],
 			forceNew: true,
+			reconnectionAttempts: 10,
+			reconnectionDelay: 200,
+			reconnectionDelayMax: 500,
 			auth: { token },
 		})
 
 		socket.on('connect_error', (error) => {
-			throw error
+			socket.lastConnectError = error
 		})
 
 		activeSockets.push(socket)

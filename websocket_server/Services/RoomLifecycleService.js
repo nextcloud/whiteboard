@@ -5,6 +5,8 @@
 
 /* eslint-disable no-console */
 
+import GeneralUtility from '../Utilities/GeneralUtility.js'
+
 export default class RoomLifecycleService {
 
 	constructor({
@@ -26,28 +28,34 @@ export default class RoomLifecycleService {
 	}
 
 	async joinRoom(socket, roomID) {
+		const validatedRoomId = GeneralUtility.validateRoomId(roomID)
+		if (!validatedRoomId) {
+			console.warn(`[SECURITY] Invalid room ID format rejected: ${String(roomID).substring(0, 100)}`)
+			return
+		}
+
 		const socketData = await this.sessionStore.getSocketData(socket.id)
 		if (!socketData || !socketData.user) {
-			console.warn(`[${roomID}] Invalid socket data for socket ${socket.id}, rejecting join`)
+			console.warn(`[${validatedRoomId}] Invalid socket data for socket ${socket.id}, rejecting join`)
 			return
 		}
 
 		const userId = socketData.user.id
 		const userName = socketData.user.name
 
-		if (socket.rooms.has(roomID)) {
-			console.log(`[${roomID}] ${userName} already in room, skipping join`)
+		if (socket.rooms.has(validatedRoomId)) {
+			console.log(`[${validatedRoomId}] ${userName} already in room, skipping join`)
 			return
 		}
 
-		console.log(`[${roomID}] ${userName} joined room`)
+		console.log(`[${validatedRoomId}] ${userName} joined room`)
 
-		await socket.join(roomID)
+		await socket.join(validatedRoomId)
 
-		const currentSyncer = await this.cluster.getRoomSyncer(roomID)
+		const currentSyncer = await this.cluster.getRoomSyncer(validatedRoomId)
 		let currentSyncerUserId = currentSyncer?.userId
 		if (currentSyncer?.nodeId && !(await this.cluster.isNodeAlive(currentSyncer.nodeId))) {
-			await this.cluster.clearRoomSyncer(roomID)
+			await this.cluster.clearRoomSyncer(validatedRoomId)
 			currentSyncerUserId = null
 		}
 		const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
@@ -58,24 +66,35 @@ export default class RoomLifecycleService {
 			await this.sessionStore.setSocketData(socket.id, {
 				...socketData,
 				isSyncer: true,
-				syncerFor: roomID,
+				syncerFor: validatedRoomId,
 			})
 
 			isSyncer = true
 			socket.emit('sync-designate', { isSyncer: true })
-			console.log(`[${roomID}] User ${userName} reconnected as existing syncer`)
+			console.log(`[${validatedRoomId}] User ${userName} reconnected as existing syncer`)
 		} else if (!currentSyncerUserId && !isReadOnly) {
-			await this.cluster.setRoomSyncer(roomID, userId)
+			const elected = await this.cluster.trySetRoomSyncer(validatedRoomId, userId)
 
-			await this.sessionStore.setSocketData(socket.id, {
-				...socketData,
-				isSyncer: true,
-				syncerFor: roomID,
-			})
+			if (elected) {
+				await this.sessionStore.setSocketData(socket.id, {
+					...socketData,
+					isSyncer: true,
+					syncerFor: validatedRoomId,
+				})
 
-			isSyncer = true
-			socket.emit('sync-designate', { isSyncer: true })
-			console.log(`[${roomID}] Designated new syncer: ${userName}`)
+				isSyncer = true
+				socket.emit('sync-designate', { isSyncer: true })
+				console.log(`[${validatedRoomId}] Designated new syncer: ${userName}`)
+			} else {
+				await this.sessionStore.setSocketData(socket.id, {
+					...socketData,
+					isSyncer: false,
+				})
+
+				isSyncer = false
+				socket.emit('sync-designate', { isSyncer: false })
+				console.log(`[${validatedRoomId}] User ${userName} lost syncer election (another user won)`)
+			}
 		} else {
 			await this.sessionStore.setSocketData(socket.id, {
 				...socketData,
@@ -86,49 +105,59 @@ export default class RoomLifecycleService {
 			socket.emit('sync-designate', { isSyncer: false })
 		}
 
-		await new Promise(resolve => setTimeout(resolve, 10))
+		const roomUsers = await this.getUserSocketsAndIds(validatedRoomId)
 
-		const roomUsers = await this.getUserSocketsAndIds(roomID)
-
-		console.log(`[${roomID}] Room now has ${roomUsers.length} users`)
+		console.log(`[${validatedRoomId}] Room now has ${roomUsers.length} users`)
 
 		if (roomUsers.length > 0) {
-			this.io.to(roomID).emit('room-user-change', roomUsers)
+			this.io.to(validatedRoomId).emit('room-user-change', roomUsers)
 		}
 
-		this.io.to(roomID).emit('user-joined', {
+		this.io.to(validatedRoomId).emit('user-joined', {
 			userId,
 			userName,
 			socketId: socket.id,
 			isSyncer,
 		})
 
-		const presentationSession = await this.presentationState.getPresentationSession(roomID)
+		const presentationSession = await this.presentationState.getPresentationSession(validatedRoomId)
 		if (presentationSession) {
-			console.log(`[${roomID}] Notifying new user ${userName} about active presentation by ${presentationSession.presenterName}`)
+			console.log(`[${validatedRoomId}] Notifying new user ${userName} about active presentation by ${presentationSession.presenterName}`)
 			socket.emit('user-started-presenting', {
 				userId: presentationSession.presenterId,
 				username: presentationSession.presenterName,
 			})
 		}
 
-		const recordingState = await this.recordingState.getRecordingState(roomID)
+		const recordingState = await this.recordingState.getRecordingState(validatedRoomId)
 		Object.values(recordingState).forEach((entry) => {
 			if (!entry) {
 				return
 			}
+			const isSelf = entry.userId === userId
+			const startedAt = entry.startedAt || Date.now()
+
+			if (isSelf) {
+				socket.emit('recording-started', {
+					startedAt,
+					resumed: true,
+				})
+			}
+
 			socket.emit('user-started-recording', {
 				userId: entry.userId,
 				username: entry.username,
+				startedAt,
+				resumed: isSelf,
 			})
 		})
 
 		if (this.timerService) {
-			await this.timerService.hydrateForSocket(roomID, socket)
+			await this.timerService.hydrateForSocket(validatedRoomId, socket)
 		}
 
 		if (this.votingService) {
-			await this.votingService.hydrateForSocket(roomID, socket)
+			await this.votingService.hydrateForSocket(validatedRoomId, socket)
 		}
 	}
 
@@ -221,6 +250,8 @@ export default class RoomLifecycleService {
 			return
 		}
 
+		await this.cluster.clearRoomSyncer(roomID)
+
 		const userMap = new Map()
 		userSockets.forEach((s) => {
 			if (!userMap.has(s.userId)) {
@@ -234,23 +265,25 @@ export default class RoomLifecycleService {
 				const isReadOnly = await this.sessionStore.isReadOnly(socketInfo.socketId)
 
 				if (!isReadOnly) {
-					await this.cluster.setRoomSyncer(roomID, userId)
+					const elected = await this.cluster.trySetRoomSyncer(roomID, userId)
 
-					for (const s of sockets) {
-						const socketData = await this.sessionStore.getSocketData(s.socketId)
-						if (socketData) {
-							await this.sessionStore.setSocketData(s.socketId, {
-								...socketData,
-								isSyncer: true,
-								syncerFor: roomID,
-							})
+					if (elected) {
+						for (const s of sockets) {
+							const socketData = await this.sessionStore.getSocketData(s.socketId)
+							if (socketData) {
+								await this.sessionStore.setSocketData(s.socketId, {
+									...socketData,
+									isSyncer: true,
+									syncerFor: roomID,
+								})
 
-							this.io.to(s.socketId).emit('sync-designate', { isSyncer: true })
+								this.io.to(s.socketId).emit('sync-designate', { isSyncer: true })
+							}
 						}
-					}
 
-					console.log(`[${roomID}] Promoted new syncer: ${sockets[0].userName}`)
-					return
+						console.log(`[${roomID}] Promoted new syncer: ${sockets[0].userName}`)
+						return
+					}
 				}
 			}
 		}

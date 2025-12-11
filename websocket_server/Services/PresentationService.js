@@ -37,6 +37,15 @@ export default class PresentationService {
 		const sessionKey = `${roomID}_${socket.id}`
 
 		try {
+			if (!socket.rooms.has(roomID)) {
+				throw new Error('Not joined to room')
+			}
+
+			const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
+			if (isReadOnly) {
+				throw new Error('Read-only users cannot start presentations')
+			}
+
 			const socketData = await this.sessionStore.getSocketData(socket.id)
 			if (!socketData?.user?.id) throw new Error('Unauthorized')
 
@@ -112,6 +121,10 @@ export default class PresentationService {
 		const sessionKey = `${roomID}_${socket.id}`
 
 		try {
+			if (!socket.rooms.has(roomID)) {
+				throw new Error('Not joined to room')
+			}
+
 			const socketData = await this.sessionStore.getSocketData(socket.id)
 			if (!socketData?.user?.id) throw new Error('Unauthorized')
 
@@ -170,6 +183,10 @@ export default class PresentationService {
 		const sessionKey = `${roomID}_${socket.id}`
 
 		try {
+			if (!socket.rooms.has(roomID)) {
+				return
+			}
+
 			console.log(`[${sessionKey}] Presenter viewport requested`)
 
 			const presentationSession = await this.getPresentationSession(roomID)

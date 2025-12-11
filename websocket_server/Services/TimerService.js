@@ -9,11 +9,44 @@ import Config from '../Utilities/ConfigUtility.js'
 
 export default class TimerService {
 
+	static CLEANUP_INTERVAL_MS = 60000
+	static STALE_THRESHOLD_MS = 3600000
+
 	constructor({ io, sessionStore, roomStateStore }) {
 		this.io = io
 		this.sessionStore = sessionStore
 		this.roomStateStore = roomStateStore
 		this.timers = new Map()
+		this.cleanupInterval = null
+		this.startCleanupInterval()
+	}
+
+	startCleanupInterval() {
+		if (this.cleanupInterval) return
+		this.cleanupInterval = setInterval(() => {
+			this.cleanupStaleTimers()
+		}, TimerService.CLEANUP_INTERVAL_MS)
+	}
+
+	stopCleanupInterval() {
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval)
+			this.cleanupInterval = null
+		}
+	}
+
+	cleanupStaleTimers() {
+		const now = Date.now()
+		for (const [roomId, timerState] of this.timers.entries()) {
+			if (timerState.status === 'finished' || timerState.status === 'idle') {
+				const updatedAt = timerState.updatedAt || 0
+				if (now - updatedAt > TimerService.STALE_THRESHOLD_MS) {
+					this.clearTimerTimeout(roomId)
+					this.timers.delete(roomId)
+					console.log(`[${roomId}] Cleaned up stale timer`)
+				}
+			}
+		}
 	}
 
 	#getTimerKey(roomId) {
@@ -145,7 +178,9 @@ export default class TimerService {
 		})
 
 		console.log(`[${roomID}] Timer finished`)
-		this.persistTimerState(roomID).catch(() => {})
+		this.persistTimerState(roomID).catch((error) => {
+			console.error(`[${roomID}] Failed to persist timer state:`, error)
+		})
 		this.emitTimerState(roomID)
 	}
 
