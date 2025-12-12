@@ -16,6 +16,7 @@ OC.L10N.register(
     "Insert" : "Sett inn",
     "Multiple choice" : "Flervalg",
     "Question" : "Spørsmål",
+    "Option" : "Alternativ",
     "Add option" : "Legg til alternativ",
     "Comments" : "Kommentarer",
     "Voting" : "Stemmegivning",

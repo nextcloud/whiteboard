@@ -2,11 +2,15 @@
     "Whiteboard" : "Whiteboard",
     "Shared secret" : "Shared secret",
     "Advanced settings" : "تنظیمات پیشرفته",
+    "Insert Table" : "وارد کرن جدول",
     "Cancel" : "انصراف",
     "Update" : "به‌روزرسانی",
     "Insert" : "Insert",
+    "Question" : "پرسش",
+    "Option" : "Option",
     "Add option" : "افزودن گزینه",
     "Comments" : "نظرات",
+    "Voting" : "Voting",
     "Delete thread" : "Delete thread",
     "Edit" : "ویرایش",
     "Save" : "ذخیره",
@@ -27,6 +31,7 @@
     "Resume" : "از سرگیری",
     "Restore this version" : "Restore this version",
     "Status" : "Status",
+    "Open" : "باز کردن",
     "Closed" : "بسته شده",
     "Version restored" : "Version restored"
 },"pluralForm" :"nplurals=2; plural=(n > 1);"

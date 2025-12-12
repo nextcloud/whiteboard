@@ -12,6 +12,7 @@ OC.L10N.register(
     "Insert" : "Invoegen",
     "Multiple choice" : "Meerkeuze",
     "Question" : "Vraag",
+    "Option" : "Optie",
     "Add option" : "Voeg een optie toe",
     "Comments" : "Reacties",
     "Voting" : "Stemming",

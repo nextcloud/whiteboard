@@ -4,6 +4,7 @@ OC.L10N.register(
     "Advanced settings" : "Configuraciones avanzadas",
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
+    "Multiple choice" : "Opción múltiple",
     "Comments" : "Comentarios",
     "Edit" : "Editar",
     "Save" : "Guardar",
@@ -16,6 +17,7 @@ OC.L10N.register(
     "Finished" : "Terminado",
     "Reset" : "Restablecer",
     "Pause" : "Pausar",
+    "Open" : "Abrir",
     "Version {version}" : "Versión {version}",
     "Just now" : "Justo ahora"
 },

@@ -16,6 +16,7 @@ OC.L10N.register(
     "Finished" : "Terminado",
     "Reset" : "Restablecer",
     "Pause" : "Pausar",
+    "Closed" : "Cerrado",
     "Just now" : "Justo ahora"
 },
 "nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");

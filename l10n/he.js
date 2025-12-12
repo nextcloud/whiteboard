@@ -5,6 +5,7 @@ OC.L10N.register(
     "Advanced settings" : "הגדרות מתקדמות",
     "Cancel" : "ביטול",
     "Update" : "עדכון",
+    "Multiple choice" : "שאלון אמריקאי",
     "Comments" : "תגובות",
     "Delete thread" : "מחיקת שרשור",
     "Edit" : "עריכה",
@@ -23,6 +24,7 @@ OC.L10N.register(
     "Reset" : "איפוס",
     "Pause" : "השהה",
     "Resume" : "להמשיך",
+    "Open" : "פתוח",
     "Closed" : "סגור",
     "Just now" : "הרגע"
 },

@@ -6,6 +6,7 @@
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
     "Insert" : "Insertar",
+    "Option" : "Opción",
     "Comments" : "Comentarios",
     "Delete thread" : "Eliminar hilo",
     "Edit" : "Editar",
@@ -22,6 +23,8 @@
     "Start" : "Inicio",
     "Reset" : "Reiniciar",
     "Pause" : "Pausar",
+    "Open" : "Abrir",
+    "Closed" : "Cerrado",
     "Version {version}" : "Versión {version}",
     "Version restored" : "Versión restaurada",
     "Just now" : "Justo ahora"

@@ -8,6 +8,7 @@ OC.L10N.register(
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
     "Insert" : "Insertar",
+    "Option" : "Opción",
     "Comments" : "Comentarios",
     "Delete thread" : "Eliminar hilo",
     "Edit" : "Editar",
@@ -24,6 +25,8 @@ OC.L10N.register(
     "Start" : "Inicio",
     "Reset" : "Reiniciar",
     "Pause" : "Pausar",
+    "Open" : "Abrir",
+    "Closed" : "Cerrado",
     "Version {version}" : "Versión {version}",
     "Version restored" : "Versión restaurada",
     "Just now" : "Justo ahora"

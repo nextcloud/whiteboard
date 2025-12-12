@@ -16,6 +16,7 @@ OC.L10N.register(
     "Finished" : "Terminado",
     "Reset" : "Restablecer",
     "Pause" : "Pausar",
+    "Open" : "Abrir",
     "Closed" : "Cerrado",
     "Just now" : "Justo ahora"
 },

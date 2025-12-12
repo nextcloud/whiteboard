@@ -7,7 +7,11 @@
     "Cancel" : "Cancelar",
     "Update" : "Actualizar",
     "Insert" : "Insertar",
+    "Question" : "Pregunta",
+    "Option" : "Opción",
+    "Add option" : "Agregar opción",
     "Comments" : "Comentarios",
+    "Voting" : "Votación",
     "Delete thread" : "Eliminar hilo",
     "Edit" : "Editar",
     "Save" : "Guardar",
@@ -26,6 +30,9 @@
     "Pause" : "Pausar",
     "Resume" : "Continuar",
     "Restore this version" : "Restaurar esta versión",
+    "Status" : "Estado",
+    "Open" : "Abrir",
+    "Closed" : "Cerrado",
     "Version restored" : "Versión restaurada",
     "Just now" : "Justo ahora"
 },"pluralForm" :"nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;"

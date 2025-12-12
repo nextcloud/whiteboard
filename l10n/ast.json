@@ -2,6 +2,10 @@
     "Whiteboard" : "Pizarra",
     "Advanced settings" : "Configuración avanzada",
     "Cancel" : "Cancel",
+    "Update" : "Anovar",
+    "Insert" : "Inxertar",
+    "Question" : "Entruga",
+    "Option" : "Opción",
     "Comments" : "Comentarios",
     "Delete thread" : "Desaniciar el filu",
     "Edit" : "Editar",
@@ -19,6 +23,8 @@
     "Pause" : "Posar",
     "Resume" : "Siguir",
     "Restore this version" : "Restaurar esta versión",
+    "Status" : "Estáu",
+    "Open" : "Abrir",
     "Version restored" : "Restauróse la versión",
     "Just now" : "Puramente agora"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"

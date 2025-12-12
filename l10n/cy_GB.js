@@ -3,12 +3,16 @@ OC.L10N.register(
     {
     "Whiteboard" : "Bwrdd gwyn",
     "Cancel" : "Cancel",
+    "Update" : "Diweddaru",
+    "Voting" : "Pleidleisio",
     "Edit" : "Golygu",
     "Save" : "Cadw",
     "Send" : "Anfon",
     "Connecting" : "Yn cysylltu",
     "Unknown" : "Anhysbys",
     "Running" : "Rhedeg",
-    "Pause" : "Seibio"
+    "Pause" : "Seibio",
+    "Status" : "Statws",
+    "Open" : "Ar Agor"
 },
 "nplurals=4; plural=(n==1) ? 0 : (n==2) ? 1 : (n != 8 && n != 11) ? 2 : 3;");

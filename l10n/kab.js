@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Cancel" : "Semmet",
+    "Question" : "Asteqsi",
+    "Option" : "Taxtiṛt",
     "Add option" : "Rnu aɣewwaṛ",
     "Comments" : "Iwenniten",
     "Edit" : "Ẓreg",

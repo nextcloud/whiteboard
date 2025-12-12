@@ -5,6 +5,7 @@ OC.L10N.register(
     "Advanced settings" : "Altanivela agordo",
     "Cancel" : "Cancel",
     "Update" : "Ĝisdatigi",
+    "Add option" : "Aldoni opcion",
     "Comments" : "Komentoj",
     "Edit" : "Modifi",
     "Save" : "Konservi",
@@ -16,6 +17,8 @@ OC.L10N.register(
     "Finished" : "Finita",
     "Start" : "Komenco",
     "Reset" : "Restarigi",
-    "Pause" : "Paŭzigi"
+    "Pause" : "Paŭzigi",
+    "Open" : "Malfermi",
+    "Closed" : "Fermita"
 },
 "nplurals=2; plural=(n != 1);");

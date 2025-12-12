@@ -2,6 +2,7 @@
     "Advanced settings" : "Configuraciones avanzadas",
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
+    "Multiple choice" : "Opción múltiple",
     "Comments" : "Comentarios",
     "Edit" : "Editar",
     "Save" : "Guardar",
@@ -14,6 +15,7 @@
     "Finished" : "Terminado",
     "Reset" : "Restablecer",
     "Pause" : "Pausar",
+    "Open" : "Abrir",
     "Version {version}" : "Versión {version}",
     "Just now" : "Justo ahora"
 },"pluralForm" :"nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;"

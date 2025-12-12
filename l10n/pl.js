@@ -28,6 +28,7 @@ OC.L10N.register(
     "Insert" : "wstaw",
     "Multiple choice" : "Jednokrotny wybór",
     "Question" : "Pytanie",
+    "Option" : "Opcja",
     "Add option" : "Dodaj opcję",
     "Comments" : "Komentarze",
     "Voting" : "Głosowanie",

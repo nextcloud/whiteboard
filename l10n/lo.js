@@ -9,6 +9,7 @@ OC.L10N.register(
     "Update" : "ອັບເດດ",
     "Insert" : "ແຊກ",
     "Question" : "ຄຳຖາມ",
+    "Option" : "ຕົວເລືອກ",
     "Add option" : "ເພີ່ມຕົວເລືອກ",
     "Comments" : "ຄຳເຫັນ",
     "Delete thread" : "Delete thread",

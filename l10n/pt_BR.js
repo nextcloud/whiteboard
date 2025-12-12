@@ -29,6 +29,7 @@ OC.L10N.register(
     "Insert" : "Colar",
     "Multiple choice" : "Múltipla escolha",
     "Question" : "Pergunta",
+    "Option" : "Opção",
     "Add option" : "Adicionar opção",
     "Comments" : "Comentários",
     "Voting" : "Votando",
