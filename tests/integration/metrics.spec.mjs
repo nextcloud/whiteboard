@@ -1,25 +1,31 @@
 import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest'
 import axios from 'axios'
 import { createConfigMock } from './configMock.js'
-import ServerManagerModule from '../../websocket_server/ServerManager.js'
-import ConfigModule from '../../websocket_server/Config.js'
+import ServerManagerModule from '../../websocket_server/Services/ServerService.js'
+import ConfigModule from '../../websocket_server/Utilities/ConfigUtility.js'
 
-vi.mock('../../websocket_server/Config.js', () => ({
+vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => ({
 	default: createConfigMock({
-		NEXTCLOUD_URL: 'http://localhost:3008',
+		NEXTCLOUD_URL: 'http://127.0.0.1:3008',
 		PORT: '3008',
+		HOST: '127.0.0.1',
 		METRICS_TOKEN: 'secret',
+		USE_TLS: false,
+		STORAGE_STRATEGY: 'lru',
+		MAX_UPLOAD_FILE_SIZE: 2e6,
+		CACHED_TOKEN_TTL: 5 * 60 * 1000,
+		COMPRESSION_ENABLED: false,
 	}),
 }))
 
 const Config = ConfigModule
-const ServerManager = ServerManagerModule
+const ServerService = ServerManagerModule
 
 describe('Metrics endpoint', () => {
 	let serverManager
 
 	beforeAll(async () => {
-		serverManager = new ServerManager()
+		serverManager = new ServerService()
 		await serverManager.start()
 	})
 

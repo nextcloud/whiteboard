@@ -7,7 +7,7 @@
 
 import { register, Gauge } from 'prom-client'
 
-export default class PrometheusDataManager {
+export default class PrometheusDataService {
 
 	constructor(systemMonitor) {
 		this.systemMonitor = systemMonitor

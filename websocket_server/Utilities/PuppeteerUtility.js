@@ -6,7 +6,7 @@
 /* eslint-disable no-console */
 
 import { launch as launchChromium } from 'puppeteer-core'
-import Config from './Config.js'
+import Config from './ConfigUtility.js'
 
 const CHECK_INTERVAL_MS = 60_000
 const TEST_TIMEOUT_MS = 10_000

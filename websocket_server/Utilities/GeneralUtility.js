@@ -5,10 +5,10 @@
 
 /* eslint-disable no-console */
 
-export default class Utils {
+export default class GeneralUtility {
 
 	static convertStringToArrayBuffer(string) {
-		return new TextEncoder().encode(string).buffer
+		return new TextEncoder().encode(string)
 	}
 
 	static convertArrayBufferToString(arrayBuffer) {
@@ -56,6 +56,25 @@ export default class Utils {
 	 */
 	static logError(context, message, error) {
 		console.error(`[${context}] ${message}:`, error)
+	}
+
+	/**
+	 * Validates a room ID (file ID) format
+	 * Room IDs should be numeric file IDs from Nextcloud
+	 * @param {any} roomId - The room ID to validate
+	 * @return {string|null} - Sanitized room ID or null if invalid
+	 */
+	static validateRoomId(roomId) {
+		if (roomId === null || roomId === undefined) {
+			return null
+		}
+		const str = String(roomId).trim()
+		// Allow numeric IDs (e.g., "12345") or valid file identifiers
+		// Reject anything that could be used for injection
+		if (!/^[a-zA-Z0-9_-]+$/.test(str) || str.length > 64) {
+			return null
+		}
+		return str
 	}
 
 }

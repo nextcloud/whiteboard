@@ -6,7 +6,6 @@
 /* eslint-disable no-console */
 
 import dotenv from 'dotenv'
-import crypto from 'crypto'
 import fs from 'fs'
 import {
 	DEFAULT_NEXTCLOUD_URL,
@@ -17,8 +16,9 @@ import {
 	DEFAULT_CACHED_TOKEN_TTL,
 	DEFAULT_COMPRESSION_ENABLED,
 	DEFAULT_HOST,
-} from './Constants.js'
-import Utils from './Utils.js'
+	DEFAULT_SESSION_TTL,
+} from './ConstantsUtility.js'
+import GeneralUtility from './GeneralUtility.js'
 import { createRequire } from 'module'
 
 dotenv.config()
@@ -32,7 +32,7 @@ const Config = {
 
 	HOST: process.env.HOST || DEFAULT_HOST,
 
-	USE_TLS: Utils.parseBooleanFromEnv(process.env.TLS),
+	USE_TLS: GeneralUtility.parseBooleanFromEnv(process.env.TLS),
 
 	TLS_KEY_PATH: process.env.TLS_KEY || null,
 
@@ -48,24 +48,28 @@ const Config = {
 
 	MAX_UPLOAD_FILE_SIZE: process.env.MAX_UPLOAD_FILE_SIZE * (1e6) || 2e6,
 
-	CACHED_TOKEN_TTL: process.env.CACHED_TOKEN_TTL || DEFAULT_CACHED_TOKEN_TTL,
+	CACHED_TOKEN_TTL: Number(process.env.CACHED_TOKEN_TTL || DEFAULT_CACHED_TOKEN_TTL),
+
+	SESSION_TTL: Number(process.env.SESSION_TTL || DEFAULT_SESSION_TTL),
 
 	// WebSocket compression setting
 	COMPRESSION_ENABLED: process.env.COMPRESSION_ENABLED !== undefined
-		? Utils.parseBooleanFromEnv(process.env.COMPRESSION_ENABLED)
+		? GeneralUtility.parseBooleanFromEnv(process.env.COMPRESSION_ENABLED)
 		: DEFAULT_COMPRESSION_ENABLED,
 
 	get JWT_SECRET_KEY() {
 		if (!process.env.JWT_SECRET_KEY) {
-			const newSecret = crypto.randomBytes(32).toString('hex')
-			process.env.JWT_SECRET_KEY = newSecret
+			throw new Error(
+				'[FATAL] JWT_SECRET_KEY environment variable is required but not set. '
+				+ 'Generate one with: openssl rand -hex 32',
+			)
 		}
 
 		return process.env.JWT_SECRET_KEY
 	},
 
 	get NEXTCLOUD_URL() {
-		return Utils.normalizeUrlPath(process.env.NEXTCLOUD_URL || DEFAULT_NEXTCLOUD_URL)
+		return GeneralUtility.normalizeUrlPath(process.env.NEXTCLOUD_URL || DEFAULT_NEXTCLOUD_URL)
 	},
 
 	get CORS_ORIGINS() {
@@ -81,8 +85,8 @@ const Config = {
 	},
 
 	// Recording configuration
-	NEXTCLOUD_UPLOAD_ENABLED: Utils.parseBooleanFromEnv(process.env.NEXTCLOUD_UPLOAD_ENABLED),
-	CLEANUP_LOCAL_RECORDINGS: Utils.parseBooleanFromEnv(process.env.CLEANUP_LOCAL_RECORDINGS),
+	NEXTCLOUD_UPLOAD_ENABLED: GeneralUtility.parseBooleanFromEnv(process.env.NEXTCLOUD_UPLOAD_ENABLED),
+	CLEANUP_LOCAL_RECORDINGS: GeneralUtility.parseBooleanFromEnv(process.env.CLEANUP_LOCAL_RECORDINGS),
 	RECORDINGS_DIR: process.env.RECORDINGS_DIR || null,
 
 	// Chrome detection for puppeteer-core

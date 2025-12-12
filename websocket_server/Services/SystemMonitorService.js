@@ -7,10 +7,10 @@
 
 import os from 'os'
 
-export default class SystemMonitor {
+export default class SystemMonitorService {
 
-	constructor(socketManager, cachedTokenStorage) {
-		this.socketManager = socketManager
+	constructor(socketService, cachedTokenStorage) {
+		this.socketService = socketService
 		this.cachedTokenStorage = cachedTokenStorage
 		this.startTime = Date.now()
 	}
@@ -64,12 +64,12 @@ export default class SystemMonitor {
 	}
 
 	getRoomStats() {
-		if (!this.socketManager || !this.socketManager.io) {
-			return { error: 'Socket manager not available' }
+		if (!this.socketService || !this.socketService.io) {
+			return { error: 'Socket service not available' }
 		}
 
 		try {
-			const io = this.socketManager.io
+			const io = this.socketService.io
 
 			// Get all rooms
 			const rooms = Array.from(io.sockets.adapter.rooms.keys())
@@ -94,7 +94,7 @@ export default class SystemMonitor {
 					try {
 						// Note: We're not awaiting this since we're just collecting stats
 						// and don't want to slow down the metrics collection
-						this.socketManager.socketDataStorage.get(socketId)
+						this.socketService.socketDataStorage.get(socketId)
 							.then(socketData => {
 								if (socketData && socketData.user && socketData.user.id) {
 									uniqueUsers.add(socketData.user.id)

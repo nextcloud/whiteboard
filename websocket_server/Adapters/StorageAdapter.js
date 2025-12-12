@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-export default class StorageStrategy {
+export default class StorageAdapter {
 
 	async get(key) {
 		throw new Error('Method not implemented.')
