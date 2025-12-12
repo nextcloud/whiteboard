@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0-beta.1
+## 1.5.0
 
 ### Added
 
@@ -17,6 +17,7 @@
 - version-restoring @hweihwang [#830](https://github.com/nextcloud/whiteboard/pull/830)
 - Sanitize app state before broadcasting restores @hweihwang [#847](https://github.com/nextcloud/whiteboard/pull/847)
 - Reposition buttons and polishing @juliusknorr [#854](https://github.com/nextcloud/whiteboard/pull/854)
+- Fix cluster state synchronisation with multiple nodes using redis @hweihwang [#848](https://github.com/nextcloud/whiteboard/pull/848)
 
 ### Other
 
