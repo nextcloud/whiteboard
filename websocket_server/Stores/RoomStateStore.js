@@ -135,6 +135,7 @@ export default class RoomStateStore {
 				return
 			} catch (error) {
 				if (this.#isClientClosedError(error)) {
+					console.error('Client closed during setValue')
 					return
 				}
 				throw error
@@ -156,6 +157,7 @@ export default class RoomStateStore {
 				return
 			} catch (error) {
 				if (this.#isClientClosedError(error)) {
+					console.error('Client closed during deleteValue')
 					return
 				}
 				throw error
@@ -275,6 +277,7 @@ export default class RoomStateStore {
 				return
 			} catch (error) {
 				if (this.#isClientClosedError(error)) {
+					console.error('Client closed during setHash')
 					return
 				}
 				throw error
@@ -309,6 +312,7 @@ export default class RoomStateStore {
 				return
 			} catch (error) {
 				if (this.#isClientClosedError(error)) {
+					console.error('Client closed during setHashEntry')
 					return
 				}
 				throw error

@@ -133,9 +133,24 @@ export default class ClusterService {
 
 	async runSweep() {
 		if (!this.shouldUseRedis()) return
-		const results = await this.sweep()
-		if (this.onSweep) {
-			await this.onSweep(results)
+
+		const lockKey = 'cluster:sweep:lock'
+		const locked = await this.redisClient.set(lockKey, this.nodeId, {
+			NX: true,
+			EX: 30,
+		})
+
+		if (locked !== 'OK') {
+			return
+		}
+
+		try {
+			const results = await this.sweep()
+			if (this.onSweep) {
+				await this.onSweep(results)
+			}
+		} finally {
+			await this.redisClient.del(lockKey).catch(() => {})
 		}
 	}
 
@@ -148,10 +163,11 @@ export default class ClusterService {
 			return exists === 1
 		} catch (error) {
 			if (this.isClientClosedError(error)) {
-				return true
+				console.error('Client closed during heartbeat check for', nodeId)
+				return false
 			}
 			console.error('Failed to check node heartbeat:', error)
-			return true
+			return false
 		}
 	}
 
