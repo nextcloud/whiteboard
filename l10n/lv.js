@@ -9,6 +9,7 @@ OC.L10N.register(
     "Cancel" : "Atcelt",
     "Update" : "Atjaunināt",
     "Comments" : "Piebildes",
+    "Voting" : "Balsošana",
     "Edit" : "Labot",
     "Save" : "Saglabāt",
     "Add a comment" : "Pievienot komentāru",

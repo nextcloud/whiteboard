@@ -15,6 +15,7 @@ OC.L10N.register(
     "Question" : "Klausimas",
     "Add option" : "Pridėti variantą",
     "Comments" : "Komentarai",
+    "Voting" : "Balsavimas",
     "Delete thread" : "Ištrinti giją",
     "Edit" : "Taisyti",
     "Save" : "Įrašyti",

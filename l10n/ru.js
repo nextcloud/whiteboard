@@ -13,6 +13,7 @@ OC.L10N.register(
     "Insert" : "Вставить",
     "Multiple choice" : "Множественный выбор",
     "Question" : "Вопрос",
+    "Option" : "Вариант",
     "Add option" : "Добавить вариант",
     "Comments" : "Комментарии",
     "Voting" : "Голосование",

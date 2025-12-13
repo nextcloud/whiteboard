@@ -17,6 +17,7 @@ OC.L10N.register(
     "Finished" : "Selesai",
     "Start" : "Mulai",
     "Reset" : "Setel ulang",
-    "Pause" : "Jeda"
+    "Pause" : "Jeda",
+    "Open" : "Buka"
 },
 "nplurals=1; plural=0;");
