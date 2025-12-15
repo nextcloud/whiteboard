@@ -257,21 +257,13 @@ export default function App({
 
 	// Effect to handle fileId changes - cleanup previous board data
 	useEffect(() => {
-		// Clear any existing Excalidraw data when fileId changes
-		if (excalidrawAPI) {
-			excalidrawAPI.resetScene()
-		}
-
-		// Reset the initialDataPromise to ensure clean state
-		resetInitialDataPromise()
-
 		return () => {
 			// Save current board data before switching
 			if (excalidrawAPI) {
 				saveOnUnmount()
 			}
 		}
-	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount])
+	}, [normalizedFileId, excalidrawAPI, saveOnUnmount])
 
 	useEffect(() => {
 		resetInitialDataPromise()
