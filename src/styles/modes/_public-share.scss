@@ -1,0 +1,64 @@
+/**
+ * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+#body-public.whiteboard-public-share {
+	--header-height: 0px;
+	--footer-height: 0px;
+	--whiteboard-public-share-main-text: var(--color-main-text);
+}
+
+#body-public.whiteboard-public-share #header {
+	display: none;
+}
+
+#body-public.whiteboard-public-share #content.app-files_sharing {
+	--body-container-margin: 0px;
+	--body-container-radius: 0px;
+	--footer-height: 0px;
+	--body-height: calc(100% - env(safe-area-inset-bottom));
+	margin: 0 !important;
+}
+
+#body-public.whiteboard-public-share #content.app-files_sharing + footer {
+	display: none;
+}
+
+#body-public.whiteboard-public-share #content.app-files_sharing #app-content {
+	overflow: hidden;
+}
+
+#body-public.whiteboard-public-share #content.app-files_sharing #files-public-content,
+#body-public.whiteboard-public-share #content.app-files_sharing #preview {
+	height: 100%;
+}
+
+#body-public.whiteboard-public-share #content.app-files_sharing #preview {
+	position: relative;
+}
+
+#body-public.whiteboard-public-share #content.app-files_sharing .whiteboard {
+	height: 100%;
+	width: 100%;
+	inset: 0;
+}
+
+#body-public.whiteboard-public-share .network-status,
+#body-public.whiteboard-public-share .grid-toggle-button {
+	display: none;
+}
+
+#body-public.whiteboard-public-share .excalidraw .sidebar-trigger__label {
+	line-height: 1.2;
+	height: auto;
+}
+
+#body-public.whiteboard-public-share #viewer .modal-header .button-vue {
+	color: var(--whiteboard-public-share-main-text) !important;
+}
+
+#body-public.whiteboard-public-share #viewer .whiteboard {
+	top: 50px;
+	height: calc(100% - 50px);
+}
