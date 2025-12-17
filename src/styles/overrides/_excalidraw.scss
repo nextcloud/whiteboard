@@ -179,3 +179,7 @@
   grid-template-columns: repeat(11, 1fr);
   grid-auto-flow: unset;
 }
+
+[data-testid="toolbar-embeddable"] {
+	display: none !important;
+}
