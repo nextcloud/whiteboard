@@ -119,6 +119,9 @@
       }
     ]
   },
+  "redisMemoryServer": {
+    "disablePostinstall": "1"
+  },
   "engines": {
     "node": "^24.0.0",
     "npm": "^11.3.0"
