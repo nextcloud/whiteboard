@@ -61,10 +61,15 @@ export default defineComponent({
 				}
 
 				// Convert HTML to markdown for the Text editor input
-				const contentForEditor = this.currentHtml && this.currentHtml.trim()
+				let contentForEditor = this.currentHtml && this.currentHtml.trim()
 					? this.generateMarkdownFromHtml(this.currentHtml)
 					: ''
 
+				// If no content provided, create a minimal table with header and one body row
+				// This ensures the table editor recognizes it as a proper table with columns
+				if (!contentForEditor) {
+					contentForEditor = '|  |\n| --- |\n|  |\n'
+				}
 				// Use the dedicated createTable function for table-only editing
 				this.editor = await window.OCA.Text.createTable({
 					el: editorContainer,
