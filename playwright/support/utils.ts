@@ -6,6 +6,13 @@
 import { expect } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
 
+const fileIdPropfindBody = `<?xml version="1.0"?>
+<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
+	<d:prop>
+		<oc:fileid />
+	</d:prop>
+</d:propfind>`
+
 export async function openFilesApp(page: Page) {
 	await page.goto('apps/files')
 	await page.waitForURL(/apps\/files/)
@@ -111,8 +118,10 @@ export async function addTextElement(page: Page, text: string, point: Point = { 
 export async function openWhiteboardFromFiles(page: Page, name: string, options: OpenWhiteboardFromFilesOptions = {}) {
 	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 	const viewOrder = options.preferSharedView
-		? ['apps/files?view=sharingin', 'apps/files/shareoverview', 'apps/files']
+		? ['apps/files/sharingin', 'apps/files?view=sharingin', 'apps/files/shareoverview', 'apps/files']
 		: ['apps/files', 'apps/files/shareoverview']
+	let activeViewId = 'files'
+	let activeDir = '/'
 
 	const attemptFindEntry = async () => {
 		const searchBox = page.getByRole('searchbox', { name: /search here/i }).first()
@@ -140,6 +149,11 @@ export async function openWhiteboardFromFiles(page: Page, name: string, options:
 	const visitView = async (path: string) => {
 		await page.goto(path)
 		await page.waitForURL(/apps\/files/, { timeout: 20000 }).catch(() => {})
+		const currentUrl = new URL(await page.url())
+		const viewParam = currentUrl.searchParams.get('view')
+		const viewSegment = currentUrl.pathname.split('/').filter(Boolean).pop() || 'files'
+		activeViewId = viewParam || (viewSegment === 'files' ? 'files' : viewSegment)
+		activeDir = currentUrl.searchParams.get('dir') || '/'
 		return attemptFindEntry()
 	}
 
@@ -151,26 +165,122 @@ export async function openWhiteboardFromFiles(page: Page, name: string, options:
 		}
 	}
 
-
 	if (!entry) {
 		throw new Error(`Whiteboard file not found: ${name}`)
 	}
 
 	await expect(entry).toBeVisible({ timeout: 15000 })
+	await entry.scrollIntoViewIfNeeded()
 
-	const viewButton = entry.getByRole('button', { name: /view|open/i }).first()
-	if (await viewButton.count()) {
-		await viewButton.click()
+	const resolvedFileId = await entry.evaluate<string | null>((row) => {
+		const element = row as HTMLElement
+		const direct = element.getAttribute('data-cy-files-list-row-fileid')
+			|| element.getAttribute('data-fileid')
+			|| element.getAttribute('data-id')
+		if (direct) {
+			return direct
+		}
+		const nested = element.querySelector('[data-cy-files-list-row-fileid], [data-fileid], [data-id]') as HTMLElement | null
+		return nested?.getAttribute('data-cy-files-list-row-fileid')
+			|| nested?.getAttribute('data-fileid')
+			|| nested?.getAttribute('data-id')
+			|| null
+	})
+	const resolvedFileName = await entry.evaluate<string | null>((row) => {
+		const element = row as HTMLElement
+		const direct = element.getAttribute('data-cy-files-list-row-name')
+			|| element.getAttribute('data-entryname')
+			|| element.getAttribute('data-file')
+		if (direct) {
+			return direct
+		}
+		const ariaLabel = element.getAttribute('aria-label') || ''
+		const ariaMatch = ariaLabel.match(/file \"([^\"]+)\"/)
+		if (ariaMatch?.[1]) {
+			return ariaMatch[1]
+		}
+		const text = element.textContent || ''
+		const textMatch = text.match(/([\w\s.-]+\.(whiteboard|excalidraw))/i)
+		if (textMatch?.[1]) {
+			return textMatch[1]
+		}
+		return null
+	})
+
+	const openViaViewer = async () => {
+		const fileNameToOpen = resolvedFileName || name
+		if (!fileNameToOpen) {
+			return false
+		}
+		const normalizedDir = activeDir && activeDir !== '/' ? activeDir.replace(/\/$/, '') : ''
+		const filePath = normalizedDir ? `${normalizedDir}/${fileNameToOpen}` : `/${fileNameToOpen}`
+		await page.waitForFunction(() => Boolean((window as any).OCA?.Viewer), { timeout: 10000 }).catch(() => {})
+		const result = await page.evaluate(({ path }) => {
+			const viewer = (window as any).OCA?.Viewer
+			if (!viewer) {
+				return { ok: false, reason: 'viewer-missing' }
+			}
+			const handlers = viewer.availableHandlers || []
+			const hasWhiteboard = Array.isArray(handlers) && handlers.some((handler) => handler?.id === 'whiteboard')
+			if (viewer.openWith && hasWhiteboard) {
+				viewer.openWith('whiteboard', { path })
+				return { ok: true }
+			}
+			if (viewer.open) {
+				viewer.open({ path })
+				return { ok: true }
+			}
+			return { ok: false, reason: 'open-missing' }
+		}, { path: filePath })
+		return Boolean(result?.ok)
+	}
+
+	const nameLink = entry.locator('[data-cy-files-list-row-name-link]').first()
+	if (await nameLink.count()) {
+		await nameLink.click()
 	} else {
-		const target = entry.getByRole('link', { name: new RegExp(escaped, 'i') }).first()
-		if (await target.count()) {
-			await target.click()
+		const viewButton = entry.getByRole('button', { name: /view|open/i }).first()
+		if (await viewButton.count()) {
+			await viewButton.click()
 		} else {
-			await entry.dblclick()
+			const target = entry.getByRole('link', { name: new RegExp(escaped, 'i') }).first()
+			if (await target.count()) {
+				await target.click()
+			} else {
+				const nameCell = entry.locator('[data-cy-files-list-row-name]').first()
+				if (await nameCell.count()) {
+					await nameCell.click()
+				} else {
+					await entry.click()
+				}
+			}
 		}
 	}
 
-	await waitForCanvas(page)
+	try {
+		await waitForCanvas(page)
+	} catch (error) {
+		await entry.dblclick()
+		try {
+			await waitForCanvas(page)
+		} catch (retryError) {
+			const viewerOpened = await openViaViewer()
+			if (viewerOpened) {
+				try {
+					await waitForCanvas(page)
+					return
+				} catch {
+					// fallback below
+				}
+			}
+			const fallbackFileId = resolvedFileId || await resolveFileIdByDav(page, name)
+			if (!fallbackFileId) {
+				throw retryError
+			}
+			await openWhiteboardById(page, fallbackFileId, { viewId: activeViewId, dir: activeDir })
+			return
+		}
+	}
 }
 
 export async function newLoggedInPage(sourcePage: Page, browser: Browser) {
@@ -224,9 +334,68 @@ export async function getBoardAuth(page: Page): Promise<{ fileId: number, jwt: s
 	return { fileId, jwt }
 }
 
-export async function openWhiteboardById(page: Page, fileId: number | string) {
-	await page.goto(`apps/whiteboard/${fileId}`)
+export async function openWhiteboardById(
+	page: Page,
+	fileId: number | string,
+	{ viewId = 'files', dir = '/' }: { viewId?: string, dir?: string } = {},
+) {
+	const normalizedView = viewId.replace(/^\/+/, '').replace(/\/+$/, '') || 'files'
+	const dirParam = encodeURIComponent(dir || '/')
+	await page.goto(`apps/files/${normalizedView}/${fileId}?dir=${dirParam}&openfile=true`)
 	await waitForCanvas(page)
+}
+
+async function resolveFileIdByDav(page: Page, name: string): Promise<string | null> {
+	const origin = new URL(await page.url()).origin
+	const userResponse = await page.request.get(`${origin}/ocs/v2.php/cloud/user?format=json`, {
+		headers: { 'OCS-APIREQUEST': 'true' },
+	})
+	if (!userResponse.ok()) {
+		return null
+	}
+	const userPayload = await userResponse.json().catch(() => null)
+	const userId = userPayload?.ocs?.data?.id
+	if (!userId) {
+		return null
+	}
+
+	const requestToken = await page.evaluate(() => (window as any).OC?.requestToken
+		|| (document.querySelector('head meta[name="requesttoken"]') as HTMLMetaElement | null)?.content
+		|| null)
+
+	const candidates = (() => {
+		const lower = name.toLowerCase()
+		if (lower.endsWith('.whiteboard') || lower.endsWith('.excalidraw')) {
+			return [name]
+		}
+		return [`${name}.whiteboard`, `${name}.excalidraw`, name]
+	})()
+
+	for (const candidate of candidates) {
+		const filePath = encodeURIComponent(candidate)
+		const response = await page.request.fetch(`${origin}/remote.php/dav/files/${userId}/${filePath}`, {
+			method: 'PROPFIND',
+			headers: {
+				Depth: '0',
+				Accept: 'application/xml',
+				'Content-Type': 'application/xml',
+				...(requestToken ? { requesttoken: requestToken } : {}),
+				'X-Requested-With': 'XMLHttpRequest',
+			},
+			data: fileIdPropfindBody,
+		})
+
+		if (!response.ok()) {
+			continue
+		}
+		const xml = await response.text()
+		const match = xml.match(/<(?:oc:)?fileid>([^<]+)<\/(?:oc:)?fileid>/)
+		if (match?.[1]) {
+			return match[1]
+		}
+	}
+
+	return null
 }
 
 export async function fetchBoardContent(page: Page, auth: { fileId: number | string, jwt: string }) {
