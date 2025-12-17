@@ -162,3 +162,7 @@
 		border: none !important;
 	}
 }
+
+[data-testid="toolbar-embeddable"] {
+	display: none !important;
+}
