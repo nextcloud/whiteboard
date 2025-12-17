@@ -344,7 +344,7 @@ export default function App({
 		renderAssistant()
 		renderComment()
 		renderEmojiPicker()
-	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker, renderTable])
+	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker, renderTable, renderComment])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
 		if (!isLibraryLoaded) {
@@ -357,6 +357,26 @@ export default function App({
 			logger.error('[App] Error syncing library items:', error)
 		}
 	}, [isLibraryLoaded])
+
+	useEffect(() => {
+		const excalidrawElement = document.querySelector('.excalidraw')
+		if (!excalidrawElement) return
+
+		const observer = new MutationObserver(() => {
+			renderSmartPicker()
+			renderTable()
+			renderAssistant()
+			renderComment()
+			renderEmojiPicker()
+		})
+
+		observer.observe(excalidrawElement, {
+			attributes: true,
+			attributeFilter: ['class'],
+		})
+
+		return () => observer.disconnect()
+	}, [renderEmojiPicker, renderSmartPicker, renderTable, renderAssistant, renderComment])
 
 	const libraryReturnUrl = encodeURIComponent(window.location.href)
 

@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { useCallback, useRef, useEffect } from 'react'
-import * as ReactDOM from 'react-dom'
-import { Icon } from '@mdi/react'
+import { useCallback } from 'react'
 import { mdiSlashForwardBox } from '@mdi/js'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
+import { renderToolbarButton } from '../components/ToolbarButton'
 
 export function useSmartPicker() {
 	const { excalidrawAPI } = useExcalidrawStore(
@@ -74,39 +73,14 @@ export function useSmartPicker() {
 			})
 	}, [addWebEmbed])
 
-	const renderSmartPickerButton = useCallback(() => {
-		return (
-			<button
-				className="dropdown-menu-button smart-picker-trigger"
-				aria-label="Smart picker"
-				aria-keyshortcuts="0"
-				onClick={pickFile}
-				title="Smart picker">
-				<Icon path={mdiSlashForwardBox} size={1} />
-			</button>
-		)
-	}, [pickFile])
-
-	const hasInsertedRef = useRef(false)
 	const renderSmartPicker = useCallback(() => {
-		if (hasInsertedRef.current) return
-		const extraTools = Array.from(document.getElementsByClassName('App-toolbar__extra-tools-trigger'))
-			.find(el => !el.classList.contains('smart-picker-trigger'))
-		if (!extraTools) return
-
-		const smartPick = document.createElement('label')
-		smartPick.classList.add('ToolIcon', 'Shape', 'smart-picker-container')
-		extraTools.parentNode?.insertBefore(
-			smartPick,
-			extraTools.previousSibling,
-		)
-		ReactDOM.render(renderSmartPickerButton(), smartPick)
-		hasInsertedRef.current = true
-	}, [renderSmartPickerButton])
-
-	useEffect(() => {
-		if (excalidrawAPI) renderSmartPicker()
-	}, [excalidrawAPI, renderSmartPicker])
+		renderToolbarButton({
+			class: 'smart-picker-container',
+			icon: mdiSlashForwardBox,
+			label: 'Smart picker',
+			onClick: pickFile,
+		})
+	}, [pickFile])
 
 	return { renderSmartPicker }
 }
