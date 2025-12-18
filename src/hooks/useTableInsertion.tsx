@@ -217,6 +217,12 @@ export function useTableInsertion() {
 		// Only insert once to avoid duplicate buttons
 		if (hasInsertedRef.current) return
 
+		// Only show table button if Text app's createTable API is available
+		if (!window.OCA?.Text?.createTable) {
+			console.warn('Table button not shown: Text app createTable API is not available')
+			return
+		}
+
 		// Find the extra tools trigger element in the toolbar
 		// We insert our button before this element
 		const extraTools = Array.from(document.getElementsByClassName('App-toolbar__extra-tools-trigger'))
