@@ -338,13 +338,26 @@ export default function App({
 
 	// UI Initialization Effect
 	useEffect(() => {
+
 		updateLang()
-		renderSmartPicker()
-		renderTable()
-		renderAssistant()
-		renderComment()
-		renderEmojiPicker()
-	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker, renderTable, renderComment])
+		const renderCustomElements = () => {
+			renderSmartPicker()
+			renderTable()
+			renderAssistant()
+			renderComment()
+			renderEmojiPicker()
+		}
+
+		renderCustomElements()
+
+		const excalidrawElement = document.querySelector('.excalidraw')
+		if (!excalidrawElement) return
+
+		const observer = new MutationObserver(renderCustomElements)
+		observer.observe(excalidrawElement, { attributes: true, attributeFilter: ['class'] })
+
+		return () => observer.disconnect()
+	}, [updateLang, renderSmartPicker, renderAssistant, renderComment, renderEmojiPicker, renderTable])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
 		if (!isLibraryLoaded) {
@@ -357,26 +370,6 @@ export default function App({
 			logger.error('[App] Error syncing library items:', error)
 		}
 	}, [isLibraryLoaded])
-
-	useEffect(() => {
-		const excalidrawElement = document.querySelector('.excalidraw')
-		if (!excalidrawElement) return
-
-		const observer = new MutationObserver(() => {
-			renderSmartPicker()
-			renderTable()
-			renderAssistant()
-			renderComment()
-			renderEmojiPicker()
-		})
-
-		observer.observe(excalidrawElement, {
-			attributes: true,
-			attributeFilter: ['class'],
-		})
-
-		return () => observer.disconnect()
-	}, [renderEmojiPicker, renderSmartPicker, renderTable, renderAssistant, renderComment])
 
 	const libraryReturnUrl = encodeURIComponent(window.location.href)
 
