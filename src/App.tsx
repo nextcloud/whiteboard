@@ -213,6 +213,30 @@ export default function App({
 	})
 
 	useEffect(() => {
+		if (!excalidrawAPI) return
+
+		const preventEmbedWheelPropagation = () => {
+			document.querySelectorAll('.excalidraw__embeddable-container').forEach(container => {
+				if (!container.dataset.wheelPrevented) {
+					container.addEventListener('wheel', (e) => e.stopPropagation())
+					container.dataset.wheelPrevented = 'true'
+				}
+			})
+		}
+
+		preventEmbedWheelPropagation()
+
+		const observer = new MutationObserver(preventEmbedWheelPropagation)
+		const wrapper = document.querySelector('.excalidraw')
+
+		if (wrapper) {
+			observer.observe(wrapper, { childList: true })
+		}
+
+		return () => observer.disconnect()
+	}, [excalidrawAPI])
+
+	useEffect(() => {
 		const onRestoreRequested = (payload: any) => {
 			const payloadFileId = Number(payload?.fileInfo?.id)
 			const mimetype = payload?.fileInfo?.mimetype
