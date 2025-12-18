@@ -233,7 +233,9 @@ export default defineComponent({
 				{{ t('whiteboard', 'Loading editor…') }}
 			</div>
 
-			<div ref="editorContainer" class="editor-container" />
+			<div class="editor-container">
+				<div ref="editorContainer" />
+			</div>
 
 			<div class="dialog-buttons">
 				<NcButton @click="onCancel">
