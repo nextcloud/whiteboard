@@ -38,6 +38,7 @@ import { useTimer } from './hooks/useTimer'
 import { TimerOverlay } from './components/Timer'
 import { useCollaborationStore } from './stores/useCollaborationStore'
 import { useElementCreatorTracking } from './hooks/useElementCreatorTracking'
+import { useFollowedUser } from './hooks/useFollowedUser'
 import { CreatorDisplay } from './components/CreatorDisplay'
 import { useCreatorDisplayStore } from './stores/useCreatorDisplayStore'
 import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
@@ -148,38 +149,7 @@ export default function App({
 	// Creator tracking
 	const creatorDisplaySettings = useCreatorDisplayStore(state => state.settings)
 	useElementCreatorTracking({ excalidrawAPI, enabled: true })
-
-	// Expose followUser globally for recording agent access
-	useEffect(() => {
-		// Create a followUser function that accesses the collaboration store directly
-		window.followUser = (userId: string) => {
-			if (!excalidrawAPI) {
-				console.warn('[Collaboration] Cannot follow user: Excalidraw API not available')
-				return
-			}
-
-			const currentSocket = useCollaborationStore.getState().socket
-			if (!currentSocket?.connected) {
-				logger.warn('[Collaboration] Cannot follow user: Socket not connected')
-				return
-			}
-
-			// Set the followed user ID in the collaboration store
-			useCollaborationStore.setState({ followedUserId: userId })
-			logger.info(`[Collaboration] Recording agent now following user: ${userId}`)
-
-			// Debug: Log current collaboration store state
-			const state = useCollaborationStore.getState()
-			logger.debug('[Collaboration] Current collaboration store state:', {
-				followedUserId: state.followedUserId,
-				socketConnected: state.socket?.connected,
-				status: state.status,
-			})
-		}
-		return () => {
-			delete window.followUser
-		}
-	}, [excalidrawAPI])
+	useFollowedUser({ excalidrawAPI, fileId: normalizedFileId })
 
 	useEffect(() => {
 		const handleVideoError = (e: Event) => {

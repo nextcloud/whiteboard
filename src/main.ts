@@ -215,7 +215,9 @@ function runPublicShareRuntime(context: PublicShareContext): void {
 }
 
 function runDefaultViewerRuntime(context: ViewerContext): void {
-	registerViewerHandler(createWhiteboardComponent(context))
+	runWhenDomReady(() => {
+		registerViewerHandler(createWhiteboardComponent(context))
+	})
 }
 
 type ViewerComponentOptions = {
