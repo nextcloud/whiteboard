@@ -150,6 +150,7 @@ OC.L10N.register(
     "Voted" : "Votou",
     "Timer finished" : "Temporizador acabou",
     "Unable to update timer" : "Não é possível atualizar o temporizador",
+    "Missing whiteboard identifier" : "Identificador do quadro branco ausente",
     "You need write access to control the timer" : "Você precisa de acesso de gravação para controlar o temporizador",
     "Timer requires a collaboration connection" : "O temporizador requer uma conexão de colaboração",
     "Choose a duration to start the timer" : "Escolha uma duração para iniciar o temporizador",
