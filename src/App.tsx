@@ -203,6 +203,30 @@ export default function App({
 	const presentationState = usePresentation({ fileId: normalizedFileId })
 	const timerState = useTimer({ fileId: normalizedFileId })
 	const [isTimerPinned, setIsTimerPinned] = useState(false)
+	const [isTimerDismissed, setIsTimerDismissed] = useState(false)
+	const isTimerActive = timerState.status !== 'idle'
+	const isTimerVisible = isTimerPinned || (isTimerActive && !isTimerDismissed)
+
+	useEffect(() => {
+		if (!isTimerActive) {
+			setIsTimerDismissed(false)
+		}
+	}, [isTimerActive])
+
+	const handleToggleTimer = useCallback(() => {
+		if (isTimerVisible) {
+			setIsTimerPinned(false)
+			if (isTimerActive) {
+				setIsTimerDismissed(true)
+			}
+			return
+		}
+
+		setIsTimerDismissed(false)
+		if (!isTimerActive) {
+			setIsTimerPinned(true)
+		}
+	}, [isTimerVisible, isTimerActive])
 
 	// Voting
 	const { startVoting, vote, endVoting } = useVoting()
@@ -556,8 +580,8 @@ export default function App({
 							fileNameWithoutExtension={fileNameWithoutExtension}
 							recordingState={recordingState}
 							presentationState={presentationState}
-							isTimerVisible={isTimerPinned || timerState.status !== 'idle'}
-							onToggleTimer={() => setIsTimerPinned(prev => !prev)}
+							isTimerVisible={isTimerVisible}
+							onToggleTimer={handleToggleTimer}
 							gridModeEnabled={gridModeEnabled}
 							onToggleGrid={() => setGridModeEnabled(!gridModeEnabled)}
 						/>
@@ -578,7 +602,7 @@ export default function App({
 						presentationState={presentationState}
 					/>
 				)}
-				{!isVersionPreview && (isTimerPinned || timerState.status !== 'idle') && (
+				{!isVersionPreview && isTimerVisible && (
 					<TimerOverlay
 						timer={timerState}
 					/>
