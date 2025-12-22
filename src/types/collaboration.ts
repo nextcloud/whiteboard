@@ -68,6 +68,7 @@ export interface ClientToServerEvents {
 	'server-volatile-broadcast': (roomId: string, payload: Uint8Array) => void
 	'image-get': (roomId: string, id: string) => void
 	'request-presenter-viewport': (payload: { fileId: string }) => void
+	'request-viewport': (payload: { fileId: string; userId: string }) => void
 
 	// Recording
 	'start-recording': (payload: { fileId: number; recordingUrl: string; uploadToken: string }) => void

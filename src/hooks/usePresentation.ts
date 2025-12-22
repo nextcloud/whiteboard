@@ -5,7 +5,7 @@
 
 /* eslint-disable no-console */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useJWTStore } from '../stores/useJwtStore'
@@ -145,32 +145,8 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 
 	// Toggle auto-follow presenter
 	const toggleAutoFollow = useCallback(() => {
-		const newAutoFollow = !autoFollowPresenter
-		setAutoFollowPresenter(newAutoFollow)
-
-		// If enabling auto-follow and we have a presenter
-		if (newAutoFollow && presenterId) {
-			// Set followed user immediately to start following
-			useCollaborationStore.setState({ followedUserId: presenterId })
-			// console.log(`[Presentation] Enabled auto-follow for presenter: ${presenterId}`)
-
-			// Request their viewport for immediate sync
-			if (socket?.connected) {
-				// console.log('[Presentation] Requesting presenter viewport for immediate sync')
-				// Broadcast request to all users in the room - presenter will respond
-				socket.emit('request-presenter-viewport', {
-					fileId: fileId.toString(),
-				})
-			}
-		} else if (!newAutoFollow && presenterId) {
-			// Clear followed user when disabling auto-follow
-			const currentFollowed = useCollaborationStore.getState().followedUserId
-			if (currentFollowed === presenterId) {
-				useCollaborationStore.setState({ followedUserId: null })
-				// console.log('[Presentation] Disabled auto-follow')
-			}
-		}
-	}, [autoFollowPresenter, setAutoFollowPresenter, presenterId, socket, fileId])
+		setAutoFollowPresenter(!autoFollowPresenter)
+	}, [autoFollowPresenter, setAutoFollowPresenter])
 
 	// Reset error
 	const resetError = useCallback(() => {
@@ -231,13 +207,6 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		const handlePresentationStopped = () => {
 			// console.log('[Presentation] Presentation ended')
 
-			// Clear auto-follow when presentation ends
-			const currentState = useCollaborationStore.getState()
-			if (currentState.followedUserId === presenterId) {
-				// console.log('[Presentation] Clearing auto-follow (presentation ended)')
-				useCollaborationStore.setState({ followedUserId: null })
-			}
-
 			setPresentationState({
 				presenterId: null,
 				isPresentationMode: false,
@@ -262,32 +231,10 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 				presentationStartTime: Date.now(),
 			})
 			setPresenterName(data.username)
-
-			// If auto-follow is enabled, immediately follow the presenter and request their viewport
-			const currentAutoFollow = useCollaborationStore.getState().autoFollowPresenter
-			if (currentAutoFollow) {
-				// console.log(`[Presentation] Auto-following new presenter: ${data.userId}`)
-				useCollaborationStore.setState({ followedUserId: data.userId })
-
-				// Request presenter's viewport for immediate sync
-				if (socket?.connected) {
-					// console.log('[Presentation] Requesting presenter viewport for new joiner')
-					socket.emit('request-presenter-viewport', {
-						fileId: fileId.toString(),
-					})
-				}
-			}
 		}
 
 		const handleUserStoppedPresenting = () => {
 			// console.log('[Presentation] User stopped presenting')
-
-			// Clear auto-follow when presentation ends
-			const currentState = useCollaborationStore.getState()
-			if (currentState.followedUserId === presenterId) {
-				// console.log('[Presentation] Clearing auto-follow (presenter stopped)')
-				useCollaborationStore.setState({ followedUserId: null })
-			}
 
 			setPresentationState({
 				presenterId: null,
@@ -307,13 +254,6 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 
 		const handleDisconnect = () => {
 			// console.log('[Presentation] Socket disconnected')
-
-			// Clear auto-follow on disconnect
-			const currentState = useCollaborationStore.getState()
-			if (currentState.followedUserId === presenterId) {
-				// console.log('[Presentation] Clearing auto-follow (disconnected)')
-				useCollaborationStore.setState({ followedUserId: null })
-			}
 
 			// Reset presentation state on disconnect
 			if (isPresenting) {
@@ -350,69 +290,37 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 		}
 	}, [socket, setPresentationState])
 
-	// This effect is removed - presentation-started is handled in the main socket effect above
+	const lastPresenterIdRef = useRef<string | null>(null)
 
-	// Auto-follow presenter when presentation mode starts
 	useEffect(() => {
-		if (isPresentationMode && presenterId && autoFollowPresenter) {
-			// Set the followed user ID to enable viewport following
-			useCollaborationStore.setState({ followedUserId: presenterId })
-			// console.log(`[Presentation] Auto-following presenter: ${presenterId}`)
+		const currentFollowed = useCollaborationStore.getState().followedUserId
+		const lastPresenterId = lastPresenterIdRef.current
+		lastPresenterIdRef.current = presenterId
 
-			// Request presenter's viewport for immediate sync
+		if (!isPresentationMode || !presenterId) {
+			const targetId = presenterId || lastPresenterId
+			if (targetId && currentFollowed === targetId) {
+				useCollaborationStore.setState({ followedUserId: null })
+			}
+			return
+		}
+
+		if (!autoFollowPresenter) {
+			if (currentFollowed === presenterId) {
+				useCollaborationStore.setState({ followedUserId: null })
+			}
+			return
+		}
+
+		if (currentFollowed !== presenterId) {
+			useCollaborationStore.setState({ followedUserId: presenterId })
 			if (socket?.connected) {
-				// console.log('[Presentation] Requesting presenter viewport on auto-follow enable')
 				socket.emit('request-presenter-viewport', {
 					fileId: fileId.toString(),
 				})
 			}
-		} else if (!isPresentationMode) {
-			// Clear followed user when presentation ends (unless manually set)
-			const currentFollowed = useCollaborationStore.getState().followedUserId
-			if (currentFollowed === presenterId) {
-				useCollaborationStore.setState({ followedUserId: null })
-				// console.log('[Presentation] Stopped auto-following (presentation ended)')
-			}
 		}
 	}, [isPresentationMode, presenterId, autoFollowPresenter, socket, fileId])
-
-	// Clear auto-follow when presenterId changes or becomes null
-	useEffect(() => {
-		const currentState = useCollaborationStore.getState()
-		if (!presenterId && currentState.followedUserId) {
-			// If there's no presenter but we're still following someone from a previous presentation
-			const wasAutoFollowing = currentState.followedUserId !== null
-			if (wasAutoFollowing) {
-				// console.log('[Presentation] Clearing auto-follow (no active presenter)')
-				useCollaborationStore.setState({ followedUserId: null })
-			}
-		}
-	}, [presenterId])
-
-	// Handle auto-follow toggle
-	useEffect(() => {
-		if (isPresentationMode && presenterId) {
-			if (autoFollowPresenter) {
-				useCollaborationStore.setState({ followedUserId: presenterId })
-				// console.log(`[Presentation] Enabled auto-follow for presenter: ${presenterId}`)
-
-				// Request presenter's current viewport for immediate sync
-				if (socket?.connected) {
-					// console.log('[Presentation] Requesting presenter viewport for immediate sync')
-					socket.emit('request-presenter-viewport', {
-						fileId: fileId.toString(),
-					})
-				}
-			} else {
-				// Only clear if we're following the presenter (not manually set)
-				const currentFollowed = useCollaborationStore.getState().followedUserId
-				if (currentFollowed === presenterId) {
-					useCollaborationStore.setState({ followedUserId: null })
-					// console.log('[Presentation] Disabled auto-follow')
-				}
-			}
-		}
-	}, [autoFollowPresenter, isPresentationMode, presenterId, socket, fileId])
 
 	return {
 		// State
