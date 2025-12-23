@@ -9,6 +9,7 @@ import { test } from '../support/fixtures/random-user'
 import {
 	addTextElement,
 	createWhiteboard,
+	getCanvasForInteraction,
 	openFilesApp,
 	waitForCanvas,
 } from '../support/utils'
@@ -160,7 +161,7 @@ test('public share loads viewer in read only mode', async ({ page, browser }) =>
 
 	const sharePage = await shareContext.newPage()
 	await sharePage.goto(shareUrl)
-	await expect(sharePage.getByText('Drawing canvas')).toBeVisible({ timeout: 20000 })
+	await waitForCanvas(sharePage)
 
 	const { fileId, jwt } = await sharePage.evaluate(() => {
 		try {
@@ -177,7 +178,8 @@ test('public share loads viewer in read only mode', async ({ page, browser }) =>
 	const effectiveJwt = jwt || embeddedJwt
 
 	const attemptEdit = async () => {
-		await sharePage.getByText('Drawing canvas').click({ position: { x: 140, y: 140 } })
+		const canvas = await getCanvasForInteraction(sharePage)
+		await canvas.click({ position: { x: 140, y: 140 } })
 		await sharePage.keyboard.type('Read only attempt')
 		await sharePage.waitForTimeout(1500)
 		if (!fileId || !effectiveJwt) {
