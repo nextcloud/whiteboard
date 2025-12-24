@@ -20,3 +20,5 @@
 /recordings/
 /playwright-report/
 /test-results/
+
+github_ci_cd_playwright_failed_logs

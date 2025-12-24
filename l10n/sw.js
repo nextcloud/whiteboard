@@ -46,6 +46,7 @@ OC.L10N.register(
     "Restore this version" : "Rejesha toleo hili",
     "Status" : "Wadhifa/hadhi/hali",
     "Open" : "Fungua",
+    "Version {version}" : "Version {version}",
     "Version restored" : "Toleo limerejeshwa"
 },
 "nplurals=2; plural=(n != 1);");

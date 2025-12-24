@@ -4,11 +4,10 @@
  */
 import { expect } from '@playwright/test'
 import { test } from '../support/fixtures/random-user'
-import { createWhiteboard, dismissRecordingNotice } from '../support/utils'
+import { createWhiteboard, dismissRecordingNotice, openFilesApp } from '../support/utils'
 
 test.beforeEach(async ({ page }) => {
-	await page.goto('apps/files')
-	await page.waitForURL(/apps\/files/)
+	await openFilesApp(page)
 })
 
 test('recording unavailable notice is dismissible and main menu remains usable', async ({ page }) => {

@@ -4,6 +4,7 @@
  */
 import { test } from '../support/fixtures/random-user'
 import { expect } from '@playwright/test'
+import { createWhiteboard, openFilesApp } from '../support/utils'
 
 test.beforeEach(async ({ page }) => {
 	let taskIdCounter = 1
@@ -85,15 +86,12 @@ test.beforeEach(async ({ page }) => {
 		},
 	)
 
-	await page.goto('apps/files')
-	await page.waitForURL(/apps\/files/)
+	await openFilesApp(page)
 })
 
 test('Assistant Button', async ({ page }) => {
-	await page.getByRole('button', { name: 'New' }).click()
-	await page.getByRole('menuitem', { name: 'New whiteboard' }).click()
-	await page.getByRole('button', { name: 'Create' }).click()
-	await expect(page.getByText('Drawing canvas')).toBeVisible()
+	const boardName = `Assistant ${Date.now()}`
+	await createWhiteboard(page, { name: boardName })
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
 	await page.getByRole('textbox', { name: 'Prompt to generate diagram' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()
@@ -144,10 +142,8 @@ test('Restart on false Assistant output', async ({ page }) => {
 			})
 		},
 	)
-	await page.getByRole('button', { name: 'New' }).click()
-	await page.getByRole('menuitem', { name: 'New whiteboard' }).click()
-	await page.getByRole('button', { name: 'Create' }).click()
-	await expect(page.getByText('Drawing canvas')).toBeVisible()
+	const boardName = `Assistant invalid ${Date.now()}`
+	await createWhiteboard(page, { name: boardName })
 	await page.getByRole('button', { name: 'Assistant', exact: true }).click()
 	await page.getByRole('textbox', { name: 'Prompt to generate diagram' }).fill('abc')
 	await page.getByRole('button', { name: 'Generate' }).click()

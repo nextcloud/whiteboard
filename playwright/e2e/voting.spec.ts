@@ -5,11 +5,10 @@
 
 import { expect } from '@playwright/test'
 import { test } from '../support/fixtures/random-user'
-import { createWhiteboard } from '../support/utils'
+import { createWhiteboard, openFilesApp } from '../support/utils'
 
 test.beforeEach(async ({ page }) => {
-	await page.goto('apps/files')
-	await page.waitForURL(/apps\/files/)
+	await openFilesApp(page)
 })
 
 test('Create a voting and add it to the whiteboard', async ({ page }) => {
@@ -31,7 +30,7 @@ test('Create a voting and add it to the whiteboard', async ({ page }) => {
 
 	await page.getByRole('button', { name: /Start voting/i }).click()
 
-    await expect(page.getByText('What is your favorite color?')).toBeVisible()
+	await expect(page.getByText('What is your favorite color?')).toBeVisible()
 
 	// Vote for the first option
 	await page.getByText('Red').locator('..').getByRole('button', { name: /vote/i }).click()
