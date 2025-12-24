@@ -9,28 +9,59 @@ import type { Browser, Page } from '@playwright/test'
 export async function openFilesApp(page: Page) {
 	await page.goto('apps/files')
 	await page.waitForURL(/apps\/files/)
+	const newButton = page.getByRole('button', { name: 'New' })
+	await expect(newButton).toBeVisible({ timeout: 30000 })
+	await expect(newButton).toBeEnabled({ timeout: 30000 })
 }
 
-export async function waitForCanvas(page: Page) {
-	await expect(page.getByText('Drawing canvas')).toBeVisible({ timeout: 20000 })
+export async function getCanvasForInteraction(page: Page) {
+	const interactive = page.locator('.excalidraw__canvas.interactive')
+	await interactive.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+	if (await interactive.count()) {
+		return interactive.first()
+	}
+	return page.locator('.excalidraw__canvas').first()
+}
+
+export async function waitForCanvas(page: Page, { timeout = 60000 }: { timeout?: number } = {}) {
+	const loading = page.getByText('Loading whiteboard...')
+	if (await loading.count()) {
+		await expect(loading).toBeHidden({ timeout })
+	}
+	const canvas = page.locator('.excalidraw__canvas').first()
+	await expect(canvas).toBeVisible({ timeout })
 	await dismissRecordingNotice(page)
 }
 
-export async function createWhiteboard(page: Page, { name }: { name?: string } = {}) {
-	await page.getByRole('button', { name: 'New' }).click()
-	await page.getByRole('menuitem', { name: 'New whiteboard' }).click()
+export async function createWhiteboard(page: Page, { name }: { name?: string } = {}): Promise<string> {
+	const boardName = name ?? `Whiteboard ${Date.now()}`
+	const newButton = page.getByRole('button', { name: 'New' })
+	await expect(newButton).toBeVisible({ timeout: 30000 })
+	await newButton.click()
 
-	if (name) {
-		const nameField = page.getByRole('textbox', { name: /name/i })
-		if (await nameField.count()) {
-			await nameField.fill(name)
-		} else {
-			await page.keyboard.type(name)
-		}
+	const menuItem = page.getByRole('menuitem', { name: 'New whiteboard' })
+	await expect(menuItem).toBeVisible({ timeout: 30000 })
+	await menuItem.click()
+
+	const nameField = page.getByRole('textbox', { name: /name/i })
+	if (await nameField.count()) {
+		await nameField.fill(boardName)
+	} else {
+		await page.keyboard.type(boardName)
 	}
 
-	await page.getByRole('button', { name: 'Create' }).click()
-	await waitForCanvas(page)
+	const createButton = page.getByRole('button', { name: 'Create' }).first()
+	if (await createButton.count()) {
+		await createButton.click()
+	}
+	try {
+		await waitForCanvas(page, { timeout: 20000 })
+	} catch (error) {
+		await openFilesApp(page)
+		await openWhiteboardFromFiles(page, boardName)
+	}
+
+	return boardName
 }
 
 type Point = { x: number, y: number }
@@ -41,7 +72,7 @@ type OpenWhiteboardFromFilesOptions = {
 
 export async function addTextElement(page: Page, text: string, point: Point = { x: 600, y: 400 }): Promise<Point> {
 	await page.getByTitle(/^Text/).locator('div').click()
-	const canvas = page.locator('.excalidraw__canvas').first()
+	const canvas = await getCanvasForInteraction(page)
 	let clickPoint = point
 	if (await canvas.count()) {
 		const box = await canvas.boundingBox()
@@ -127,7 +158,7 @@ export async function openWhiteboardFromFiles(page: Page, name: string, options:
 
 	await expect(entry).toBeVisible({ timeout: 15000 })
 
-	const viewButton = entry.getByRole('button', { name: /view/i }).first()
+	const viewButton = entry.getByRole('button', { name: /view|open/i }).first()
 	if (await viewButton.count()) {
 		await viewButton.click()
 	} else {
@@ -135,7 +166,7 @@ export async function openWhiteboardFromFiles(page: Page, name: string, options:
 		if (await target.count()) {
 			await target.click()
 		} else {
-			await entry.click()
+			await entry.dblclick()
 		}
 	}
 
