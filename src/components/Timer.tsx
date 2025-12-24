@@ -169,44 +169,50 @@ export const TimerOverlay = memo(function TimerOverlay({ timer }: TimerOverlayPr
 								)
 								: (
 									<div className="timer__time-inputs">
-										<input
-											id="timer-hours"
-											type="number"
-											inputMode="numeric"
-											min={0}
-											max={4}
-											value={timeInputs.hours}
-											onChange={(event) => handleTimeChange('hours', Number(event.target.value) || 0)}
-											disabled={!canControl}
-											aria-label={t('whiteboard', 'Hours')}
-											className="timer__time-input"
-										/>
+										<div className="timer__time-input-wrapper" data-label="hh">
+											<input
+												id="timer-hours"
+												type="number"
+												inputMode="numeric"
+												min={0}
+												max={4}
+												value={timeInputs.hours}
+												onChange={(event) => handleTimeChange('hours', Number(event.target.value) || 0)}
+												disabled={!canControl}
+												aria-label={t('whiteboard', 'Hours')}
+												className="timer__time-input"
+											/>
+										</div>
 										<span className="timer__time-separator">:</span>
-										<input
-											id="timer-minutes"
-											type="number"
-											inputMode="numeric"
-											min={0}
-											max={59}
-											value={timeInputs.minutes}
-											onChange={(event) => handleTimeChange('minutes', Number(event.target.value) || 0)}
-											disabled={!canControl}
-											aria-label={t('whiteboard', 'Minutes')}
-											className="timer__time-input"
-										/>
+										<div className="timer__time-input-wrapper" data-label="mm">
+											<input
+												id="timer-minutes"
+												type="number"
+												inputMode="numeric"
+												min={0}
+												max={59}
+												value={timeInputs.minutes}
+												onChange={(event) => handleTimeChange('minutes', Number(event.target.value) || 0)}
+												disabled={!canControl}
+												aria-label={t('whiteboard', 'Minutes')}
+												className="timer__time-input"
+											/>
+										</div>
 										<span className="timer__time-separator">:</span>
-										<input
-											id="timer-seconds"
-											type="number"
-											inputMode="numeric"
-											min={0}
-											max={59}
-											value={timeInputs.seconds}
-											onChange={(event) => handleTimeChange('seconds', Number(event.target.value) || 0)}
-											disabled={!canControl}
-											aria-label={t('whiteboard', 'Seconds')}
-											className="timer__time-input"
-										/>
+										<div className="timer__time-input-wrapper" data-label="ss">
+											<input
+												id="timer-seconds"
+												type="number"
+												inputMode="numeric"
+												min={0}
+												max={59}
+												value={timeInputs.seconds}
+												onChange={(event) => handleTimeChange('seconds', Number(event.target.value) || 0)}
+												disabled={!canControl}
+												aria-label={t('whiteboard', 'Seconds')}
+												className="timer__time-input"
+											/>
+										</div>
 									</div>
 								)}
 						</div>
