@@ -29,19 +29,10 @@ export default class SessionStore {
 		await this.storage.delete(`${socketId}:connected_at`)
 	}
 
-	async setFollowing(socketId, userId) {
-		await this.storage.set(`${socketId}:following`, userId)
-	}
-
-	async clearFollowing(socketId) {
-		await this.storage.delete(`${socketId}:following`)
-	}
-
 	async clearSocketMeta(socketId) {
 		await Promise.all([
 			this.deleteSocketData(socketId),
 			this.clearConnectedAt(socketId),
-			this.clearFollowing(socketId),
 		])
 	}
 

@@ -482,7 +482,6 @@ export default class SocketService {
 			'presentation-start': this.presentationStartHandler,
 			'presentation-stop': this.presentationStopHandler,
 			'request-presenter-viewport': this.requestPresenterViewportHandler,
-			'follow-user': this.followUserHandler,
 			'request-viewport': this.requestViewportHandler,
 			'viewport-change': this.viewportChangeHandler,
 			'timer-start': this.timerStartHandler,
@@ -650,28 +649,6 @@ export default class SocketService {
 	 */
 	async requestPresenterViewportHandler(socket, data) {
 		return this.presentationController.requestPresenterViewport(socket, data)
-	}
-
-	/**
-	 * Handles follow user requests from recording agents
-	 * @param {import('socket.io').Socket} socket - Socket.IO socket instance
-	 * @param {string} roomID - Room identifier
-	 * @param {string} targetUserId - User ID to follow
-	 */
-	async followUserHandler(socket, roomID, targetUserId) {
-		const socketData = await this.sessionStore.getSocketData(socket.id)
-		if (!socketData?.user?.id) {
-			console.warn(`[${roomID}] Invalid socket data for follow-user request`)
-			return
-		}
-
-		console.log(`[${roomID}] User ${socketData.user.id} wants to follow user ${targetUserId}`)
-
-		// Store the follow relationship for this socket
-		await this.sessionStore.setFollowing(socket.id, targetUserId)
-
-		// Acknowledge the follow request
-		socket.emit('follow-user-ack', { targetUserId, status: 'following' })
 	}
 
 	/**
