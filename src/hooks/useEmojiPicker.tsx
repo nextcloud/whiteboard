@@ -126,7 +126,7 @@ export function useEmojiPicker() {
 	const renderEmojiPicker = useCallback(() => {
 		if (hasInsertedRef.current) return
 		const toolElements = document.getElementsByClassName(
-			'ToolIcon_type_radio ToolIcon_size_medium',
+			'ToolIcon Shape',
 		)
 
 		if (!toolElements || toolElements.length === 0) {
