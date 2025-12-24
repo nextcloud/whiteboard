@@ -26,6 +26,7 @@ OC.L10N.register(
     "Send" : "전송",
     "No comments yet" : "덧글이 없음",
     "Connecting" : "연결 중",
+    "Online" : "온라인",
     "Unknown" : "알 수 없음",
     "Running" : "달리기",
     "Paused" : "일시 정지",

@@ -22,9 +22,13 @@
 	--border-radius-lg: var(--border-radius-large);
 	--border-radius-md: var(--border-radius);
 
-	.Stack button {
+	.Stack .button:not([role="checkbox"]) {
 		margin: 0;
 		min-width: 34px;
+	}
+
+	.library-unit__checkbox .Checkbox-box {
+		min-height: 1rem !important;
 	}
 
 	.color-picker__top-picks {
@@ -161,6 +165,10 @@
 		background: var(--button-hover-bg) !important;
 		border: none !important;
 	}
+}
+
+.excalidraw button[data-testid="lib-dropdown--remove"].dropdown-menu-item.dropdown-menu-item-base {
+	display: none !important;
 }
 
 .HelpDialog__header {

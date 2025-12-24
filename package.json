@@ -30,7 +30,7 @@
     "@nextcloud/dialogs": "^6.4.1",
     "@nextcloud/event-bus": "^3.3.3",
     "@nextcloud/excalidraw": "^0.18.0-f1fbd3f",
-    "@nextcloud/files": "^3.12.0",
+    "@nextcloud/files": "^3.12.2",
     "@nextcloud/initial-state": "^3.0.0",
     "@nextcloud/l10n": "^3.4.1",
     "@nextcloud/router": "^3.1.0",
@@ -49,7 +49,7 @@
     "node-fetch": "^3.3.2",
     "persist": "^0.2.7",
     "prom-client": "^14.2.0",
-    "puppeteer-core": "^24.32.0",
+    "puppeteer-core": "^24.34.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redis": "^4.7.1",
@@ -70,18 +70,18 @@
     "@playwright/test": "^1.57.0",
     "@types/lodash": "^4.17.21",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitejs/plugin-react": "^5.1.2",
     "@vue/tsconfig": "^0.5.1",
     "browserslist": "^4.28.1",
     "nodemon": "^3.1.11",
     "prettier": "^3.7.4",
-    "redis-memory-server": "^0.14.0",
+    "redis-memory-server": "^0.14.1",
     "stylelint-config-css-modules": "^4.5.1",
     "typescript": "^5.9.3",
     "typescript-plugin-css-modules": "^5.2.0",
     "vite": "^6.4.1",
     "vite-plugin-static-copy": "^3.1.4",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   },
   "prettier": {
     "useTabs": true,
@@ -118,6 +118,9 @@
         }
       }
     ]
+  },
+  "redisMemoryServer": {
+    "disablePostinstall": "1"
   },
   "engines": {
     "node": "^24.0.0",

@@ -5,11 +5,10 @@
 
 import { expect } from '@playwright/test'
 import { test } from '../support/fixtures/random-user'
-import { dismissRecordingNotice, waitForCanvas } from '../support/utils'
+import { createWhiteboard, getCanvasForInteraction, openFilesApp } from '../support/utils'
 
 test.beforeEach(async ({ page }) => {
-	await page.goto('apps/files')
-	await page.waitForURL(/apps\/files/)
+	await openFilesApp(page)
 })
 
 test('test whiteboard server is reachable', async ({ page }) => {
@@ -18,21 +17,19 @@ test('test whiteboard server is reachable', async ({ page }) => {
 })
 
 test('open a whiteboard', async ({ page }) => {
-	await page.getByRole('button', { name: 'New' }).click()
-	await page.getByRole('menuitem', { name: 'New whiteboard' }).click()
-	await page.getByRole('button', { name: 'Create' }).click()
-	await waitForCanvas(page)
-	await dismissRecordingNotice(page)
+	const boardName = `Viewer ${Date.now()}`
+	await createWhiteboard(page, { name: boardName })
 
 	await page.getByTitle('Text — T or').locator('div').click()
-	await page.getByText('Drawing canvas').click({
+	const canvas = await getCanvasForInteraction(page)
+	await canvas.click({
 		position: {
 			x: 534,
 			y: 249,
 		},
 	})
 	await page.locator('textarea').fill('Test')
-	await page.getByText('Drawing canvas').click({
+	await canvas.click({
 		position: {
 			x: 683,
 			y: 214,
