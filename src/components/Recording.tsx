@@ -44,12 +44,13 @@ const RecordingStartingStatus = memo(({ startingPhase }: { startingPhase: 'prepa
 ))
 RecordingStartingStatus.displayName = 'RecordingStartingStatus'
 
-const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, startingPhase }: {
+const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, startingPhase, onStop }: {
 	isStarting: boolean
 	isStopping: boolean
 	isRecording: boolean
 	duration: number | null
 	startingPhase: 'preparing' | 'initializing' | null
+	onStop: () => void
 }) => {
 	if (isStarting) {
 		return <RecordingStartingStatus startingPhase={startingPhase} />
@@ -69,6 +70,15 @@ const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, s
 			<div className="recording-status recording">
 				<div className="recording-indicator" />
 				<span>Recording: {formatDuration(duration)}</span>
+				<button
+					type="button"
+					className="recording-stop-button"
+					onClick={onStop}
+					title={t('whiteboard', 'Stop Recording')}
+					aria-label={t('whiteboard', 'Stop Recording')}
+				>
+					<Icon path={mdiStopCircle} size={0.8} />
+				</button>
 			</div>
 		)
 	}
@@ -204,6 +214,7 @@ export const RecordingOverlay = memo(function RecordingOverlay(props: RecordingO
 		filename,
 		recordingDuration,
 		startingPhase,
+		stopRecording,
 		resetError,
 		dismissSuccess,
 		dismissUnavailableInfo,
@@ -301,6 +312,11 @@ export const RecordingOverlay = memo(function RecordingOverlay(props: RecordingO
 							isRecording={isRecording}
 							duration={duration}
 							startingPhase={startingPhase}
+							onStop={() => {
+								stopRecording().catch((error) => {
+									console.error('[Recording] Failed to stop recording from overlay:', error)
+								})
+							}}
 						/>
 						{hasOtherRecordingUsers && (
 							<OtherRecordingUsers users={otherRecordingUsers} />

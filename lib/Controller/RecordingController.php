@@ -25,6 +25,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use OCP\IDateTimeZone;
 use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\Util;
@@ -49,6 +50,7 @@ final class RecordingController extends Controller {
 		private GetFileServiceFactory $getFileServiceFactory,
 		private JWTService $jwtService,
 		private IRootFolder $rootFolder,
+		private IDateTimeZone $dateTimeZone,
 		private IURLGenerator $urlGenerator,
 		private LoggerInterface $logger,
 	) {
@@ -182,7 +184,8 @@ final class RecordingController extends Controller {
 
 	private function generateRecordingFilename(string $filename): string {
 		$sanitizedName = preg_replace('/[^a-zA-Z0-9_\- ]/', '_', pathinfo($filename, PATHINFO_FILENAME)) ?: 'recording';
-		$timestamp = date('Y-m-d H-i') ?: 'unknown-time';
+		$timestamp = (new \DateTimeImmutable('now', $this->dateTimeZone->getTimeZone(time())))
+			->format('Y-m-d H-i');
 		return sprintf('%s (%s).webm', $sanitizedName, $timestamp);
 	}
 
