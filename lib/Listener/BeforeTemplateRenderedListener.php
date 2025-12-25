@@ -37,6 +37,10 @@ class BeforeTemplateRenderedListener implements IEventListener {
 			return;
 		}
 
+		if ($event->getScope() === BeforeTemplateRenderedEvent::SCOPE_PUBLIC_SHARE_AUTH) {
+			return;
+		}
+
 		try {
 			$node = $event->getShare()->getNode();
 		} catch (NotFoundException) {
