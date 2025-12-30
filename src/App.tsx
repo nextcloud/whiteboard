@@ -395,6 +395,7 @@ export default function App({
 
 		if (isInternalLink && !isNewTab && !isNewWindow) {
 			event.preventDefault()
+			window.open(link, '_blank')
 		}
 	}, [])
 
