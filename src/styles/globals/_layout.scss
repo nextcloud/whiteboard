@@ -572,6 +572,28 @@
 			color: var(--color-error);
 		}
 
+		.recording-stop-button {
+			margin-inline-start: auto;
+			background: transparent;
+			border: 0;
+			padding: 4px;
+			border-radius: var(--border-radius);
+			color: inherit;
+			cursor: pointer;
+
+			svg {
+				pointer-events: none;
+			}
+
+			&:hover {
+				background: var(--color-background-hover);
+			}
+
+			&:focus-visible {
+				@include tokens.focus-ring(var(--color-error));
+			}
+		}
+
 		.recording-spinner {
 			width: 10px;
 			height: 10px;
@@ -609,41 +631,41 @@
 
 	/* Nextcloud-style note cards for recording status */
 	.nc-notecard {
+		--note-background: var(--color-main-background);
+		--note-theme: var(--color-border);
 		pointer-events: auto;
-		background: var(--color-main-background);
-		border: 2px solid var(--color-border);
-		border-radius: var(--border-radius-large);
+		background: var(--note-background);
+		border: 0;
+		border-inline-start: var(--default-grid-baseline) solid var(--note-theme);
+		border-radius: var(--border-radius);
 		padding: 16px;
 		display: flex;
 		align-items: flex-start;
 		gap: 12px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 		animation: slideInFromTop 0.3s ease-out;
 		min-width: 280px;
 		max-width: 400px;
 		position: relative; /* Ensure proper stacking context */
+		color: var(--color-main-text);
 
 		&--info {
-			border-color: var(--color-primary-element);
-			.nc-notecard__icon {
-				color: var(--color-primary-element);
-			}
+			--note-background: rgba(var(--color-info-rgb), 0.1);
+			--note-theme: var(--color-info);
 		}
 
 		&--success {
-			border-color: #46ba61;
-			background: #f8fff9;
-			.nc-notecard__icon {
-				color: #46ba61;
-			}
+			--note-background: rgba(var(--color-success-rgb), 0.1);
+			--note-theme: var(--color-success);
 		}
 
 		&--error {
-			border-color: var(--color-error);
-			background: #fef7f7;
-			.nc-notecard__icon {
-				color: var(--color-error);
-			}
+			--note-background: rgba(var(--color-error-rgb), 0.1);
+			--note-theme: var(--color-error);
+		}
+
+		&--warning {
+			--note-background: rgba(var(--color-warning-rgb), 0.1);
+			--note-theme: var(--color-warning);
 		}
 
 		.nc-notecard__icon {
@@ -652,6 +674,7 @@
 			justify-content: center;
 			flex-shrink: 0;
 			margin-top: 2px;
+			color: var(--note-theme);
 		}
 
 		.nc-notecard__content {
