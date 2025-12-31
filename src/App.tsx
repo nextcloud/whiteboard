@@ -362,13 +362,26 @@ export default function App({
 
 	// UI Initialization Effect
 	useEffect(() => {
+
 		updateLang()
-		renderSmartPicker()
-		renderTable()
-		renderAssistant()
-		renderComment()
-		renderEmojiPicker()
-	}, [updateLang, renderSmartPicker, renderAssistant, renderEmojiPicker, renderTable])
+		const renderCustomElements = () => {
+			renderSmartPicker()
+			renderTable()
+			renderAssistant()
+			renderComment()
+			renderEmojiPicker()
+		}
+
+		renderCustomElements()
+
+		const excalidrawElement = document.querySelector('.excalidraw')
+		if (!excalidrawElement) return
+
+		const observer = new MutationObserver(renderCustomElements)
+		observer.observe(excalidrawElement, { attributes: true, attributeFilter: ['class'] })
+
+		return () => observer.disconnect()
+	}, [updateLang, renderSmartPicker, renderAssistant, renderComment, renderEmojiPicker, renderTable])
 
 	const onLibraryChange = useCallback(async (items: LibraryItems) => {
 		if (!isLibraryLoaded) {

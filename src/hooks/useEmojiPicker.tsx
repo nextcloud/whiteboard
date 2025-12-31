@@ -15,6 +15,7 @@ import Vue from 'vue'
 import { Notomoji } from '@svgmoji/noto'
 import EmojiData from 'svgmoji/emoji.json'
 import { imagePath } from '@nextcloud/router'
+import { renderToolbarButton } from '../components/ToolbarButton'
 
 type EmojiObj = {
 	native: string
@@ -124,38 +125,26 @@ export function useEmojiPicker() {
 
 	const hasInsertedRef = useRef(false)
 	const renderEmojiPicker = useCallback(() => {
-		if (hasInsertedRef.current) return
-		const toolElements = document.getElementsByClassName(
-			'ToolIcon Shape',
-		)
+		renderToolbarButton({
+			class: 'emoji-picker-container',
+			customContainer: (container) => {
+				const div = document.createElement('div')
+				container.appendChild(div)
+				const View = Vue.extend(EmojiPickerButton)
+				const vueComponent = new View({}).$mount(div)
+				vueComponent.$on('selected', (emoji: string) => {
+					loadToExcalidraw(emoji)
+				})
+			},
+		})
 
-		if (!toolElements || toolElements.length === 0) {
-			return
+		if (!hasInsertedRef.current) {
+			window.addEventListener('pointermove', (ev: PointerEvent) => {
+				currentCursorPos.current = { x: ev.clientX, y: ev.clientY }
+			})
+			hasInsertedRef.current = true
 		}
-
-		const lastToolEl = toolElements[toolElements.length - 1]
-		const emojiButton = document.createElement('label')
-		const div = document.createElement('div')
-
-		emojiButton.appendChild(div)
-		emojiButton.classList.add(...['ToolIcon', 'Shape'])
-		lastToolEl.parentNode?.insertBefore(
-			emojiButton,
-			lastToolEl.previousSibling,
-		)
-
-		const View = Vue.extend(EmojiPickerButton)
-		const vueComponent = new View({}).$mount(div)
-		vueComponent.$on('selected', (emoji: string) => {
-			loadToExcalidraw(emoji)
-		})
-
-		// Track cursor position for emoji placement
-		window.addEventListener('pointermove', (ev: PointerEvent) => {
-			currentCursorPos.current = { x: ev.clientX, y: ev.clientY }
-		})
-		hasInsertedRef.current = true
-	}, [loadToExcalidraw, currentCursorPos])
+	}, [loadToExcalidraw])
 
 	return { renderEmojiPicker }
 }

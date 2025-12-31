@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 import { useCallback } from 'react'
-import { createRoot } from 'react-dom/client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
-import { Icon } from '@mdi/react'
 import { mdiCreation } from '@mdi/js'
 import AssistantDialog from '../components/AssistantDialog.vue'
 import Vue from 'vue'
@@ -15,6 +13,7 @@ import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positio
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
 import { getCapabilities } from '@nextcloud/capabilities'
+import { renderToolbarButton } from '../components/ToolbarButton'
 
 export function useAssistant() {
 	const capabilities = getCapabilities() as { assistant?: { version: string, enabled: boolean } }
@@ -90,36 +89,17 @@ export function useAssistant() {
 		})
 	}, [getMermaidFromAssistant, loadToExcalidraw])
 
-	const renderAssistantButton = useCallback(() => {
-		return (
-			<button
-				className="dropdown-menu-button App-toolbar__extra-tools-trigger"
-				aria-label="Assistant"
-				aria-keyshortcuts="0"
-				onClick={() => handleAssistantToMermaid()}
-				title="Assistant">
-				<Icon path={mdiCreation} size={1} />
-			</button>
-		)
-	}, [handleAssistantToMermaid])
-
 	/**
 	 * injects assistant button in toolbar, handles assistant dialog
 	 */
 	const renderAssistant = useCallback(() => {
-		const extraTools = document.getElementsByClassName(
-			'App-toolbar__extra-tools-trigger',
-		)[0]
-		const assistantButton = document.createElement('label')
-		assistantButton.classList.add(...['ToolIcon', 'Shape'])
-		if (extraTools) {
-			extraTools.parentNode?.insertBefore(
-				assistantButton,
-				extraTools.previousSibling,
-			)
-			const root = createRoot(assistantButton)
-			root.render(renderAssistantButton())
-		}
-	}, [excalidrawAPI, renderAssistantButton])
+		renderToolbarButton({
+			class: 'assistant-container',
+			icon: mdiCreation,
+			label: 'Assistant',
+			onClick: handleAssistantToMermaid,
+		})
+	}, [handleAssistantToMermaid])
+
 	return { renderAssistant }
 }

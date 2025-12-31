@@ -174,3 +174,8 @@
 .HelpDialog__header {
 	display: none !important;
 }
+
+.excalidraw--mobile .App-toolbar--mobile .Stack_horizontal {
+  grid-template-columns: repeat(11, 1fr);
+  grid-auto-flow: unset;
+}
