@@ -260,6 +260,14 @@ export default defineComponent({
 	min-height: 400px;
 	border-radius: var(--border-radius);
 	overflow: hidden;
+
+	// Hide block manipulation controls from Text editor
+	// These aren't needed in table-only editing mode
+	:deep(.floating-buttons),
+	:deep(.drag-handle),
+	:deep(.drag-button) {
+		display: none !important;
+	}
 }
 
 .dialog-buttons {
