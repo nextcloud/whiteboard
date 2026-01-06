@@ -198,7 +198,8 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 			</MainMenu.Item>
 			<MainMenu.Item
 				icon={<Icon path={mdiMagnify} size={0.75} />}
-				onSelect={openLibrarySearch}>
+				onSelect={openLibrarySearch}
+				shortcut={isMacPlatform ? '⌘+F' : 'Ctrl+F'}>
 				{t('whiteboard', 'Find text on canvas')}
 			</MainMenu.Item>
 			<RecordingMenuItem
