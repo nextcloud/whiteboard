@@ -211,23 +211,55 @@ export function useTableInsertion() {
 	const hasInsertedRef = useRef(false)
 
 	/**
-	 * Injects the "Insert Table" button into Excalidraw's toolbar.
+	 * Check if Text app is available and compatible with table insertion feature.
+	 *
+	 * - Checks for createTable API (permanent check - required for basic functionality)
+	 * - Checks for getHTML() method (temporary check for older Text app versions)
+	 *
+	 * TODO: The getHTML() check can be removed once the latest Text app version include it.
 	 */
-	const renderTable = useCallback(() => {
-		// Only insert once to avoid duplicate buttons
-		if (hasInsertedRef.current) return
-
-		// Only show table button if Text app's createTable API is available
+	const checkTextAppCompatibility = async (): Promise<boolean> => {
+		// Permanent check: Text app must be installed and provide the createTable API
 		if (!window.OCA?.Text?.createTable) {
 			console.warn('Table button not shown: Text app createTable API is not available')
-			return
+			return false
 		}
 
-		// Find the extra tools trigger element in the toolbar
-		// We insert our button before this element
+		try {
+			const testContainer = document.createElement('div')
+			testContainer.style.display = 'none'
+			document.body.appendChild(testContainer)
+
+			const testEditor = await window.OCA.Text.createTable({
+				el: testContainer,
+				content: '| Test |\n| --- |\n| Test |\n',
+			})
+
+			testContainer.remove()
+
+			// TODO: Remove this check once the latest Text app version exposes getHTML()
+			if (typeof testEditor?.getHTML !== 'function') {
+				console.warn('Table button not shown: Text app getHTML() method is not available')
+				return false
+			}
+
+			return true
+		} catch (error) {
+			console.error('Table button not shown: Error checking Text app compatibility:', error)
+			return false
+		}
+	}
+
+	/**
+	 * Inserts the table button into the Excalidraw toolbar DOM.
+	 */
+	const insertTableButton = useCallback(() => {
 		const extraTools = Array.from(document.getElementsByClassName('App-toolbar__extra-tools-trigger'))
 			.find(el => !el.classList.contains('table-trigger'))
-		if (!extraTools) return
+
+		if (!extraTools) {
+			return false
+		}
 
 		const tableButton = document.createElement('button')
 		tableButton.type = 'button'
@@ -245,10 +277,34 @@ export function useTableInsertion() {
 			tableButton,
 			extraTools.previousSibling,
 		)
-		// Render the React icon component into the button
 		ReactDOM.render(renderTableButton(), tableButton)
-		hasInsertedRef.current = true
+		return true
 	}, [renderTableButton, insertTable])
+
+	/**
+	 * Injects the "Insert Table" button into Excalidraw's toolbar.
+	 * Only renders if Text app is available and compatible.
+	 */
+	const renderTable = useCallback(async () => {
+		// Only insert once to avoid duplicate buttons
+		if (hasInsertedRef.current) return
+		// Set immediately to prevent race conditions with async operations
+		hasInsertedRef.current = true
+
+		// Check if Text app is available and compatible
+		const isCompatible = await checkTextAppCompatibility()
+		if (!isCompatible) {
+			hasInsertedRef.current = false
+			return
+		}
+
+		// Insert the button into the toolbar
+		const inserted = insertTableButton()
+		if (!inserted) {
+			// Toolbar not ready yet, allow retry
+			hasInsertedRef.current = false
+		}
+	}, [insertTableButton])
 
 	useEffect(() => {
 		if (excalidrawAPI) renderTable()
