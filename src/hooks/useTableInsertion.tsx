@@ -8,6 +8,7 @@ import Vue from 'vue'
 import { Icon } from '@mdi/react'
 import { mdiTable } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
 import TableEditorDialog from '../components/TableEditorDialog.vue'
 import { convertHtmlTableToImage } from '../utils/tableToImage'
@@ -23,6 +24,11 @@ export function useTableInsertion() {
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow((state) => ({
 			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
+		})),
+	)
+	const { isReadOnly } = useWhiteboardConfigStore(
+		useShallow((state) => ({
+			isReadOnly: state.isReadOnly,
 		})),
 	)
 
@@ -68,6 +74,11 @@ export function useTableInsertion() {
 	const editTable = useCallback(async (tableElement: ExcalidrawImageElement) => {
 		if (!excalidrawAPI) {
 			console.error('Excalidraw API is not available')
+			return
+		}
+
+		if (isReadOnly) {
+			console.error('Table editing is disabled in read-only mode')
 			return
 		}
 
@@ -128,7 +139,7 @@ export function useTableInsertion() {
 				console.error('Failed to edit table:', error)
 			}
 		}
-	}, [excalidrawAPI, openTableEditor])
+	}, [excalidrawAPI, openTableEditor, isReadOnly])
 
 	/**
 	 * Inserts a new table into the whiteboard at the viewport center.
@@ -136,6 +147,11 @@ export function useTableInsertion() {
 	const insertTable = useCallback(async () => {
 		if (!excalidrawAPI) {
 			console.error('Excalidraw API is not available')
+			return
+		}
+
+		if (isReadOnly) {
+			console.error('Table insertion is disabled in read-only mode')
 			return
 		}
 
@@ -158,7 +174,7 @@ export function useTableInsertion() {
 				console.error('Failed to insert table:', error)
 			}
 		}
-	}, [excalidrawAPI, openTableEditor])
+	}, [excalidrawAPI, openTableEditor, isReadOnly])
 
 	// Set up pointer down handler to detect double-clicks on table elements for editing
 	useEffect(() => {
