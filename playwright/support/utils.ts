@@ -6,6 +6,8 @@
 import { expect } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
 
+const createdBoardIds = new Map<string, number>()
+
 export async function openFilesApp(page: Page) {
 	await page.goto('apps/files')
 	await page.waitForURL(/apps\/files/)
@@ -56,6 +58,12 @@ export async function createWhiteboard(page: Page, { name }: { name?: string } =
 	}
 	try {
 		await waitForCanvas(page, { timeout: 20000 })
+		try {
+			const { fileId } = await getBoardAuth(page)
+			createdBoardIds.set(boardName, fileId)
+		} catch {
+			// ignore, fallback resolution handles it
+		}
 	} catch (error) {
 		await openFilesApp(page)
 		await openWhiteboardFromFiles(page, boardName)
@@ -109,68 +117,411 @@ export async function addTextElement(page: Page, text: string, point: Point = { 
 }
 
 export async function openWhiteboardFromFiles(page: Page, name: string, options: OpenWhiteboardFromFilesOptions = {}) {
-	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-	const viewOrder = options.preferSharedView
-		? ['apps/files?view=sharingin', 'apps/files/shareoverview', 'apps/files']
-		: ['apps/files', 'apps/files/shareoverview']
+	const fileName = normalizeWhiteboardFileName(name)
+	await ensureFilesBaseUrl(page, options.preferSharedView)
+	if (await tryOpenWhiteboardInViewer(page, fileName)) {
+		await waitForCanvas(page)
+		return
+	}
 
-	const attemptFindEntry = async () => {
-		const searchBox = page.getByRole('searchbox', { name: /search here/i }).first()
-		if (await searchBox.count()) {
-			await searchBox.fill(name)
-			await searchBox.press('Enter')
+	const cachedId = createdBoardIds.get(name)
+	const fileId = cachedId ?? await resolveFileIdByName(page, name, {
+		preferSharedView: options.preferSharedView,
+	})
+	await openWhiteboardById(page, fileId)
+	await waitForCanvas(page)
+}
+
+type ResolveFileIdOptions = {
+	preferSharedView?: boolean
+}
+
+async function resolveFileIdByName(page: Page, displayName: string, options: ResolveFileIdOptions = {}) {
+	const filesUrl = await ensureFilesBaseUrl(page, options.preferSharedView)
+	const origin = new URL(filesUrl).origin
+	const basePath = getBasePathFromUrl(filesUrl)
+	const baseOrigins = basePath ? [`${origin}${basePath}`, origin] : [origin]
+	const userId = await resolveCurrentUserId(page, baseOrigins[0])
+	const requestToken = await getRequestToken(page)
+
+	const candidates = new Set<string>()
+	const addCandidate = (value: string | null) => {
+		if (!value) {
+			return
 		}
-		const candidates = [
-			page.locator(`[data-entryname="${name}"]`).first(),
-			page.locator(`[data-file="${name}"]`).first(),
-			page.getByRole('row', { name: new RegExp(escaped, 'i') }).first(),
-		]
+		candidates.add(value)
+	}
 
-		for (let attempt = 0; attempt < 60; attempt++) {
-			for (const locator of candidates) {
-				if (await locator.count()) {
-					return locator
+	const rowInfo = await tryResolveFileInfoFromRow(page, displayName)
+	if (rowInfo?.fileId) {
+		return rowInfo.fileId
+	}
+	addCandidate(rowInfo?.fileName ?? null)
+
+	const lower = displayName.toLowerCase()
+	if (lower.endsWith('.whiteboard') || lower.endsWith('.excalidraw')) {
+		addCandidate(displayName)
+	} else {
+		addCandidate(`${displayName}.whiteboard`)
+		addCandidate(`${displayName}.excalidraw`)
+		addCandidate(displayName)
+	}
+
+	const propfindBody = `<?xml version="1.0"?>\n<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">\n  <d:prop>\n    <oc:fileid />\n  </d:prop>\n</d:propfind>\n`
+	const candidateList = Array.from(candidates)
+
+	for (let attempt = 0; attempt < 6; attempt++) {
+		for (const candidate of candidateList) {
+			const appFileId = await tryResolveFileIdFromFilesApp(page, candidate)
+			if (appFileId) {
+				return appFileId
+			}
+		}
+
+		for (const baseOrigin of baseOrigins) {
+			const listingId = await fetchFileIdFromWebDavListing(page, baseOrigin, userId, candidateList, propfindBody, requestToken)
+			if (listingId) {
+				return listingId
+			}
+		}
+
+		for (const candidate of candidateList) {
+			for (const baseOrigin of baseOrigins) {
+				const fileId = await fetchFileIdFromWebDav(page, baseOrigin, userId, candidate, propfindBody, requestToken)
+				if (fileId) {
+					return fileId
 				}
 			}
-			await page.waitForTimeout(500)
 		}
+
+		await page.waitForTimeout(400)
+	}
+
+	throw new Error(`Whiteboard file not found via WebDAV: ${displayName}`)
+}
+
+async function resolveCurrentUserId(page: Page, baseUrl?: string) {
+	const origin = baseUrl ?? new URL(await ensureFilesBaseUrl(page)).origin
+	const requestToken = await getRequestToken(page)
+	const response = await page.request.get(`${origin}/ocs/v2.php/cloud/user?format=json`, {
+		headers: {
+			'OCS-APIREQUEST': 'true',
+			...(requestToken ? { requesttoken: requestToken } : {}),
+			Accept: 'application/json',
+		},
+	}).catch(() => null)
+	const data = response ? await response.json().catch(() => null) : null
+	let userId = data?.ocs?.data?.id
+	if (!userId) {
+		userId = await page.evaluate(() => (window as any).OC?.getCurrentUser?.()?.uid
+			|| (window as any).OCP?.User?.userId
+			|| null)
+	}
+	if (!userId) {
+		userId = await page.evaluate(() => {
+			const selector = '[aria-label*="Avatar of"], [title*="Avatar of"]'
+			const element = document.querySelector(selector) as HTMLElement | null
+			const label = element?.getAttribute('aria-label')
+				|| element?.getAttribute('title')
+				|| element?.textContent
+				|| ''
+			const match = label.match(/Avatar of\\s+([^—-]+)/)
+			return match?.[1]?.trim() || null
+		})
+	}
+	if (!userId) {
+		throw new Error('Could not resolve current user id from OCS')
+	}
+	return String(userId)
+}
+
+async function fetchFileIdFromWebDav(
+	page: Page,
+	baseUrl: string,
+	userId: string,
+	fileName: string,
+	propfindBody: string,
+	requestToken?: string | null,
+) {
+	const path = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(userId)}/${encodeURIComponent(fileName)}`
+	const response = await page.request.fetch(path, {
+		method: 'PROPFIND',
+		headers: {
+			Depth: '0',
+			'Content-Type': 'application/xml',
+			...(requestToken ? { requesttoken: requestToken } : {}),
+		},
+		data: propfindBody,
+		timeout: 4000,
+	})
+
+	if (!response.ok()) {
 		return null
 	}
 
-	const visitView = async (path: string) => {
-		await page.goto(path)
-		await page.waitForURL(/apps\/files/, { timeout: 20000 }).catch(() => {})
-		return attemptFindEntry()
+	const text = await response.text()
+	const match = text.match(/<oc:fileid[^>]*>(\d+)<\/oc:fileid>/i)
+	if (!match?.[1]) {
+		return null
+	}
+	const fileId = Number(match[1])
+	return Number.isNaN(fileId) ? null : fileId
+}
+
+async function fetchFileIdFromWebDavListing(
+	page: Page,
+	baseUrl: string,
+	userId: string,
+	fileNames: string[],
+	propfindBody: string,
+	requestToken?: string | null,
+) {
+	const path = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(userId)}/`
+	const response = await page.request.fetch(path, {
+		method: 'PROPFIND',
+		headers: {
+			Depth: '1',
+			'Content-Type': 'application/xml',
+			...(requestToken ? { requesttoken: requestToken } : {}),
+		},
+		data: propfindBody,
+		timeout: 4000,
+	}).catch(() => null)
+
+	if (!response || !response.ok()) {
+		return null
 	}
 
-	let entry: ReturnType<Page['locator']> | null = null
+	const nameSet = new Set(fileNames.map((name) => name.toLowerCase()))
+	const text = await response.text().catch(() => '')
+	const responses = text.split(/<d:response[^>]*>/i).slice(1)
+	for (const block of responses) {
+		const hrefMatch = block.match(/<d:href[^>]*>([^<]+)<\/d:href>/i)
+		const fileIdMatch = block.match(/<oc:fileid[^>]*>(\d+)<\/oc:fileid>/i)
+		if (!hrefMatch?.[1] || !fileIdMatch?.[1]) {
+			continue
+		}
+		const decoded = safeDecodeURIComponent(hrefMatch[1])
+		const name = decoded.split('/').pop() || ''
+		if (!name || !nameSet.has(name.toLowerCase())) {
+			continue
+		}
+		const fileId = Number(fileIdMatch[1])
+		return Number.isNaN(fileId) ? null : fileId
+	}
+	return null
+}
+
+function safeDecodeURIComponent(value: string) {
+	try {
+		return decodeURIComponent(value)
+	} catch {
+		return value
+	}
+}
+
+async function ensureFilesBaseUrl(page: Page, preferSharedView = false) {
+	const viewOrder = preferSharedView
+		? ['apps/files?view=sharingin', 'apps/files/shareoverview', 'apps/files']
+		: ['apps/files', 'apps/files/shareoverview']
+
 	for (const path of viewOrder) {
-		entry = await visitView(path)
-		if (entry) {
-			break
+		try {
+			await page.goto(path)
+			await page.waitForURL(/apps\/files/, { timeout: 20000 })
+			return page.url()
+		} catch {
+			// keep trying
 		}
 	}
 
+	const current = page.url()
+	if (!current || current === 'about:blank') {
+		await page.goto('apps/files')
+	}
+	return page.url()
+}
 
-	if (!entry) {
-		throw new Error(`Whiteboard file not found: ${name}`)
+function normalizeWhiteboardFileName(name: string) {
+	const lower = name.toLowerCase()
+	if (lower.endsWith('.whiteboard') || lower.endsWith('.excalidraw')) {
+		return name
+	}
+	return `${name}.whiteboard`
+}
+
+async function tryOpenWhiteboardInViewer(page: Page, fileName: string) {
+	const path = fileName.startsWith('/') ? fileName : `/${fileName}`
+	const viewerReady = await page.waitForFunction(() => Boolean((window as any).OCA?.Viewer?.open), { timeout: 5000 })
+		.then(() => true)
+		.catch(() => false)
+	if (!viewerReady) {
+		return false
 	}
 
-	await expect(entry).toBeVisible({ timeout: 15000 })
+	await ensureWhiteboardViewerHandler(page)
 
-	const viewButton = entry.getByRole('button', { name: /view|open/i }).first()
-	if (await viewButton.count()) {
-		await viewButton.click()
-	} else {
-		const target = entry.getByRole('link', { name: new RegExp(escaped, 'i') }).first()
-		if (await target.count()) {
-			await target.click()
-		} else {
-			await entry.dblclick()
+	const opened = await page.evaluate((filePath) => {
+		const viewer = (window as any).OCA?.Viewer
+		if (!viewer?.open) {
+			return false
 		}
+		viewer.open({ path: filePath })
+		return true
+	}, path).catch(() => false)
+
+	return Boolean(opened)
+}
+
+async function ensureWhiteboardViewerHandler(page: Page) {
+	await page.evaluate(async () => {
+		const hasHandler = () => {
+			const handlers = (window as any)._oca_viewer_handlers
+			if (!handlers) {
+				return false
+			}
+			if (typeof handlers.has === 'function') {
+				return handlers.has('whiteboard')
+			}
+			return Boolean((handlers as Record<string, unknown>).whiteboard)
+		}
+
+		if (hasHandler()) {
+			return true
+		}
+
+		const base = (window as any).OC?.webroot || ''
+		const url = (window as any).OC?.generateUrl?.('/apps/whiteboard/js/whiteboard-main.mjs')
+			|| (window as any).OC?.linkTo?.('whiteboard', 'js/whiteboard-main.mjs')
+			|| `${base}/apps/whiteboard/js/whiteboard-main.mjs`
+
+		await new Promise<void>((resolve, reject) => {
+			const script = document.createElement('script')
+			script.type = 'module'
+			script.src = url
+			script.addEventListener('load', () => resolve())
+			script.addEventListener('error', () => reject(new Error('Failed to load whiteboard viewer script')))
+			document.head.appendChild(script)
+		}).catch(() => {})
+
+		return hasHandler()
+	}).catch(() => null)
+}
+
+function getBasePathFromUrl(url: string) {
+	try {
+		const parsed = new URL(url)
+		const indexPos = parsed.pathname.indexOf('/index.php')
+		if (indexPos === -1) {
+			return ''
+		}
+		return parsed.pathname.slice(0, indexPos + '/index.php'.length)
+	} catch {
+		return ''
+	}
+}
+
+async function tryResolveFileIdFromFilesApp(page: Page, fileName: string) {
+	const fileId = await page.evaluate((name) => {
+		const app = (window as any).OCA?.Files?.App
+		const fileList = app?.currentFileList || app?.fileList
+		if (!fileList) {
+			return null
+		}
+		let info = fileList.getFileInfo?.(name) || null
+		const files = fileList.files
+		if (!info && files) {
+			if (typeof files.findWhere === 'function') {
+				info = files.findWhere({ name }) || null
+			} else if (Array.isArray(files)) {
+				info = files.find((entry: any) => entry?.name === name || entry?.attributes?.name === name) || null
+			} else if (typeof files.get === 'function') {
+				info = files.get(name) || null
+			} else if (Array.isArray(files.models)) {
+				info = files.models.find((entry: any) => entry?.attributes?.name === name || entry?.get?.('name') === name) || null
+			} else if (typeof files === 'object') {
+				const direct = (files as Record<string, any>)[name]
+				if (direct) {
+					info = direct
+				} else {
+					const values = Object.values(files as Record<string, any>)
+					info = values.find((entry: any) => entry?.name === name || entry?.attributes?.name === name) || null
+				}
+			}
+		}
+		const normalized = info?.attributes ?? info
+		const id = info?.id ?? info?.fileid ?? info?.fileId ?? null
+		const normalizedId = normalized?.id ?? normalized?.fileid ?? normalized?.fileId ?? null
+		const resolvedId = id ?? normalizedId ?? null
+		if (resolvedId === null || resolvedId === undefined) {
+			return null
+		}
+		const parsed = Number(resolvedId)
+		return Number.isNaN(parsed) ? null : parsed
+	}, fileName).catch(() => null)
+	return fileId ?? null
+}
+
+async function getRequestToken(page: Page) {
+	return page.evaluate(() => (window as any).OC?.requestToken
+		|| (document.querySelector('head meta[name="requesttoken"]') as HTMLMetaElement)?.content
+		|| null).catch(() => null)
+}
+
+async function tryResolveFileInfoFromRow(page: Page, displayName: string) {
+	const escaped = displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+	const fileRow = page.getByRole('row', { name: new RegExp(escaped, 'i') }).first()
+	try {
+		await fileRow.waitFor({ state: 'visible', timeout: 5000 })
+	} catch {
+		return null
 	}
 
-	await waitForCanvas(page)
+	const info = await fileRow.evaluate<{ fileId: string | null, fileName: string | null }>((row) => {
+		const element = row as HTMLElement
+		const dataset = (element as HTMLElement & { dataset?: Record<string, string> }).dataset || {}
+		const idCandidate = element.querySelector('[data-id], [data-fileid], [data-file-id], [data-entry-id]') as HTMLElement | null
+		const fileId = element.getAttribute('data-id')
+			|| element.getAttribute('data-fileid')
+			|| element.getAttribute('data-file-id')
+			|| element.getAttribute('data-entry-id')
+			|| idCandidate?.getAttribute('data-id')
+			|| idCandidate?.getAttribute('data-fileid')
+			|| idCandidate?.getAttribute('data-file-id')
+			|| idCandidate?.getAttribute('data-entry-id')
+			|| dataset.fileid
+			|| dataset.id
+			|| null
+
+		const dataEntry = element.getAttribute('data-entryname') || element.getAttribute('data-file')
+		if (dataEntry) {
+			return { fileId, fileName: dataEntry }
+		}
+
+		const ariaLabel = element.getAttribute('aria-label') || ''
+		const ariaMatch = ariaLabel.match(/file \"([^\"]+)\"/)
+		if (ariaMatch?.[1]) {
+			return { fileId, fileName: ariaMatch[1] }
+		}
+
+		const text = element.textContent || ''
+		const textMatch = text.match(/([\w\s.-]+\.whiteboard|[\w\s.-]+\.excalidraw)/i)
+		if (textMatch?.[1]) {
+			return { fileId, fileName: textMatch[1] }
+		}
+		return { fileId, fileName: null }
+	})
+
+	if (!info) {
+		return null
+	}
+
+	const cleanedName = info.fileName?.trim().replace(/\s+(\.[^.]+)$/, '$1') ?? null
+	const numericId = info.fileId ? Number(info.fileId) : null
+	return {
+		fileId: numericId && !Number.isNaN(numericId) ? numericId : null,
+		fileName: cleanedName,
+	}
 }
 
 export async function newLoggedInPage(sourcePage: Page, browser: Browser) {
@@ -225,8 +576,7 @@ export async function getBoardAuth(page: Page): Promise<{ fileId: number, jwt: s
 }
 
 export async function openWhiteboardById(page: Page, fileId: number | string) {
-	await page.goto(`apps/whiteboard/${fileId}`)
-	await waitForCanvas(page)
+	await page.goto(`apps/files/files/${fileId}?openfile=true`)
 }
 
 export async function fetchBoardContent(page: Page, auth: { fileId: number | string, jwt: string }) {
