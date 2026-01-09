@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { useCallback, useEffect, useRef } from 'react'
-import * as ReactDOM from 'react-dom'
 import Vue from 'vue'
-import { Icon } from '@mdi/react'
 import { mdiTable } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
 import TableEditorDialog from '../components/TableEditorDialog.vue'
+import { renderToolbarButton } from '../components/ToolbarButton'
 import { convertHtmlTableToImage } from '../utils/tableToImage'
 import { tryAcquireLock, releaseLock } from '../utils/tableLocking'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
@@ -215,17 +214,6 @@ export function useTableInsertion() {
 		excalidrawAPI.onPointerDown(pointerDownHandler)
 	}, [excalidrawAPI, editTable])
 
-	const renderTableButton = useCallback(() => {
-		return (
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-				<Icon path={mdiTable} size={0.875} />
-			</div>
-		)
-	}, [])
-
-	// Prevent double-insertion of the table button in the toolbar
-	const hasInsertedRef = useRef(false)
-
 	/**
 	 * Check if Text app is available and compatible with table insertion feature.
 	 *
@@ -267,60 +255,22 @@ export function useTableInsertion() {
 	}
 
 	/**
-	 * Inserts the table button into the Excalidraw toolbar DOM.
-	 */
-	const insertTableButton = useCallback(() => {
-		const extraTools = Array.from(document.getElementsByClassName('App-toolbar__extra-tools-trigger'))
-			.find(el => !el.classList.contains('table-trigger'))
-
-		if (!extraTools) {
-			return false
-		}
-
-		const tableButton = document.createElement('button')
-		tableButton.type = 'button'
-		tableButton.className = 'ToolIcon_type_button ToolIcon dropdown-menu-button table-trigger'
-		tableButton.setAttribute('data-testid', 'toolbar-table')
-		tableButton.setAttribute('aria-label', 'Insert table')
-		tableButton.setAttribute('title', 'Insert table')
-		tableButton.style.padding = '0'
-		tableButton.style.display = 'flex'
-		tableButton.style.alignItems = 'center'
-		tableButton.style.justifyContent = 'center'
-		tableButton.onclick = () => insertTable()
-
-		extraTools.parentNode?.insertBefore(
-			tableButton,
-			extraTools.previousSibling,
-		)
-		ReactDOM.render(renderTableButton(), tableButton)
-		return true
-	}, [renderTableButton, insertTable])
-
-	/**
 	 * Injects the "Insert Table" button into Excalidraw's toolbar.
 	 * Only renders if Text app is available and compatible.
 	 */
 	const renderTable = useCallback(async () => {
-		// Only insert once to avoid duplicate buttons
-		if (hasInsertedRef.current) return
-		// Set immediately to prevent race conditions with async operations
-		hasInsertedRef.current = true
-
-		// Check if Text app is available and compatible
 		const isCompatible = await checkTextAppCompatibility()
 		if (!isCompatible) {
-			hasInsertedRef.current = false
 			return
 		}
 
-		// Insert the button into the toolbar
-		const inserted = insertTableButton()
-		if (!inserted) {
-			// Toolbar not ready yet, allow retry
-			hasInsertedRef.current = false
-		}
-	}, [insertTableButton])
+		renderToolbarButton({
+			class: 'table-container',
+			icon: mdiTable,
+			label: 'Insert table',
+			onClick: insertTable,
+		})
+	}, [insertTable])
 
 	useEffect(() => {
 		if (excalidrawAPI) renderTable()
