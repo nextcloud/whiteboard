@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { useCallback, useEffect, useRef } from 'react'
+import * as ReactDOM from 'react-dom'
 import Vue from 'vue'
+import { Icon } from '@mdi/react'
 import { mdiTable } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
 import TableEditorDialog from '../components/TableEditorDialog.vue'
-import { renderToolbarButton } from '../components/ToolbarButton'
 import { convertHtmlTableToImage } from '../utils/tableToImage'
 import { tryAcquireLock, releaseLock } from '../utils/tableLocking'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
@@ -22,6 +24,11 @@ export function useTableInsertion() {
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow((state) => ({
 			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
+		})),
+	)
+	const { isReadOnly } = useWhiteboardConfigStore(
+		useShallow((state) => ({
+			isReadOnly: state.isReadOnly,
 		})),
 	)
 
@@ -67,6 +74,11 @@ export function useTableInsertion() {
 	const editTable = useCallback(async (tableElement: ExcalidrawImageElement) => {
 		if (!excalidrawAPI) {
 			console.error('Excalidraw API is not available')
+			return
+		}
+
+		if (isReadOnly) {
+			console.error('Table editing is disabled in read-only mode')
 			return
 		}
 
@@ -127,7 +139,7 @@ export function useTableInsertion() {
 				console.error('Failed to edit table:', error)
 			}
 		}
-	}, [excalidrawAPI, openTableEditor])
+	}, [excalidrawAPI, openTableEditor, isReadOnly])
 
 	/**
 	 * Inserts a new table into the whiteboard at the viewport center.
@@ -135,6 +147,11 @@ export function useTableInsertion() {
 	const insertTable = useCallback(async () => {
 		if (!excalidrawAPI) {
 			console.error('Excalidraw API is not available')
+			return
+		}
+
+		if (isReadOnly) {
+			console.error('Table insertion is disabled in read-only mode')
 			return
 		}
 
@@ -157,7 +174,7 @@ export function useTableInsertion() {
 				console.error('Failed to insert table:', error)
 			}
 		}
-	}, [excalidrawAPI, openTableEditor])
+	}, [excalidrawAPI, openTableEditor, isReadOnly])
 
 	// Set up pointer down handler to detect double-clicks on table elements for editing
 	useEffect(() => {
@@ -198,23 +215,112 @@ export function useTableInsertion() {
 		excalidrawAPI.onPointerDown(pointerDownHandler)
 	}, [excalidrawAPI, editTable])
 
+	const renderTableButton = useCallback(() => {
+		return (
+			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+				<Icon path={mdiTable} size={0.875} />
+			</div>
+		)
+	}, [])
+
+	// Prevent double-insertion of the table button in the toolbar
+	const hasInsertedRef = useRef(false)
+
 	/**
-	 * Injects the "Insert Table" button into Excalidraw's toolbar.
+	 * Check if Text app is available and compatible with table insertion feature.
+	 *
+	 * - Checks for createTable API (permanent check - required for basic functionality)
+	 * - Checks for getHTML() method (temporary check for older Text app versions)
+	 *
+	 * TODO: The getHTML() check can be removed once the latest Text app version include it.
 	 */
-	const renderTable = useCallback(() => {
-		// Only show table button if Text app's createTable API is available
+	const checkTextAppCompatibility = async (): Promise<boolean> => {
+		// Permanent check: Text app must be installed and provide the createTable API
 		if (!window.OCA?.Text?.createTable) {
 			console.warn('Table button not shown: Text app createTable API is not available')
+			return false
+		}
+
+		try {
+			const testContainer = document.createElement('div')
+			testContainer.style.display = 'none'
+			document.body.appendChild(testContainer)
+
+			const testEditor = await window.OCA.Text.createTable({
+				el: testContainer,
+				content: '| Test |\n| --- |\n| Test |\n',
+			})
+
+			testContainer.remove()
+
+			// TODO: Remove this check once the latest Text app version exposes getHTML()
+			if (typeof testEditor?.getHTML !== 'function') {
+				console.warn('Table button not shown: Text app getHTML() method is not available')
+				return false
+			}
+
+			return true
+		} catch (error) {
+			console.error('Table button not shown: Error checking Text app compatibility:', error)
+			return false
+		}
+	}
+
+	/**
+	 * Inserts the table button into the Excalidraw toolbar DOM.
+	 */
+	const insertTableButton = useCallback(() => {
+		const extraTools = Array.from(document.getElementsByClassName('App-toolbar__extra-tools-trigger'))
+			.find(el => !el.classList.contains('table-trigger'))
+
+		if (!extraTools) {
+			return false
+		}
+
+		const tableButton = document.createElement('button')
+		tableButton.type = 'button'
+		tableButton.className = 'ToolIcon_type_button ToolIcon dropdown-menu-button table-trigger'
+		tableButton.setAttribute('data-testid', 'toolbar-table')
+		tableButton.setAttribute('aria-label', 'Insert table')
+		tableButton.setAttribute('title', 'Insert table')
+		tableButton.style.padding = '0'
+		tableButton.style.display = 'flex'
+		tableButton.style.alignItems = 'center'
+		tableButton.style.justifyContent = 'center'
+		tableButton.onclick = () => insertTable()
+
+		extraTools.parentNode?.insertBefore(
+			tableButton,
+			extraTools.previousSibling,
+		)
+		ReactDOM.render(renderTableButton(), tableButton)
+		return true
+	}, [renderTableButton, insertTable])
+
+	/**
+	 * Injects the "Insert Table" button into Excalidraw's toolbar.
+	 * Only renders if Text app is available and compatible.
+	 */
+	const renderTable = useCallback(async () => {
+		// Only insert once to avoid duplicate buttons
+		if (hasInsertedRef.current) return
+		// Set immediately to prevent race conditions with async operations
+		hasInsertedRef.current = true
+
+		// Check if Text app is available and compatible
+		const isCompatible = await checkTextAppCompatibility()
+		if (!isCompatible) {
+			hasInsertedRef.current = false
 			return
 		}
 
-		renderToolbarButton({
-			class: 'table-container',
-			icon: mdiTable,
-			label: 'Insert table',
-			onClick: insertTable,
-		})
-	}, [insertTable])
+		// Insert the button into the toolbar
+		const inserted = insertTableButton()
+		if (!inserted) {
+			// Toolbar not ready yet, allow retry
+			hasInsertedRef.current = false
+		}
+	}, [insertTableButton])
 
 	useEffect(() => {
 		if (excalidrawAPI) renderTable()

@@ -9,7 +9,7 @@ import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 // Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)
 const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4;'
 const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600; text-align: left;`
-const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px; display: block;'
+const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px;'
 
 /**
  * Convert HTML table to an image element for Excalidraw
@@ -85,6 +85,14 @@ function applyStylesToHtml(html: string): string {
 	const bodyCells = table.querySelectorAll('td')
 	bodyCells.forEach(cell => {
 		cell.setAttribute('style', CELL_BASE_STYLE)
+		// Ensure empty paragraphs don't collapse
+		const paragraphs = cell.querySelectorAll('p')
+		paragraphs.forEach(p => {
+			if (p instanceof HTMLElement) {
+				p.style.minHeight = '1.4em'
+				p.style.margin = '0'
+			}
+		})
 	})
 
 	return table.outerHTML
@@ -97,14 +105,16 @@ function applyStylesToHtml(html: string): string {
  */
 async function htmlToDataUrl(html: string): Promise<string> {
 	return new Promise((resolve) => {
-		// Create a temporary container
+		// Create a temporary off-screen container for measurement
 		const container = document.createElement('div')
 		container.innerHTML = html
 		container.style.position = 'absolute'
-		container.style.backgroundColor = 'white'
+		container.style.left = '-9999px'
+		container.style.visibility = 'hidden'
+
 		document.body.appendChild(container)
 
-		// Wait for next frame to ensure rendering
+		// Wait for layout to complete
 		requestAnimationFrame(() => {
 			const svgDataUrl = createSvgDataUrl(container)
 			document.body.removeChild(container)
@@ -119,15 +129,25 @@ async function htmlToDataUrl(html: string): Promise<string> {
  * @return SVG data URL
  */
 function createSvgDataUrl(element: HTMLElement): string {
-	const bbox = element.getBoundingClientRect()
-	const width = Math.max(bbox.width)
-	const height = Math.max(bbox.height)
+	// Get the table element directly for accurate measurements
+	const table = element.querySelector('table') || element
+
+	// Get bounding box of the entire table to capture all content
+	const bbox = table.getBoundingClientRect()
+
+	// Add padding to prevent border/content cutoff
+	const padding = 4
+	const width = Math.ceil(bbox.width) + (padding * 2)
+	const height = Math.ceil(bbox.height) + (padding * 2)
+
+	// Get the table HTML with all our style overrides applied
+	const tableHtml = table.outerHTML
 
 	const svg = `
 		<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-			<foreignObject width="100%" height="100%">
-				<div xmlns="http://www.w3.org/1999/xhtml" style="background: white;">
-					${element.innerHTML}
+			<foreignObject x="0" y="0" width="${width}" height="${height}">
+				<div xmlns="http://www.w3.org/1999/xhtml" style="background: white; padding: ${padding}px;">
+					${tableHtml}
 				</div>
 			</foreignObject>
 		</svg>

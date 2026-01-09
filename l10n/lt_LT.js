@@ -16,6 +16,7 @@ OC.L10N.register(
     "Add option" : "Pridėti variantą",
     "Comments" : "Komentarai",
     "Voting" : "Balsavimas",
+    "Access Denied" : "Prieiga negalima",
     "Delete thread" : "Ištrinti giją",
     "Edit" : "Taisyti",
     "Save" : "Įrašyti",

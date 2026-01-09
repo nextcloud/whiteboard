@@ -100,7 +100,8 @@ setup('Configure Nextcloud', async () => {
 		'assistant',
 		'testing',
 	]
-	await configureNextcloud(appsToInstall)
+	await configureNextcloud(appsToInstall, getServerBranch())
+	await runExec(['git', '-C', 'apps/viewer', 'log', '-1'], { verbose: true })
 	await ensureAssistantInstalled()
 	await runOcc(['app:disable', 'firstrunwizard'])
 	await runOcc(['config:app:set', 'whiteboard', 'collabBackendUrl', '--value', 'http://localhost:3002'])

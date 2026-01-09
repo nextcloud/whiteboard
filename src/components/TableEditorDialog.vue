@@ -61,10 +61,15 @@ export default defineComponent({
 				}
 
 				// Convert HTML to markdown for the Text editor input
-				const contentForEditor = this.currentHtml && this.currentHtml.trim()
+				let contentForEditor = this.currentHtml && this.currentHtml.trim()
 					? this.generateMarkdownFromHtml(this.currentHtml)
 					: ''
 
+				// If no content provided, create a minimal table with header and one body row
+				// This ensures the table editor recognizes it as a proper table with columns
+				if (!contentForEditor) {
+					contentForEditor = '|  |\n| --- |\n|  |\n'
+				}
 				// Use the dedicated createTable function for table-only editing
 				this.editor = await window.OCA.Text.createTable({
 					el: editorContainer,
@@ -97,47 +102,25 @@ export default defineComponent({
 			}
 
 			try {
-			// Extract HTML from the Text app's Tiptap editor to preserve all content (including pipe characters)
-			// The Text app's createTable() returns a wrapper object with a 'vm' property
-			// that contains the Vue instance rendering the editor component
-				let html = ''
-
-				// Access the Vue instance created by the Text app
-				const vm = this.editor.vm
-
-				// Navigate the component tree to find the Tiptap editor instance:
-				// vm.$children[0] is the Text app's table editor component
-				// which has an 'editor' property that is the actual Tiptap editor instance
-				if (vm && vm.$children && vm.$children.length > 0) {
-					const editorComponent = vm.$children[0]
-
-					if (editorComponent && editorComponent.editor) {
-					// Get raw HTML from Tiptap editor (this is the reliable source of content)
-						const fullHtml = editorComponent.editor.getHTML()
-						const parser = new DOMParser()
-						const doc = parser.parseFromString(fullHtml, 'text/html')
-						const table = doc.querySelector('table')
-
-						if (table) {
-							html = table.outerHTML
-						} else {
-							console.warn('No table found in HTML, using full HTML')
-							html = fullHtml
-						}
-					}
+				// Use Text app's getHTML() to extract clean HTML from Tiptap editor
+				const fullHtml = this.editor.getHTML()
+				if (!fullHtml) {
+					this.error = t('whiteboard', 'Failed to get editor content')
+					return
 				}
 
-				if (!html) {
-					console.error('Could not extract HTML from Tiptap editor')
-				}
+				// Parse the HTML and extract just the table element
+				const parser = new DOMParser()
+				const doc = parser.parseFromString(fullHtml, 'text/html')
+				const table = doc.querySelector('table')
 
-				if (!html || !html.trim()) {
-					this.error = t('whiteboard', 'Failed to extract table content')
+				if (!table) {
+					this.error = t('whiteboard', 'No table found in editor content')
 					return
 				}
 
 				this.$emit('submit', {
-					html: html.trim(),
+					html: table.outerHTML.trim(),
 				})
 
 				this.show = false
@@ -228,7 +211,9 @@ export default defineComponent({
 				{{ t('whiteboard', 'Loading editor…') }}
 			</div>
 
-			<div ref="editorContainer" class="editor-container" />
+			<div class="editor-container">
+				<div ref="editorContainer" />
+			</div>
 
 			<div class="dialog-buttons">
 				<NcButton @click="onCancel">
@@ -275,6 +260,14 @@ export default defineComponent({
 	min-height: 400px;
 	border-radius: var(--border-radius);
 	overflow: hidden;
+
+	// Hide block manipulation controls from Text editor
+	// These aren't needed in table-only editing mode
+	:deep(.floating-buttons),
+	:deep(.drag-handle),
+	:deep(.drag-button) {
+		display: none !important;
+	}
 }
 
 .dialog-buttons {

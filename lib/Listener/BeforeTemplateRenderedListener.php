@@ -14,6 +14,7 @@ use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Files\File;
 use OCP\Files\NotFoundException;
@@ -28,6 +29,7 @@ class BeforeTemplateRenderedListener implements IEventListener {
 	public function __construct(
 		private IInitialState $initialState,
 		private ConfigService $configService,
+		private IEventDispatcher $eventDispatcher,
 	) {
 	}
 
@@ -49,6 +51,11 @@ class BeforeTemplateRenderedListener implements IEventListener {
 
 		if ($node->getMimetype() !== 'application/vnd.excalidraw+json') {
 			return;
+		}
+
+		// Load the Text editor if available for table insertion support
+		if (class_exists('OCA\Text\Event\LoadEditor')) {
+			$this->eventDispatcher->dispatchTyped(new \OCA\Text\Event\LoadEditor());
 		}
 
 		Util::addScript('whiteboard', 'whiteboard-main');
