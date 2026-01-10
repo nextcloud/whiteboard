@@ -26,7 +26,6 @@ OC.L10N.register(
     "Editor container not found" : "Контейнер редактору не знайдено",
     "Failed to load the editor: {error}" : "Не вдалося завантажити редактор: {error}",
     "Editor not initialized" : "Редактор не ініціалізовано",
-    "Failed to extract table content" : "Не вдалося видобути вміст таблиці",
     "Failed to get content: {error}" : "Не вдалося отримати вміст: {error}",
     "Edit Table" : "Редагувати таблицю",
     "Insert Table" : "Додати таблицю",

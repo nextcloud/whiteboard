@@ -27,7 +27,6 @@ OC.L10N.register(
     "Editor container not found" : "找不到編輯器容器",
     "Failed to load the editor: {error}" : "載入編輯器失敗：{error}",
     "Editor not initialized" : "編輯器未初始化",
-    "Failed to extract table content" : "擷取表格內容失敗",
     "Failed to get content: {error}" : "無法取得內容：{error}",
     "Edit Table" : "編輯表格",
     "Insert Table" : "插入表格",

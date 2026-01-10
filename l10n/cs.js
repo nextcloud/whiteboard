@@ -26,7 +26,6 @@ OC.L10N.register(
     "Editor container not found" : "Kontejner editoru nenalezen",
     "Failed to load the editor: {error}" : "Nepodařilo se načíst editor: {error}",
     "Editor not initialized" : "Editor neinicializován",
-    "Failed to extract table content" : "Nepodařilo se vytáhnout obsah tabulky",
     "Failed to get content: {error}" : "Nepodařilo se získat obsah: {error}",
     "Edit Table" : "Upravit tabulku",
     "Insert Table" : "Vložit tabulku",

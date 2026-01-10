@@ -27,7 +27,6 @@ OC.L10N.register(
     "Editor container not found" : "تەھرىرلىگۈچى قاچىسى تېپىلمىدى",
     "Failed to load the editor: {error}" : "تەھرىرلىگۈچنى يۈكلەش مەغلۇپ بولدى: {error}",
     "Editor not initialized" : "تەھرىرلىگۈچ باشلانغۇچلاشتۇرۇلمىدى",
-    "Failed to extract table content" : "جەدۋەل مەزمۇنىنى چىقىرىۋېلىش مەغلۇپ بولدى",
     "Failed to get content: {error}" : "مەزمۇنغا ئېرىشىش مەغلۇپ بولدى: {error}",
     "Edit Table" : "جەدۋەلنى تەھرىرلەش",
     "Insert Table" : "جەدىۋەل قىستۇر",

@@ -25,7 +25,6 @@
     "Editor container not found" : "Editor-Container nicht gefunden",
     "Failed to load the editor: {error}" : "Editor konnte nicht geladen werden: {error}",
     "Editor not initialized" : "Editor ist nicht initialisiert",
-    "Failed to extract table content" : "Tabelleninhalt konnte nicht extrahiert werden",
     "Failed to get content: {error}" : "Inhalt konnte nicht abgerufen werden: {error}",
     "Edit Table" : "Tabelle bearbeiten",
     "Insert Table" : "Tabelle einfügen",

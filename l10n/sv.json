@@ -25,7 +25,6 @@
     "Editor container not found" : "Redigerarens behållare hittades inte",
     "Failed to load the editor: {error}" : "Kunde inte läsa in redigeraren: {error}",
     "Editor not initialized" : "Redigeraren är inte initierad",
-    "Failed to extract table content" : "Kunde inte extrahera tabellinnehåll",
     "Failed to get content: {error}" : "Kunde inte hämta innehåll: {error}",
     "Edit Table" : "Redigera tabell",
     "Insert Table" : "Infoga Tabell",

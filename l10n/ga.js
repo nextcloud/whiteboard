@@ -27,7 +27,6 @@ OC.L10N.register(
     "Editor container not found" : "Níor aimsíodh coimeádán an eagarthóra",
     "Failed to load the editor: {error}" : "Theip ar an eagarthóir a lódáil: {error}",
     "Editor not initialized" : "Níor cuireadh tús leis an eagarthóir",
-    "Failed to extract table content" : "Theip ar ábhar an tábla a bhaint amach",
     "Failed to get content: {error}" : "Theip ar ábhar a fháil: {error}",
     "Edit Table" : "Cuir Tábla in Eagar",
     "Insert Table" : "Ionsáigh Tábla",

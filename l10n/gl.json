@@ -25,7 +25,6 @@
     "Editor container not found" : "Non foi atopado o contedor do editor",
     "Failed to load the editor: {error}" : "Produciuse un fallo ao cargar o editor: {error}",
     "Editor not initialized" : "O editor non foi inicializado",
-    "Failed to extract table content" : "Produciuse un fallo ao extraer o contido da táboa",
     "Failed to get content: {error}" : "Produciuse un fallo ao obter o contido: {error}",
     "Edit Table" : "Editar a táboa",
     "Insert Table" : "Inserir unha táboa",

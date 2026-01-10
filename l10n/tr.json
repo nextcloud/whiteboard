@@ -25,7 +25,6 @@
     "Editor container not found" : "Düzenleyici kapsayıcısı bulunamadı",
     "Failed to load the editor: {error}" : "Düzenleyici yüklenemedi: {error}",
     "Editor not initialized" : "Düzenleyici başlatılamadı",
-    "Failed to extract table content" : "Tablo içeriği ayıklanamadı",
     "Failed to get content: {error}" : "İçerik alınamadı: {error}",
     "Edit Table" : "Tabloyu düzenle",
     "Insert Table" : "Tablo ekle",

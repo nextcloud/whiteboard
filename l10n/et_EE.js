@@ -20,7 +20,6 @@ OC.L10N.register(
     "Editor container not found" : "Muutmisvaate konteinerit ei leidu",
     "Failed to load the editor: {error}" : "Muutmisvaate laadimine ei õnnestunud: {error}",
     "Editor not initialized" : "Muutmisvaade on valmendamata",
-    "Failed to extract table content" : "Tabeli sisu ei õnnestunud eraldada",
     "Failed to get content: {error}" : "Sisu tuvastamine ja laadimine ei õnnestu: {error}",
     "Edit Table" : "Muuda tabelit",
     "Insert Table" : "Lisa tabel",
