@@ -25,6 +25,8 @@
     "Editor container not found" : "Níor aimsíodh coimeádán an eagarthóra",
     "Failed to load the editor: {error}" : "Theip ar an eagarthóir a lódáil: {error}",
     "Editor not initialized" : "Níor cuireadh tús leis an eagarthóir",
+    "Failed to get editor content" : "Theip ar ábhar an eagarthóra a fháil",
+    "No table found in editor content" : "Níor aimsíodh aon tábla in ábhar an eagarthóra",
     "Failed to get content: {error}" : "Theip ar ábhar a fháil: {error}",
     "Edit Table" : "Cuir Tábla in Eagar",
     "Insert Table" : "Ionsáigh Tábla",

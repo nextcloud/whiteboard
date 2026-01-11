@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Shared secret" : "סוד משותף",
     "Advanced settings" : "הגדרות מתקדמות",
+    "Add reaction" : "הוספת תגובון",
     "Cancel" : "ביטול",
     "Update" : "עדכון",
     "Multiple choice" : "שאלון אמריקאי",
@@ -10,6 +11,7 @@ OC.L10N.register(
     "Delete thread" : "מחיקת שרשור",
     "Edit" : "עריכה",
     "Save" : "שמירה",
+    "Reply" : "תגובה",
     "Add a comment" : "הוספת תגובה",
     "Send" : "שליחה",
     "No comments yet" : "אין הערות עדיין",
@@ -26,6 +28,7 @@ OC.L10N.register(
     "Resume" : "להמשיך",
     "Open" : "פתוח",
     "Closed" : "סגור",
+    "Version {version}" : "גרסה {version}",
     "Just now" : "הרגע"
 },
 "nplurals=3; plural=(n == 1 && n % 1 == 0) ? 0 : (n == 2 && n % 1 == 0) ? 1: 2;");

@@ -27,6 +27,8 @@ OC.L10N.register(
     "Editor container not found" : "Editor-Container nicht gefunden",
     "Failed to load the editor: {error}" : "Editor konnte nicht geladen werden: {error}",
     "Editor not initialized" : "Editor ist nicht initialisiert",
+    "Failed to get editor content" : "Editor-Inhalt konnte nicht abgerufen werden",
+    "No table found in editor content" : "Keine Tabelle im Editor-Inhalt gefunden",
     "Failed to get content: {error}" : "Inhalt konnte nicht abgerufen werden: {error}",
     "Edit Table" : "Tabelle bearbeiten",
     "Insert Table" : "Tabelle einfügen",
