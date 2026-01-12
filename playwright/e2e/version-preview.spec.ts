@@ -11,6 +11,7 @@ import {
 	captureBoardAuthFromSave,
 	createWhiteboard,
 	fetchBoardContent,
+	getBoardAuth,
 	openFilesApp,
 	resolveStoredFileName,
 	waitForCanvas,
@@ -112,7 +113,7 @@ const findVersionByContent = async (
 const waitForBoardContent = async (page: Page, auth: { fileId: number, jwt: string }, text: string) => {
 	await expect.poll(async () => JSON.stringify(await fetchBoardContent(page, auth)), {
 		timeout: 20000,
-		interval: 500,
+		intervals: [500],
 	}).toContain(text)
 }
 
@@ -249,11 +250,11 @@ test('restore version replaces current content', async ({
 
 	await expect.poll(async () => JSON.stringify(await fetchBoardContent(page, baseAuth)), {
 		timeout: 30000,
-		interval: 500,
+		intervals: [500],
 	}).toContain(initialText)
 	await expect.poll(async () => JSON.stringify(await fetchBoardContent(page, baseAuth)), {
 		timeout: 30000,
-		interval: 500,
+		intervals: [500],
 	}).not.toContain(updatedText)
 })
 
@@ -319,7 +320,7 @@ test('version preview params still load board content', async ({
 				JSON.stringify(await fetchBoardContent(page, previewAuth)),
 			{
 				timeout: 20000,
-				interval: 500,
+				intervals: [500],
 			},
 		)
 		.toContain('Live content')
