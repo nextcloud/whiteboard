@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, memo } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline, mdiVote, mdiGrid } from '@mdi/js'
+import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline, mdiVote, mdiGrid, mdiMagnify } from '@mdi/js'
 import { MainMenu, CaptureUpdateAction } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
@@ -101,6 +101,26 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 		}
 	}, [excalidrawAPI])
 
+	const openLibrarySearch = useCallback(() => {
+		// Trigger Ctrl+F to open library with search tab
+		const excalidrawContainer = document.querySelector('.excalidraw') as HTMLElement
+		if (excalidrawContainer) {
+			const eventConfig: KeyboardEventInit = {
+				key: 'f',
+				code: 'KeyF',
+				bubbles: true,
+				cancelable: true,
+			}
+			if (isMacPlatform) {
+				eventConfig.metaKey = true
+			} else {
+				eventConfig.ctrlKey = true
+			}
+			const event = new KeyboardEvent('keydown', eventConfig)
+			excalidrawContainer.dispatchEvent(event)
+		}
+	}, [isMacPlatform])
+
 	const isMacPlatformRef = useRef(isMacPlatform)
 	useEffect(() => {
 		isMacPlatformRef.current = isMacPlatform
@@ -175,6 +195,12 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				icon={<Icon path={mdiVote} size="16px" />}
 				onSelect={() => showVotings()}>
 				{t('whiteboard', 'Votings')}
+			</MainMenu.Item>
+			<MainMenu.Item
+				icon={<Icon path={mdiMagnify} size={0.75} />}
+				onSelect={openLibrarySearch}
+				shortcut={isMacPlatform ? '⌘+F' : 'Ctrl+F'}>
+				{t('whiteboard', 'Find text on canvas')}
 			</MainMenu.Item>
 			<RecordingMenuItem
 				isRecording={recordingState.isRecording}
