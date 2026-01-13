@@ -122,31 +122,66 @@ function runRecordingRuntime(context: RecordingContext): void {
 }
 
 function runPublicShareRuntime(context: PublicShareContext): void {
-	let hasRegisteredViewer = false
+	document.body.classList.add('whiteboard-public-share')
 
-	const ensureViewerRegistered = () => {
-		if (hasRegisteredViewer) {
-			return
-		}
-		hasRegisteredViewer = true
-
-		runDefaultViewerRuntime({
-			collabBackendUrl: context.collabBackendUrl,
-			resolveSharingToken: () => context.sharingToken,
-		})
+	// On NC29/30, there's a hidden input with id="mimetype" that we can check.
+	// On NC31+, this element doesn't exist. Since this script is only loaded
+	// for whiteboard files (via BeforeTemplateRenderedListener), we can safely
+	// skip this check if the element doesn't exist.
+	const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
+	if (mimetypeElmt && mimetypeElmt.value !== 'application/vnd.excalidraw+json') {
+		return
 	}
 
-	const tryBootstrap = (): boolean => {
-		const previewHost = document.getElementById('preview') || document.getElementById('imgframe')
+	const viewerContext: ViewerContext = {
+		collabBackendUrl: context.collabBackendUrl,
+		resolveSharingToken: () => context.sharingToken,
+	}
 
-		if (!previewHost) {
-			return false
+	let hasOpenedInViewer = false
+	const openInViewer = (): void => {
+		if (hasOpenedInViewer) {
+			return
 		}
 
-		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
-		const isWhiteboard = mimetypeElmt?.value === 'application/vnd.excalidraw+json'
-		if (isPublicShare() && !isWhiteboard) {
-			return true
+		const viewerApi = getViewerApi()
+		if (!viewerApi) {
+			return
+		}
+
+		if (typeof viewerApi.openWith !== 'function' && typeof viewerApi.open !== 'function') {
+			return
+		}
+
+		hasOpenedInViewer = true
+
+		try {
+			viewerApi.setRootElement?.(null)
+		} catch {
+			// ignore
+		}
+
+		try {
+			if (typeof viewerApi.openWith === 'function') {
+				viewerApi.openWith('whiteboard', { path: '/', enableSidebar: false, canLoop: false })
+				return
+			}
+
+			viewerApi.open?.({ path: '/', enableSidebar: false, canLoop: false })
+		} catch (error) {
+			hasOpenedInViewer = false
+			logger.error('Could not open public share in viewer', { error })
+		}
+	}
+
+	const openEmbeddedFallback = (): void => {
+		if (hasOpenedInViewer) {
+			return
+		}
+
+		const previewHost = document.getElementById('preview') || document.getElementById('imgframe')
+		if (!previewHost) {
+			return
 		}
 
 		previewHost.innerHTML = ''
@@ -163,25 +198,14 @@ function runPublicShareRuntime(context: PublicShareContext): void {
 			versionSource: null,
 			fileVersion: null,
 		})
-		return true
 	}
 
 	runWhenDomReady(() => {
-		ensureViewerRegistered()
+		registerViewerHandler(createWhiteboardComponent(viewerContext), 0, openInViewer)
 
-		if (tryBootstrap()) {
-			return
-		}
-
-		const observer = new MutationObserver(() => {
-			ensureViewerRegistered()
-			if (tryBootstrap()) {
-				observer.disconnect()
-			}
-		})
-
-		observer.observe(document.body, { childList: true, subtree: true })
-		window.setTimeout(() => observer.disconnect(), 20000)
+		window.setTimeout(() => {
+			openEmbeddedFallback()
+		}, 2500)
 	})
 }
 
@@ -221,6 +245,29 @@ type ViewerHandlerRegistration = {
 
 type ViewerApi = {
 	registerHandler?: (handler: ViewerHandlerRegistration) => void
+	open?: (options?: {
+		path?: string
+		fileInfo?: unknown
+		list?: unknown[]
+		enableSidebar?: boolean
+		loadMore?: () => unknown[]
+		canLoop?: boolean
+		onPrev?: () => void
+		onNext?: () => void
+		onClose?: () => void
+	}) => void
+	openWith?: (handlerId: string, options?: {
+		path?: string
+		fileInfo?: unknown
+		list?: unknown[]
+		enableSidebar?: boolean
+		loadMore?: () => unknown[]
+		canLoop?: boolean
+		onPrev?: () => void
+		onNext?: () => void
+		onClose?: () => void
+	}) => void
+	setRootElement?: (el?: string | null) => void
 	compareFileInfo?: unknown
 }
 
@@ -302,7 +349,11 @@ const createWhiteboardComponent = (options: ViewerComponentOptions): VueComponen
 	data: (): WhiteboardComponentData => ({ root: null }),
 })
 
-const registerViewerHandler = (component: VueComponentDefinition, attempt = 0): void => {
+const registerViewerHandler = (
+	component: VueComponentDefinition,
+	attempt = 0,
+	afterRegister?: () => void,
+): void => {
 	const viewerApi = getViewerApi()
 
 	if (viewerApi?.registerHandler) {
@@ -314,6 +365,7 @@ const registerViewerHandler = (component: VueComponentDefinition, attempt = 0): 
 			theme: 'default',
 			canCompare: true,
 		})
+		afterRegister?.()
 		return
 	}
 
@@ -323,7 +375,7 @@ const registerViewerHandler = (component: VueComponentDefinition, attempt = 0): 
 	}
 
 	window.setTimeout(
-		() => registerViewerHandler(component, attempt + 1),
+		() => registerViewerHandler(component, attempt + 1, afterRegister),
 		VIEWER_REGISTRATION_DELAY_MS,
 	)
 }
