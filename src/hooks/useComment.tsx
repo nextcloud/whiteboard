@@ -5,8 +5,6 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { Root } from 'react-dom/client'
-import { Icon } from '@mdi/react'
 import { mdiCommentOutline, mdiAccount } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -14,6 +12,7 @@ import { viewportCoordsToSceneCoords, convertToExcalidrawElements } from '@nextc
 import { generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { CommentPopover } from '../components/CommentPopover'
+import { renderToolbarButton } from '../components/ToolbarButton'
 import { getRelativeTime } from '../utils/time'
 import './useComment.scss'
 
@@ -239,7 +238,6 @@ export function useComment(props?: UseCommentProps) {
 	const [isPlacingComment, setIsPlacingComment] = useState(false)
 	const [pendingThread, setPendingThread] = useState<{ id: string, x: number, y: number } | null>(null)
 
-	const buttonRootRef = useRef<Root | null>(null)
 	const dragStateRef = useRef<DragState | null>(null)
 	const popoverRenderRef = useRef<(() => void) | null>(null)
 	const onThreadClickRef = useRef(onCommentThreadClick)
@@ -777,39 +775,18 @@ export function useComment(props?: UseCommentProps) {
 		return () => document.removeEventListener('pointerdown', handleClickOutsidePopover)
 	}, [activeCommentThreadId, onCommentThreadClick, cleanupEmptyThreads, pendingThread])
 
-	const renderCommentButton = useCallback(() => (
-		<button
-			className={`dropdown-menu-button comment-trigger ${isPlacingComment ? 'active' : ''}`}
-			aria-label="Add comment"
-			onClick={() => {
+	const renderComment = useCallback(() => {
+		renderToolbarButton({
+			class: 'comment-container',
+			buttonClass: 'comment-trigger',
+			icon: mdiCommentOutline,
+			label: 'Add comment',
+			onClick: () => {
 				setIsPlacingComment(true)
-				if (props?.onOpenSidebar) {
-					props.onOpenSidebar()
-				}
-			}}
-			title="Add comment"
-		>
-			<Icon path={mdiCommentOutline} size={1} />
-		</button>
-	), [isPlacingComment, props])
-
-	useEffect(() => {
-		if (!excalidrawAPI || buttonRootRef.current) return
-
-		const extraToolsButton = Array.from(
-			document.getElementsByClassName('App-toolbar__extra-tools-trigger'),
-		).find((el: Element) => !el.classList.contains('comment-trigger'))
-
-		if (!extraToolsButton) return
-
-		const buttonContainer = document.createElement('label')
-		buttonContainer.classList.add('ToolIcon', 'Shape', 'comment-container')
-		extraToolsButton.parentNode?.insertBefore(buttonContainer, extraToolsButton.previousSibling)
-
-		const root = createRoot(buttonContainer)
-		root.render(renderCommentButton())
-		buttonRootRef.current = root
-	}, [excalidrawAPI, renderCommentButton])
+				props?.onOpenSidebar?.()
+			},
+		})
+	}, [props])
 
 	const panToThread = useCallback((threadId: string) => {
 		if (!excalidrawAPI) return
@@ -836,7 +813,7 @@ export function useComment(props?: UseCommentProps) {
 
 	return {
 		commentThreads,
-		renderComment: renderCommentButton,
+		renderComment,
 		panToThread,
 		deleteThread,
 	}
