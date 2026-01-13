@@ -129,17 +129,48 @@
 	gap: 8px;
 }
 
+.timer__time-input-wrapper {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.timer__time-input-wrapper::after {
+	content: attr(data-label);
+	position: absolute;
+	top: -6px;
+	inset-inline-start: 50%;
+	transform: translateX(-50%);
+	padding: 0 2px;
+	font-size: 9px;
+	line-height: 1;
+	font-weight: 600;
+	color: var(--color-text-lighter);
+	background: transparent;
+	text-shadow: 0 0 2px var(--color-background-hover);
+	pointer-events: none;
+}
+
 .timer__time-input {
 	width: 54px;
 	padding: 6px 4px;
 	text-align: center;
 	font-size: 24px;
 	font-weight: 700;
+	appearance: textfield;
+	-moz-appearance: textfield;
 	border-radius: var(--border-radius);
 	border: 2px solid var(--color-border);
 	background: var(--color-main-background);
 	color: var(--color-main-text);
 	transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.timer__time-input::-webkit-outer-spin-button,
+.timer__time-input::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
 }
 
 .timer__time-input:focus {
@@ -196,16 +227,18 @@
 	border: 1px solid var(--color-border);
 	background: var(--color-background-hover);
 	border-radius: 12px;
-	padding: 8px 6px;
+	padding: 6px 6px;
 	cursor: pointer;
 	transition: background-color 0.2s ease, border-color 0.2s ease;
 	font-weight: 700;
+	font-size: 12px;
 	text-align: center;
 	white-space: nowrap;
-	min-height: 40px;
+	min-height: 36px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	min-width: 0;
 }
 
 .timer__chip:hover:enabled {
@@ -232,28 +265,34 @@
 .timer__grid {
 	display: grid;
 	gap: 6px;
+	width: 100%;
 }
 
 .timer__grid--primary {
-	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
 }
 
 .timer__grid--presets {
-	grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
 }
 
 .timer__button {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: 8px 10px;
+	gap: 4px;
+	padding: 6px 8px;
 	border-radius: var(--border-radius);
 	border: 1px solid var(--color-border);
 	background: var(--color-background-hover);
 	cursor: pointer;
 	transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-	min-height: 40px;
+	min-height: 36px;
 	font-weight: 700;
+	font-size: 12px;
+	min-width: 0;
+	white-space: nowrap;
 }
 
 .timer__button--start {
@@ -274,7 +313,7 @@
 }
 
 .timer__button-label {
-	font-size: 13px;
+	font-size: 12px;
 }
 
 .timer__button:hover:enabled {
