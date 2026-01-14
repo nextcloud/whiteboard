@@ -254,7 +254,7 @@ export const TimerOverlay = memo(function TimerOverlay({ timer }: TimerOverlayPr
 										onClick={handleStart}
 										disabled={!canControl || totalInputMs <= 0}>
 										<Icon path={mdiPlay} size={0.8} />
-										{t('whiteboard', 'Start')}
+										<span className="timer__button-label">{t('whiteboard', 'Start')}</span>
 									</button>
 									<button
 										className="timer__button timer__button--ghost timer__button--block"
@@ -273,19 +273,21 @@ export const TimerOverlay = memo(function TimerOverlay({ timer }: TimerOverlayPr
 										onClick={handlePauseResume}
 										disabled={!canControl}>
 										<Icon path={isRunning ? mdiPause : mdiPlay} size={0.8} />
-										{isRunning ? t('whiteboard', 'Pause') : t('whiteboard', 'Resume')}
+										<span className="timer__button-label">{isRunning ? t('whiteboard', 'Pause') : t('whiteboard', 'Resume')}</span>
 									</button>
 									<button
 										className="timer__button timer__button--ghost timer__button--block"
 										disabled={!canControl}
 										onClick={() => handleExtend(1)}>
-										<Icon path={mdiPlus} size={0.75} /> {t('whiteboard', 'Add 1 min')}
+										<Icon path={mdiPlus} size={0.75} />
+										<span className="timer__button-label">{t('whiteboard', 'Add 1 min')}</span>
 									</button>
 									<button
 										className="timer__button timer__button--ghost timer__button--block"
 										disabled={!canControl}
 										onClick={() => handleExtend(5)}>
-										<Icon path={mdiPlus} size={0.75} /> {t('whiteboard', 'Add 5 min')}
+										<Icon path={mdiPlus} size={0.75} />
+										<span className="timer__button-label">{t('whiteboard', 'Add 5 min')}</span>
 									</button>
 									<button
 										className="timer__button timer__button--ghost timer__button--block"
