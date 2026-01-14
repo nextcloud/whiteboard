@@ -269,13 +269,11 @@ test('public share for non-whiteboard does not boot whiteboard runtime', async (
 		}
 		return {
 			fileId,
-			hasWhiteboardClass: document.body.classList.contains('whiteboard-public-share'),
 			hasCanvas: Boolean(document.querySelector('.excalidraw__canvas')),
 		}
 	})
 
 	expect(state.fileId).toBeFalsy()
-	expect(state.hasWhiteboardClass).toBe(false)
 	expect(state.hasCanvas).toBe(false)
 
 	await shareContext.close()

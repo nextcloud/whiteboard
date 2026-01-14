@@ -127,20 +127,6 @@ function runRecordingRuntime(context: RecordingContext): void {
 }
 
 function runPublicShareRuntime(context: PublicShareContext): void {
-	// LoadViewer triggers whiteboard-main on all public shares; only continue if
-	// this share was explicitly marked as a whiteboard file by the backend.
-	if (!context.fileId) {
-		return
-	}
-
-	// On NC29/30, there's a hidden input with id="mimetype" that we can check.
-	// On NC31+, this element doesn't exist, so we rely on the backend-provided
-	// whiteboard file id check above.
-	const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
-	if (mimetypeElmt && mimetypeElmt.value !== 'application/vnd.excalidraw+json') {
-		return
-	}
-
 	document.body.classList.add('whiteboard-public-share')
 
 	const viewerContext: ViewerContext = {
@@ -150,6 +136,22 @@ function runPublicShareRuntime(context: PublicShareContext): void {
 
 	let hasOpenedInViewer = false
 	const openInViewer = (): void => {
+		// LoadViewer triggers whiteboard-main on all public shares; only continue if
+		// this share was explicitly marked as a whiteboard file by the backend.
+		if (!context.fileId) {
+			hasOpenedInViewer = true
+			return
+		}
+
+		// On NC29/30, there's a hidden input with id="mimetype" that we can check.
+		// On NC31+, this element doesn't exist, so we rely on the backend-provided
+		// whiteboard file id check above.
+		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
+		if (mimetypeElmt && mimetypeElmt.value !== 'application/vnd.excalidraw+json') {
+			hasOpenedInViewer = true
+			return
+		}
+
 		if (hasOpenedInViewer) {
 			return
 		}
