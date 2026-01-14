@@ -15,6 +15,8 @@ OC.L10N.register(
     "Unknown" : "Tidak diketahui",
     "Paused" : "Dihentikan",
     "Finished" : "Selesai",
+    "Minutes" : "Menit",
+    "min" : "min",
     "Start" : "Mulai",
     "Reset" : "Setel ulang",
     "Pause" : "Jeda",

@@ -20,6 +20,8 @@ OC.L10N.register(
     "Running" : "Skriešana",
     "Paused" : "Apturēts",
     "Finished" : "Pabeigts",
+    "Minutes" : "Minūtes",
+    "min" : "min",
     "Start" : "Sākums",
     "Reset" : "Atiestatīt",
     "Pause" : "Pauzēt",

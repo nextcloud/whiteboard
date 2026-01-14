@@ -10,6 +10,7 @@ OC.L10N.register(
     "Unknown" : "Dianv",
     "Running" : "O redek",
     "Finished" : "Achuet",
+    "min" : "mun",
     "Pause" : "Ehanañ",
     "Resume" : "Kendec'hel",
     "Status" : "Statud",

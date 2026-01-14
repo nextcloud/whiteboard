@@ -15,6 +15,8 @@ OC.L10N.register(
     "Unknown" : "ไม่ทราบ",
     "Paused" : "หยุดชั่วคราว",
     "Finished" : "เสร็จสิ้น",
+    "Minutes" : "นาที",
+    "min" : "นาที",
     "Reset" : "รีเซ็ต",
     "Pause" : "หยุดชั่วคราว",
     "Status" : "สถานะ",

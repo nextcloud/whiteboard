@@ -30,6 +30,8 @@ OC.L10N.register(
     "Running" : "Futás",
     "Paused" : "Szüneteltetve",
     "Finished" : "Kész",
+    "Minutes" : "Perc",
+    "min" : " p",
     "Start" : "Kezdés",
     "Reset" : "Alaphelyzetbe állítás",
     "Pause" : "Szünet",

@@ -22,6 +22,8 @@ OC.L10N.register(
     "Running" : "ריצה",
     "Paused" : "מושהה",
     "Finished" : "הסתיים",
+    "Minutes" : "דקות",
+    "min" : "דקות",
     "Start" : "התחלה",
     "Reset" : "איפוס",
     "Pause" : "השהה",

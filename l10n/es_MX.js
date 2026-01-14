@@ -22,6 +22,8 @@ OC.L10N.register(
     "Running" : "Correr",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
+    "Minutes" : "Minutos",
+    "min" : "min",
     "Start" : "Inicio",
     "Reset" : "Reiniciar",
     "Pause" : "Pausar",

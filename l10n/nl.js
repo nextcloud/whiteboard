@@ -29,6 +29,8 @@ OC.L10N.register(
     "Running" : "Hardlopen",
     "Paused" : "Gepauzeerd",
     "Finished" : "Afgerond",
+    "Minutes" : "Minuten",
+    "min" : "min",
     "Start" : "Start",
     "Reset" : "Herstellen",
     "Pause" : "Pauze",

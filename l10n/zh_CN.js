@@ -35,6 +35,8 @@ OC.L10N.register(
     "Running" : "运行中",
     "Paused" : "已暂停",
     "Finished" : "已完成",
+    "Minutes" : "分钟",
+    "min" : "分钟",
     "Start" : "起点",
     "Reset" : "重置",
     "Pause" : "暂停",

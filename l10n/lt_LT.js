@@ -30,6 +30,8 @@ OC.L10N.register(
     "Running" : "Bėgimas",
     "Paused" : "Pristabdyti",
     "Finished" : "Baigta",
+    "Minutes" : "Minutės",
+    "min" : "min.",
     "Start" : "Pradėti",
     "Reset" : "Atstatyti",
     "Pause" : "Pristabdyti",

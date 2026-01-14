@@ -11,6 +11,8 @@ OC.L10N.register(
     "Send" : "Schécken",
     "Unknown" : "Onbekannt",
     "Paused" : "Gepaust",
+    "Minutes" : "Minutten",
+    "min" : "Minutt",
     "Reset" : "Zeréck setzen",
     "Pause" : "Paus"
 },

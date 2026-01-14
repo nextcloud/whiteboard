@@ -39,6 +39,8 @@ OC.L10N.register(
     "Unknown" : "Haijulikani",
     "Running" : "Inafanya kazi",
     "Finished" : "Imemalizika",
+    "Seconds" : "Sekunde",
+    "min" : "dakika",
     "Start" : "Anza",
     "Reset" : "Pangilia upya",
     "Pause" : "Sitisha",

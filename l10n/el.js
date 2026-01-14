@@ -47,6 +47,8 @@ OC.L10N.register(
     "Running" : "Τρέξιμο",
     "Paused" : "Σε παύση",
     "Finished" : "Ολοκληρώθηκε",
+    "Seconds" : "Δευτερόλεπτα",
+    "min" : "λ",
     "Start" : "Έναρξη",
     "Reset" : "Επαναφορά",
     "Pause" : "Παύση",

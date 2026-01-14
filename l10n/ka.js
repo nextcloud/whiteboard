@@ -19,6 +19,7 @@ OC.L10N.register(
     "Unknown" : "Unknown",
     "Running" : "Running",
     "Finished" : "Finished",
+    "min" : "min",
     "Start" : "Start",
     "Reset" : "Reset",
     "Status" : "Status",

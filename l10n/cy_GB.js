@@ -11,6 +11,7 @@ OC.L10N.register(
     "Connecting" : "Yn cysylltu",
     "Unknown" : "Anhysbys",
     "Running" : "Rhedeg",
+    "min" : "mun",
     "Pause" : "Seibio",
     "Status" : "Statws",
     "Open" : "Ar Agor"

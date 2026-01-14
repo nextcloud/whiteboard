@@ -32,6 +32,8 @@ OC.L10N.register(
     "Running" : "Бег",
     "Paused" : "Приостановленный",
     "Finished" : "Завершено",
+    "Minutes" : "Минуты",
+    "min" : "мин",
     "Start" : "Начало",
     "Reset" : "Сбросить",
     "Pause" : "Пауза",

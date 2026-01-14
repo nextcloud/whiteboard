@@ -13,6 +13,8 @@ OC.L10N.register(
     "Connecting" : "Connectente",
     "Unknown" : "Incognite",
     "Finished" : "Finite",
+    "Minutes" : "Minutas",
+    "min" : "minutas",
     "Start" : "Initio",
     "Reset" : "Re-fixar",
     "Pause" : "Pausar",

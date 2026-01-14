@@ -94,6 +94,8 @@ OC.L10N.register(
     "Running" : "ランニング",
     "Paused" : "一時停止",
     "Finished" : "完了",
+    "Minutes" : "分",
+    "min" : "分",
     "Start" : "開始する",
     "Reset" : "リセット",
     "Pause" : "一時停止",

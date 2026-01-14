@@ -33,6 +33,8 @@ OC.L10N.register(
     "Running" : "Juoksu",
     "Paused" : "Keskeytetty",
     "Finished" : "Valmistunut",
+    "Minutes" : "Minuutit",
+    "min" : "min",
     "Start" : "Alku",
     "Reset" : "Palauta",
     "Pause" : "Keskeytä",

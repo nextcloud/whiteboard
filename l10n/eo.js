@@ -15,6 +15,8 @@ OC.L10N.register(
     "Unknown" : "Nekonata",
     "Running" : "Kuras",
     "Finished" : "Finita",
+    "Minutes" : "Minutoj",
+    "min" : "min",
     "Start" : "Komenco",
     "Reset" : "Restarigi",
     "Pause" : "Paŭzigi",

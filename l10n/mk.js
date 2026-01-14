@@ -22,6 +22,8 @@ OC.L10N.register(
     "Running" : "Трчање",
     "Paused" : "Пузирано",
     "Finished" : "Завршено",
+    "Minutes" : "Минути",
+    "min" : "мин",
     "Reset" : "Ресетирање",
     "Pause" : "Пауза",
     "Resume" : "Продолжи",

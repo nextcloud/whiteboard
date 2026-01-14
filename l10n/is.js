@@ -26,6 +26,8 @@ OC.L10N.register(
     "Running" : "Hlaup",
     "Paused" : "Í bið",
     "Finished" : "Lokið",
+    "Minutes" : "mínútur",
+    "min" : "mín",
     "Start" : "Byrjun",
     "Reset" : "Endurstilla",
     "Pause" : "Í bið",

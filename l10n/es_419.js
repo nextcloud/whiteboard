@@ -15,6 +15,8 @@ OC.L10N.register(
     "Unknown" : "Desconocido",
     "Paused" : "En pausa",
     "Finished" : "Terminado",
+    "Minutes" : "Minutos",
+    "min" : "min",
     "Start" : "Inicio",
     "Reset" : "Restaurar",
     "Pause" : "Pausar",

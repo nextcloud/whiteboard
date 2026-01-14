@@ -19,6 +19,7 @@ OC.L10N.register(
     "Running" : "Trčanje",
     "Paused" : "Pauzirano",
     "Finished" : "Završeno",
+    "min" : "min",
     "Reset" : "Resetiraj",
     "Pause" : "Pauza",
     "Resume" : "Nastavi",

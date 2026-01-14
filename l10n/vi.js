@@ -18,6 +18,8 @@ OC.L10N.register(
     "Unknown" : "Không xác định",
     "Running" : "Chạy bộ",
     "Finished" : "Hoàn thành",
+    "Minutes" : "Phút",
+    "min" : "phút",
     "Start" : "Bắt đầu",
     "Reset" : "Đặt lại",
     "Pause" : "Tạm dừng",

@@ -27,6 +27,8 @@ OC.L10N.register(
     "Running" : "V teku",
     "Paused" : "V premoru",
     "Finished" : "Končano",
+    "Minutes" : "Minute",
+    "min" : "min",
     "Start" : "Začetek",
     "Reset" : "Ponastavi",
     "Pause" : "Premor",

@@ -27,6 +27,8 @@ OC.L10N.register(
     "Running" : "در حال دویدن",
     "Paused" : "متوقف شد",
     "Finished" : "تمام شد",
+    "Minutes" : "دقایق",
+    "min" : "دقیقه",
     "Start" : "شروع",
     "Reset" : "بازنشانی",
     "Pause" : "توقف کردن",

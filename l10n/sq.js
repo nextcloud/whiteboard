@@ -15,6 +15,8 @@ OC.L10N.register(
     "Unknown" : "I panjohur",
     "Paused" : "Pushuar",
     "Finished" : "Përfunduar",
+    "Minutes" : "Minutat",
+    "min" : "min",
     "Start" : "Fillo",
     "Reset" : "Rivendos",
     "Pause" : "Pauzë",

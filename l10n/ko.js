@@ -32,6 +32,8 @@ OC.L10N.register(
     "Running" : "달리기",
     "Paused" : "일시 정지",
     "Finished" : "완료됨",
+    "Seconds" : "초",
+    "min" : "분",
     "Start" : "시작",
     "Reset" : "초기화",
     "Pause" : "일시 정지",

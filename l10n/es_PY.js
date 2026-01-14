@@ -14,6 +14,8 @@ OC.L10N.register(
     "Connecting" : "Conectando",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
+    "Minutes" : "Minutos",
+    "min" : "min",
     "Reset" : "Restablecer",
     "Pause" : "Pausar",
     "Open" : "Abrir",

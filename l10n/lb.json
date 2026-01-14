@@ -9,6 +9,8 @@
     "Send" : "Schécken",
     "Unknown" : "Onbekannt",
     "Paused" : "Gepaust",
+    "Minutes" : "Minutten",
+    "min" : "Minutt",
     "Reset" : "Zeréck setzen",
     "Pause" : "Paus"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"

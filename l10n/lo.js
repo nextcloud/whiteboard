@@ -25,6 +25,7 @@ OC.L10N.register(
     "Stop" : "Stop",
     "Running" : "ກຳລັງເຮັດວຽກ",
     "Finished" : "ສຳເລັດ",
+    "min" : "ນທ",
     "Start" : "ເລີ່ມ",
     "Reset" : "ຕັ້ງຄ່າໃໝ່",
     "Pause" : "Pause",

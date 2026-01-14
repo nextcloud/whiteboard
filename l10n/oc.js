@@ -18,6 +18,8 @@ OC.L10N.register(
     "Online" : "En linha",
     "Unknown" : "Desconegut",
     "Paused" : "En pausa",
+    "Minutes" : "Minutas",
+    "min" : "min",
     "Reset" : "Reïnicializar",
     "Pause" : "Pausa",
     "Status" : "Estat",

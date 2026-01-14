@@ -28,6 +28,8 @@ OC.L10N.register(
     "Running" : "Córrer",
     "Paused" : "S'ha pausat",
     "Finished" : "Acabat",
+    "Minutes" : "Minuts",
+    "min" : "minuts",
     "Start" : "Inici",
     "Reset" : "Reinicialitza",
     "Pause" : "Posa en pausa",

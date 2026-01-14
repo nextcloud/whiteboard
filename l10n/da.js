@@ -36,6 +36,8 @@ OC.L10N.register(
     "Running" : "Løber",
     "Paused" : "Sat på pause",
     "Finished" : "Færdiggjort",
+    "Minutes" : "Minutter",
+    "min" : "min.",
     "Reset" : "Nulstil",
     "Pause" : "Pause",
     "Resume" : "Fortsæt",

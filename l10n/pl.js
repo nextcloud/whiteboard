@@ -98,6 +98,8 @@ OC.L10N.register(
     "Running" : "Uruchomione",
     "Paused" : "Zatrzymano",
     "Finished" : "Ukończone",
+    "Minutes" : "Minuty",
+    "min" : "min",
     "Start" : "Start",
     "Reset" : "Resetuj",
     "Pause" : "Wstrzymaj",

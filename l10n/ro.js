@@ -21,6 +21,7 @@ OC.L10N.register(
     "Running" : "Alergat",
     "Paused" : "oprit",
     "Finished" : "Finalizat",
+    "min" : "min",
     "Reset" : "Resetare",
     "Pause" : "Pauză",
     "Resume" : "Reia",
