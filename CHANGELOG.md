@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.2
+
+### Fixed
+
+- fix: support table editing in public shares and resolve stale closures @silverkszlo [#941](https://github.com/nextcloud/whiteboard/pull/941)
+- fix: timer text positioning @juliusknorr [#939](https://github.com/nextcloud/whiteboard/pull/939)
+- fix: public share whiteboard @hweihwang [#936](https://github.com/nextcloud/whiteboard/pull/936)
+- fix: embed and follow e2e regressions @hweihwang [#937](https://github.com/nextcloud/whiteboard/pull/937)
+
 ## 1.5.1
 
 ### Added

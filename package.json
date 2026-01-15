@@ -1,6 +1,6 @@
 {
   "name": "whiteboard",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
