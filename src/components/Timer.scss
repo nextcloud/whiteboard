@@ -17,7 +17,7 @@
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 	padding: 10px;
 	min-width: 340px;
-	max-width: 400px;
+	max-width: 440px;
 	color: var(--color-main-text);
 }
 
@@ -251,16 +251,6 @@
 	cursor: not-allowed;
 }
 
-.timer__primary-actions {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex-wrap: wrap;
-}
-
-.timer__primary-actions--stackable {
-	align-items: stretch;
-}
 
 .timer__grid {
 	display: grid;
@@ -269,18 +259,17 @@
 }
 
 .timer__grid--primary {
-	grid-auto-flow: column;
-	grid-auto-columns: minmax(0, 1fr);
+	grid-template-columns: repeat(2, 1fr);
 }
 
 .timer__grid--presets {
-	grid-auto-flow: column;
-	grid-auto-columns: minmax(0, 1fr);
+	grid-template-columns: repeat(2, 1fr);
 }
 
 .timer__button {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 4px;
 	padding: 6px 8px;
 	border-radius: var(--border-radius);
@@ -293,6 +282,8 @@
 	font-size: 12px;
 	min-width: 0;
 	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 
 .timer__button--start {
@@ -303,17 +294,8 @@
 	justify-content: center;
 }
 
-.timer__button--icon {
-	min-width: 44px;
-	justify-content: center;
-}
-
 .timer__button--ghost {
 	background: var(--color-background-hover);
-}
-
-.timer__button-label {
-	font-size: 12px;
 }
 
 .timer__button:hover:enabled {
@@ -335,11 +317,10 @@
 	justify-content: center;
 }
 
-.timer__extend-buttons {
-	display: flex;
-	gap: 8px;
-	flex: 1;
-	flex-wrap: wrap;
+.timer__button-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	min-width: 0;
 }
 
