@@ -25,11 +25,6 @@ export function useTableInsertion() {
 			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
 		})),
 	)
-	const { isReadOnly } = useWhiteboardConfigStore(
-		useShallow((state) => ({
-			isReadOnly: state.isReadOnly,
-		})),
-	)
 
 	// Track last click for double-click detection
 	const lastClickRef = useRef<{ elementId: string; timestamp: number } | null>(null)
@@ -71,12 +66,16 @@ export function useTableInsertion() {
 	 * @param tableElement - The table image element to edit
 	 */
 	const editTable = useCallback(async (tableElement: ExcalidrawImageElement) => {
-		if (!excalidrawAPI) {
+		// Get fresh values from stores to avoid stale closures
+		const currentAPI = useExcalidrawStore.getState().excalidrawAPI as ExcalidrawImperativeAPI | null
+		const currentReadOnly = useWhiteboardConfigStore.getState().isReadOnly
+
+		if (!currentAPI) {
 			console.error('Excalidraw API is not available')
 			return
 		}
 
-		if (isReadOnly) {
+		if (currentReadOnly) {
 			console.error('Table editing is disabled in read-only mode')
 			return
 		}
@@ -92,17 +91,17 @@ export function useTableInsertion() {
 		// Acquire a collaborative lock to prevent simultaneous editing by multiple users
 		// Lock is stored in element.customData.tableLock with user info and timestamp
 		// If another user has a non-expired lock, shows an error and returns false
-		const lockAcquired = tryAcquireLock(excalidrawAPI, tableElement)
+		const lockAcquired = await tryAcquireLock(currentAPI, tableElement)
 		if (!lockAcquired) {
 			return
 		}
 
 		try {
 			const tableData = await openTableEditor(initialHtml)
-			const newImageElement = await convertHtmlTableToImage(excalidrawAPI, tableData.html)
+			const newImageElement = await convertHtmlTableToImage(currentAPI, tableData.html)
 
 			// Replace the existing element with the updated one while preserving position
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
+			const elements = currentAPI.getSceneElementsIncludingDeleted().slice()
 			const elementIndex = elements.findIndex(el => el.id === tableElement.id)
 			if (elementIndex !== -1) {
 				const currentElement = elements[elementIndex]
@@ -128,52 +127,56 @@ export function useTableInsertion() {
 
 				elements[elementIndex] = updatedElement
 				// Trigger Excalidraw's onChange which handles all sync (websocket, server API, local storage)
-				excalidrawAPI.updateScene({ elements })
+				currentAPI.updateScene({ elements })
 			}
 		} catch (error) {
 			// Release lock on cancel or failure
-			releaseLock(excalidrawAPI, tableElement.id)
+			releaseLock(currentAPI, tableElement.id)
 
 			if (error instanceof Error && error.message !== 'Table editor was cancelled') {
 				console.error('Failed to edit table:', error)
 			}
 		}
-	}, [excalidrawAPI, openTableEditor, isReadOnly])
+	}, [openTableEditor])
 
 	/**
 	 * Inserts a new table into the whiteboard at the viewport center.
 	 */
 	const insertTable = useCallback(async () => {
-		if (!excalidrawAPI) {
+		// Get fresh values from stores to avoid stale closures
+		const currentAPI = useExcalidrawStore.getState().excalidrawAPI as ExcalidrawImperativeAPI | null
+		const currentReadOnly = useWhiteboardConfigStore.getState().isReadOnly
+
+		if (!currentAPI) {
 			console.error('Excalidraw API is not available')
 			return
 		}
 
-		if (isReadOnly) {
+		if (currentReadOnly) {
 			console.error('Table insertion is disabled in read-only mode')
 			return
 		}
 
 		try {
 			const tableData = await openTableEditor()
-			const imageElement = await convertHtmlTableToImage(excalidrawAPI, tableData.html)
+			const imageElement = await convertHtmlTableToImage(currentAPI, tableData.html)
 
 			// Add the image element to the scene at the viewport center
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
+			const elements = currentAPI.getSceneElementsIncludingDeleted().slice()
 			const movedElements = moveElementsToViewport(
 				[imageElement],
-				viewportCoordsToSceneCoords(getViewportCenterPoint(), excalidrawAPI.getAppState()),
+				viewportCoordsToSceneCoords(getViewportCenterPoint(), currentAPI.getAppState()),
 			)
 			elements.push(...movedElements)
 
 			// Add to scene - this triggers onChange which syncs to other users
-			excalidrawAPI.updateScene({ elements })
+			currentAPI.updateScene({ elements })
 		} catch (error) {
 			if (error instanceof Error && error.message !== 'Table editor was cancelled') {
 				console.error('Failed to insert table:', error)
 			}
 		}
-	}, [excalidrawAPI, openTableEditor, isReadOnly])
+	}, [openTableEditor])
 
 	// Set up pointer down handler to detect double-clicks on table elements for editing
 	useEffect(() => {

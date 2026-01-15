@@ -146,8 +146,8 @@ describe('tableLocking utilities', () => {
 			vi.clearAllMocks()
 		})
 
-		it('should acquire lock when no lock exists', () => {
-			const result = tryAcquireLock(mockAPI, mockElement)
+		it('should acquire lock when no lock exists', async () => {
+			const result = await tryAcquireLock(mockAPI, mockElement)
 
 			expect(result).toBe(true)
 			expect(mockAPI.updateScene).toHaveBeenCalled()
@@ -157,7 +157,7 @@ describe('tableLocking utilities', () => {
 			expect(updateCall.elements[0].customData.tableLock).toHaveProperty('lockedAt')
 		})
 
-		it('should acquire lock when existing lock is expired', () => {
+		it('should acquire lock when existing lock is expired', async () => {
 			const sixMinutesAgo = Date.now() - (6 * 60 * 1000)
 			mockElement.customData.tableLock = {
 				uid: 'other-user',
@@ -165,43 +165,43 @@ describe('tableLocking utilities', () => {
 				lockedAt: sixMinutesAgo,
 			}
 
-			const result = tryAcquireLock(mockAPI, mockElement)
+			const result = await tryAcquireLock(mockAPI, mockElement)
 
 			expect(result).toBe(true)
 			expect(mockAPI.updateScene).toHaveBeenCalled()
 		})
 
-		it('should reacquire lock when same user already has it', () => {
+		it('should reacquire lock when same user already has it', async () => {
 			mockElement.customData.tableLock = {
 				uid: 'test-user',
 				displayName: 'Test User',
 				lockedAt: Date.now(),
 			}
 
-			const result = tryAcquireLock(mockAPI, mockElement)
+			const result = await tryAcquireLock(mockAPI, mockElement)
 
 			expect(result).toBe(true)
 			expect(mockAPI.updateScene).toHaveBeenCalled()
 		})
 
-		it('should fail to acquire lock when another user has valid lock', () => {
+		it('should fail to acquire lock when another user has valid lock', async () => {
 			mockElement.customData.tableLock = {
 				uid: 'other-user',
 				displayName: 'Other User',
 				lockedAt: Date.now(),
 			}
 
-			const result = tryAcquireLock(mockAPI, mockElement)
+			const result = await tryAcquireLock(mockAPI, mockElement)
 
 			expect(result).toBe(false)
 			expect(dialogs.showError).toHaveBeenCalledWith('This table is currently being edited by Other User')
 			expect(mockAPI.updateScene).not.toHaveBeenCalled()
 		})
 
-		it('should return false when user is not available', () => {
+		it('should return false when user is not available', async () => {
 			vi.mocked(auth.getCurrentUser).mockReturnValueOnce(null)
 
-			const result = tryAcquireLock(mockAPI, mockElement)
+			const result = await tryAcquireLock(mockAPI, mockElement)
 
 			expect(result).toBe(false)
 			expect(mockAPI.updateScene).not.toHaveBeenCalled()
