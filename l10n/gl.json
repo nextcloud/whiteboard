@@ -151,6 +151,8 @@
     "Open" : "Aberto",
     "Closed" : "Pechado",
     "Voted" : "Votado",
+    "Please share the file with users; otherwise, they will not be able to see it." : "Comparta o ficheiro cos usuarios; se non, non poderán velo.",
+    "Please share the board with users; otherwise, they will not be able to see it." : "Comparta o taboleiro cos usuarios; se non, non poderán velo.",
     "Timer finished" : "O temporizador rematou",
     "Unable to update timer" : "Non é posíbel actualizar o temporizador",
     "Missing whiteboard identifier" : "Falta o identificador do encerado",

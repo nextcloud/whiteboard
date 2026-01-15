@@ -151,6 +151,8 @@
     "Open" : "開啟",
     "Closed" : " 關閉",
     "Voted" : "已投票",
+    "Please share the file with users; otherwise, they will not be able to see it." : "請將檔案分享給使用者；否則他們將無法檢視該檔案。",
+    "Please share the board with users; otherwise, they will not be able to see it." : "請將白板分享給使用者；否則他們將無法檢視該檔案。",
     "Timer finished" : "計時器已結束",
     "Unable to update timer" : "無法更新計時器",
     "Missing whiteboard identifier" : "缺少白板識別字串",

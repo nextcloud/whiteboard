@@ -10,6 +10,7 @@ OC.L10N.register(
     "Add a comment" : "Komentariya əlavə et",
     "Send" : "Göndər",
     "Finished" : "Bitdi",
+    "Minutes" : "Dəqiqələr",
     "Reset" : "Sıfırla",
     "Pause" : "Ara ver",
     "Status" : "Status",

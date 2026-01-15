@@ -153,6 +153,8 @@ OC.L10N.register(
     "Open" : "Offen",
     "Closed" : "Geschlossen",
     "Voted" : "Abgestimmt",
+    "Please share the file with users; otherwise, they will not be able to see it." : "Bitte die Datei mit den Benutzern teilen; andernfalls können diese sie nicht sehen.",
+    "Please share the board with users; otherwise, they will not be able to see it." : "Bitte das Board mit den Benutzern teilen; andernfalls können diese es nicht sehen.",
     "Timer finished" : "Timer beendet",
     "Unable to update timer" : "Timer kann nicht aktualisiert werden",
     "Missing whiteboard identifier" : "Fehlende Whiteboard-Kennung",
