@@ -14,10 +14,17 @@ import {
 	waitForCanvas,
 } from '../support/utils'
 
-async function createPublicShareLink(page: Page, baseName: string): Promise<string> {
+async function createPublicShareLink(
+	page: Page,
+	baseName: string,
+	{ allowWhiteboardFallback = true }: { allowWhiteboardFallback?: boolean } = {},
+): Promise<string> {
 	const requestToken = await page.evaluate(() => (window as any).OC?.requestToken ?? null)
 
 	const candidates = (() => {
+		if (!allowWhiteboardFallback) {
+			return [baseName]
+		}
 		const lower = baseName.toLowerCase()
 		if (lower.endsWith('.whiteboard') || lower.endsWith('.excalidraw')) {
 			return [baseName]
@@ -100,6 +107,37 @@ async function createPublicShareLink(page: Page, baseName: string): Promise<stri
 		throw new Error(`Failed to create public share link for ${baseName}`)
 	}
 	return clipboardText
+}
+
+async function uploadTextFile(page: Page, name: string, content: string) {
+	const origin = new URL(await page.url()).origin
+	const userResponse = await page.request.get(`${origin}/ocs/v2.php/cloud/user?format=json`, {
+		headers: { 'OCS-APIREQUEST': 'true' },
+	})
+	expect(userResponse.ok()).toBeTruthy()
+	const userPayload = await userResponse.json().catch(() => null)
+	const userId = userPayload?.ocs?.data?.id
+	if (!userId) {
+		throw new Error('Unable to resolve current user id')
+	}
+
+	const requestToken = await page.evaluate(() => (window as any).OC?.requestToken
+		|| (document.querySelector('head meta[name="requesttoken"]') as HTMLMetaElement | null)?.content
+		|| null)
+
+	const response = await page.request.fetch(
+		`${origin}/remote.php/dav/files/${encodeURIComponent(userId)}/${encodeURIComponent(name)}`,
+		{
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'text/plain',
+				...(requestToken ? { requesttoken: requestToken } : {}),
+			},
+			data: content,
+		},
+	)
+
+	expect(response.ok()).toBeTruthy()
 }
 
 test.beforeEach(async ({ page }) => {
@@ -198,6 +236,45 @@ test('public share loads viewer in read only mode', async ({ page, browser }) =>
 	if (before && after) {
 		expect(after).toBe(before)
 	}
+
+	await shareContext.close()
+})
+
+test('public share for non-whiteboard does not boot whiteboard runtime', async ({ page, browser }) => {
+	test.setTimeout(120000)
+	const fileName = `Public text ${Date.now()}.txt`
+
+	await uploadTextFile(page, fileName, `Hello ${Date.now()}`)
+	await openFilesApp(page)
+
+	const fileRow = page.getByRole('row', { name: new RegExp(fileName.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')) })
+	await expect(fileRow).toBeVisible({ timeout: 30000 })
+
+	const shareUrl = await createPublicShareLink(page, fileName, { allowWhiteboardFallback: false })
+
+	const shareContext = await browser.newContext({ storageState: undefined })
+	const sharePage = await shareContext.newPage()
+	await sharePage.goto(shareUrl)
+	await sharePage.waitForLoadState('domcontentloaded')
+
+	const state = await sharePage.evaluate(() => {
+		const load = (window as any).OCP?.InitialState?.loadState
+		let fileId: number | null = null
+		if (load) {
+			try {
+				fileId = Number(load('whiteboard', 'file_id'))
+			} catch {
+				fileId = null
+			}
+		}
+		return {
+			fileId,
+			hasCanvas: Boolean(document.querySelector('.excalidraw__canvas')),
+		}
+	})
+
+	expect(state.fileId).toBeFalsy()
+	expect(state.hasCanvas).toBe(false)
 
 	await shareContext.close()
 })
