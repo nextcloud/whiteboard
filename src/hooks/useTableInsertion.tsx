@@ -25,11 +25,6 @@ export function useTableInsertion() {
 			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
 		})),
 	)
-	const { isReadOnly } = useWhiteboardConfigStore(
-		useShallow((state) => ({
-			isReadOnly: state.isReadOnly,
-		})),
-	)
 
 	// Track last click for double-click detection
 	const lastClickRef = useRef<{ elementId: string; timestamp: number } | null>(null)
