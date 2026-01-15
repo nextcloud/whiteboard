@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.5.2
+
+### Fixed
+
+- fix: support table editing in public shares and resolve stale closures @silverkszlo [#941](https://github.com/nextcloud/whiteboard/pull/941)
+- fix: timer text positioning @juliusknorr [#939](https://github.com/nextcloud/whiteboard/pull/939)
+- fix: public share whiteboard @hweihwang [#936](https://github.com/nextcloud/whiteboard/pull/936)
+- fix: embed and follow e2e regressions @hweihwang [#937](https://github.com/nextcloud/whiteboard/pull/937)
+
+## 1.5.1
+
+### Added
+
+- Add link to search tab in main menu @silverkszlo [#891](https://github.com/nextcloud/whiteboard/pull/891)
+- Add sharing hint for embed file, board @luka-nextcloud [#929](https://github.com/nextcloud/whiteboard/pull/929)
+
+### Fixed
+
+- Libraries UI fixes @juliusknorr [#881](https://github.com/nextcloud/whiteboard/pull/881)
+- Toolbar buttons disappear on window resize @benjaminfrueh [#882](https://github.com/nextcloud/whiteboard/pull/882)
+- Version viewer regression @hweihwang [#884](https://github.com/nextcloud/whiteboard/pull/884)
+- Skip postinstall of redis-memory-server package @juliusknorr [#885](https://github.com/nextcloud/whiteboard/pull/885)
+- Hide help dialog header buttons @juliusknorr [#887](https://github.com/nextcloud/whiteboard/pull/887)
+- Use Viewer for public whiteboard shares on NC29 @hweihwang [#890](https://github.com/nextcloud/whiteboard/pull/890)
+- Offer table insertion only when createTable API is available @silverkszlo [#901](https://github.com/nextcloud/whiteboard/pull/901)
+- Fix broken table UI @silverkszlo [#902](https://github.com/nextcloud/whiteboard/pull/902)
+- Prevent wheel events in embeds propagating to parent @benjaminfrueh [#903](https://github.com/nextcloud/whiteboard/pull/903)
+- Fix timer @hweihwang [#910](https://github.com/nextcloud/whiteboard/pull/910)
+- Linked files added via smartpicker open in new tab @silverkszlo [#911](https://github.com/nextcloud/whiteboard/pull/911)
+- Follow user @hweihwang [#912](https://github.com/nextcloud/whiteboard/pull/912)
+- Incorrect key binding hint for eraser @luka-nextcloud [#914](https://github.com/nextcloud/whiteboard/pull/914)
+- Fix recording timestamp and improve recording UI controls @hweihwang [#915](https://github.com/nextcloud/whiteboard/pull/915)
+- Fix stale initial data promise causing "Loading scene" hang @hweihwang [#916](https://github.com/nextcloud/whiteboard/pull/916)
+
+### Other
+
+- Update nextcloud/ocp dependency @nextcloud-command [#869](https://github.com/nextcloud/whiteboard/pull/869) [#920](https://github.com/nextcloud/whiteboard/pull/920) [#923](https://github.com/nextcloud/whiteboard/pull/923)
+- fix(playwright): improve test stability and skip NC33 during Vue 3 migration @hweihwang [#913](https://github.com/nextcloud/whiteboard/pull/913)
+- ci: Fix viewer to use the proper branch @juliusknorr [#928](https://github.com/nextcloud/whiteboard/pull/928)
+
 ## 1.5.0
 
 ### Added
