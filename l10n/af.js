@@ -8,6 +8,7 @@ OC.L10N.register(
     "Save" : "Stoor",
     "Add a comment" : "Voeg kommentaar toe",
     "Send" : "Stuur",
+    "min" : "min",
     "Start" : "Begin",
     "Reset" : "Herstel",
     "Open" : "Open"

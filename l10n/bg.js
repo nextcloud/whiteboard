@@ -28,6 +28,8 @@ OC.L10N.register(
     "Running" : "Бягане",
     "Paused" : "На пауза",
     "Finished" : "Готово",
+    "Minutes" : "Минути ",
+    "min" : "мин",
     "Start" : "Начало",
     "Reset" : "Възстановяване",
     "Pause" : "Пауза",

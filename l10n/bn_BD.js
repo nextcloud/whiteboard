@@ -8,6 +8,7 @@ OC.L10N.register(
     "Add a comment" : "মন্তব্য দিন",
     "Send" : "পাঠাও",
     "Unknown" : "অজানা",
+    "Minutes" : "মিনিট",
     "Reset" : "পূণঃনির্ধানণ",
     "Pause" : "বিরতি"
 },
