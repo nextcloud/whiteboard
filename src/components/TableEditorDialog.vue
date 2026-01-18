@@ -28,6 +28,7 @@ export default defineComponent({
 			isLoading: true,
 			error: null,
 			currentHtml: this.initialHtml || '',
+			hasEnsuredTextStyles: false,
 		}
 	},
 	computed: {
@@ -70,6 +71,7 @@ export default defineComponent({
 				if (!contentForEditor) {
 					contentForEditor = '|  |\n| --- |\n|  |\n'
 				}
+				await this.ensureTextEditorStyles()
 				// Use the dedicated createTable function for table-only editing
 				this.editor = await window.OCA.Text.createTable({
 					el: editorContainer,
@@ -87,6 +89,49 @@ export default defineComponent({
 				console.error('Failed to initialize Text editor:', error)
 				this.error = t('whiteboard', 'Failed to load the editor: {error}', { error: error.message })
 				this.isLoading = false
+			}
+		},
+		async ensureTextEditorStyles() {
+			if (this.hasEnsuredTextStyles) {
+				return
+			}
+			this.hasEnsuredTextStyles = true
+
+			if (!window.OCA?.Text?.createEditor) {
+				return
+			}
+
+			const hasProseMirrorCss = () => {
+				return Array.from(document.styleSheets).some((sheet) => {
+					try {
+						return Array.from(sheet.cssRules).some((rule) => rule.selectorText?.includes('.ProseMirror'))
+					} catch (error) {
+						return false
+					}
+				})
+			}
+
+			if (hasProseMirrorCss()) {
+				return
+			}
+
+			const container = document.createElement('div')
+			container.setAttribute('aria-hidden', 'true')
+			container.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;'
+			document.body.appendChild(container)
+
+			try {
+				const preloader = await window.OCA.Text.createEditor({
+					el: container,
+					content: '|  |\n| --- |\n|  |\n',
+					readOnly: true,
+					autofocus: false,
+				})
+				preloader?.destroy?.()
+			} catch (error) {
+				console.warn('Failed to preload Text editor styles:', error)
+			} finally {
+				container.remove()
 			}
 		},
 
@@ -267,6 +312,114 @@ export default defineComponent({
 	:deep(.drag-handle),
 	:deep(.drag-button) {
 		display: none !important;
+	}
+
+	// Fallback styles for Text's table editor when prosemirror.scss isn't loaded
+	:deep(.ProseMirror) {
+		height: 100%;
+		position: relative;
+		word-wrap: break-word;
+		width: 100%;
+		white-space: pre-wrap;
+		-webkit-font-variant-ligatures: none;
+		font-variant-ligatures: none;
+		padding: 4px 8px 200px 14px;
+		line-height: 150%;
+		font-size: var(--default-font-size);
+		outline: none;
+		color: var(--color-main-text);
+		background-color: transparent;
+	}
+
+	:deep(.ProseMirror[contenteditable]),
+	:deep(.ProseMirror [contenteditable]) {
+		width: 100%;
+		background-color: transparent;
+		color: var(--color-main-text);
+		opacity: 1;
+		-webkit-user-select: text;
+		user-select: text;
+		font-size: var(--default-font-size);
+	}
+
+	:deep(.ProseMirror[contenteditable]:not(.collaboration-cursor__caret)),
+	:deep(.ProseMirror [contenteditable]:not(.collaboration-cursor__caret)) {
+		border: none !important;
+	}
+
+	:deep(.ProseMirror[contenteditable]:focus),
+	:deep(.ProseMirror[contenteditable]:focus-visible),
+	:deep(.ProseMirror [contenteditable]:focus),
+	:deep(.ProseMirror [contenteditable]:focus-visible) {
+		box-shadow: none !important;
+	}
+
+	:deep(.table-wrapper) {
+		width: 100%;
+	}
+
+	:deep(.ProseMirror table) {
+		border-spacing: 0;
+		width: calc(100% - 50px);
+		table-layout: auto;
+		white-space: normal;
+		margin-bottom: 1em;
+	}
+
+	:deep(.ProseMirror table td),
+	:deep(.ProseMirror table th) {
+		border: 1px solid var(--color-border);
+		border-left: 0;
+		vertical-align: top;
+		max-width: 100%;
+	}
+
+	:deep(.ProseMirror table td:first-child),
+	:deep(.ProseMirror table th:first-child) {
+		border-left: 1px solid var(--color-border);
+	}
+
+	:deep(.ProseMirror table td) {
+		padding: 0.5em 0.75em;
+		border-top: 0;
+		color: var(--color-main-text);
+	}
+
+	:deep(.ProseMirror table th) {
+		padding: 0 0 0 0.75em;
+		font-weight: normal;
+		border-bottom-color: var(--color-border-dark);
+		color: var(--color-text-maxcontrast);
+	}
+
+	:deep(.ProseMirror table th > div) {
+		display: flex;
+	}
+
+	:deep(.ProseMirror table tr) {
+		background-color: var(--color-main-background);
+	}
+
+	:deep(.ProseMirror table tr:hover),
+	:deep(.ProseMirror table tr:active),
+	:deep(.ProseMirror table tr:focus) {
+		background-color: var(--color-primary-element-light);
+	}
+
+	:deep(.ProseMirror table tr:first-child th:first-child) {
+		border-top-left-radius: var(--border-radius);
+	}
+
+	:deep(.ProseMirror table tr:first-child th:last-child) {
+		border-top-right-radius: var(--border-radius);
+	}
+
+	:deep(.ProseMirror table tr:last-child td:first-child) {
+		border-bottom-left-radius: var(--border-radius);
+	}
+
+	:deep(.ProseMirror table tr:last-child td:last-child) {
+		border-bottom-right-radius: var(--border-radius);
 	}
 }
 
