@@ -141,7 +141,8 @@ function createSvgDataUrl(element: HTMLElement): string {
 	const height = Math.ceil(bbox.height) + (padding * 2)
 
 	// Get the table HTML with all our style overrides applied
-	const tableHtml = table.outerHTML
+	let tableHtml = table.outerHTML
+	tableHtml = tableHtml.replace(/<br>/g, '<br />')
 
 	const svg = `
 		<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">

@@ -197,11 +197,20 @@ export default defineComponent({
 
 				let markdown = ''
 
+				// helper function to get cell content while preserving line breaks
+				const getCellContent = (cell) => {
+					const clone = cell.cloneNode(true)
+					const brs = clone.querySelectorAll('br')
+					brs.forEach(br => {
+						br.replaceWith(document.createTextNode('<br>'))
+					})
+					return clone.textContent.trim().replace(/\|/g, '\\|')
+				}
+
 				// Process first row as header
 				const firstRow = rows[0]
 				const headerCells = Array.from(firstRow.querySelectorAll('th, td'))
-				// Escape pipe characters in cell content for markdown
-				const headers = headerCells.map(cell => cell.textContent.trim().replace(/\|/g, '\\|'))
+				const headers = headerCells.map(cell => getCellContent(cell))
 				markdown += '| ' + headers.join(' | ') + ' |\n'
 
 				// Add separator
@@ -210,8 +219,7 @@ export default defineComponent({
 				// Process remaining rows as body
 				for (let i = 1; i < rows.length; i++) {
 					const cells = Array.from(rows[i].querySelectorAll('td, th'))
-					// Escape pipe characters in cell content for markdown
-					const values = cells.map(cell => cell.textContent.trim().replace(/\|/g, '\\|'))
+					const values = cells.map(cell => getCellContent(cell))
 					markdown += '| ' + values.join(' | ') + ' |\n'
 				}
 
