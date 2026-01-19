@@ -265,7 +265,8 @@ export default defineComponent({
 	// These aren't needed in table-only editing mode
 	:deep(.floating-buttons),
 	:deep(.drag-handle),
-	:deep(.drag-button) {
+	:deep(.drag-button),
+	:deep(.table-settings) {
 		display: none !important;
 	}
 }
