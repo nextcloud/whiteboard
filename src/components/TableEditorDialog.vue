@@ -215,9 +215,9 @@ export default defineComponent({
 				markdown += '| ' + headers.join(' | ') + ' |\n'
 
 				// Add separator with alignment markers
-				// Read text-align from header cells (style or textalign attribute) to preserve alignment
+				// Read text-align from header cells (style) to preserve alignment
 				const separators = headerCells.map(cell => {
-					const align = cell.style.textAlign || cell.getAttribute('textalign')
+					const align = cell.style.textAlign
 					if (align === 'center') return ':---:'
 					if (align === 'right') return '---:'
 					return '---' // left or default

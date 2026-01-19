@@ -80,15 +80,15 @@ function applyStylesToHtml(html: string): string {
 	table.setAttribute('style', TABLE_STYLE)
 	const headerCells = table.querySelectorAll('th')
 	headerCells.forEach((cell) => {
-		// Preserve text-align from style or textalign attribute, otherwise use left
-		const align = (cell as HTMLElement).style.textAlign || cell.getAttribute('textalign') || 'left'
+		// Preserve text-align from style, otherwise use left
+		const align = (cell as HTMLElement).style.textAlign || 'left'
 		cell.setAttribute('style', HEADER_CELL_STYLE);
 		(cell as HTMLElement).style.textAlign = align
 	})
 	const bodyCells = table.querySelectorAll('td')
 	bodyCells.forEach((cell) => {
-		// Preserve text-align from style or textalign attribute, otherwise use left
-		const align = (cell as HTMLElement).style.textAlign || cell.getAttribute('textalign') || 'left'
+		// Preserve text-align from style, otherwise use left
+		const align = (cell as HTMLElement).style.textAlign || 'left'
 		cell.setAttribute('style', CELL_BASE_STYLE);
 		(cell as HTMLElement).style.textAlign = align
 		// Ensure empty paragraphs don't collapse
