@@ -4,6 +4,8 @@ OC.L10N.register(
     "Advanced settings" : "Pengaturan Lanjutan",
     "Cancel" : "Cancel",
     "Update" : "Perbarui",
+    "Question" : "Pertanyaan",
+    "Add option" : "Tambahkan opsi",
     "Comments" : "Komentar",
     "Edit" : "Sunting",
     "Save" : "Simpan",
@@ -20,6 +22,8 @@ OC.L10N.register(
     "Start" : "Mulai",
     "Reset" : "Setel ulang",
     "Pause" : "Jeda",
-    "Open" : "Buka"
+    "Status" : "Status",
+    "Open" : "Buka",
+    "Just now" : "Baru saja"
 },
 "nplurals=1; plural=0;");

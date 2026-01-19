@@ -2,6 +2,8 @@
     "Advanced settings" : "Pengaturan Lanjutan",
     "Cancel" : "Cancel",
     "Update" : "Perbarui",
+    "Question" : "Pertanyaan",
+    "Add option" : "Tambahkan opsi",
     "Comments" : "Komentar",
     "Edit" : "Sunting",
     "Save" : "Simpan",
@@ -18,6 +20,8 @@
     "Start" : "Mulai",
     "Reset" : "Setel ulang",
     "Pause" : "Jeda",
-    "Open" : "Buka"
+    "Status" : "Status",
+    "Open" : "Buka",
+    "Just now" : "Baru saja"
 },"pluralForm" :"nplurals=1; plural=0;"
 }
