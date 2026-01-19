@@ -8,7 +8,7 @@ import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 
 // Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)
 const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4;'
-const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600; text-align: left;`
+const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600;`
 const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px;'
 
 /**
@@ -79,12 +79,18 @@ function applyStylesToHtml(html: string): string {
 
 	table.setAttribute('style', TABLE_STYLE)
 	const headerCells = table.querySelectorAll('th')
-	headerCells.forEach(cell => {
-		cell.setAttribute('style', HEADER_CELL_STYLE)
+	headerCells.forEach((cell) => {
+		// Preserve text-align from style or textalign attribute, otherwise use left
+		const align = (cell as HTMLElement).style.textAlign || cell.getAttribute('textalign') || 'left'
+		cell.setAttribute('style', HEADER_CELL_STYLE);
+		(cell as HTMLElement).style.textAlign = align
 	})
 	const bodyCells = table.querySelectorAll('td')
-	bodyCells.forEach(cell => {
-		cell.setAttribute('style', CELL_BASE_STYLE)
+	bodyCells.forEach((cell) => {
+		// Preserve text-align from style or textalign attribute, otherwise use left
+		const align = (cell as HTMLElement).style.textAlign || cell.getAttribute('textalign') || 'left'
+		cell.setAttribute('style', CELL_BASE_STYLE);
+		(cell as HTMLElement).style.textAlign = align
 		// Ensure empty paragraphs don't collapse
 		const paragraphs = cell.querySelectorAll('p')
 		paragraphs.forEach(p => {

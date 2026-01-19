@@ -12,3 +12,24 @@ declare module '@nextcloud/router' {
 declare module '@nextcloud/vue/dist/Components/NcRichText.js' {
 	export function getLinkWithPicker(initialValue?: string | null, isLink?: boolean): Promise<string>
 }
+
+// Extend window.OCA type to include Text app API
+interface Window {
+	OCA?: {
+		Viewer?: {
+			compareFileInfo?: unknown
+		}
+		Text?: {
+			createTable: (options: {
+				el: HTMLElement
+				content: string
+				readOnly?: boolean
+				onUpdate?: (data: { markdown: string }) => void
+			}) => Promise<{
+				destroy: () => void
+				getHTML: () => string
+				focus?: () => void
+			}>
+		}
+	}
+}

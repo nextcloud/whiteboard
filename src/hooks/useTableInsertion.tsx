@@ -8,6 +8,7 @@ import { mdiTable } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
+// @ts-expect-error - Vue component import
 import TableEditorDialog from '../components/TableEditorDialog.vue'
 import { renderToolbarButton } from '../components/ToolbarButton'
 import { convertHtmlTableToImage } from '../utils/tableToImage'
@@ -113,16 +114,13 @@ export function useTableInsertion() {
 					x: tableElement.x,
 					y: tableElement.y,
 					angle: tableElement.angle,
+
 					// Increment version numbers to ensure this update wins during collaborative reconciliation
 					// Excalidraw uses these to resolve conflicts when multiple users edit simultaneously
 					version: (currentElement.version || 0) + 1,
 					versionNonce: (currentElement.versionNonce || 0) + 1,
-					customData: {
-						// Include the new markdown and isTable flag from the newly generated element
-						...(newImageElement.customData || {}),
-						// Explicitly clear the lock so other users can edit
-						tableLock: undefined,
-					},
+					// Include updated table data (tableHtml, isTable flag, and cleared lock)
+					customData: newImageElement.customData,
 				}
 
 				elements[elementIndex] = updatedElement
