@@ -27,7 +27,6 @@ export default defineComponent({
 			editor: null,
 			isLoading: true,
 			error: null,
-			currentHtml: this.initialHtml || '',
 			hasEnsuredTextStyles: false,
 		}
 	},
@@ -62,8 +61,8 @@ export default defineComponent({
 				}
 
 				// Convert HTML to markdown for the Text editor input
-				let contentForEditor = this.currentHtml && this.currentHtml.trim()
-					? this.generateMarkdownFromHtml(this.currentHtml)
+				let contentForEditor = this.initialHtml && this.initialHtml.trim()
+					? this.generateMarkdownFromHtml(this.initialHtml)
 					: ''
 
 				// If no content provided, create a minimal table with header and one body row
@@ -164,8 +163,10 @@ export default defineComponent({
 					return
 				}
 
+				const tableHtml = table.outerHTML.trim()
+
 				this.$emit('submit', {
-					html: table.outerHTML.trim(),
+					html: tableHtml,
 				})
 
 				this.show = false
@@ -213,8 +214,15 @@ export default defineComponent({
 				const headers = headerCells.map(cell => getCellContent(cell))
 				markdown += '| ' + headers.join(' | ') + ' |\n'
 
-				// Add separator
-				markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n'
+				// Add separator with alignment markers
+				// Read text-align from header cells (style) to preserve alignment
+				const separators = headerCells.map(cell => {
+					const align = cell.style.textAlign
+					if (align === 'center') return ':---:'
+					if (align === 'right') return '---:'
+					return '---' // left or default
+				})
+				markdown += '| ' + separators.join(' | ') + ' |\n'
 
 				// Process remaining rows as body
 				for (let i = 1; i < rows.length; i++) {
@@ -242,6 +250,7 @@ export default defineComponent({
 		},
 	},
 })
+
 </script>
 
 <template>
