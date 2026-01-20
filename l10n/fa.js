@@ -15,6 +15,7 @@ OC.L10N.register(
     "Add option" : "افزودن گزینه",
     "Comments" : "نظرات",
     "Voting" : "Voting",
+    "Dismiss" : "رد کردن",
     "Delete thread" : "Delete thread",
     "Edit" : "ویرایش",
     "Save" : "ذخیره",
@@ -28,6 +29,7 @@ OC.L10N.register(
     "Stop" : "Stop",
     "Recording" : "ضبط جلسه",
     "Unknown user" : "کاربر نامعلوم",
+    "File" : "پرونده",
     "Duration" : "مدت زمان",
     "Running" : "در حال دویدن",
     "Paused" : "متوقف شد",
@@ -45,6 +47,7 @@ OC.L10N.register(
     "Closed" : "بسته شده",
     "Vote" : "رای",
     "Add comment" : "افزودن نظر",
+    "Smart picker" : "Smart picker",
     "Version restored" : "Version restored"
 },
 "nplurals=2; plural=(n > 1);");

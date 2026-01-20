@@ -16,6 +16,7 @@ OC.L10N.register(
     "Connecting" : "მყარდება კავშირი",
     "Unknown" : "უცნობია",
     "Unknown user" : "ამოუცნობი მომხმარებელი",
+    "File" : "ფაილი",
     "Paused" : "დაპაუზებულია",
     "Finished" : "დასრულდა",
     "Hours" : "საათი",

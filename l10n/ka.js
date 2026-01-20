@@ -22,6 +22,7 @@ OC.L10N.register(
     "Unknown" : "Unknown",
     "Recording" : "Recording",
     "Unknown user" : "Unknown user",
+    "File" : "ფაილი",
     "Duration" : "Duration",
     "Running" : "Running",
     "Finished" : "Finished",

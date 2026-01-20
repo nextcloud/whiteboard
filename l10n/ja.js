@@ -95,6 +95,7 @@ OC.L10N.register(
     "Recording" : "記録中",
     "Stop Recording" : "録画を停止",
     "Unknown user" : "不明なユーザー",
+    "File" : "ファイル",
     "Duration" : "期間",
     "Start Recording" : "録画を開始",
     "Running" : "ランニング",
