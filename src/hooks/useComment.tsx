@@ -15,6 +15,7 @@ import { CommentPopover } from '../components/CommentPopover'
 import { renderToolbarButton } from '../components/ToolbarButton'
 import { getRelativeTime } from '../utils/time'
 import './useComment.scss'
+import { t } from '@nextcloud/l10n'
 
 export interface Comment {
 	id: string
@@ -643,7 +644,7 @@ export function useComment(props?: UseCommentProps) {
 				const user = getCurrentUser()
 				const newComment: Comment = {
 					id: generateId(),
-					author: user?.displayName || 'Guest',
+					author: user?.displayName || t('whiteboard', 'Guest'),
 					userId: user?.uid || '',
 					text,
 					created: Date.now(),
@@ -780,7 +781,7 @@ export function useComment(props?: UseCommentProps) {
 			class: 'comment-container',
 			buttonClass: 'comment-trigger',
 			icon: mdiCommentOutline,
-			label: 'Add comment',
+			label: t('whiteboard', 'Add comment'),
 			onClick: () => {
 				setIsPlacingComment(true)
 				props?.onOpenSidebar?.()

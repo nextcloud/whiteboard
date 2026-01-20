@@ -54,7 +54,7 @@ export function CommentPopover({
 	const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null)
 
 	const currentUser = getCurrentUser()
-	const currentUserName = currentUser?.displayName || 'Guest'
+	const currentUserName = currentUser?.displayName || t('whiteboard', 'Guest')
 	const hasComments = Boolean(commentThread?.comments.length)
 
 	useEffect(() => {
@@ -283,7 +283,7 @@ export function CommentPopover({
 				{hasComments && (
 					<>
 						<div className="comment-popover__header">
-							<h3>Comments</h3>
+							<h3>{t('whiteboard', 'Comments')}</h3>
 							<div className="comment-popover__header-actions">
 								{!isReadOnly && (
 									<>
