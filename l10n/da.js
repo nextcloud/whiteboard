@@ -11,7 +11,6 @@ OC.L10N.register(
     "Shared secret" : "Delt hemmelighed",
     "Save settings" : "Gem indstillinger",
     "Advanced settings" : "Avancerede indstillinger",
-    "Max file size" : "Maks filstørrelse",
     "Insert Table" : "Indsæt tabel",
     "Cancel" : "Annullér",
     "Update" : "Opdatér",

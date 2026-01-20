@@ -21,7 +21,6 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Nextcloud 與 WebSocket 伺服器共用的 JWT 私鑰，用於安全驗證。",
     "Save settings" : "保存設置",
     "Advanced settings" : "進階設定",
-    "Max file size" : "最大檔案大小",
     "Add reaction" : "加入表情反應",
     "Nextcloud Text app is not available. Please install and enable it." : "Nextcloud Text 應用程式不可用。請安裝並啟用它。",
     "Editor container not found" : "找不到編輯器容器",

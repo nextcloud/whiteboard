@@ -19,7 +19,6 @@
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "JWT-hemlig nyckel som delas mellan Nextcloud och WebSocket-servern för säker autentisering.",
     "Save settings" : "Spara inställningar",
     "Advanced settings" : "Avancerade inställningar",
-    "Max file size" : "Max filstorlek",
     "Add reaction" : "Lägg till reaktion",
     "Nextcloud Text app is not available. Please install and enable it." : "Nextcloud Textapp är inte tillgänglig. Installera och aktivera den.",
     "Editor container not found" : "Redigerarens behållare hittades inte",

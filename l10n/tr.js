@@ -21,7 +21,6 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Güvenli kimlik doğrulaması için Nextcloud ve WebSocket sunucusu arasında paylaşılan JWT gizli anahtarı.",
     "Save settings" : "Ayarları kaydet",
     "Advanced settings" : "Gelişmiş ayarlar",
-    "Max file size" : "En büyük dosya boyutu",
     "Add reaction" : "Tepki ekle",
     "Nextcloud Text app is not available. Please install and enable it." : "Nextcloud Text uygulaması kullanılamıyor. Lütfen kurup etkinleştirin.",
     "Editor container not found" : "Düzenleyici kapsayıcısı bulunamadı",

@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Save settings" : "Simpan pengaturan",
     "Advanced settings" : "Pengaturan Lanjutan",
     "Cancel" : "Cancel",
     "Update" : "Perbarui",
@@ -24,6 +25,8 @@ OC.L10N.register(
     "Pause" : "Jeda",
     "Status" : "Status",
     "Open" : "Buka",
+    "Version {version}" : "Versi {version}",
+    "Version restored" : "Versi dipulihkan",
     "Just now" : "Baru saja"
 },
 "nplurals=1; plural=0;");

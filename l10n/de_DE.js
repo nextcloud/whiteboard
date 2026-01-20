@@ -21,7 +21,6 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "JWT-Geheimschlüssel, der zwischen Nextcloud und dem WebSocket-Server zur sicheren Authentifizierung ausgetauscht wird.",
     "Save settings" : "Einstellungen speichern",
     "Advanced settings" : "Erweiterte Einstellungen",
-    "Max file size" : "Maximale Dateigröße",
     "Add reaction" : "Reaktion hinzufügen",
     "Nextcloud Text app is not available. Please install and enable it." : "Die Nextcloud-Text-App ist nicht verfügbar. Bitte diese installieren und aktivieren.",
     "Editor container not found" : "Editor-Container nicht gefunden",

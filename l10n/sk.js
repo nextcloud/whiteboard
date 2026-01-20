@@ -11,7 +11,6 @@ OC.L10N.register(
     "Shared secret" : "Shared secret",
     "Save settings" : "Uložiť nastavenia",
     "Advanced settings" : "Rozšírené nastavenia",
-    "Max file size" : "Maximálna veľkosť súboru",
     "Insert Table" : "Vložiť tabuľku",
     "Cancel" : "Cancel",
     "Update" : "Aktualizovať",

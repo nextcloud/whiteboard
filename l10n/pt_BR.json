@@ -19,7 +19,6 @@
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Chave secreta JWT compartilhada entre o Nextcloud e o servidor WebSocket para autenticação segura.",
     "Save settings" : "Salvar configurações",
     "Advanced settings" : "Configurações avançadas",
-    "Max file size" : "Tamanho máximo de arquivo",
     "Add reaction" : "Adicionar reação",
     "Nextcloud Text app is not available. Please install and enable it." : "O aplicativo Nextcloud Text não está disponível. Instale-o e habilite-o.",
     "Editor container not found" : "Contêiner do editor não encontrado",

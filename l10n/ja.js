@@ -21,7 +21,6 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "NextcloudとホワイトボードWebSocketサーバー間で認証するためのJWT共有秘密鍵",
     "Save settings" : "設定を保存",
     "Advanced settings" : "詳細設定",
-    "Max file size" : "最大ファイルサイズ",
     "Insert Table" : "テーブルの挿入",
     "Cancel" : "キャンセル",
     "Update" : "更新",

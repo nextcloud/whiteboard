@@ -1,4 +1,5 @@
 { "translations": {
+    "Save settings" : "Simpan pengaturan",
     "Advanced settings" : "Pengaturan Lanjutan",
     "Cancel" : "Cancel",
     "Update" : "Perbarui",
@@ -22,6 +23,8 @@
     "Pause" : "Jeda",
     "Status" : "Status",
     "Open" : "Buka",
+    "Version {version}" : "Versi {version}",
+    "Version restored" : "Versi dipulihkan",
     "Just now" : "Baru saja"
 },"pluralForm" :"nplurals=1; plural=0;"
 }

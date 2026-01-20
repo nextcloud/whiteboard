@@ -19,7 +19,6 @@
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "بىخەتەر دەلىللەش ئۈچۈن Nextcloud بىلەن WebSocket مۇلازىمېتىرى ئوتتۇرىسىدا ئورتاقلىشىلغان JWT مەخپىي ئاچقۇچى.",
     "Save settings" : "تەڭشەكلەرنى ساقلاڭ",
     "Advanced settings" : "ئىلغار تەڭشەكلەر",
-    "Max file size" : "ئەڭ چوڭ ھۆججەت چوڭلۇقى",
     "Add reaction" : "رېئاكسىيە قوشۇش",
     "Nextcloud Text app is not available. Please install and enable it." : "Nextcloud تېكىست ئەپ دېتالى يوق. ئۇنى ئورنىتىپ قوزغىتىڭ.",
     "Editor container not found" : "تەھرىرلىگۈچى قاچىسى تېپىلمىدى",

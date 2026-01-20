@@ -18,7 +18,6 @@
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "JWT tajný klíč sdílený mezi Nextcloud a WebSocket serverem pro zabezpečené ověřování.",
     "Save settings" : "Uložit nastavení",
     "Advanced settings" : "Pokročilá nastavení",
-    "Max file size" : "Nejvyšší umožněná velikost souboru",
     "Add reaction" : "Přidat reakci",
     "Nextcloud Text app is not available. Please install and enable it." : "Aplikace Nextcloud Text není k dispozici. Nainstalujte ji a povolte.",
     "Editor container not found" : "Kontejner editoru nenalezen",

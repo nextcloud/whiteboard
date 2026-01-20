@@ -21,7 +21,6 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Секретний ключ JWT безпечної авторизації, який є спільним між примірником Nextcloud та сервером вебсокету.",
     "Save settings" : "Зберегти налаштування",
     "Advanced settings" : "Розширені",
-    "Max file size" : "Максимальний розмір файлу",
     "Add reaction" : "Додати реакцію",
     "Editor container not found" : "Контейнер редактору не знайдено",
     "Failed to load the editor: {error}" : "Не вдалося завантажити редактор: {error}",

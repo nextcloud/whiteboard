@@ -19,7 +19,6 @@
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Clé secrète JWT commune à Nextcloud et au serveur WebSocket pour une authentification sécurisée.",
     "Save settings" : "Enregistrer les paramètres",
     "Advanced settings" : "Paramètres avancés",
-    "Max file size" : "Taille de fichier maximale",
     "Insert Table" : "Insérer un tableau",
     "Cancel" : "Annuler",
     "Update" : "Mettre à jour",

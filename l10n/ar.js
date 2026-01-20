@@ -11,7 +11,6 @@ OC.L10N.register(
     "Shared secret" : "كلمة السر المشتركة",
     "Save settings" : "حفظ الإعدادات",
     "Advanced settings" : "إعدادات متقدمة",
-    "Max file size" : "أقصى حجم للملف",
     "Insert Table" : "أدرِج جدولاً",
     "Cancel" : "Cancel",
     "Update" : "تحديث",

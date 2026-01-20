@@ -21,7 +21,6 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Sekretny klucz JWT współdzielony między Nextcloud a serwerem WebSocket do bezpiecznego uwierzytelniania.",
     "Save settings" : "Zapisz ustawienia",
     "Advanced settings" : "Ustawienia zaawansowane",
-    "Max file size" : "Maksymalny rozmiar pliku",
     "Insert Table" : "Wstaw tabelę",
     "Cancel" : "Anuluj",
     "Update" : "Aktualizuj",

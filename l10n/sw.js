@@ -21,7 +21,6 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Kitufe cha siri cha JWT kilichoshirikiwa kati ya Nextcloud na seva ya WebSocket kwa uthibitishaji salama.",
     "Save settings" : "Hifadhi mipangilio",
     "Advanced settings" : "Mipangilio ya kiwangi cha juu",
-    "Max file size" : "Kiwango cha juu cha ukubwa wa faili",
     "Add reaction" : "Add reaction",
     "Cancel" : "Ghairi",
     "Update" : "Sasisha",
