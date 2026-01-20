@@ -4,6 +4,7 @@
  */
 import { getCurrentUser } from '@nextcloud/auth'
 import { showError } from '@nextcloud/dialogs'
+import { t } from '@nextcloud/l10n'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 
@@ -126,7 +127,7 @@ export async function tryAcquireLock(
 	// Check if another user has a valid (non-expired) lock
 	if (existingLock && existingLock.uid !== user.uid && !isLockExpired(existingLock)) {
 		// Show error to user and prevent editing
-		showError(`This table is currently being edited by ${existingLock.displayName}`)
+		showError(t('whiteboard', 'This table is currently being edited by {user}', { user: existingLock.displayName }))
 		return false
 	}
 

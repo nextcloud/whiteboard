@@ -4,6 +4,7 @@
 -->
 <script>
 import { NcTextField, NcButton, NcModal } from '@nextcloud/vue'
+import { t } from '@nextcloud/l10n'
 import { ScheduleTask } from '../services/assistant/api'
 import { parseMermaidToExcalidraw } from '@excalidraw/mermaid-to-excalidraw'
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
@@ -73,7 +74,7 @@ export default defineComponent({
 				const res = await this.getExcalidrawElements(taskResponse)
 				this.$emit('submit', res)
 			} catch (error) {
-				this.mermaidError = error || 'An error occurred while creating the diagram'
+				this.mermaidError = error || t('whiteboard', 'An error occurred while creating the diagram')
 				console.error('Error generating diagram:', this.mermaidError)
 			} finally {
 				this.waitingForTask = false
@@ -92,24 +93,24 @@ export default defineComponent({
 		<div class="assistant-dialog">
 			<div>
 				<h2>
-					Generate diagram
+					{{ t('whiteboard', 'Generate diagram') }}
 				</h2>
 				<div v-if="mermaidError" class="mermaid-error">
-					Something went wrong, please try again
+					{{ t('whiteboard', 'Something went wrong, please try again') }}
 				</div>
 				<form @submit.prevent="onGetTask">
 					<NcTextField ref="assistantDialog"
 						v-model="assistantQuery"
-						label="Prompt to generate diagram"
-						placeholder="Flowchart, sequence diagram…"
+						:label="t('whiteboard', 'Prompt to generate diagram')"
+						:placeholder="t('whiteboard', 'Flowchart, sequence diagram…')"
 						type="text"
 						:disabled="waitingForTask" />
 					<div class="dialog-buttons">
 						<NcButton @click="onCancel">
-							Close
+							{{ t('whiteboard', 'Close') }}
 						</NcButton>
 						<NcButton :disabled="waitingForTask" type="submit">
-							{{ waitingForTask ? 'Generating…' : 'Generate' }}
+							{{ waitingForTask ? t('whiteboard', 'Generating…') : t('whiteboard', 'Generate') }}
 						</NcButton>
 					</div>
 				</form>

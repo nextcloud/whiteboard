@@ -781,7 +781,7 @@ export function useComment(props?: UseCommentProps) {
 			class: 'comment-container',
 			buttonClass: 'comment-trigger',
 			icon: mdiCommentOutline,
-			label: 'Add comment',
+			label: t('whiteboard', 'Add comment'),
 			onClick: () => {
 				setIsPlacingComment(true)
 				props?.onOpenSidebar?.()

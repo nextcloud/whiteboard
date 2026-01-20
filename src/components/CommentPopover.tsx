@@ -283,7 +283,7 @@ export function CommentPopover({
 				{hasComments && (
 					<>
 						<div className="comment-popover__header">
-							<h3>Comments</h3>
+							<h3>{t('whiteboard', 'Comments')}</h3>
 							<div className="comment-popover__header-actions">
 								{!isReadOnly && (
 									<>

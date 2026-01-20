@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import Vue from 'vue'
 import { mdiTable } from '@mdi/js'
+import { t } from '@nextcloud/l10n'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -268,7 +269,7 @@ export function useTableInsertion() {
 		renderToolbarButton({
 			class: 'table-container',
 			icon: mdiTable,
-			label: 'Insert table',
+			label: t('whiteboard', 'Insert table'),
 			onClick: insertTable,
 		})
 	}, [insertTable])
