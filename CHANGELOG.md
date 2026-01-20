@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.5.3
+
+### Fixed
+ - add missing translation wrappers by @silverkszlo [#959](https://github.com/nextcloud/whiteboard/pull/959)
+ - public share affecting other apps by @hweihwang [#954](https://github.com/nextcloud/whiteboard/pull/954)
+ - file size configs clarification by @hweihwang [#955](https://github.com/nextcloud/whiteboard/pull/955)
+ - add background color for creator dropdown by @grnd-alt [#958](https://github.com/nextcloud/whiteboard/pull/958)
+ - preserve text alignment in tables from Text editor by @silverkszlo [#957](https://github.com/nextcloud/whiteboard/pull/957)
+ - hide table settings button by @benjaminfrueh [#956](https://github.com/nextcloud/whiteboard/pull/956)
+ - handle br tags for markdown and svg table conversion by @benjaminfrueh [#953](https://github.com/nextcloud/whiteboard/pull/953)
+
+### Added
+ - table dialog styling when Text CSS is missing by @hweihwang [#944](https://github.com/nextcloud/whiteboard/pull/944)
+ - increase table editing modal width by @silverkszlo[#960](https://github.com/nextcloud/whiteboard/pull/960)
+
+### Other
+ - Update nextcloud/ocp dependency [#952](https://github.com/nextcloud/whiteboard/pull/952)
+
 ## 1.5.2
 
 ### Fixed
