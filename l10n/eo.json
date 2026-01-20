@@ -1,6 +1,7 @@
 { "translations": {
     "Save settings" : "Konservi agordojn",
     "Advanced settings" : "Altanivela agordo",
+    "Close" : "Malfermi",
     "Cancel" : "Cancel",
     "Update" : "Ĝisdatigi",
     "Add option" : "Aldoni opcion",
@@ -11,6 +12,7 @@
     "Send" : "Sendi",
     "Connecting" : "Konektante",
     "Unknown" : "Nekonata",
+    "Unknown user" : "Nekonata uzanto",
     "Running" : "Kuras",
     "Finished" : "Finita",
     "Minutes" : "Minutoj",

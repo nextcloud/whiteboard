@@ -3,17 +3,24 @@ OC.L10N.register(
     {
     "Shared secret" : "Segretu cumpartzidu",
     "Advanced settings" : "Cunfiguratzione avantzada",
+    "Close" : "Serra",
     "Cancel" : "Cancel",
     "Update" : "Agiorna",
     "Multiple choice" : "Sèberu mùltiplu",
     "Add option" : "Agiunghe sèberu",
     "Comments" : "Cummentos",
+    "Dismiss" : "Iscarta",
+    "Guest" : "Persone invitada",
     "Delete thread" : "Cantzella dibata",
     "Edit" : "Modìfica",
     "Save" : "Sarva",
     "Reply" : "Risponde",
     "No comments yet" : "Perunu cummentu ancora",
     "Unknown" : "Disconnotu",
+    "Recording" : "Registratzione",
+    "Unknown user" : "Utèntzia disconnota",
+    "File" : "Archìviu",
+    "Duration" : "Durata",
     "Running" : "Cursa",
     "Paused" : "Suspèndidos",
     "Finished" : "Agabbadu",
@@ -23,6 +30,7 @@ OC.L10N.register(
     "Resume" : "Torra a cumintzare",
     "Status" : "Status",
     "Open" : "Aberi",
-    "Closed" : "Serradu"
+    "Closed" : "Serradu",
+    "Add comment" : "Agiunghe cummentu"
 },
 "nplurals=2; plural=(n != 1);");

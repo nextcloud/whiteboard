@@ -12,6 +12,7 @@ OC.L10N.register(
     "Send" : "Enviar",
     "Connecting" : "Conectando",
     "Unknown" : "Desconocido",
+    "Unknown user" : "Ususario desconocido",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
     "Minutes" : "Minutos",

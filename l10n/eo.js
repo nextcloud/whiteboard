@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Save settings" : "Konservi agordojn",
     "Advanced settings" : "Altanivela agordo",
+    "Close" : "Malfermi",
     "Cancel" : "Cancel",
     "Update" : "Ĝisdatigi",
     "Add option" : "Aldoni opcion",
@@ -13,6 +14,7 @@ OC.L10N.register(
     "Send" : "Sendi",
     "Connecting" : "Konektante",
     "Unknown" : "Nekonata",
+    "Unknown user" : "Nekonata uzanto",
     "Running" : "Kuras",
     "Finished" : "Finita",
     "Minutes" : "Minutoj",

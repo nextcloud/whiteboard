@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Shared secret" : "סוד משותף",
     "Advanced settings" : "הגדרות מתקדמות",
+    "Close" : "סגירה",
     "Add reaction" : "הוספת תגובון",
     "Cancel" : "ביטול",
     "Update" : "עדכון",
@@ -19,9 +20,12 @@ OC.L10N.register(
     "Connecting" : "מתבצע חיבור",
     "Online" : "מקוון",
     "Unknown" : "לא ידוע",
+    "Unknown user" : "משתמש לא ידוע",
+    "Duration" : "משך",
     "Running" : "ריצה",
     "Paused" : "מושהה",
     "Finished" : "הסתיים",
+    "Hours" : "שעות",
     "Minutes" : "דקות",
     "min" : "דקות",
     "Start" : "התחלה",
@@ -30,6 +34,7 @@ OC.L10N.register(
     "Resume" : "להמשיך",
     "Open" : "פתוח",
     "Closed" : "סגור",
+    "Add comment" : "הוספת הערה",
     "Version {version}" : "גרסה {version}",
     "Just now" : "הרגע"
 },

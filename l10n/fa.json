@@ -2,6 +2,8 @@
     "Whiteboard" : "Whiteboard",
     "Shared secret" : "Shared secret",
     "Advanced settings" : "تنظیمات پیشرفته",
+    "Close" : "بستن",
+    "Generating…" : "در حال ساخت",
     "Insert Table" : "وارد کرن جدول",
     "Cancel" : "انصراف",
     "Update" : "به‌روزرسانی",
@@ -22,9 +24,13 @@
     "Online" : "برخط",
     "Unknown" : "ناشناخته.",
     "Stop" : "Stop",
+    "Recording" : "ضبط جلسه",
+    "Unknown user" : "کاربر نامعلوم",
+    "Duration" : "مدت زمان",
     "Running" : "در حال دویدن",
     "Paused" : "متوقف شد",
     "Finished" : "تمام شد",
+    "Hours" : "ساعت ها",
     "Minutes" : "دقایق",
     "min" : "دقیقه",
     "Start" : "شروع",
@@ -35,6 +41,8 @@
     "Status" : "Status",
     "Open" : "باز کردن",
     "Closed" : "بسته شده",
+    "Vote" : "رای",
+    "Add comment" : "افزودن نظر",
     "Version restored" : "Version restored"
 },"pluralForm" :"nplurals=2; plural=(n > 1);"
 }

@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Advanced settings" : "Configuraciones avanzadas",
+    "Close" : "Cerrar",
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
     "Multiple choice" : "Opción múltiple",
@@ -13,6 +14,7 @@ OC.L10N.register(
     "Connecting" : "Conectando",
     "Online" : "En línea",
     "Unknown" : "Desconocido",
+    "Unknown user" : "Ususario desconocido",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
     "Minutes" : "Minutos",

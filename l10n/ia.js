@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Advanced settings" : "Configurationes avantiate",
+    "Close" : "Clauder",
     "Cancel" : "Cancel",
     "Update" : "Actualisation",
     "Comments" : "Commentarios",
@@ -12,7 +13,9 @@ OC.L10N.register(
     "Send" : "Inviar",
     "Connecting" : "Connectente",
     "Unknown" : "Incognite",
+    "Unknown user" : "Usator incognite",
     "Finished" : "Finite",
+    "Hours" : "Horas",
     "Minutes" : "Minutas",
     "min" : "minutas",
     "Start" : "Initio",

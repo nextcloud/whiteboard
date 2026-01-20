@@ -1,5 +1,6 @@
 { "translations": {
     "Advanced settings" : "Configuraciones avanzadas",
+    "Close" : "Cerrar",
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
     "Multiple choice" : "Opción múltiple",
@@ -11,6 +12,7 @@
     "Connecting" : "Conectando",
     "Online" : "En línea",
     "Unknown" : "Desconocido",
+    "Unknown user" : "Ususario desconocido",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
     "Minutes" : "Minutos",

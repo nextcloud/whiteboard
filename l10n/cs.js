@@ -113,6 +113,7 @@ OC.L10N.register(
     "• Waiting for capture engine…" : "• Čekání na engine pro zachytávání …",
     "✓ Capture engine ready" : "✓ Engine pro zachytávání připraven",
     "• This may take a few seconds" : "• Toto může pár sekund trvat",
+    "Recording" : "Zaznamenávání",
     "Stop Recording" : "Zastavit nahrávání",
     "Start Recording" : "Spustit nahrávání",
     "Timer offline" : "Časovač nedostupný",

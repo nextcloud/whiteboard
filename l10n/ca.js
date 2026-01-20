@@ -25,6 +25,8 @@ OC.L10N.register(
     "Connecting" : "S'està connectant",
     "Online" : "En línia",
     "Unknown" : "Desconegut",
+    "Recording" : "Enregistrament",
+    "Unknown user" : "Usuari desconegut",
     "Running" : "Córrer",
     "Paused" : "S'ha pausat",
     "Finished" : "Acabat",

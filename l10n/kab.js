@@ -1,11 +1,14 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Close" : "Mdel",
     "Cancel" : "Semmet",
     "Question" : "Asteqsi",
     "Option" : "Taxtiṛt",
     "Add option" : "Rnu aɣewwaṛ",
     "Comments" : "Iwenniten",
+    "Dismiss" : "Agi",
+    "Guest" : "Inebgi",
     "Edit" : "Ẓreg",
     "Save" : "Sekles",
     "Reply" : "Err",
@@ -17,6 +20,8 @@ OC.L10N.register(
     "Pause" : "Aḥbas",
     "Resume" : "Agzul",
     "Status" : "Addad",
-    "Open" : "Ldi"
+    "Open" : "Ldi",
+    "Vote" : "Tafrant",
+    "Assistant" : "Amallal"
 },
 "nplurals=2; plural=(n != 1);");
