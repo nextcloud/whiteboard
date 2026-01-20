@@ -39,6 +39,7 @@ export default defineComponent({
 		})
 	},
 	methods: {
+		t,
 		onCancel() {
 			this.show = false
 			this.$emit('cancel')
