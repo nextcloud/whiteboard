@@ -256,7 +256,7 @@ export default defineComponent({
 <template>
 	<NcModal v-if="show"
 		:can-close="true"
-		size="large"
+		class="table-editor-modal"
 		@close="onCancel">
 		<div class="table-editor-dialog">
 			<div class="editor-header">
@@ -290,6 +290,11 @@ export default defineComponent({
 </template>
 
 <style scoped lang="scss">
+.table-editor-modal :deep(.modal-container) {
+	max-width: 90vw !important;
+	width: 90vw !important;
+}
+
 .table-editor-dialog {
 	display: flex;
 	flex-direction: column;
