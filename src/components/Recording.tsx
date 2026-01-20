@@ -16,7 +16,7 @@ const RecordingError = memo(({ error, resetError }: { error: string, resetError:
 	<div className="recording-error" onClick={resetError}>
 		<Icon path={mdiSlashForwardBox} size={0.8} />
 		<span>{error}</span>
-		<small>(Click to dismiss)</small>
+		<small>({t('whiteboard', 'Click to dismiss')})</small>
 	</div>
 ))
 RecordingError.displayName = 'RecordingError'
@@ -60,7 +60,7 @@ const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, s
 		return (
 			<div className="recording-status">
 				<div className="recording-spinner" />
-				<span>Stopping recording…</span>
+				<span>{t('whiteboard', 'Stopping recording…')}</span>
 			</div>
 		)
 	}
@@ -69,7 +69,7 @@ const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, s
 		return (
 			<div className="recording-status recording">
 				<div className="recording-indicator" />
-				<span>Recording: {formatDuration(duration)}</span>
+				<span>{t('whiteboard', 'Recording')}: {formatDuration(duration)}</span>
 				<button
 					type="button"
 					className="recording-stop-button"
@@ -91,10 +91,10 @@ const OtherRecordingUsers = memo(({ users }: { users: RecordingOverlayProps['oth
 	<div className="other-recording-users">
 		<Icon path={mdiRecordCircle} size={0.8} />
 		{(() => {
-			const displayName = users[0]?.username?.trim() || 'Unknown user'
+			const displayName = users[0]?.username?.trim() || t('whiteboard', 'Unknown user')
 			const label = users.length === 1
-				? `${displayName} is recording`
-				: `${users.length} users are recording`
+				? t('whiteboard', '{user} is recording', { user: displayName })
+				: t('whiteboard', '{count} users are recording', { count: users.length })
 			return <span>{label}</span>
 		})()}
 	</div>
@@ -108,14 +108,14 @@ const RecordingUploadStatus = memo(({ onDismiss }: { onDismiss: () => void }) =>
 		</div>
 		<div className="nc-notecard__content">
 			<div className="nc-notecard__text">
-				Uploading recording…
+				{t('whiteboard', 'Uploading recording…')}
 			</div>
 		</div>
 		<button
 			className="nc-notecard__dismiss"
 			onClick={onDismiss}
-			title="Dismiss"
-			aria-label="Dismiss">
+			title={t('whiteboard', 'Dismiss')}
+			aria-label={t('whiteboard', 'Dismiss')}>
 			<Icon path={mdiClose} size={0.8} />
 		</button>
 	</div>
@@ -139,22 +139,22 @@ const RecordingSuccess = memo(({
 		</div>
 		<div className="nc-notecard__content">
 			<div className="nc-notecard__text">
-				<strong>Recording saved successfully!</strong>
+				<strong>{t('whiteboard', 'Recording saved successfully!')}</strong>
 				<div className="recording-details">
-					{filename && <div>File: {filename}</div>}
+					{filename && <div>{t('whiteboard', 'File')}: {filename}</div>}
 					{recordingDuration && (
-						<div>Duration: {formatDuration(recordingDuration)}</div>
+						<div>{t('whiteboard', 'Duration')}: {formatDuration(recordingDuration)}</div>
 					)}
 					<div className="recording-location">
 						<Icon path={mdiFolder} size={0.6} />
-						<span>Saved to "Whiteboard Recordings" folder</span>
+						<span>{t('whiteboard', 'Saved to "Whiteboard Recordings" folder')}</span>
 					</div>
 					<div className="recording-actions">
 						<a href={fileUrl}
 						   className="nc-button nc-button--primary nc-button--small"
 						   target="_blank"
 						   rel="noopener noreferrer">
-							View recording
+							{t('whiteboard', 'View recording')}
 						</a>
 					</div>
 				</div>
@@ -163,8 +163,8 @@ const RecordingSuccess = memo(({
 		<button
 			className="nc-notecard__dismiss"
 			onClick={onDismiss}
-			title="Dismiss"
-			aria-label="Dismiss">
+			title={t('whiteboard', 'Dismiss')}
+			aria-label={t('whiteboard', 'Dismiss')}>
 			<Icon path={mdiClose} size={0.8} />
 		</button>
 	</div>
@@ -178,11 +178,11 @@ const RecordingUnavailable = memo(({ reason, onDismiss }: { reason: string; onDi
 		</div>
 		<div className="nc-notecard__content">
 			<div className="nc-notecard__text">
-				<strong>Recording unavailable</strong>
+				<strong>{t('whiteboard', 'Recording unavailable')}</strong>
 				<div className="recording-details">
 					<div>{reason}</div>
 					<div style={{ marginTop: '8px', fontSize: '12px', opacity: 0.8 }}>
-						Contact your administrator to enable recording functionality.
+						{t('whiteboard', 'Contact your administrator to enable recording functionality.')}
 					</div>
 				</div>
 			</div>
@@ -190,8 +190,8 @@ const RecordingUnavailable = memo(({ reason, onDismiss }: { reason: string; onDi
 		<button
 			className="nc-notecard__dismiss"
 			onClick={onDismiss}
-			title="Dismiss"
-			aria-label="Dismiss">
+			title={t('whiteboard', 'Dismiss')}
+			aria-label={t('whiteboard', 'Dismiss')}>
 			<Icon path={mdiClose} size={0.8} />
 		</button>
 	</div>
@@ -347,14 +347,14 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 	if (!isRecording) {
 		if (!isConnected) {
 			isDisabled = true
-			tooltipMessage = 'Recording requires connection to collaboration server'
+			tooltipMessage = t('whiteboard', 'Recording requires connection to collaboration server')
 		} else if (isAvailable === false) {
 			isDisabled = true
-			tooltipMessage = unavailableReason || 'Recording is currently unavailable'
+			tooltipMessage = unavailableReason || t('whiteboard', 'Recording is currently unavailable')
 		} else if (isAvailable === null) {
 			// Still checking availability
 			isDisabled = true
-			tooltipMessage = 'Checking recording availability…'
+			tooltipMessage = t('whiteboard', 'Checking recording availability…')
 		}
 	}
 

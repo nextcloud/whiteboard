@@ -12,6 +12,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { RecordingHookState, RecordingState, RecordingUser } from '../types/recording'
+import { t } from '@nextcloud/l10n'
 
 interface UseRecordingProps {
 	fileId: number
@@ -354,7 +355,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 
 		if (!currentSocket || !currentIsConnected) {
 			updateState({
-				error: 'Recording requires connection to collaboration server. Please check your network connection.',
+				error: t('whiteboard', 'Recording requires connection to collaboration server. Please check your network connection.'),
 				status: 'idle',
 			})
 			return

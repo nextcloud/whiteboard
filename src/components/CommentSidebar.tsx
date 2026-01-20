@@ -95,7 +95,7 @@ export function CommentSidebar({ threads, activeThreadId, isReadOnly, onThreadCl
 							<div className="comment-sidebar__content">
 								<div className="comment-sidebar__header-row">
 									<strong className="comment-sidebar__author">
-										{firstComment?.author || 'Guest'}
+										{firstComment?.author || t('whiteboard', 'Guest')}
 									</strong>
 									<time className="comment-sidebar__time">
 										{getRelativeTime(firstComment?.created)}

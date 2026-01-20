@@ -143,7 +143,7 @@ export default function App({
 	if (!normalizedFileId && !isVersionPreview) {
 		logger.warn('[App] Invalid fileId during initialization:', fileId)
 
-		return <div className="App-error">Invalid whiteboard ID. Please try again.</div>
+		return <div className="App-error">{t('whiteboard', 'Invalid whiteboard ID. Please try again.')}</div>
 	}
 
 	// Creator tracking
