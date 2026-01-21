@@ -75,7 +75,7 @@
     "browserslist": "^4.28.1",
     "nodemon": "^3.1.11",
     "prettier": "^3.8.0",
-    "redis-memory-server": "^0.14.1",
+    "redis-memory-server": "^0.15.0",
     "stylelint-config-css-modules": "^4.5.1",
     "typescript": "^5.9.3",
     "typescript-plugin-css-modules": "^5.2.0",
