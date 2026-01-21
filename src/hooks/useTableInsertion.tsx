@@ -115,6 +115,8 @@ export function useTableInsertion() {
 					x: tableElement.x,
 					y: tableElement.y,
 					angle: tableElement.angle,
+					width: tableElement.width,
+					height: (tableElement.width / newImageElement.width) * newImageElement.height,
 
 					// Increment version numbers to ensure this update wins during collaborative reconciliation
 					// Excalidraw uses these to resolve conflicts when multiple users edit simultaneously
