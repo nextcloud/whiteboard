@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.4-rc.1
+
+### Fixed
+ - preserve table width on editing content by @benjaminfrueh [#966](https://github.com/nextcloud/whiteboard/pull/966)
+ - update translations from Transifex [#965](https://github.com/nextcloud/whiteboard/pull/965)
+
+### Other
+ - dependency updates: diff 5.2.2, tar, redis-memory-server [#964](https://github.com/nextcloud/whiteboard/pull/964) [#965](https://github.com/nextcloud/whiteboard/pull/965)
+ - declare Nextcloud 33 compatibility (metadata only)
+
 ## 1.5.3
 
 ### Fixed
