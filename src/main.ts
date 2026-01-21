@@ -127,27 +127,45 @@ function runRecordingRuntime(context: RecordingContext): void {
 }
 
 function runPublicShareRuntime(context: PublicShareContext): void {
-	document.body.classList.add('whiteboard-public-share')
-
-	// On NC29/30, there's a hidden input with id="mimetype" that we can check.
-	// On NC31+, this element doesn't exist. Since this script is only loaded
-	// for whiteboard files (via BeforeTemplateRenderedListener), we can safely
-	// skip this check if the element doesn't exist.
-	const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
-	if (mimetypeElmt && mimetypeElmt.value !== 'application/vnd.excalidraw+json') {
-		return
-	}
-
 	const viewerContext: ViewerContext = {
 		collabBackendUrl: context.collabBackendUrl,
 		resolveSharingToken: () => context.sharingToken,
 	}
 
 	let hasOpenedInViewer = false
+	const isWhiteboardPublicShare = (): boolean => {
+		// LoadViewer triggers whiteboard-main on all public shares; only continue if
+		// this share was explicitly marked as a whiteboard file by the backend.
+		if (!context.fileId) {
+			return false
+		}
+
+		// On NC29/30, there's a hidden input with id="mimetype" that we can check.
+		// On NC31+, this element doesn't exist, so we rely on the backend-provided
+		// whiteboard file id check above.
+		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
+		if (mimetypeElmt && mimetypeElmt.value !== 'application/vnd.excalidraw+json') {
+			return false
+		}
+
+		return true
+	}
+
+	const ensurePublicShareLayout = (): void => {
+		document.body.classList.add('whiteboard-public-share')
+	}
+
 	const openInViewer = (): void => {
+		if (!isWhiteboardPublicShare()) {
+			hasOpenedInViewer = true
+			return
+		}
+
 		if (hasOpenedInViewer) {
 			return
 		}
+
+		ensurePublicShareLayout()
 
 		const viewerApi = getViewerApi()
 		if (!viewerApi) {
@@ -184,10 +202,16 @@ function runPublicShareRuntime(context: PublicShareContext): void {
 			return
 		}
 
+		if (!isWhiteboardPublicShare()) {
+			return
+		}
+
 		const previewHost = document.getElementById('preview') || document.getElementById('imgframe')
 		if (!previewHost) {
 			return
 		}
+
+		ensurePublicShareLayout()
 
 		previewHost.innerHTML = ''
 

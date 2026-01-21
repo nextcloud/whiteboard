@@ -2,11 +2,13 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Oq doska",
+    "Close" : "Yopish",
     "Cancel" : "Bekor qilish",
     "Update" : "Yangilash",
     "Option" : "Variant",
     "Add option" : "Variant qo'shish",
     "Comments" : "Izohlar",
+    "Dismiss" : "Rad etish",
     "Edit" : "Tahrirlash",
     "Save" : "Saqlash",
     "Reply" : "Javob bering",
@@ -15,8 +17,13 @@ OC.L10N.register(
     "Offline" : "Offline",
     "Online" : "Onlayn",
     "Unknown" : "Noma'lum",
+    "Unknown user" : "Unknown user",
+    "File" : "Fayl",
+    "Duration" : "Davomiyligi",
+    "Hours" : "Hours",
     "Reset" : "Qayta tiklash",
     "Status" : "Holat",
-    "Open" : "Ochish"
+    "Open" : "Ochish",
+    "Add comment" : "Fikr qo'shing"
 },
 "nplurals=1; plural=0;");

@@ -1,6 +1,6 @@
 {
   "name": "whiteboard",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
@@ -49,7 +49,7 @@
     "node-fetch": "^3.3.2",
     "persist": "^0.2.7",
     "prom-client": "^14.2.0",
-    "puppeteer-core": "^24.34.0",
+    "puppeteer-core": "^24.35.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redis": "^4.7.1",
@@ -59,7 +59,7 @@
     "svgmoji": "^3.2.0",
     "uuid": "^13.0.0",
     "vue": "^2.7.16",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@nextcloud/browserslist-config": "^3.1.2",
@@ -68,20 +68,20 @@
     "@nextcloud/stylelint-config": "^3.1.1",
     "@nextcloud/vite-config": "^1.6.0",
     "@playwright/test": "^1.57.0",
-    "@types/lodash": "^4.17.21",
+    "@types/lodash": "^4.17.23",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^5.1.2",
     "@vue/tsconfig": "^0.5.1",
     "browserslist": "^4.28.1",
     "nodemon": "^3.1.11",
-    "prettier": "^3.7.4",
-    "redis-memory-server": "^0.14.1",
+    "prettier": "^3.8.0",
+    "redis-memory-server": "^0.15.0",
     "stylelint-config-css-modules": "^4.5.1",
     "typescript": "^5.9.3",
     "typescript-plugin-css-modules": "^5.2.0",
     "vite": "^6.4.1",
     "vite-plugin-static-copy": "^3.1.4",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.17"
   },
   "prettier": {
     "useTabs": true,

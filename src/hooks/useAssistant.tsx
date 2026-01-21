@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { useCallback } from 'react'
+import { t } from '@nextcloud/l10n'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
 import { mdiCreation } from '@mdi/js'
@@ -96,7 +97,7 @@ export function useAssistant() {
 		renderToolbarButton({
 			class: 'assistant-container',
 			icon: mdiCreation,
-			label: 'Assistant',
+			label: t('whiteboard', 'Assistant'),
 			onClick: handleAssistantToMermaid,
 		})
 	}, [handleAssistantToMermaid])

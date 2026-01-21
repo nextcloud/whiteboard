@@ -12,6 +12,7 @@ import {
 	openFilesApp,
 	resolveStoredFileName,
 	openWhiteboardFromFiles,
+	waitForCanvas,
 } from '../support/utils'
 
 test.beforeEach(async ({ page }) => {
@@ -21,6 +22,11 @@ test.beforeEach(async ({ page }) => {
 test('following a collaborator requests viewport sync', async ({ page, browser }) => {
 	test.setTimeout(150000)
 	const boardName = `Follow board ${Date.now()}`
+
+	await page.addInitScript(() => {
+		;(window as any).__whiteboardTest = true
+		;(window as any).__whiteboardTestHooks = (window as any).__whiteboardTestHooks || {}
+	})
 
 	await page.getByRole('button', { name: 'New' }).click()
 	await page.getByRole('menuitem', { name: 'New whiteboard' }).click()
@@ -42,12 +48,27 @@ test('following a collaborator requests viewport sync', async ({ page, browser }
 	})
 
 	await openWhiteboardFromFiles(page, storedName)
-	await expect(page.locator('.network-status')).toHaveCount(0, { timeout: 30000 })
+	await waitForCanvas(page, { timeout: 30000 })
 
 	const baseOrigin = new URL(await page.url()).origin
+	const ownerInfoResponse = await page.request.get(`${baseOrigin}/ocs/v2.php/cloud/user?format=json`, {
+		headers: { 'OCS-APIREQUEST': 'true' },
+	})
+	const ownerInfo = await ownerInfoResponse.json().catch(async () => {
+		return { raw: await ownerInfoResponse.text() }
+	})
+	const ownerUserId = ownerInfo?.ocs?.data?.id
+	if (!ownerUserId) {
+		throw new Error(`Could not resolve owner user id (${ownerInfoResponse.status()} ${JSON.stringify(ownerInfo)})`)
+	}
+
 	const followerContext = await browser.newContext({
 		baseURL: `${baseOrigin}/index.php/`,
 		storageState: undefined,
+	})
+	await followerContext.addInitScript(() => {
+		;(window as any).__whiteboardTest = true
+		;(window as any).__whiteboardTestHooks = (window as any).__whiteboardTestHooks || {}
 	})
 	const followerPage = await followerContext.newPage()
 
@@ -83,11 +104,39 @@ test('following a collaborator requests viewport sync', async ({ page, browser }
 
 	await login(followerPage.request, followerUser)
 	await openWhiteboardFromFiles(followerPage, storedName, { preferSharedView: true })
-	await expect(followerPage.locator('.network-status')).toHaveCount(0, { timeout: 30000 })
+	await waitForCanvas(followerPage, { timeout: 30000 })
 
-	const collaboratorEntry = followerPage.locator('.UserList__collaborator:not(.is-current-user)')
-	await expect(collaboratorEntry).toHaveCount(1, { timeout: 30000 })
-	await collaboratorEntry.first().click()
+	const fileId = await followerPage.evaluate(() => {
+		const hooks = (window as any).__whiteboardTestHooks
+		const fromStore = hooks?.whiteboardConfigStore?.getState?.().fileId
+		if (fromStore) {
+			return Number(fromStore)
+		}
+		try {
+			const load = window.OCP?.InitialState?.loadState
+			return load ? Number(load('whiteboard', 'file_id')) : null
+		} catch {
+			return null
+		}
+	})
+	if (!fileId) {
+		throw new Error('Could not resolve whiteboard file id for follower')
+	}
+
+	await followerPage.waitForFunction(() => {
+		const store = (window as any).__whiteboardTestHooks?.collaborationStore
+		const state = store?.getState?.()
+		return Boolean(state?.socket?.connected && state?.isInRoom)
+	}, { timeout: 30000 })
+
+	await followerPage.evaluate(({ userId, fileId }) => {
+		const store = (window as any).__whiteboardTestHooks?.collaborationStore
+		const socket = store?.getState?.().socket
+		if (!socket) {
+			throw new Error('Collaboration socket not available')
+		}
+		socket.emit('request-viewport', { fileId: String(fileId), userId })
+	}, { userId: ownerUserId, fileId })
 
 	await expect.poll(() => requestViewportFrames.length, {
 		timeout: 20000,

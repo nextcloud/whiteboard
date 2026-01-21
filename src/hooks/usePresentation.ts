@@ -11,6 +11,7 @@ import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import type { PresentationState } from '../types/presentation'
 import type { CollaborationSocket } from '../types/collaboration'
+import { t } from '@nextcloud/l10n'
 
 interface UsePresentationProps {
 	fileId: number
@@ -66,12 +67,12 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 	// Start presentation
 	const startPresentation = useCallback(async () => {
 		if (!socket || !isConnected) {
-			setError('Presentation requires connection to collaboration server. Please check your network connection.')
+			setError(t('whiteboard', 'Presentation requires connection to collaboration server. Please check your network connection.'))
 			return
 		}
 
 		if (isPresentationMode && presenterId) {
-			setError('Another user is already presenting. Please wait for them to finish.')
+			setError(t('whiteboard', 'Another user is already presenting. Please wait for them to finish.'))
 			return
 		}
 
@@ -105,14 +106,14 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 			setTimeout(() => {
 				if (status === 'starting') {
 					console.warn('[Presentation] Timeout waiting for presentation-started event')
-					setError('Failed to start presentation - timeout. Please try again.')
+					setError(t('whiteboard', 'Failed to start presentation - timeout. Please try again.'))
 					setStatus('idle')
 				}
 			}, 10000) // 10 second timeout
 
 		} catch (err) {
 			console.error('[Presentation] Error starting presentation:', err)
-			setError(err instanceof Error ? err.message : 'Failed to start presentation')
+			setError(err instanceof Error ? err.message : t('whiteboard', 'Failed to start presentation'))
 			setStatus('idle')
 		}
 	}, [socket, isConnected, isPresentationMode, presenterId, fileId, getJWT, parseJwt, status])
@@ -120,7 +121,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 	// Stop presentation
 	const stopPresentation = useCallback(async () => {
 		if (!socket || !isConnected) {
-			setError('Connection required to stop presentation')
+			setError(t('whiteboard', 'Connection required to stop presentation'))
 			return
 		}
 
@@ -138,7 +139,7 @@ export function usePresentation({ fileId }: UsePresentationProps): PresentationS
 			})
 
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to stop presentation')
+			setError(err instanceof Error ? err.message : t('whiteboard', 'Failed to stop presentation'))
 			setStatus('presenting')
 		}
 	}, [socket, isConnected, isPresenting, fileId])

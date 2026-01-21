@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react'
 import { mdiSlashForwardBox } from '@mdi/js'
+import { t } from '@nextcloud/l10n'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
@@ -77,7 +78,7 @@ export function useSmartPicker() {
 		renderToolbarButton({
 			class: 'smart-picker-container',
 			icon: mdiSlashForwardBox,
-			label: 'Smart picker',
+			label: t('whiteboard', 'Smart picker'),
 			onClick: pickFile,
 		})
 	}, [pickFile])

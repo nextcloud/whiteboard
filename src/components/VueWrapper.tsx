@@ -60,23 +60,31 @@ const VueWrapper = function(
 		visibleWarning = t('whiteboard', 'Please share the board with users; otherwise, they will not be able to see it.')
 	}
 
+	const embedContentStyle = {
+		minHeight: 'max(400px, 50vh)',
+		height: '100%',
+		width: '100%',
+	}
+
 	if (!linkToOpenSharingDetails) {
-		return <div id="vue-component" ref={vueRef}></div>
+		return <div id="vue-component" ref={vueRef} className="whiteboard-embed__content" style={embedContentStyle}></div>
 	}
 
 	return (
-		<div>
-			<div style={{
-				padding: '0.5rem',
-				fontStyle: 'italic',
-				color: '#666',
-			}}>
+		<div className="whiteboard-embed__wrapper">
+			<div
+				className="whiteboard-embed__notice"
+				style={{
+					padding: '0.5rem',
+					fontStyle: 'italic',
+					color: '#666',
+				}}>
 				{visibleWarning}
 				<a href={linkToOpenSharingDetails} target={'_blank'} style={{ marginLeft: '0.5rem' }}>
 					<Icon path={mdiAccountPlusOutline} size={1} style={{ marginBottom: '-4px' }} />
 				</a>
 			</div>
-			<div id="vue-component" ref={vueRef}></div>
+			<div id="vue-component" ref={vueRef} className="whiteboard-embed__content" style={embedContentStyle}></div>
 		</div>
 	)
 }

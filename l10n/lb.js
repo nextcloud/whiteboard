@@ -2,16 +2,22 @@ OC.L10N.register(
     "whiteboard",
     {
     "Advanced settings" : "Erweidert Astellungen",
+    "Close" : "Zoumaachen",
     "Cancel" : "Cancel",
     "Update" : "Update",
     "Comments" : "Kommentarer",
+    "Dismiss" : "Ofbriechen",
     "Edit" : "Änneren",
     "Save" : "Späicheren",
     "Add a comment" : "Setz e Kommentar derbäi",
     "Send" : "Schécken",
     "Unknown" : "Onbekannt",
     "Paused" : "Gepaust",
+    "Hours" : "Stonnen",
+    "Minutes" : "Minutten",
+    "min" : "Minutt",
     "Reset" : "Zeréck setzen",
-    "Pause" : "Paus"
+    "Pause" : "Paus",
+    "Assistant" : "Assistent"
 },
 "nplurals=2; plural=(n != 1);");

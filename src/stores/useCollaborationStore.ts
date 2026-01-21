@@ -148,3 +148,25 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 
 	setVotings: (votings) => set({ votings }),
 }))
+
+type WhiteboardTestHooks = {
+	collaborationStore?: typeof useCollaborationStore
+}
+
+declare global {
+	interface Window {
+		__whiteboardTest?: boolean
+		__whiteboardTestHooks?: WhiteboardTestHooks & Record<string, unknown>
+	}
+}
+
+const attachTestHooks = () => {
+	if (typeof window === 'undefined' || !window.__whiteboardTest) {
+		return
+	}
+
+	window.__whiteboardTestHooks = window.__whiteboardTestHooks || {}
+	window.__whiteboardTestHooks.collaborationStore = useCollaborationStore
+}
+
+attachTestHooks()

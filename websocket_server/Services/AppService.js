@@ -14,11 +14,24 @@ export default class AppService {
 		this.app = express()
 		this.systemMonitor = systemMonitor
 		this.metricsService = metricsService
+		this.corsHeaders = [
+			'Content-Type',
+			'Authorization',
+			'X-Requested-With',
+		]
+		this.app.use((req, res, next) => {
+			if (this.setCorsHeaders(req, res) && req.method === 'OPTIONS') {
+				res.status(204).end()
+				return
+			}
+			next()
+		})
 		this.setupRoutes()
 	}
 
 	setupRoutes() {
 		this.app.get('/', this.homeHandler.bind(this))
+		this.app.options('/status', this.statusOptionsHandler.bind(this))
 		this.app.get('/status', this.statusHandler.bind(this))
 
 		// Setup metrics endpoint if metrics token is configured
@@ -62,7 +75,34 @@ export default class AppService {
 		res.send('Nextcloud Whiteboard Collaboration Server')
 	}
 
+	setCorsHeaders(req, res) {
+		const origin = req.headers.origin
+		if (!origin || !Config.CORS_ORIGINS.includes(origin)) {
+			return false
+		}
+		res.set('Access-Control-Allow-Origin', origin)
+		const requestHeaders = req.headers['access-control-request-headers']
+		res.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
+		if (requestHeaders) {
+			res.set('Access-Control-Allow-Headers', requestHeaders)
+		} else {
+			res.set('Access-Control-Allow-Headers', this.corsHeaders.join(', '))
+		}
+		res.set('Vary', 'Origin')
+		return true
+	}
+
+	statusOptionsHandler(req, res) {
+		if (!this.setCorsHeaders(req, res)) {
+			res.status(403).end()
+			return
+		}
+		res.status(204).end()
+	}
+
 	async statusHandler(req, res) {
+		this.setCorsHeaders(req, res)
+
 		// Get system stats if systemMonitor is available
 		let roomStats = {}
 		let memoryStats = {}
@@ -105,6 +145,10 @@ export default class AppService {
 		const response = {
 			version: process.env.npm_package_version,
 			status: 'running',
+			config: {
+				maxUploadFileSizeBytes: Config.MAX_UPLOAD_FILE_SIZE,
+				maxHttpBufferSizeBytes: Config.MAX_UPLOAD_FILE_SIZE + 1e6,
+			},
 			metrics: {
 				rooms: roomStats,
 				memory: memoryStats,

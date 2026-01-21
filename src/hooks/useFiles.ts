@@ -121,7 +121,7 @@ export function useFiles(
 			if (file.size > maxFileSize * 1024 * 1024) {
 				ev.stopImmediatePropagation()
 				excalidrawAPI.setToast({
-					message: `Max file size is: ${maxFileSize} MB`,
+					message: `Max image size is ${maxFileSize} MB`,
 					closable: true,
 					duration: 5000,
 				})

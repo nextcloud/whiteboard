@@ -51,10 +51,17 @@
 		</NcSettingsSection>
 		<NcSettingsSection :name="t('whiteboard', 'Advanced settings')">
 			<p>
-				<NcTextField :label="t('whiteboard', 'Max file size')"
+				<NcTextField :label="t('whiteboard', 'Max image size (MB)')"
 					:value.sync="maxFileSize"
+					:helper-text="maxFileSizeHelperText"
 					@blur="saveMaxFileSize" />
 			</p>
+			<p v-if="wsLimitHelperText" class="settings-help">
+				{{ wsLimitHelperText }}
+			</p>
+			<NcNoteCard v-if="maxFileSizeNotice" :type="maxFileSizeNotice.type">
+				{{ maxFileSizeNotice.message }}
+			</NcNoteCard>
 		</NcSettingsSection>
 	</div>
 </template>
@@ -68,6 +75,8 @@ import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
 import NcSettingsSection from '@nextcloud/vue/dist/Components/NcSettingsSection.js'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
+import { t } from '@nextcloud/l10n'
+import { showError } from '@nextcloud/dialogs'
 
 export default {
 	name: 'AdminSettings',
@@ -83,6 +92,7 @@ export default {
 			serverUrl: loadState('whiteboard', 'url', ''),
 			secret: loadState('whiteboard', 'secret', ''),
 			maxFileSize: loadState('whiteboard', 'maxFileSize', 10),
+			wsMaxUploadFileSizeBytes: null,
 			validConnection: undefined,
 			connectionError: undefined,
 			loadingSettings: false,
@@ -94,12 +104,53 @@ export default {
 		loading() {
 			return this.loadingSettings || this.loadingSocket
 		},
+		wsLimitMb() {
+			if (!this.wsMaxUploadFileSizeBytes) {
+				return null
+			}
+			return this.wsMaxUploadFileSizeBytes / 1e6
+		},
+		maxFileSizeHelperText() {
+			return t('whiteboard', 'Per image added to the board (original file size).')
+		},
+		wsLimitHelperText() {
+			if (this.wsLimitMb) {
+				return t('whiteboard', 'WebSocket payload cap: {limit} MB (MAX_UPLOAD_FILE_SIZE on collaboration server).', { limit: this.wsLimitMb.toFixed(1) })
+			}
+			if (this.serverUrl) {
+				return t('whiteboard', 'WebSocket payload cap set by MAX_UPLOAD_FILE_SIZE on the collaboration server.')
+			}
+			return null
+		},
+		maxFileSizeNotice() {
+			const maxFileSize = Number(this.maxFileSize)
+			if (!Number.isFinite(maxFileSize) || maxFileSize <= 0) {
+				return {
+					type: 'error',
+					message: t('whiteboard', 'Enter a positive number of MB.'),
+				}
+			}
+
+			if (!this.wsMaxUploadFileSizeBytes) {
+				return null
+			}
+
+			if (this.wsLimitMb && maxFileSize > this.wsLimitMb) {
+				return {
+					type: 'error',
+					message: t('whiteboard', 'Exceeds WebSocket payload limit ({limit} MB). Images may not sync.', { limit: this.wsLimitMb.toFixed(1) }),
+				}
+			}
+
+			return null
+		},
 	},
 	mounted() {
 		this.callSettings({
 			serverUrl: this.serverUrl,
 		})
 		this.verifyConnection({ jwt: loadState('whiteboard', 'jwt', '') })
+		this.fetchWebsocketLimits()
 	},
 	methods: {
 		async submit() {
@@ -109,8 +160,18 @@ export default {
 				maxFileSize: this.maxFileSize,
 			})
 			await this.verifyConnection(data)
+			await this.fetchWebsocketLimits()
 		},
 		async saveMaxFileSize() {
+			const maxFileSize = Number(this.maxFileSize)
+			if (!Number.isFinite(maxFileSize) || maxFileSize <= 0) {
+				showError(t('whiteboard', 'Max image size must be a positive number.'))
+				return
+			}
+			if (this.wsLimitMb && maxFileSize > this.wsLimitMb) {
+				showError(t('whiteboard', 'Max image size exceeds the WebSocket payload limit ({limit} MB).', { limit: this.wsLimitMb.toFixed(1) }))
+				return
+			}
 			await this.callSettings({
 				maxFileSize: this.maxFileSize,
 			})
@@ -123,6 +184,34 @@ export default {
 			}
 			this.loadingSettings = false
 			return data
+		},
+		async fetchWebsocketLimits() {
+			if (!this.serverUrl) {
+				this.wsMaxUploadFileSizeBytes = null
+				return
+			}
+
+			let statusUrl
+			try {
+				const url = new URL(this.serverUrl)
+				const pathPrefix = url.pathname.replace(/\/$/, '')
+				const protocol = url.protocol === 'wss:' ? 'https:' : url.protocol === 'ws:' ? 'http:' : url.protocol
+				statusUrl = `${protocol}//${url.host}${pathPrefix}/status`
+			} catch (error) {
+				this.wsMaxUploadFileSizeBytes = null
+				return
+			}
+
+			try {
+				const response = await fetch(statusUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
+				if (!response.ok) {
+					throw new Error(`Status ${response.status}`)
+				}
+				const data = await response.json()
+				this.wsMaxUploadFileSizeBytes = data?.config?.maxUploadFileSizeBytes ?? null
+			} catch (error) {
+				this.wsMaxUploadFileSizeBytes = null
+			}
 		},
 		async verifyConnection(data) {
 			if (!data.jwt) {
@@ -155,6 +244,7 @@ export default {
 			})
 			socket.connect()
 		},
+		t,
 	},
 }
 </script>
@@ -165,5 +255,12 @@ export default {
 
 p {
 	margin-bottom: calc(var(--default-grid-baseline) * 4);
+}
+
+.settings-help {
+	margin-top: calc(var(--default-grid-baseline) * -3);
+	margin-bottom: calc(var(--default-grid-baseline) * 4);
+	color: var(--color-text-maxcontrast);
+	font-size: 0.875rem;
 }
 </style>

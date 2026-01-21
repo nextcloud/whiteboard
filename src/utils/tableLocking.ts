@@ -4,10 +4,48 @@
  */
 import { getCurrentUser } from '@nextcloud/auth'
 import { showError } from '@nextcloud/dialogs'
+import { t } from '@nextcloud/l10n'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+
+/**
+ * Gets the current user info from either Nextcloud auth or JWT token.
+ * For authenticated users, uses getCurrentUser().
+ * For public share guests, extracts user info from the JWT token (which contains backend-generated user ID).
+ */
+async function getUserInfo(): Promise<{ uid: string; displayName: string } | null> {
+	const user = getCurrentUser()
+	if (user) {
+		return {
+			uid: user.uid,
+			displayName: user.displayName || user.uid,
+		}
+	}
+
+	// For public shares, get user info from JWT token
+	// The backend generates consistent user IDs (e.g., shared_{token}_{random})
+	// that are used across the entire collaboration system
+	try {
+		// Dynamic import to avoid loading browser-specific code in Node.js tests
+		const { useJWTStore } = await import('../stores/useJwtStore')
+		const token = await useJWTStore.getState().getJWT()
+		if (token) {
+			const payload = useJWTStore.getState().parseJwt(token)
+			if (payload?.user) {
+				return {
+					uid: payload.user.id || payload.userid,
+					displayName: payload.user.name || 'Guest',
+				}
+			}
+		}
+	} catch (error) {
+		console.error('[TableLocking] Failed to get user info from JWT:', error)
+	}
+
+	return null
+}
 
 /**
  * Structure stored in element.customData.tableLock to track who is editing
@@ -71,11 +109,11 @@ export function setLockOnElement(
  * @param tableElement - The table element to lock
  * @return true if lock was successfully acquired, false if blocked by another user
  */
-export function tryAcquireLock(
+export async function tryAcquireLock(
 	excalidrawAPI: ExcalidrawImperativeAPI,
 	tableElement: ExcalidrawImageElement,
-): boolean {
-	const user = getCurrentUser()
+): Promise<boolean> {
+	const user = await getUserInfo()
 	if (!user) {
 		console.error('User not available')
 		return false
@@ -89,7 +127,7 @@ export function tryAcquireLock(
 	// Check if another user has a valid (non-expired) lock
 	if (existingLock && existingLock.uid !== user.uid && !isLockExpired(existingLock)) {
 		// Show error to user and prevent editing
-		showError(`This table is currently being edited by ${existingLock.displayName}`)
+		showError(t('whiteboard', 'This table is currently being edited by {user}', { user: existingLock.displayName }))
 		return false
 	}
 
