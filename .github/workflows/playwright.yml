@@ -9,10 +9,7 @@ jobs:
   test:
     strategy:
       matrix:
-        # Note: master (NC33) is excluded due to ongoing Vue 3 migration
-        # The Files app's UploadPicker component is not yet stable on NC33
-        # Re-enable once NC33 Vue 3 migration is complete
-        server_version: [stable29, stable30, stable31, stable32]
+        server_version: [stable29, stable30, stable31, stable32, master]
       fail-fast: false
     timeout-minutes: 60
     runs-on: ubuntu-latest
