@@ -395,6 +395,18 @@ export default defineComponent({
 		border-left: 0;
 		vertical-align: top;
 		max-width: 100%;
+		white-space: normal;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+		word-break: break-word;
+	}
+
+	// Force word-breaking on inner content divs that may have pre-wrap
+	:deep(.ProseMirror table td div),
+	:deep(.ProseMirror table th div) {
+		word-wrap: break-word !important;
+		overflow-wrap: break-word !important;
+		word-break: break-word !important;
 	}
 
 	:deep(.ProseMirror table td:first-child),
