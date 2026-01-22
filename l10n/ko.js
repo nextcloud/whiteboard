@@ -34,6 +34,7 @@ OC.L10N.register(
     "Unknown" : "알 수 없음",
     "Recording" : "녹음/녹화 중",
     "Unknown user" : "알 수 없는 사용자",
+    "File" : "파일",
     "Running" : "달리기",
     "Paused" : "일시 정지",
     "Finished" : "완료됨",

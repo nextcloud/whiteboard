@@ -31,6 +31,7 @@ OC.L10N.register(
     "Unknown" : "Nežinoma",
     "Stop" : "Stabdyti",
     "Unknown user" : "Nežinomas naudotojas",
+    "File" : "Failas",
     "Duration" : "Trukmė",
     "Running" : "Bėgimas",
     "Paused" : "Pristabdyti",

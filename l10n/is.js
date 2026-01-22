@@ -15,6 +15,7 @@ OC.L10N.register(
     "Add option" : "Bæta við valkosti",
     "Comments" : "Athugasemdir",
     "Voting" : "Kosið",
+    "Dismiss" : "Hafna",
     "Delete thread" : "Eyða spjallþræði",
     "Edit" : "Breyta",
     "Save" : "Vista",

@@ -6,6 +6,7 @@ OC.L10N.register(
     "Cancel" : "Cancel",
     "Update" : "Actualisation",
     "Comments" : "Commentarios",
+    "Dismiss" : "Dimitter",
     "Edit" : "Modificar",
     "Save" : "Salveguardar",
     "Reply" : "Responde",

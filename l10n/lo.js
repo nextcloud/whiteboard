@@ -29,6 +29,7 @@ OC.L10N.register(
     "Unknown" : "ບໍ່ຮູ້",
     "Stop" : "Stop",
     "Recording" : "ການບັນທຶກ",
+    "File" : "ໄຟລ໌",
     "Duration" : "ໄລຍະເວລາ",
     "Running" : "ກຳລັງເຮັດວຽກ",
     "Finished" : "ສຳເລັດ",
