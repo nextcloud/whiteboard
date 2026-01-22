@@ -180,6 +180,6 @@
   grid-auto-flow: unset;
 }
 
-[data-testid="toolbar-embeddable"] {
+[data-testid="toolbar-embeddable"]:not([data-testid="toolbar-embeddable"] ~ [data-testid="toolbar-embeddable"]) {
 	display: none !important;
 }
