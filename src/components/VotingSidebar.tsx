@@ -7,7 +7,7 @@ import type { Voting, VotingOption } from '../types'
 import './VotingSidebar.css'
 import { getCurrentUser } from '@nextcloud/auth'
 import { spawnDialog, showError } from '@nextcloud/dialogs'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import VotingModal from './VotingModal.vue'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { v4 as uuidv4 } from 'uuid'
@@ -314,7 +314,9 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 												style={{ width: `${calculatePercentage(option, voting)}%` }}
 											/>
 										</div>
-										<span className="vote-count">({option.votes.length} {option.votes.length === 1 ? t('whiteboard', 'vote') : t('whiteboard', 'votes')})</span>
+										<span className="vote-count">
+											({n('whiteboard', '%n vote', '%n votes', option.votes.length)})
+										</span>
 									</div>
 								</div>
 							</li>
