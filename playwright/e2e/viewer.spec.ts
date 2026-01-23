@@ -38,5 +38,9 @@ test('open a whiteboard', async ({ page }) => {
 	await page.getByTestId('main-menu-trigger').click()
 	await expect(page.getByText('Canvas backgroundExport image')).toBeVisible()
 	await page.getByTestId('main-menu-trigger').click()
+
 	await page.getByTestId('dropdown-menu-button').click()
+
+	// Assert that we hide the embeddable toolbar button
+	await expect(page.locator('[data-testid="toolbar-embeddable"]').filter({ hasText: 'Web Embed' })).toBeHidden()
 })
