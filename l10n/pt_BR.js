@@ -197,8 +197,6 @@ OC.L10N.register(
     "Closed" : "Fechado",
     "Vote" : "Votar",
     "Voted" : "Votou",
-    "vote" : "voto",
-    "votes" : "votos",
     "Please share the file with users; otherwise, they will not be able to see it." : "Compartilhe o arquivo com os usuários; caso contrário, eles não poderão visualizá-lo.",
     "Please share the board with users; otherwise, they will not be able to see it." : "Compartilhe o quadro com os usuários; caso contrário, eles não poderão visualizá-lo.",
     "Assistant" : "Assistente",
