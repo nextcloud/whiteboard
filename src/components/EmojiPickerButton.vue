@@ -19,6 +19,9 @@ export default defineComponent({
 		}
 	},
 	methods: {
+		handleClick() {
+			this.$emit('open')
+		},
 		onSelectEmoji(emoji) {
 			this.$emit('selected', emoji)
 		},
@@ -32,7 +35,7 @@ export default defineComponent({
 	<NcEmojiPicker :aria-label="t('whiteboard', 'Add reaction')"
 		:title="t('whiteboard', 'Add reaction')"
 		@select-data="onSelectEmoji">
-		<button class="dropdown-menu-button">
+		<button class="dropdown-menu-button" @click="handleClick">
 			<svg viewBox="0 0 24 24" role="presentation" style="width: 1.5rem; height: 1.5rem;">
 				<path :d="mdiStickerEmoji" style="fill: currentcolor" />
 			</svg>

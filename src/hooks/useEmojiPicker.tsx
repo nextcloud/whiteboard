@@ -15,7 +15,7 @@ import Vue from 'vue'
 import { Notomoji } from '@svgmoji/noto'
 import EmojiData from 'svgmoji/emoji.json'
 import { imagePath } from '@nextcloud/router'
-import { renderToolbarButton } from '../components/ToolbarButton'
+import { renderToolbarButton, resetActiveTool } from '../components/ToolbarButton'
 
 type EmojiObj = {
 	native: string
@@ -132,6 +132,7 @@ export function useEmojiPicker() {
 				container.appendChild(div)
 				const View = Vue.extend(EmojiPickerButton)
 				const vueComponent = new View({}).$mount(div)
+				vueComponent.$on('open', () => resetActiveTool())
 				vueComponent.$on('selected', (emoji: string) => {
 					loadToExcalidraw(emoji)
 				})
