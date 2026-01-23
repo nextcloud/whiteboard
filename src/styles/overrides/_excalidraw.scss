@@ -183,3 +183,7 @@
 [data-testid="toolbar-embeddable"]:not([data-testid="toolbar-embeddable"] ~ [data-testid="toolbar-embeddable"]) {
 	display: none !important;
 }
+
+.whiteboard-viewer__embedding .App-bottom-bar {
+	display: none !important;
+}
