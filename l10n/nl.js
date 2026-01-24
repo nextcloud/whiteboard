@@ -23,6 +23,7 @@ OC.L10N.register(
     "Delete thread" : "Verwijder draadje",
     "Edit" : "Bewerken",
     "Save" : "Opslaan",
+    "Reply" : "Antwoord",
     "Add a comment" : "Reactie toevoegen",
     "Send" : "Verzenden",
     "No comments yet" : "Nog geen reacties",

@@ -195,6 +195,7 @@
     "Closed" : "Geschlossen",
     "Vote" : "Abstimmen",
     "Voted" : "Abgestimmt",
+    "_%n vote_::_%n votes_" : ["%n Stimme","%n Stimmen"],
     "Please share the file with users; otherwise, they will not be able to see it." : "Bitte die Datei mit den Benutzern teilen; andernfalls können diese sie nicht sehen.",
     "Please share the board with users; otherwise, they will not be able to see it." : "Bitte das Board mit den Benutzern teilen; andernfalls können diese es nicht sehen.",
     "Assistant" : "Assistent",
