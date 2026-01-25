@@ -61,6 +61,7 @@ OC.L10N.register(
     "Authentication issue detected. Retrying…" : "Autentiseringsproblem upptäckt. Försöker igen…",
     "Local changes are automatically saved to your device. Collaboration features will be unavailable until this issue is resolved." : "Lokala ändringar sparas automatiskt på din enhet. Samarbetsfunktioner är inte tillgängliga förrän problemet har åtgärdats.",
     "Dismiss" : "Avfärda",
+    "Guest" : "Gäst",
     "Delete thread" : "Radera tråd",
     "Edit" : "Redigera",
     "Save" : "Spara",

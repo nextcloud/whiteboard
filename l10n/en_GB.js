@@ -197,6 +197,7 @@ OC.L10N.register(
     "Closed" : "Closed",
     "Vote" : "Vote",
     "Voted" : "Voted",
+    "_%n vote_::_%n votes_" : ["%n vote","%n votes"],
     "Please share the file with users; otherwise, they will not be able to see it." : "Please share the file with users; otherwise, they will not be able to see it.",
     "Please share the board with users; otherwise, they will not be able to see it." : "Please share the board with users; otherwise, they will not be able to see it.",
     "Assistant" : "Assistant",
