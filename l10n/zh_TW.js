@@ -197,6 +197,7 @@ OC.L10N.register(
     "Closed" : " 關閉",
     "Vote" : "投票",
     "Voted" : "已投票",
+    "_%n vote_::_%n votes_" : ["%n 個投票"],
     "Please share the file with users; otherwise, they will not be able to see it." : "請將檔案分享給使用者；否則他們將無法檢視該檔案。",
     "Please share the board with users; otherwise, they will not be able to see it." : "請將白板分享給使用者；否則他們將無法檢視該檔案。",
     "Assistant" : "助理",

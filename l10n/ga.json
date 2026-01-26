@@ -195,6 +195,7 @@
     "Closed" : "Dúnta",
     "Vote" : "Vóta",
     "Voted" : "Vótáilte",
+    "_%n vote_::_%n votes_" : ["%n vóta","%n vótaí","%n vótaí","%n vótaí","%n vótaí"],
     "Please share the file with users; otherwise, they will not be able to see it." : "Roinn an comhad le húsáideoirí le do thoil; nó ní bheidh siad in ann é a fheiceáil.",
     "Please share the board with users; otherwise, they will not be able to see it." : "Le do thoil, roinn an bord le húsáideoirí; nó ní bheidh siad in ann é a fheiceáil.",
     "Assistant" : "Cúntóir",
