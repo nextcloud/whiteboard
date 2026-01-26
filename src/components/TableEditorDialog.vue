@@ -394,6 +394,7 @@ export default defineComponent({
 		border: 1px solid var(--color-border);
 		border-left: 0;
 		vertical-align: top;
+		min-width: 100px;
 		max-width: 100%;
 		white-space: normal;
 		word-wrap: break-word;
