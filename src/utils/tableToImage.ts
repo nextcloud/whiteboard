@@ -7,7 +7,7 @@ import type { FileId, ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 
 // Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)
-const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4;'
+const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;'
 const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600;`
 const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px;'
 
@@ -83,14 +83,30 @@ function applyStylesToHtml(html: string): string {
 		// Preserve text-align from style, otherwise use left
 		const align = (cell as HTMLElement).style.textAlign || 'left'
 		cell.setAttribute('style', HEADER_CELL_STYLE);
-		(cell as HTMLElement).style.textAlign = align
+		(cell as HTMLElement).style.textAlign = align;
+		// Set max-width to force text wrapping
+		(cell as HTMLElement).style.maxWidth = '400px'
 	})
 	const bodyCells = table.querySelectorAll('td')
 	bodyCells.forEach((cell) => {
 		// Preserve text-align from style, otherwise use left
 		const align = (cell as HTMLElement).style.textAlign || 'left'
 		cell.setAttribute('style', CELL_BASE_STYLE);
-		(cell as HTMLElement).style.textAlign = align
+		(cell as HTMLElement).style.textAlign = align;
+		// Set max-width to force text wrapping
+		(cell as HTMLElement).style.maxWidth = '400px'
+
+		// Apply word-break to all nested elements (divs, paragraphs, etc.)
+		const innerElements = cell.querySelectorAll('div, p, span')
+		innerElements.forEach(el => {
+			if (el instanceof HTMLElement) {
+				el.style.wordWrap = 'break-word'
+				el.style.overflowWrap = 'break-word'
+				el.style.wordBreak = 'break-word'
+				el.style.whiteSpace = 'normal'
+			}
+		})
+
 		// Ensure empty paragraphs don't collapse
 		const paragraphs = cell.querySelectorAll('p')
 		paragraphs.forEach(p => {
