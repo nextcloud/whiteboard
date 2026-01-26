@@ -51,6 +51,7 @@ import { CommentSidebar } from './components/CommentSidebar'
 import { useEmojiPicker } from './hooks/useEmojiPicker'
 import { VotingSidebar } from './components/VotingSidebar'
 import { useVoting } from './hooks/useVoting'
+import { useContextMenuFilter } from './hooks/useContextMenuFilter'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -150,6 +151,8 @@ export default function App({
 	const creatorDisplaySettings = useCreatorDisplayStore(state => state.settings)
 	useElementCreatorTracking({ excalidrawAPI, enabled: true })
 	useFollowedUser({ excalidrawAPI, fileId: normalizedFileId })
+
+	useContextMenuFilter(excalidrawAPI)
 
 	useEffect(() => {
 		const handleVideoError = (e: Event) => {
