@@ -9,7 +9,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 export function useDisableExternalLibraries() {
 	useEffect(() => {
-		const disableExternalLibraries = loadState('whiteboard', 'disableExternalLibraries')
+		const disableExternalLibraries = loadState('whiteboard', 'disableExternalLibraries', false)
 
 		if (!disableExternalLibraries) return
 
