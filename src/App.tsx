@@ -52,6 +52,7 @@ import { useEmojiPicker } from './hooks/useEmojiPicker'
 import { VotingSidebar } from './components/VotingSidebar'
 import { useVoting } from './hooks/useVoting'
 import { useContextMenuFilter } from './hooks/useContextMenuFilter'
+import { useDisableExternalLibraries } from './hooks/useDisableExternalLibraries'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -153,6 +154,7 @@ export default function App({
 	useFollowedUser({ excalidrawAPI, fileId: normalizedFileId })
 
 	useContextMenuFilter(excalidrawAPI)
+	useDisableExternalLibraries()
 
 	useEffect(() => {
 		const handleVideoError = (e: Event) => {

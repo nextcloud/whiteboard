@@ -42,5 +42,9 @@ class LoadViewerListener implements IEventListener {
 			'maxFileSize',
 			$this->configService->getMaxFileSize()
 		);
+		$this->initialState->provideInitialState(
+			'disableExternalLibraries',
+			$this->configService->getDisableExternalLibraries()
+		);
 	}
 }

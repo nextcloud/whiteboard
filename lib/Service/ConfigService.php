@@ -79,4 +79,8 @@ final class ConfigService {
 
 		$this->appConfig->setAppValueString('jwt_secret_key', $jwtSecretKey);
 	}
+
+	public function getDisableExternalLibraries(): bool {
+		return $this->appConfig->getAppValueBool('disable_external_libraries');
+	}
 }
