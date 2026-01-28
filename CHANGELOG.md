@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.5.4
+
+### Fixed
+- fix: add context menu filtering for element types by @benjaminfrueh [#972](https://github.com/nextcloud/whiteboard/pull/972)
+- fix: force text wrapping in table cells by @silverkszlo [#969](https://github.com/nextcloud/whiteboard/pull/969)
+- fix: reset active tool when clicking custom toolbar button by @benjaminfrueh [#973](https://github.com/nextcloud/whiteboard/pull/973)
+- fix: Hide button to add embeddable manually as we do not support web embeds by @juliusknorr [#888](https://github.com/nextcloud/whiteboard/pull/888)
+- fix: Proper method for translating plurals by @juliusknorr [#962](https://github.com/nextcloud/whiteboard/pull/962)
+- fix: preserve table width on editing content by @benjaminfrueh [#966](https://github.com/nextcloud/whiteboard/pull/966)
+
+### Added
+- feat: add config to disable external libraries by @benjaminfrueh [#989](https://github.com/nextcloud/whiteboard/pull/989)
+
+### Other
+- ci(actions): Pin action versions by @nickvergessen [#986](https://github.com/nextcloud/whiteboard/pull/986)
+- Update nextcloud/ocp dependency by @nextcloud-command [#982](https://github.com/nextcloud/whiteboard/pull/982)
+- Add master server version to Playwright workflow by @juliusknorr [#968](https://github.com/nextcloud/whiteboard/pull/968)
+
 ## 1.5.3
 
 ### Fixed
