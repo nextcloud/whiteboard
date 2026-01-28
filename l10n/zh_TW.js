@@ -202,6 +202,8 @@ OC.L10N.register(
     "Please share the board with users; otherwise, they will not be able to see it." : "請將白板分享給使用者；否則他們將無法檢視該檔案。",
     "Assistant" : "助理",
     "Add comment" : "新增留言",
+    "Select an item on canvas to add it here, or add a local library below." : "在畫布上選取項目即可將其新增至此處，或在下方新增本機圖庫。",
+    "Add local library" : "新增本機圖庫",
     "Presentation requires connection to collaboration server. Please check your network connection." : "簡報需要連線至協作伺服器。請檢查您的網路連線。",
     "Another user is already presenting. Please wait for them to finish." : "其他使用者正在進行簡報。請等他們結束。",
     "Failed to start presentation - timeout. Please try again." : "無法開始簡報：逾時。請重試。",
