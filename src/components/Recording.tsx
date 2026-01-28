@@ -58,27 +58,37 @@ const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, s
 
 	if (isStopping) {
 		return (
-			<div className="recording-status">
-				<div className="recording-spinner" />
-				<span>{t('whiteboard', 'Stopping recording…')}</span>
+			<div className="recording-status stopping" role="status" aria-live="polite">
+				<div className="recording-status__content">
+					<span className="recording-status__spinner" aria-hidden="true" />
+					<div className="recording-status__info">
+						<div className="recording-status__title">{t('whiteboard', 'Stopping recording…')}</div>
+					</div>
+				</div>
 			</div>
 		)
 	}
 
-	if (isRecording && duration) {
+	if (isRecording && duration !== null) {
 		return (
-			<div className="recording-status recording">
-				<div className="recording-indicator" />
-				<span>{t('whiteboard', 'Recording')}: {formatDuration(duration)}</span>
-				<button
-					type="button"
-					className="recording-stop-button"
-					onClick={onStop}
-					title={t('whiteboard', 'Stop Recording')}
-					aria-label={t('whiteboard', 'Stop Recording')}
-				>
-					<Icon path={mdiStopCircle} size={0.8} />
-				</button>
+			<div className="recording-status recording" role="status" aria-live="polite">
+				<div className="recording-status__content">
+					<span className="recording-status__indicator" aria-hidden="true" />
+					<div className="recording-status__info">
+						<div className="recording-status__title">{t('whiteboard', 'Recording')}</div>
+						<div className="recording-status__subtitle">{t('whiteboard', 'Duration')}: <span className="recording-status__duration">{formatDuration(duration)}</span></div>
+					</div>
+					<button
+						type="button"
+						className="recording-status__stop-button"
+						onClick={onStop}
+						title={t('whiteboard', 'Stop recording')}
+						aria-label={t('whiteboard', 'Stop recording')}
+					>
+						<Icon path={mdiStopCircle} size={0.8} />
+						<span>{t('whiteboard', 'Stop recording')}</span>
+					</button>
+				</div>
 			</div>
 		)
 	}
@@ -87,18 +97,27 @@ const RecordingStatus = memo(({ isStarting, isStopping, isRecording, duration, s
 })
 RecordingStatus.displayName = 'RecordingStatus'
 
-const OtherRecordingUsers = memo(({ users }: { users: RecordingOverlayProps['otherRecordingUsers'] }) => (
-	<div className="other-recording-users">
-		<Icon path={mdiRecordCircle} size={0.8} />
-		{(() => {
-			const displayName = users[0]?.username?.trim() || t('whiteboard', 'Unknown user')
-			const label = users.length === 1
-				? t('whiteboard', '{user} is recording', { user: displayName })
-				: t('whiteboard', '{count} users are recording', { count: users.length })
-			return <span>{label}</span>
-		})()}
-	</div>
-))
+const OtherRecordingUsers = memo(({ users }: { users: RecordingOverlayProps['otherRecordingUsers'] }) => {
+	const displayName = users[0]?.username?.trim() || t('whiteboard', 'Unknown user')
+	const label = users.length === 1
+		? displayName
+		: t('whiteboard', '{count} users', { count: users.length })
+	const title = users.length === 1
+		? t('whiteboard', 'Other user recording')
+		: t('whiteboard', 'Others recording')
+
+	return (
+		<div className="recording-status recording is-others" role="status" aria-live="polite">
+			<div className="recording-status__content">
+				<span className="recording-status__indicator" aria-hidden="true" />
+				<div className="recording-status__info">
+					<div className="recording-status__title">{title}</div>
+					<div className="recording-status__subtitle">{label}</div>
+				</div>
+			</div>
+		</div>
+	)
+})
 OtherRecordingUsers.displayName = 'OtherRecordingUsers'
 
 const RecordingUploadStatus = memo(({ onDismiss }: { onDismiss: () => void }) => (
@@ -322,6 +341,20 @@ export const RecordingOverlay = memo(function RecordingOverlay(props: RecordingO
 							<OtherRecordingUsers users={otherRecordingUsers} />
 						)}
 					</div>
+				</DraggableDialog>
+			</div>
+		)
+	}
+
+	if (hasOtherRecordingUsers) {
+		return (
+			<div className="recording-overlay">
+				<DraggableDialog
+					id="recording-others"
+					initialPosition={{ x: 20, y: 20 }}
+					enableDrag={true}
+				>
+					<OtherRecordingUsers users={otherRecordingUsers} />
 				</DraggableDialog>
 			</div>
 		)
