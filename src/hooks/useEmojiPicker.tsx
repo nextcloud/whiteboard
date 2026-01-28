@@ -125,6 +125,8 @@ export function useEmojiPicker() {
 
 	const hasInsertedRef = useRef(false)
 	const renderEmojiPicker = useCallback(() => {
+		if (document.querySelector('.emoji-picker-container')) return
+
 		renderToolbarButton({
 			class: 'emoji-picker-container',
 			customContainer: (container) => {
