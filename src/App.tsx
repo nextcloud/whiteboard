@@ -8,7 +8,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
 import { translate as t } from '@nextcloud/l10n'
-import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar } from '@nextcloud/excalidraw'
+import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
@@ -400,16 +400,25 @@ export default function App({
 
 	const onLinkOpen = useCallback((element: any, event: any) => {
 		const link = element.link
+		if (!link) {
+			return
+		}
 		const { nativeEvent } = event.detail
 		const isNewTab = nativeEvent.ctrlKey || nativeEvent.metaKey
 		const isNewWindow = nativeEvent.shiftKey
 		const isInternalLink = link.startsWith('/') || link.includes(window.location.origin)
 
+		if (isElementLink(link) && !isNewTab && !isNewWindow) {
+			event.preventDefault()
+			excalidrawAPI?.scrollToContent(link)
+			return
+		}
+
 		if (isInternalLink && !isNewTab && !isNewWindow) {
 			event.preventDefault()
 			window.open(link, '_blank')
 		}
-	}, [])
+	}, [excalidrawAPI])
 
 	const handleOnChange = useCallback(() => {
 		if (isVersionPreview) {
