@@ -8,6 +8,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
 import { translate as t } from '@nextcloud/l10n'
+import { loadState } from '@nextcloud/initial-state'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
@@ -81,6 +82,16 @@ export default function App({
 }: WhiteboardAppProps) {
 	const normalizedFileId = Number.isFinite(fileId) ? fileId : Number(fileId)
 	const fileNameWithoutExtension = useMemo(() => fileName.split('.').slice(0, -1).join('.'), [fileName])
+	const maxImageSizeMb = useMemo(() => {
+		const rawValue = Number(loadState('whiteboard', 'maxFileSize', 10))
+		if (!Number.isFinite(rawValue) || rawValue <= 0) {
+			return null
+		}
+		return rawValue
+	}, [])
+	const maxImageSizeBytes = useMemo(() => (
+		maxImageSizeMb ? maxImageSizeMb * 1024 * 1024 : null
+	), [maxImageSizeMb])
 
 	const { excalidrawAPI, setExcalidrawAPI, resetExcalidrawAPI } = useExcalidrawStore(useShallow(state => ({
 		excalidrawAPI: state.excalidrawAPI,
@@ -411,6 +422,15 @@ export default function App({
 		}
 	}, [])
 
+	const generateIdForFile = useCallback(async (file: File): Promise<string> => {
+		if (maxImageSizeBytes && file.size > maxImageSizeBytes) {
+			const maxSizeMb = maxImageSizeMb ?? 0
+			throw new Error(t('whiteboard', 'Max image size is {max} MB', { max: maxSizeMb }))
+		}
+		// Return empty string so Excalidraw falls back to its default ID generator.
+		return ''
+	}, [maxImageSizeBytes, maxImageSizeMb])
+
 	const handleOnChange = useCallback(() => {
 		if (isVersionPreview) {
 			return
@@ -498,6 +518,7 @@ export default function App({
 					beforeElementCreated={beforeElementCreated}
 					excalidrawAPI={setExcalidrawAPI}
 					initialData={initialDataPromise}
+					generateIdForFile={generateIdForFile}
 					onPointerUpdate={onPointerUpdate}
 					onChange={handleOnChange}
 					viewModeEnabled={isReadOnly}
