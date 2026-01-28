@@ -21,3 +21,6 @@ export const DEFAULT_SESSION_TTL = 24 * 60 * 60 * 1000
 
 // WebSocket compression default
 export const DEFAULT_COMPRESSION_ENABLED = true
+
+// Recording defaults
+export const DEFAULT_RECORDING_DISCONNECT_GRACE_MS = 5000

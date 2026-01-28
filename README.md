@@ -79,8 +79,9 @@ services:
 
 **Environment Variables:**
 - `JWT_SECRET_KEY`: Must match the secret configured in Nextcloud
-- `NEXTCLOUD_URL`: Used for JWT token validation (not for server-to-server communication)
+- `NEXTCLOUD_URL`: Used for JWT token validation and optional recording uploads
 - `RECORDINGS_DIR`: Optional writable directory for temporary recording files (defaults to `/tmp/whiteboard-recordings` in the Docker image and automatically falls back to the OS temp directory if unavailable)
+- `RECORDING_DISCONNECT_GRACE_MS`: Grace period before stopping a recording after the recorder disconnects (default: `5000`)
 - `HOST`: Optional definition of the listening interface (defaults to `0.0.0.0`).
 
 ### Recording prerequisites

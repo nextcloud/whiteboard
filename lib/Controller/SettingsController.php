@@ -17,6 +17,7 @@ use OCA\Whiteboard\Settings\SetupCheck;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
+use OCP\IUserSession;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -29,6 +30,7 @@ final class SettingsController extends Controller {
 		private JWTService $jwtService,
 		private ConfigService $configService,
 		private SetupCheck $setupCheck,
+		private IUserSession $userSession,
 	) {
 		parent::__construct('whiteboard', $request);
 	}
@@ -59,6 +61,31 @@ final class SettingsController extends Controller {
 			return new DataResponse([
 				'jwt' => $this->jwtService->generateJWTFromPayload([ 'serverUrl' => $serverUrl ?: $this->configService->getCollabBackendUrl() ]),
 				'check' => $result?->jsonSerialize(),
+			]);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	public function updatePersonal(): DataResponse {
+		try {
+			$user = $this->userSession->getUser();
+			if ($user === null) {
+				throw new Exception('User not logged in');
+			}
+
+			$autoUploadOnDisconnect = $this->request->getParam('autoUploadOnDisconnect');
+			if ($autoUploadOnDisconnect !== null) {
+				$normalized = $autoUploadOnDisconnect;
+				if (is_string($autoUploadOnDisconnect)) {
+					$normalized = filter_var($autoUploadOnDisconnect, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+				}
+				$enabled = $normalized === null ? false : (bool)$normalized;
+				$this->configService->setUserAutoUploadOnDisconnect($user->getUID(), $enabled);
+			}
+
+			return new DataResponse([
+				'autoUploadOnDisconnect' => $this->configService->getUserAutoUploadOnDisconnect($user->getUID()),
 			]);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);

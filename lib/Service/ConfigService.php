@@ -10,10 +10,14 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Service;
 
 use OCP\AppFramework\Services\IAppConfig;
+use OCP\IConfig;
 
 final class ConfigService {
+	private const USER_AUTO_UPLOAD_ON_DISCONNECT = 'recording_auto_upload_on_disconnect';
+
 	public function __construct(
 		private IAppConfig $appConfig,
+		private IConfig $config,
 	) {
 	}
 
@@ -82,5 +86,16 @@ final class ConfigService {
 
 	public function getDisableExternalLibraries(): bool {
 		return $this->appConfig->getAppValueBool('disable_external_libraries');
+	}
+
+	public function getUserAutoUploadOnDisconnect(?string $userId): bool {
+		if (!$userId) {
+			return false;
+		}
+		return $this->config->getUserValue($userId, 'whiteboard', self::USER_AUTO_UPLOAD_ON_DISCONNECT, 'false') === 'true';
+	}
+
+	public function setUserAutoUploadOnDisconnect(string $userId, bool $enabled): void {
+		$this->config->setUserValue($userId, 'whiteboard', self::USER_AUTO_UPLOAD_ON_DISCONNECT, $enabled ? 'true' : 'false');
 	}
 }

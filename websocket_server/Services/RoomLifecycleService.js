@@ -349,6 +349,7 @@ export default class RoomLifecycleService {
 					socketId: s.id,
 					userId: data.user.id,
 					userName: data.user.name,
+					clientType: data.clientType,
 				}
 			}),
 		).then((results) => results.filter(Boolean))
