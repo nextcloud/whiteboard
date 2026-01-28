@@ -10,6 +10,7 @@ OC.L10N.register(
     "Update" : "Actualizar",
     "Insert" : "Insertar",
     "Option" : "Opción",
+    "Add option" : "Añade una opción",
     "Comments" : "Comentarios",
     "Dismiss" : "Descartar",
     "Delete thread" : "Eliminar hilo",
