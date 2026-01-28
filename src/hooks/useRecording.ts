@@ -10,6 +10,7 @@ import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
+import { loadState } from '@nextcloud/initial-state'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { RecordingHookState, RecordingState, RecordingUser } from '../types/recording'
 import { t } from '@nextcloud/l10n'
@@ -35,6 +36,7 @@ const INITIAL_STATE: RecordingState = {
 	isAvailable: null,
 	unavailableReason: null,
 	showUnavailableInfo: false,
+	autoUploadOnDisconnect: false,
 }
 
 export function formatDuration(ms: number) {
@@ -57,7 +59,10 @@ const SOCKET_EVENTS = [
 type RecordingSocketEvent = typeof SOCKET_EVENTS[number]
 
 export function useRecording({ fileId }: UseRecordingProps): RecordingHookState {
-	const [state, setState] = useState<RecordingState>(INITIAL_STATE)
+	const [state, setState] = useState<RecordingState>(() => ({
+		...INITIAL_STATE,
+		autoUploadOnDisconnect: loadState('whiteboard', 'autoUploadOnDisconnect', false),
+	}))
 	const durationIntervalRef = useRef<NodeJS.Timeout | null>(null)
 	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const stateRef = useRef(state)
@@ -391,6 +396,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 					fileId,
 					recordingUrl,
 					uploadToken: jwt,
+					autoUploadOnDisconnect: stateRef.current.autoUploadOnDisconnect,
 				})
 			} else {
 				// For stop, just emit to Node.js
@@ -407,7 +413,6 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 
 	const startRecording = useCallback(() => handleRecordingAction('start'), [handleRecordingAction])
 	const stopRecording = useCallback(() => handleRecordingAction('stop'), [handleRecordingAction])
-
 	return {
 		...state,
 		hasError: !!state.error,

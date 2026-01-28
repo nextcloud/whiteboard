@@ -12,6 +12,7 @@ const EXCALIDRAW_FONTS_DIR = normalizePath(resolve('node_modules/@nextcloud/exca
 const AppConfig = createAppConfig({
 	main: resolve(join('src', 'main.ts')),
 	settings: resolve(join('src', 'admin.ts')),
+	personal: resolve(join('src', 'personal.ts')),
 }, {
 	config: defineConfig({
 		resolve: {
