@@ -30,5 +30,7 @@ return [
 		['name' => 'Recording#upload', 'url' => 'recording/{fileId}/upload', 'verb' => 'POST'],
 		/** @see SettingsController::update() */
 		['name' => 'Settings#update', 'url' => 'settings', 'verb' => 'POST'],
+		/** @see SettingsController::updatePersonal() */
+		['name' => 'Settings#updatePersonal', 'url' => 'settings/personal', 'verb' => 'POST'],
 	]
 ];

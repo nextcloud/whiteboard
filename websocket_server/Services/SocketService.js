@@ -33,6 +33,18 @@ export default class SocketService {
 		return `${roomId}_${userId}`
 	}
 
+	#normalizeClientType(value) {
+		return value === 'recording' ? 'recording' : 'viewer'
+	}
+
+	#getPendingRecordingStopKey(roomId, userId) {
+		return `${roomId}_${userId}`
+	}
+
+	#getRecordingDisconnectGraceMs() {
+		return Math.max(0, Number(Config.RECORDING_DISCONNECT_GRACE_MS || 0))
+	}
+
 	// Debug method to check recording services state
 	debugRecordingServices() {
 		console.log('Active recording services:', Array.from(this.recordingServices.keys()))
@@ -57,6 +69,7 @@ export default class SocketService {
 		this.redisClient = redisClient
 		this.sessionStore = new SessionStore(this.socketDataStorage)
 		this.recordingServices = new Map()
+		this.pendingRecordingStops = new Map()
 		this.nodeId = process.env.WEBSOCKET_NODE_ID || process.env.HOSTNAME || `node-${crypto.randomUUID()}`
 		this.shuttingDown = false
 		this.roomStateStore = new RoomStateStore({
@@ -374,6 +387,10 @@ export default class SocketService {
 		for (const roomId of syncerRoomsToClear) {
 			await this.roomLifecycleController.findNewSyncer(roomId)
 		}
+		for (const pending of this.pendingRecordingStops.values()) {
+			clearTimeout(pending.timeoutId)
+		}
+		this.pendingRecordingStops.clear()
 		await this.clusterService.stop()
 	}
 
@@ -384,7 +401,17 @@ export default class SocketService {
 			if (!token) throw new Error('No token provided')
 
 			const decodedData = await this.verifyToken(token)
-			await this.sessionStore.setSocketData(socket.id, decodedData)
+			const rawClientType = socket.handshake?.auth?.clientType
+			const referer = socket.handshake?.headers?.referer
+			const userAgent = socket.handshake?.headers?.['user-agent']
+			const normalizedUserAgent = Array.isArray(userAgent) ? userAgent.join(' ') : userAgent
+			const inferredRecording = (typeof referer === 'string' && referer.includes('/apps/whiteboard/recording/'))
+				|| (typeof normalizedUserAgent === 'string' && normalizedUserAgent.includes('WhiteboardRecording/'))
+			const clientType = inferredRecording ? 'recording' : this.#normalizeClientType(rawClientType)
+			await this.sessionStore.setSocketData(socket.id, {
+				...decodedData,
+				clientType,
+			})
 
 			next()
 		} catch (error) {
@@ -516,6 +543,10 @@ export default class SocketService {
 	}
 
 	async joinRoomHandler(socket, roomID) {
+		const socketData = await this.sessionStore.getSocketData(socket.id)
+		if (socketData?.user?.id && socketData.clientType !== 'recording') {
+			this.cancelPendingRecordingStop(roomID, socketData.user.id)
+		}
 		return this.roomLifecycleController.joinRoom(socket, roomID)
 	}
 
@@ -552,7 +583,170 @@ export default class SocketService {
 	}
 
 	async disconnectingHandler(socket, rooms) {
+		if (this.shuttingDown) {
+			return
+		}
+
+		await this.stopRecordingOnDisconnect(socket, rooms)
+
 		return this.roomLifecycleController.onDisconnecting(socket, rooms, { shuttingDown: this.shuttingDown })
+	}
+
+	cancelPendingRecordingStop(roomID, userId) {
+		const key = this.#getPendingRecordingStopKey(roomID, userId)
+		const pending = this.pendingRecordingStops.get(key)
+		if (!pending) {
+			return
+		}
+		clearTimeout(pending.timeoutId)
+		this.pendingRecordingStops.delete(key)
+		console.log(`[${roomID}] Cleared pending recording stop for user ${userId}`)
+	}
+
+	scheduleRecordingStop({ roomID, userId, userName }) {
+		const graceMs = this.#getRecordingDisconnectGraceMs()
+		if (!graceMs) {
+			return false
+		}
+
+		const key = this.#getPendingRecordingStopKey(roomID, userId)
+		if (this.pendingRecordingStops.has(key)) {
+			return true
+		}
+
+		const timeoutId = setTimeout(() => {
+			this.handleRecordingStopTimeout({ roomID, userId, userName }).catch((error) => {
+				console.error(`[${roomID}_${userId}] Failed to stop recording after disconnect grace:`, error)
+			})
+		}, graceMs)
+
+		this.pendingRecordingStops.set(key, {
+			timeoutId,
+			scheduledAt: Date.now(),
+		})
+		console.log(`[${roomID}] Scheduled recording stop in ${graceMs}ms for user ${userName}`)
+		return true
+	}
+
+	async handleRecordingStopTimeout({ roomID, userId, userName }) {
+		const key = this.#getPendingRecordingStopKey(roomID, userId)
+		this.pendingRecordingStops.delete(key)
+
+		const recordingEntry = await this.getRecordingEntry(roomID, userId)
+		if (!recordingEntry) {
+			return
+		}
+
+		const roomSockets = await this.roomLifecycleController.getUserSocketsInRoom(roomID)
+		const userStillConnected = roomSockets
+			.filter(Boolean)
+			.some((entry) => entry.userId === userId && entry.clientType !== 'recording')
+
+		if (userStillConnected) {
+			return
+		}
+
+		await this.stopRecordingForUser({
+			roomID,
+			userId,
+			userName,
+			recordingEntry,
+		})
+	}
+
+	async stopRecordingForUser({ roomID, userId, userName, recordingEntry = null }) {
+		const entry = recordingEntry || await this.getRecordingEntry(roomID, userId)
+		if (!entry) {
+			return
+		}
+
+		const recordingKey = this.#getRecordingKey(roomID, userId)
+		const recordingService = this.recordingServices.get(recordingKey)
+		const username = entry.username || userName || 'Unknown User'
+
+		if (!recordingService && entry?.nodeId && entry.nodeId !== this.nodeId) {
+			console.log(`[${roomID}] Recorder ${username} disconnected, forwarding recording stop to node ${entry.nodeId}`)
+			const forwarded = await this.forwardRecordingStop(roomID, userId, null)
+			if (!forwarded) {
+				await this.removeRecordingEntry(roomID, userId)
+			} else {
+				setTimeout(async () => {
+					try {
+						const latestEntry = await this.getRecordingEntry(roomID, userId)
+						if (latestEntry && latestEntry.nodeId === entry.nodeId) {
+							await this.removeRecordingEntry(roomID, userId)
+						}
+					} catch (error) {
+						console.error(`[${roomID}_${userId}] Failed to clear stale recording entry after disconnect:`, error)
+					}
+				}, 3000)
+			}
+			return
+		}
+
+		if (!recordingService) {
+			console.log(`[${roomID}] Recorder ${username} disconnected, no local recording service found, clearing entry`)
+			await this.removeRecordingEntry(roomID, userId)
+			return
+		}
+
+		console.log(`[${roomID}] Recorder ${username} disconnected, stopping recording`)
+		await this.finalizeRecordingStop({
+			roomID,
+			userId,
+			username,
+			recordingKey,
+			recordingService,
+		})
+	}
+
+	async stopRecordingOnDisconnect(socket, rooms) {
+		const socketData = await this.sessionStore.getSocketData(socket.id)
+		if (!socketData?.user?.id) {
+			return
+		}
+
+		const userId = socketData.user.id
+		const userName = socketData.user.name || socketData.user.displayName || 'Unknown User'
+
+		for (const roomID of rooms) {
+			if (roomID === socket.id) {
+				continue
+			}
+
+			const recordingEntry = await this.getRecordingEntry(roomID, userId)
+			if (!recordingEntry) {
+				continue
+			}
+
+			const roomSockets = await this.roomLifecycleController.getUserSocketsInRoom(roomID)
+			const otherUserSockets = roomSockets
+				.filter(Boolean)
+				.filter((entry) => entry.userId === userId && entry.socketId !== socket.id)
+			const userStillConnected = otherUserSockets
+				.some((entry) => entry.clientType !== 'recording')
+
+			if (userStillConnected) {
+				this.cancelPendingRecordingStop(roomID, userId)
+				const otherSocketsInfo = otherUserSockets.map(({ socketId, clientType }) => ({
+					socketId,
+					clientType: clientType || 'viewer',
+				}))
+				console.log(`[${roomID}] Recorder ${userName} disconnected but has other active connections, keeping recording`, otherSocketsInfo)
+				continue
+			}
+
+			if (this.scheduleRecordingStop({ roomID, userId, userName })) {
+				continue
+			}
+
+			await this.stopRecordingForUser({
+				roomID,
+				userId,
+				userName,
+				recordingEntry,
+			})
+		}
 	}
 
 	async findNewSyncer(roomID) {
@@ -621,6 +815,10 @@ export default class SocketService {
 	 * @param {string} roomID - Room identifier
 	 */
 	async stopRecordingHandler(socket, roomID) {
+		const socketData = await this.sessionStore.getSocketData(socket.id)
+		if (socketData?.user?.id) {
+			this.cancelPendingRecordingStop(roomID, socketData.user.id)
+		}
 		return this.recordingController.stopRecording(socket, roomID)
 	}
 

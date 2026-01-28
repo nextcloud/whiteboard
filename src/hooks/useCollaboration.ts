@@ -15,6 +15,7 @@ import type {
 	ExcalidrawImageElement,
 } from '@excalidraw/excalidraw/types/types'
 import { restoreElements } from '@nextcloud/excalidraw'
+import { loadState } from '@nextcloud/initial-state'
 import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata'
 import { io } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
@@ -68,6 +69,13 @@ export function useCollaboration() {
 			fileId: state.fileId,
 		})),
 	)
+
+	const clientType = useMemo(() => {
+		if (typeof window === 'undefined') {
+			return 'viewer'
+		}
+		return loadState('whiteboard', 'isRecording', false) ? 'recording' : 'viewer'
+	}, [])
 
 	const {
 		setStatus,
@@ -988,7 +996,7 @@ export function useCollaboration() {
 			// Check if we already have a socket instance in our ref
 			if (socketInstanceRef.current) {
 				console.log('[Collaboration] Reusing existing socket instance')
-				socketInstanceRef.current.auth = { token }
+				socketInstanceRef.current.auth = { token, clientType }
 				setupSocketEventHandlers(socketInstanceRef.current)
 				setSocket(socketInstanceRef.current)
 
@@ -1001,7 +1009,7 @@ export function useCollaboration() {
 			console.log('[Collaboration] Creating new socket instance')
 			const newSocket: CollaborationSocket = io<ServerToClientEvents, ClientToServerEvents>(url.origin, {
 				path,
-				auth: { token },
+				auth: { token, clientType },
 				transports: ['websocket'],
 				reconnection: true, // Enable auto reconnect
 				reconnectionDelay: 1000, // Start with 1s delay
@@ -1037,6 +1045,7 @@ export function useCollaboration() {
 	}, [
 		getJWT, setStatus, setSocket, setupSocketEventHandlers,
 		fileId,
+		clientType,
 	])
 
 	useEffect(() => {

@@ -17,6 +17,7 @@ import {
 	DEFAULT_COMPRESSION_ENABLED,
 	DEFAULT_HOST,
 	DEFAULT_SESSION_TTL,
+	DEFAULT_RECORDING_DISCONNECT_GRACE_MS,
 } from './ConstantsUtility.js'
 import GeneralUtility from './GeneralUtility.js'
 import { createRequire } from 'module'
@@ -88,6 +89,9 @@ const Config = {
 	NEXTCLOUD_UPLOAD_ENABLED: GeneralUtility.parseBooleanFromEnv(process.env.NEXTCLOUD_UPLOAD_ENABLED),
 	CLEANUP_LOCAL_RECORDINGS: GeneralUtility.parseBooleanFromEnv(process.env.CLEANUP_LOCAL_RECORDINGS),
 	RECORDINGS_DIR: process.env.RECORDINGS_DIR || null,
+	RECORDING_DISCONNECT_GRACE_MS: Number.isFinite(Number(process.env.RECORDING_DISCONNECT_GRACE_MS))
+		? Number(process.env.RECORDING_DISCONNECT_GRACE_MS)
+		: DEFAULT_RECORDING_DISCONNECT_GRACE_MS,
 
 	// Chrome detection for puppeteer-core
 	get CHROME_EXECUTABLE_PATH() {

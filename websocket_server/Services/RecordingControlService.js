@@ -7,6 +7,10 @@
 
 import RecordingService from './RecordingService.js'
 import { checkPuppeteerAvailability } from '../Utilities/PuppeteerUtility.js'
+import Config from '../Utilities/ConfigUtility.js'
+import fetch from 'node-fetch'
+import FormData from 'form-data'
+import fs from 'fs'
 
 export default class RecordingControlService {
 
@@ -50,7 +54,7 @@ export default class RecordingControlService {
 	}
 
 	async startRecording(socket, data) {
-		const { fileId, recordingUrl, uploadToken } = data
+		const { fileId, recordingUrl, uploadToken, autoUploadOnDisconnect = false } = data
 		const roomID = fileId.toString()
 		const sessionKey = `${roomID}_${socket.id}`
 		const startedAt = Date.now()
@@ -89,7 +93,11 @@ export default class RecordingControlService {
 			await recorder.startRecording(roomID, socketData.user.id)
 
 			const username = socketData.user.displayName || socketData.user.name || 'Unknown User'
-			this.recordingServices.set(recordingKey, { recorder, uploadToken })
+			this.recordingServices.set(recordingKey, {
+				recorder,
+				uploadToken,
+				autoUploadOnDisconnect: Boolean(autoUploadOnDisconnect),
+			})
 			await this.cluster.setRecordingEntry(roomID, socketData.user.id, {
 				userId: socketData.user.id,
 				username,
@@ -185,6 +193,12 @@ export default class RecordingControlService {
 		initiatorSocket = null,
 		requesterSocketId = null,
 	}) {
+		if (recordingService.stopping) {
+			console.log(`[${roomID}_${userId}] Recording stop already in progress, skipping duplicate stop`)
+			return
+		}
+
+		recordingService.stopping = true
 		const { recorder, uploadToken } = recordingService
 		try {
 			const result = await recorder.stopRecording(roomID, userId)
@@ -192,13 +206,28 @@ export default class RecordingControlService {
 				throw new Error('Failed to stop recording')
 			}
 
-			await recorder.cleanup(roomID, userId)
-
 			const payload = {
 				filePath: result.localPath,
 				recordingData: result.recordingData,
 				uploadToken,
 				fileId: roomID,
+			}
+
+			const shouldAutoUpload = !initiatorSocket
+				&& !requesterSocketId
+				&& recordingService.autoUploadOnDisconnect
+
+			if (shouldAutoUpload) {
+				try {
+					await this.uploadRecordingToNextcloud({
+						roomID,
+						uploadToken,
+						filePath: result.localPath,
+						recordingData: result.recordingData,
+					})
+				} catch (error) {
+					console.error(`[${roomID}_${userId}] Auto-upload on disconnect failed:`, error)
+				}
 			}
 
 			if (initiatorSocket) {
@@ -219,6 +248,7 @@ export default class RecordingControlService {
 					username,
 				})
 			}
+
 		} catch (error) {
 			console.error(`[${roomID}_${userId}] Stop recording failed:`, error)
 			if (initiatorSocket) {
@@ -227,11 +257,64 @@ export default class RecordingControlService {
 				this.io.to(requesterSocketId).emit('recording-error', error.message)
 			}
 		} finally {
+			try {
+				await recorder.cleanup(roomID, userId)
+			} catch (error) {
+				console.warn(`[${roomID}_${userId}] Cleanup failed after recording stop:`, error)
+			}
 			if (recordingKey && this.recordingServices.has(recordingKey)) {
 				this.recordingServices.delete(recordingKey)
 			}
 			await this.cluster.removeRecordingEntry(roomID, userId)
 		}
+	}
+
+	async uploadRecordingToNextcloud({ roomID, uploadToken, filePath, recordingData }) {
+		if (!uploadToken) {
+			throw new Error('Upload token missing for auto-upload')
+		}
+		if (!Config.NEXTCLOUD_URL) {
+			throw new Error('NEXTCLOUD_URL is not configured for auto-upload')
+		}
+
+		const baseUrl = new URL(Config.NEXTCLOUD_URL)
+		const basePath = baseUrl.pathname.replace(/\/$/, '')
+		const uploadUrl = `${baseUrl.origin}${basePath}/index.php/apps/whiteboard/recording/${roomID}/upload`
+
+		const formData = new FormData()
+		let uploadBody
+		if (filePath) {
+			try {
+				await fs.promises.access(filePath)
+				uploadBody = fs.createReadStream(filePath)
+			} catch (error) {
+				console.warn(`[${roomID}] Auto-upload fallback to in-memory buffer:`, error)
+			}
+		}
+		if (!uploadBody) {
+			uploadBody = Buffer.from(recordingData)
+		}
+		formData.append('recording', uploadBody, {
+			filename: 'recording.webm',
+			contentType: 'video/webm',
+		})
+
+		const response = await fetch(uploadUrl, {
+			method: 'POST',
+			headers: {
+				...formData.getHeaders(),
+				Authorization: `Bearer ${uploadToken}`,
+			},
+			body: formData,
+		})
+
+		if (!response.ok) {
+			const body = await response.text().catch(() => '')
+			throw new Error(`Upload failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`)
+		}
+
+		console.log(`[${roomID}] Auto-upload on disconnect completed`)
+		return response.json().catch(() => null)
 	}
 
 	async forwardRecordingStop(roomID, userId, requesterSocketId) {

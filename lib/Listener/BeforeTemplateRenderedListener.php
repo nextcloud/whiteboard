@@ -18,6 +18,7 @@ use OCP\EventDispatcher\IEventDispatcher;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Files\File;
 use OCP\Files\NotFoundException;
+use OCP\IUserSession;
 use OCP\Util;
 
 /** @template-implements IEventListener<BeforeTemplateRenderedEvent|Event> */
@@ -30,6 +31,7 @@ class BeforeTemplateRenderedListener implements IEventListener {
 		private IInitialState $initialState,
 		private ConfigService $configService,
 		private IEventDispatcher $eventDispatcher,
+		private IUserSession $userSession,
 	) {
 	}
 
@@ -68,5 +70,10 @@ class BeforeTemplateRenderedListener implements IEventListener {
 		$this->initialState->provideInitialState('file_id', $node->getId());
 		$this->initialState->provideInitialState('collabBackendUrl', $this->configService->getCollabBackendUrl());
 		$this->initialState->provideInitialState('maxFileSize', $this->configService->getMaxFileSize());
+		$user = $this->userSession->getUser();
+		$this->initialState->provideInitialState(
+			'autoUploadOnDisconnect',
+			$user ? $this->configService->getUserAutoUploadOnDisconnect($user->getUID()) : false,
+		);
 	}
 }
