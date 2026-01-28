@@ -14,6 +14,9 @@ use OCP\AppFramework\Services\IInitialState;
 use OCP\IUserSession;
 use OCP\Settings\ISettings;
 
+/**
+ * @psalm-suppress UnusedClass
+ */
 class Personal implements ISettings {
 	public function __construct(
 		private IInitialState $initialState,

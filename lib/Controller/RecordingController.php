@@ -13,11 +13,11 @@ use InvalidArgumentException;
 
 use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Exception\UnauthorizedException;
+use OCA\Whiteboard\Model\AuthenticatedUser;
 use OCA\Whiteboard\Service\Authentication\AuthenticateUserServiceFactory;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\File\GetFileServiceFactory;
 use OCA\Whiteboard\Service\JWTService;
-use OCA\Whiteboard\Model\AuthenticatedUser;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
@@ -30,8 +30,8 @@ use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\IDateTimeZone;
 use OCP\IRequest;
-use OCP\IUserManager;
 use OCP\IURLGenerator;
+use OCP\IUserManager;
 use OCP\Util;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -105,7 +105,7 @@ final class RecordingController extends Controller {
 				if ($user instanceof AuthenticatedUser && $user->getUID() !== $userId) {
 					throw new InvalidArgumentException('Upload token user mismatch');
 				}
-			} catch (UnauthorizedException | InvalidUserException $e) {
+			} catch (UnauthorizedException|InvalidUserException $e) {
 				$user = $this->authenticateUserFromToken($userId);
 			}
 			$fileService = $this->getFileServiceFactory->create($user, $fileId);
