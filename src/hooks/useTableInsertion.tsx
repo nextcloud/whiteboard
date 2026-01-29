@@ -263,6 +263,7 @@ export function useTableInsertion() {
 	 * Only renders if Text app is available and compatible.
 	 */
 	const renderTable = useCallback(async () => {
+		if (document.querySelector('.table-container')) return
 		const isCompatible = await checkTextAppCompatibility()
 		if (!isCompatible) {
 			return
