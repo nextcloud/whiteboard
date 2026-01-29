@@ -187,9 +187,9 @@ export const PresentationMenuItem = memo(function PresentationMenuItem({
 		tooltip = t('whiteboard', 'Starting presentation….')
 	} else if (isPresentationMode && presenterName) {
 		icon = mdiPresentation
-		text = t('whiteboard', '%s is presenting', [presenterName])
+		text = t('whiteboard', '{presenterName} is presenting', { presenterName })
 		className += ' presentation-button--watching'
-		tooltip = t('whiteboard', '%s is currently presenting. Others will follow their viewport.', [presenterName])
+		tooltip = t('whiteboard', '{presenterName} is currently presenting. Others will follow their viewport.', { presenterName })
 	} else if (!isConnected) {
 		className += ' presentation-button--disconnected'
 		text = t('whiteboard', 'Start Presentation (Offline)')
