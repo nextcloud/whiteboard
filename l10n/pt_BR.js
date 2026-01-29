@@ -202,6 +202,8 @@ OC.L10N.register(
     "Please share the board with users; otherwise, they will not be able to see it." : "Compartilhe o quadro com os usuários; caso contrário, eles não poderão visualizá-lo.",
     "Assistant" : "Assistente",
     "Add comment" : "Adicionar comentário",
+    "Select an item on canvas to add it here, or add a local library below." : "Selecione um item na tela para adicioná-lo aqui ou adicione uma biblioteca local abaixo.",
+    "Add local library" : "Adicionar biblioteca local",
     "Presentation requires connection to collaboration server. Please check your network connection." : "A apresentação requer conexão com o servidor de colaboração. Verifique sua conexão de rede.",
     "Another user is already presenting. Please wait for them to finish." : "Outro usuário já está fazendo sua apresentação. Por favor, aguarde até que ele termine.",
     "Failed to start presentation - timeout. Please try again." : "Falha ao iniciar a apresentação - tempo limite esgotado. Tente novamente.",
