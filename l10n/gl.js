@@ -107,8 +107,6 @@ OC.L10N.register(
     "Stop presenting" : "Deteña a presentación",
     "Starting…" : "Iniciando…",
     "Starting presentation…." : "Iniciando a presentación…",
-    "%s is presenting" : " %s está facendo a presentación",
-    "%s is currently presenting. Others will follow their viewport." : "%s está realizando a presentación neste momento. Os demaiss seguirán a súa xanela gráfica.",
     "Start Presentation (Offline)" : "Iniciar a presentación (sen conexión)",
     "Presentation requires connection to collaboration server" : "A presentación require conexión ao servidor de colaboración",
     "This version is missing its source file" : "A esta versión fáltalle o ficheiro fonte.",

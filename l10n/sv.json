@@ -101,8 +101,6 @@
     "Stop presenting" : "Sluta presentera",
     "Starting…" : "Startar...",
     "Starting presentation…." : "Startar presentationen...",
-    "%s is presenting" : "%s presenterar",
-    "%s is currently presenting. Others will follow their viewport." : "%s presenterar just nu. Andra följer deras vy.",
     "Start Presentation (Offline)" : "Starta presentationen (Offline)",
     "Presentation requires connection to collaboration server" : "Presentation kräver anslutning till samarbetsservern",
     "This version is missing its source file" : "Denna version saknar sin källfil",

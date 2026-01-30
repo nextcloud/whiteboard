@@ -102,8 +102,6 @@
     "Stop presenting" : "كۆرسىتىشنى توختىتىش",
     "Starting…" : "باشلىنىۋاتىدۇ…",
     "Starting presentation…." : "تەقدىمات باشلىنىۋاتىدۇ….",
-    "%s is presenting" : "%s كۆرسىتىۋاتىدۇ",
-    "%s is currently presenting. Others will follow their viewport." : "%s ھازىر كۆرسىتىلىۋاتىدۇ. باشقىلار ئۇلارنىڭ كۆرۈش ئېغىزىنى كۆزىتىدۇ.",
     "Start Presentation (Offline)" : "تەقدىماتنى باشلاش (تورسىز)",
     "Presentation requires connection to collaboration server" : "كۆرسىتىش ھەمكارلىق سېرۋېرىغا ئۇلىنىشنى تەلەپ قىلىدۇ",
     "This version is missing its source file" : "بۇ نەشرىدە ئەسلى ھۆججەت يوق",

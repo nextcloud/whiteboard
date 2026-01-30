@@ -103,8 +103,6 @@ OC.L10N.register(
     "Stop presenting" : "Зупинити презентацію",
     "Starting…" : "Починаємо...",
     "Starting presentation…." : "Початок презентації...",
-    "%s is presenting" : "%s презентує",
-    "%s is currently presenting. Others will follow their viewport." : "%s показує презентацію. Інші можуть слідкувати за поданням. ",
     "Start Presentation (Offline)" : "Почати презентацію (поза мережею)",
     "Presentation requires connection to collaboration server" : "Презентація вимагає встановленого з'єднання із сервером спільної роботи",
     "Loading version..." : "Завантаження версії...",

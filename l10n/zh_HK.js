@@ -125,8 +125,6 @@ OC.L10N.register(
     "Stop presenting" : "停止演示",
     "Starting…" : "正在開始 …",
     "Starting presentation…." : "正在開始演示 ...",
-    "%s is presenting" : "%s 正在演示",
-    "%s is currently presenting. Others will follow their viewport." : "%s 目前正在演示。其他人將跟隨他們的視口。",
     "Start Presentation (Offline)" : "開始演示（離線）",
     "Presentation requires connection to collaboration server" : "演示需要連接到協作伺服器",
     "This version is missing its source file" : "此版本缺少原始檔案",

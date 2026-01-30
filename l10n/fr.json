@@ -80,8 +80,6 @@
     "Stop presenting" : "Arrêter de présenter",
     "Starting…" : "Démarrage …",
     "Starting presentation…." : "Démarrage de la présentation...",
-    "%s is presenting" : "%s présente",
-    "%s is currently presenting. Others will follow their viewport." : "%s est actuellement en train de présenter. Les autres suivront leur écrans.",
     "Start Presentation (Offline)" : "Démarrer la présentation (hors ligne)",
     "Presentation requires connection to collaboration server" : "La présentation nécessite une connexion au serveur de collaboration.",
     "Starting recording…" : "Lancement de l'enregistrement...",

@@ -81,7 +81,6 @@ OC.L10N.register(
     "Stop presenting" : "Dejar de presentar",
     "Starting…" : "Empezando…",
     "Starting presentation…." : "Empezando presentación…",
-    "%s is presenting" : "%s está presentando",
     "Start Presentation (Offline)" : "Empezar presentación (sin conexión)",
     "Recording" : "Grabando",
     "Unknown user" : "Usuario desconocido",

@@ -95,8 +95,6 @@ OC.L10N.register(
     "Stop presenting" : "Lõpeta esitlus",
     "Starting…" : "Alustan…",
     "Starting presentation…." : "Alustan esitluse näitamist…",
-    "%s is presenting" : "%s on esitlemas",
-    "%s is currently presenting. Others will follow their viewport." : "%s on hetkel esitlemas ja teised saavad tema vaadet jälgida.",
     "Start Presentation (Offline)" : "Alusta esitlust (vallasrežiimis)",
     "Presentation requires connection to collaboration server" : "Esitlus eeldab toimivad ühendust ühistööserveriga",
     "This version is missing its source file" : "Sellel versioonil puudub lähtefail",
