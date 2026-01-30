@@ -17,6 +17,7 @@ OC.L10N.register(
     "Send" : "Pošaljite",
     "No comments yet" : "Još nema komentara",
     "Connecting" : "Povezivanje",
+    "Online" : "Na mreži",
     "Unknown" : "Nepoznata pogreška",
     "Recording" : "Snimanje",
     "Unknown user" : "Nepoznat korisnik",
@@ -32,6 +33,7 @@ OC.L10N.register(
     "Status" : "Status",
     "Open" : "Otvori",
     "Closed" : "Zatvoreno",
-    "Add comment" : "Dodaj komentar"
+    "Add comment" : "Dodaj komentar",
+    "Version restored" : "Verzija vraćena"
 },
 "nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;");

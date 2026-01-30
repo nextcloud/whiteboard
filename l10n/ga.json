@@ -123,8 +123,6 @@
     "Stop presenting" : "Stop a chur i láthair",
     "Starting…" : "Ag tosú…",
     "Starting presentation…." : "Ag tosú cur i láthair….",
-    "%s is presenting" : "Tá %s ag cur i láthair",
-    "%s is currently presenting. Others will follow their viewport." : "Tá %s ag cur i láthair faoi láthair. Leanfaidh daoine eile a radharcphoirt.",
     "Start Presentation (Offline)" : "Tosaigh Cur i Láthair (As Líne)",
     "Presentation requires connection to collaboration server" : "Éilíonn cur i láthair nasc le freastalaí comhoibrithe",
     "This version is missing its source file" : "Tá an comhad foinse ar iarraidh ón leagan seo",

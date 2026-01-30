@@ -82,8 +82,6 @@ OC.L10N.register(
     "Stop presenting" : "Zatrzymaj prezentowanie",
     "Starting…" : "Uruchamianie…",
     "Starting presentation…." : "Uruchamianie prezentacji….",
-    "%s is presenting" : "%s prezentuje",
-    "%s is currently presenting. Others will follow their viewport." : "%s obecnie prezentuje. Pozostali będą śledzić ekran prezentacji.",
     "Start Presentation (Offline)" : "Rozpocznij prezentację (offline)",
     "Presentation requires connection to collaboration server" : "Prezentacja wymaga podłączenia do serwera kolaboracji",
     "This version is missing its source file" : "Ta wersja urtaciła swój plik źródłowy",

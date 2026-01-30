@@ -79,8 +79,6 @@
     "Stop presenting" : "プレゼンテーションを停止中",
     "Starting…" : "開始中...",
     "Starting presentation…." : "プレゼンテーションを開始中...",
-    "%s is presenting" : "%s がプレゼンテーションしています",
-    "%s is currently presenting. Others will follow their viewport." : "%s がプレゼンテーションしています。他のユーザーは閲覧モードになります。",
     "Start Presentation (Offline)" : "プレゼンテーションを開始(オフライン)",
     "Presentation requires connection to collaboration server" : "プレゼンテーションにはホワイトボードWebSocketサーバーへの接続が必要です",
     "Starting recording…" : "レコーディングを開始中...",

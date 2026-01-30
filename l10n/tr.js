@@ -107,8 +107,6 @@ OC.L10N.register(
     "Stop presenting" : "Sunmayı durdur",
     "Starting…" : "Başlatılıyor…",
     "Starting presentation…." : "Sunum başlatılıyor…",
-    "%s is presenting" : "%s sunum yapıyor",
-    "%s is currently presenting. Others will follow their viewport." : "%s sunum yapıyor. Diğerleri görüş açınızı görebilecek.",
     "Start Presentation (Offline)" : "Sunumu başlat (çevrim dışı)",
     "Presentation requires connection to collaboration server" : "Sunum yapabilmek için iş birliği sunucusu ile bağlantı kurmalısınız",
     "This version is missing its source file" : "Bu sürümde kaynak dosyası eksik",

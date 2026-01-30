@@ -125,8 +125,6 @@ OC.L10N.register(
     "Stop presenting" : "Hentikan presentasi",
     "Starting…" : "Memulai…",
     "Starting presentation…." : "Memulai presentasi….",
-    "%s is presenting" : "%s sedang melakukan presentasi",
-    "%s is currently presenting. Others will follow their viewport." : "%s sedang melakukan presentasi. Yang lain akan mengikuti viewport mereka.",
     "Start Presentation (Offline)" : "Mulai Presentasi (Luring)",
     "Presentation requires connection to collaboration server" : "Presentasi memerlukan koneksi ke server kolaborasi",
     "This version is missing its source file" : "Versi ini kehilangan file sumbernya",
