@@ -8,6 +8,7 @@ OC.L10N.register(
     "Cancel" : "Cancel",
     "Update" : "Ažuriraj",
     "Multiple choice" : "Višestruki izbor",
+    "Question" : "Pitanje",
     "Add option" : "Dodaj mogućnost",
     "Comments" : "Komentari",
     "Dismiss" : "Odpusti",

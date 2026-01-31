@@ -14,7 +14,6 @@ OC.L10N.register(
     "WebSocket payload cap set by MAX_UPLOAD_FILE_SIZE on the collaboration server." : "WebSocket payload cap set by MAX_UPLOAD_FILE_SIZE on the collaboration server.",
     "Enter a positive number of MB." : "Enter a positive number of MB.",
     "Exceeds WebSocket payload limit ({limit} MB). Images may not sync." : "Exceeds WebSocket payload limit ({limit} MB). Images may not sync.",
-    "Max image size is {max} MB" : "Max image size is {max} MB",
     "Max image size must be a positive number." : "Max image size must be a positive number.",
     "Max image size exceeds the WebSocket payload limit ({limit} MB)." : "Max image size exceeds the WebSocket payload limit ({limit} MB).",
     "Real-time collaboration server" : "Real-time collaboration server",
