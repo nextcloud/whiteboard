@@ -101,7 +101,6 @@ export default function App({
 
 	const {
 		setConfig,
-		zenModeEnabled,
 		gridModeEnabled,
 		initialDataPromise,
 		resetInitialDataPromise,
@@ -109,7 +108,6 @@ export default function App({
 		setGridModeEnabled,
 	} = useWhiteboardConfigStore(useShallow(state => ({
 		setConfig: state.setConfig,
-		zenModeEnabled: state.zenModeEnabled,
 		gridModeEnabled: state.gridModeEnabled,
 		initialDataPromise: state.initialDataPromise,
 		resetInitialDataPromise: state.resetInitialDataPromise,
@@ -531,7 +529,6 @@ export default function App({
 					onPointerUpdate={onPointerUpdate}
 					onChange={handleOnChange}
 					viewModeEnabled={isReadOnly}
-					zenModeEnabled={zenModeEnabled}
 					gridModeEnabled={gridModeEnabled}
 					theme={theme}
 					name={fileNameWithoutExtension}
