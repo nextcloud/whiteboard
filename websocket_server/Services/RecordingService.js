@@ -79,6 +79,8 @@ export default class RecordingService extends EventEmitter {
 		let browser
 
 		try {
+			const recordingOrigin = new URL(recordingUrl).origin
+			const cacheBustToken = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 			const { profilePath, runtimeDir, crashpadDir } = await this.#prepareSessionProfile(sessionKey)
 
 			// Use Config-based Chrome detection
@@ -99,6 +101,28 @@ export default class RecordingService extends EventEmitter {
 			})
 
 			const page = await browser.newPage()
+			await page.setCacheEnabled(false)
+			await page.setExtraHTTPHeaders({
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				Pragma: 'no-cache',
+			})
+			await page.setRequestInterception(true)
+			page.on('request', request => {
+				try {
+					const resourceType = request.resourceType()
+					if (resourceType === 'script' || resourceType === 'stylesheet') {
+						const url = new URL(request.url())
+						if (url.origin === recordingOrigin && !url.searchParams.has('cb')) {
+							url.searchParams.set('cb', cacheBustToken)
+							request.continue({ url: url.toString() })
+							return
+						}
+					}
+				} catch {
+					// Fall through to default continue
+				}
+				request.continue()
+			})
 			await page.setJavaScriptEnabled(true)
 			await page.setViewport({ ...this.config.viewport, isLandscape: true })
 
