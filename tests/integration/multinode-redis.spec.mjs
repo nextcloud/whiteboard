@@ -25,6 +25,7 @@ const configState = vi.hoisted(() => ({
 	PORT: '0',
 	HOST: '127.0.0.1',
 	NEXTCLOUD_URL: '',
+	RECORDING_DISCONNECT_GRACE_MS: 0,
 }))
 
 vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => {
@@ -102,14 +103,14 @@ describe('Multi node websocket cluster with redis streams', () => {
 		await serverA.start()
 	}
 
-	const createSocket = (url, token) => {
+	const createSocket = (url, token, authExtras = {}) => {
 		const socket = io(url, {
 			transports: ['websocket'],
 			forceNew: true,
 			reconnectionAttempts: 10,
 			reconnectionDelay: 200,
 			reconnectionDelayMax: 500,
-			auth: { token },
+			auth: { token, ...authExtras },
 		})
 
 		socket.on('connect_error', (error) => {
@@ -190,8 +191,145 @@ describe('Multi node websocket cluster with redis streams', () => {
 		expect(stoppedEvent.userId).toBe('user-a')
 	})
 
-	it('keeps recording metadata so reconnects on another node can stop the session', async () => {
-		const roomID = 'room-recording'
+	it('stops recording when recorder disconnects and clears state', async () => {
+		const roomID = 'room-recording-disconnect'
+		const recorderUser = { id: 'recorder', name: 'Recorder', displayName: 'Recorder' }
+		const viewerUser = { id: 'viewer', name: 'Viewer', displayName: 'Viewer' }
+		const recorderToken = buildToken(roomID, recorderUser)
+		const viewerToken = buildToken(roomID, viewerUser)
+
+		const recorderSocket = createSocket(serverAUrl, recorderToken)
+		await waitFor(recorderSocket, 'connect')
+		recorderSocket.emit('join-room', roomID)
+		await waitFor(recorderSocket, 'sync-designate')
+
+		const viewerSocket = createSocket(serverBUrl, viewerToken)
+		await waitFor(viewerSocket, 'connect')
+		viewerSocket.emit('join-room', roomID)
+		await waitFor(viewerSocket, 'sync-designate')
+
+		recorderSocket.emit('start-recording', {
+			fileId: roomID,
+			recordingUrl: 'http://example.com',
+			uploadToken: 'upload-token',
+		})
+		await waitFor(recorderSocket, 'recording-started')
+		await waitFor(viewerSocket, 'user-started-recording')
+
+		const stoppedNotice = waitFor(viewerSocket, 'user-stopped-recording')
+		recorderSocket.disconnect()
+		const stoppedPayload = await stoppedNotice
+		expect(stoppedPayload.userId).toBe('recorder')
+
+		const recordingKey = `${serverB.socketDataStorage.strategy.prefix}room:${roomID}:recording`
+		const remaining = await serverB.redisClient.hLen(recordingKey)
+		expect(remaining).toBe(0)
+
+		const reconnectSocket = createSocket(serverBUrl, recorderToken)
+		await waitFor(reconnectSocket, 'connect')
+		reconnectSocket.emit('join-room', roomID)
+		await waitFor(reconnectSocket, 'sync-designate')
+
+		const noRecordingNotice = new Promise((resolve, reject) => {
+			const timer = setTimeout(resolve, 1200)
+			reconnectSocket.once('user-started-recording', () => {
+				clearTimeout(timer)
+				reject(new Error('Recording should have been stopped on disconnect'))
+			})
+		})
+
+		await noRecordingNotice
+	})
+
+	it('keeps recording if the user reconnects during the grace period', async () => {
+		const roomID = 'room-recording-grace'
+		const recorderUser = { id: 'recorder', name: 'Recorder', displayName: 'Recorder' }
+		const viewerUser = { id: 'viewer', name: 'Viewer', displayName: 'Viewer' }
+		const recorderToken = buildToken(roomID, recorderUser)
+		const viewerToken = buildToken(roomID, viewerUser)
+		const previousGrace = configState.RECORDING_DISCONNECT_GRACE_MS
+
+		configState.RECORDING_DISCONNECT_GRACE_MS = 300
+
+		try {
+			const recorderSocket = createSocket(serverAUrl, recorderToken)
+			await waitFor(recorderSocket, 'connect')
+			recorderSocket.emit('join-room', roomID)
+			await waitFor(recorderSocket, 'sync-designate')
+
+			const viewerSocket = createSocket(serverAUrl, viewerToken)
+			await waitFor(viewerSocket, 'connect')
+			viewerSocket.emit('join-room', roomID)
+			await waitFor(viewerSocket, 'sync-designate')
+
+			recorderSocket.emit('start-recording', {
+				fileId: roomID,
+				recordingUrl: 'http://example.com',
+				uploadToken: 'upload-token',
+			})
+			await waitFor(recorderSocket, 'recording-started')
+			await waitFor(viewerSocket, 'user-started-recording')
+
+			const stopUnexpected = new Promise((resolve, reject) => {
+				const timer = setTimeout(resolve, 600)
+				viewerSocket.once('user-stopped-recording', () => {
+					clearTimeout(timer)
+					reject(new Error('Recording should not stop during grace period'))
+				})
+			})
+
+			recorderSocket.disconnect()
+			await new Promise(resolve => setTimeout(resolve, 100))
+
+			const reconnectSocket = createSocket(serverAUrl, recorderToken)
+			await waitFor(reconnectSocket, 'connect')
+			reconnectSocket.emit('join-room', roomID)
+			await waitFor(reconnectSocket, 'sync-designate')
+
+			await stopUnexpected
+
+			const recordingKey = `${serverA.socketDataStorage.strategy.prefix}room:${roomID}:recording`
+			const remaining = await serverA.redisClient.hLen(recordingKey)
+			expect(remaining).toBe(1)
+		} finally {
+			configState.RECORDING_DISCONNECT_GRACE_MS = previousGrace
+		}
+	})
+
+	it('stops recording when only remaining socket is a recording agent', async () => {
+		const roomID = 'room-recording-agent'
+		const recorderUser = { id: 'recorder', name: 'Recorder', displayName: 'Recorder' }
+		const recorderToken = buildToken(roomID, recorderUser)
+
+		const recorderSocket = createSocket(serverAUrl, recorderToken)
+		await waitFor(recorderSocket, 'connect')
+		recorderSocket.emit('join-room', roomID)
+		await waitFor(recorderSocket, 'sync-designate')
+
+		const agentSocket = createSocket(serverAUrl, recorderToken, { clientType: 'recording' })
+		await waitFor(agentSocket, 'connect')
+		agentSocket.emit('join-room', roomID)
+		await waitFor(agentSocket, 'sync-designate')
+
+		recorderSocket.emit('start-recording', {
+			fileId: roomID,
+			recordingUrl: 'http://example.com',
+			uploadToken: 'upload-token',
+		})
+		await waitFor(recorderSocket, 'recording-started')
+
+		const stoppedNotice = waitFor(agentSocket, 'user-stopped-recording')
+		recorderSocket.disconnect()
+		const stoppedPayload = await stoppedNotice
+		expect(stoppedPayload.userId).toBe('recorder')
+
+		const recordingKey = `${serverA.socketDataStorage.strategy.prefix}room:${roomID}:recording`
+		const remaining = await serverA.redisClient.hLen(recordingKey)
+		expect(remaining).toBe(0)
+	})
+
+	it('stops recording from another node for the same user', async () => {
+		const roomID = 'room-recording-remote-stop'
 		const recorderUser = { id: 'recorder', name: 'Recorder', displayName: 'Recorder' }
 		const recorderToken = buildToken(roomID, recorderUser)
 
@@ -207,19 +345,19 @@ describe('Multi node websocket cluster with redis streams', () => {
 		})
 		await waitFor(recorderSocket, 'recording-started')
 
-		recorderSocket.disconnect()
+		const controllerSocket = createSocket(serverBUrl, recorderToken)
+		await waitFor(controllerSocket, 'connect')
+		controllerSocket.emit('join-room', roomID)
+		await waitFor(controllerSocket, 'sync-designate')
 
-		const reconnectSocket = createSocket(serverBUrl, recorderToken)
-		await waitFor(reconnectSocket, 'connect')
-		reconnectSocket.emit('join-room', roomID)
-
-		const existingRecording = await waitFor(reconnectSocket, 'user-started-recording')
-		expect(existingRecording.userId).toBe('recorder')
-
-		const stopPromise = waitFor(reconnectSocket, 'recording-stopped')
-		reconnectSocket.emit('stop-recording', roomID)
-		const stoppedPayload = await stopPromise
+		const stoppedPromise = waitFor(controllerSocket, 'recording-stopped')
+		controllerSocket.emit('stop-recording', roomID)
+		const stoppedPayload = await stoppedPromise
 		expect(stoppedPayload.uploadToken).toBe('upload-token')
+
+		const recordingKey = `${serverA.socketDataStorage.strategy.prefix}room:${roomID}:recording`
+		const remaining = await serverA.redisClient.hLen(recordingKey)
+		expect(remaining).toBe(0)
 	})
 
 	it('propagates viewport updates across nodes', async () => {

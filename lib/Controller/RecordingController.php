@@ -11,6 +11,9 @@ namespace OCA\Whiteboard\Controller;
 
 use InvalidArgumentException;
 
+use OCA\Whiteboard\Exception\InvalidUserException;
+use OCA\Whiteboard\Exception\UnauthorizedException;
+use OCA\Whiteboard\Model\AuthenticatedUser;
 use OCA\Whiteboard\Service\Authentication\AuthenticateUserServiceFactory;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\File\GetFileServiceFactory;
@@ -28,6 +31,7 @@ use OCP\Files\NotPermittedException;
 use OCP\IDateTimeZone;
 use OCP\IRequest;
 use OCP\IURLGenerator;
+use OCP\IUserManager;
 use OCP\Util;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -49,6 +53,7 @@ final class RecordingController extends Controller {
 		private AuthenticateUserServiceFactory $authenticateUserServiceFactory,
 		private GetFileServiceFactory $getFileServiceFactory,
 		private JWTService $jwtService,
+		private IUserManager $userManager,
 		private IRootFolder $rootFolder,
 		private IDateTimeZone $dateTimeZone,
 		private IURLGenerator $urlGenerator,
@@ -95,7 +100,14 @@ final class RecordingController extends Controller {
 			$userId = $this->jwtService->getUserIdFromJWT($uploadToken);
 
 			// Authenticate user and validate file access
-			$user = $this->authenticateUserServiceFactory->create(null)->authenticate();
+			try {
+				$user = $this->authenticateUserServiceFactory->create(null)->authenticate();
+				if ($user instanceof AuthenticatedUser && $user->getUID() !== $userId) {
+					throw new InvalidArgumentException('Upload token user mismatch');
+				}
+			} catch (UnauthorizedException|InvalidUserException $e) {
+				$user = $this->authenticateUserFromToken($userId);
+			}
 			$fileService = $this->getFileServiceFactory->create($user, $fileId);
 
 			$uploadedFile = $this->validateUploadedFile();
@@ -132,6 +144,14 @@ final class RecordingController extends Controller {
 			throw new InvalidArgumentException('Upload token is required');
 		}
 		return substr($authHeader, 7); // Remove "Bearer " prefix
+	}
+
+	private function authenticateUserFromToken(string $userId): AuthenticatedUser {
+		$user = $this->userManager->get($userId);
+		if ($user === null) {
+			throw new InvalidArgumentException('User not found');
+		}
+		return new AuthenticatedUser($user);
 	}
 
 	private function initializeRecordingState(int $fileId, string $jwt): void {
