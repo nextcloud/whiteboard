@@ -63,6 +63,7 @@ OC.L10N.register(
     "Add option" : "Option hinzufügen",
     "Start voting" : "Abstimmung beginnen",
     "Invalid whiteboard ID. Please try again." : "Ungültige Whiteboard-ID. Bitte erneut versuchen.",
+    "Max image size is {max} MB" : "Die maximale Bildgröße ist {max} MB",
     "Comments" : "Kommentare",
     "Voting" : "Abstimmen",
     "Authentication Configuration Issue" : "Problem mit der Authentifizierungskonfiguration",
