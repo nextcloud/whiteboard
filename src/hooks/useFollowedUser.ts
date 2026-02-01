@@ -76,6 +76,16 @@ export function useFollowedUser({ excalidrawAPI, fileId }: UseFollowedUserOption
 			useCollaborationStore.setState({ followedUserId: userId })
 			logger.info(`[Collaboration] Recording agent now following user: ${userId}`)
 
+			if (Number.isFinite(fileId)) {
+				currentSocket.emit('request-viewport', {
+					fileId: fileId.toString(),
+					userId,
+				})
+				logger.info(`[Collaboration] Recording agent requested viewport for user: ${userId}`)
+			} else {
+				logger.warn('[Collaboration] Cannot request viewport: Invalid fileId', { fileId })
+			}
+
 			const state = useCollaborationStore.getState()
 			logger.debug('[Collaboration] Current collaboration store state:', {
 				followedUserId: state.followedUserId,
@@ -86,5 +96,5 @@ export function useFollowedUser({ excalidrawAPI, fileId }: UseFollowedUserOption
 		return () => {
 			delete window.followUser
 		}
-	}, [excalidrawAPI])
+	}, [excalidrawAPI, fileId])
 }
