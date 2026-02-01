@@ -69,9 +69,8 @@
 
 			&:hover {
 				background-color: var(--color-primary-element-hover);
-			}
-		}
 	}
+}
 
 	.App-error {
 		color: var(--color-error);
@@ -552,6 +551,12 @@
 	.auth-error-notification {
 		animation: none;
 	}
+
+	.recording-overlay {
+		.recording-status__spinner {
+			animation: none;
+		}
+	}
 }
 
 /* Recording styles */
@@ -561,54 +566,97 @@
 	.recording-status {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		padding: 6px 12px;
-		border-radius: 6px;
+		padding: 10px 12px;
+		border-radius: 8px;
 		background: var(--color-main-background);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		border: 1px solid var(--color-border);
 		pointer-events: auto;
+		min-width: 240px;
+		color: var(--color-main-text);
 
 		&.recording {
-			color: var(--color-error);
+			border-color: var(--color-error);
+			border-inline-start: 3px solid var(--color-error);
+			padding-inline-start: 9px;
 		}
 
-		.recording-stop-button {
-			margin-inline-start: auto;
-			background: transparent;
-			border: 0;
-			padding: 4px;
-			border-radius: var(--border-radius);
-			color: inherit;
-			cursor: pointer;
+		&.stopping {
+			border-color: var(--color-border);
+		}
+	}
 
-			svg {
-				pointer-events: none;
-			}
+	.recording-status__content {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		width: 100%;
+	}
 
-			&:hover {
-				background: var(--color-background-hover);
-			}
+	.recording-status__indicator {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--color-error);
+	}
 
-			&:focus-visible {
-				@include tokens.focus-ring(var(--color-error));
-			}
+	.recording-status__spinner {
+		width: 14px;
+		height: 14px;
+		border: 2px solid var(--color-loading-light);
+		border-top-color: var(--color-loading-dark);
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	.recording-status__info {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.recording-status__title {
+		font-weight: 600;
+		font-size: 14px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		color: var(--color-main-text);
+	}
+
+	.recording-status__subtitle {
+		font-size: 12px;
+		color: var(--color-main-text);
+	}
+
+	.recording-status__duration {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.recording-status__stop-button {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 10px;
+		min-height: 36px;
+		border-radius: 6px;
+		border: 1px solid var(--color-error);
+		background: var(--color-error);
+		color: var(--color-primary-text);
+		font-size: 12px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background-color 0.15s ease, border-color 0.15s ease;
+
+		svg {
+			pointer-events: none;
 		}
 
-		.recording-spinner {
-			width: 10px;
-			height: 10px;
-			border: 2px solid var(--color-loading-light);
-			border-top-color: var(--color-loading-dark);
-			border-radius: 50%;
-			animation: spin 1s linear infinite;
+		&:hover {
+			background: var(--color-error-hover, #b91c1c);
+			border-color: var(--color-error-hover, #b91c1c);
 		}
 
-		.recording-indicator {
-			width: 10px;
-			height: 10px;
-			background: var(--color-error);
-			border-radius: 50%;
-			animation: pulse 2s ease-in-out infinite;
+		&:focus-visible {
+			@include tokens.focus-ring(var(--color-error));
 		}
 	}
 
@@ -797,21 +845,7 @@
 		}
 	}
 
-	.other-recording-users {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 6px 12px;
-		border-radius: 6px;
-		background: var(--color-main-background);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		pointer-events: auto;
-		opacity: 0.8;
-
-		svg {
-			color: var(--color-error);
-		}
-	}
+}
 }
 
 /* Recording button in menu */
