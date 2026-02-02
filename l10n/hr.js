@@ -5,6 +5,7 @@ OC.L10N.register(
     "Shared secret" : "Dijeljen tajni ključ",
     "Advanced settings" : "Napredne postavke",
     "Close" : "Zatvori",
+    "Generating…" : "Generiranje…",
     "Cancel" : "Cancel",
     "Update" : "Ažuriraj",
     "Multiple choice" : "Višestruki izbor",
