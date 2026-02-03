@@ -226,10 +226,18 @@ export function useTableInsertion() {
 	 *
 	 * TODO: The getHTML() check can be removed once the latest Text app version include it.
 	 */
+	let isTextAppCompatible: boolean | null = null
+
 	const checkTextAppCompatibility = async (): Promise<boolean> => {
+
+		if (isTextAppCompatible !== null) {
+			return isTextAppCompatible
+		}
+
 		// Permanent check: Text app must be installed and provide the createTable API
 		if (!window.OCA?.Text?.createTable) {
 			console.warn('Table button not shown: Text app createTable API is not available')
+			isTextAppCompatible = false
 			return false
 		}
 
@@ -248,12 +256,15 @@ export function useTableInsertion() {
 			// TODO: Remove this check once the latest Text app version exposes getHTML()
 			if (typeof testEditor?.getHTML !== 'function') {
 				console.warn('Table button not shown: Text app getHTML() method is not available')
+				isTextAppCompatible = false
 				return false
 			}
 
+			isTextAppCompatible = true
 			return true
 		} catch (error) {
 			console.error('Table button not shown: Error checking Text app compatibility:', error)
+			textAppCompatibility = false
 			return false
 		}
 	}
