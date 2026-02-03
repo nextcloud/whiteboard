@@ -148,6 +148,7 @@ final class RecordingController extends Controller {
 		$response = new PublicTemplateResponse($this->appName, 'recording');
 		$response->setFooterVisible();
 		$response->setContentSecurityPolicy($csp);
+		$response->cacheFor(0);
 
 		Util::addScript('whiteboard', 'whiteboard-main');
 		Util::addStyle('whiteboard', 'whiteboard-main');
