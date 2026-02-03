@@ -241,7 +241,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 			}
 
 			excalidrawAPI.updateScene({
-				elements: [...elements],
+				elements: [...existingElements, ...elements],
 			})
 		} catch (error) {
 			console.error('Error adding voting results to canvas:', error)
