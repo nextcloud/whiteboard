@@ -94,7 +94,6 @@ export function useAssistant() {
 	 * injects assistant button in toolbar, handles assistant dialog
 	 */
 	const renderAssistant = useCallback(() => {
-		if (document.querySelector('.assistant-container')) return
 		renderToolbarButton({
 			class: 'assistant-container',
 			icon: mdiCreation,

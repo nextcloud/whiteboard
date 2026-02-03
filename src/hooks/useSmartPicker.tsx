@@ -75,7 +75,6 @@ export function useSmartPicker() {
 	}, [addWebEmbed])
 
 	const renderSmartPicker = useCallback(() => {
-		if (document.querySelector('.smart-picker-container')) return
 		renderToolbarButton({
 			class: 'smart-picker-container',
 			icon: mdiSlashForwardBox,

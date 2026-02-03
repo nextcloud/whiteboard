@@ -777,7 +777,6 @@ export function useComment(props?: UseCommentProps) {
 	}, [activeCommentThreadId, onCommentThreadClick, cleanupEmptyThreads, pendingThread])
 
 	const renderComment = useCallback(() => {
-		if (document.querySelector('.comment-container')) return
 		renderToolbarButton({
 			class: 'comment-container',
 			buttonClass: 'comment-trigger',
