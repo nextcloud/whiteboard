@@ -56,6 +56,8 @@ export async function convertHtmlTableToImage(
 				tableHtml: html,
 				isTable: true,
 				tableLock: undefined,
+				naturalWidth: width,
+				naturalHeight: height,
 			},
 		},
 	])

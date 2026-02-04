@@ -108,6 +108,13 @@ export function useTableInsertion() {
 			if (elementIndex !== -1) {
 				const currentElement = elements[elementIndex]
 
+				// Calculate the scale factor
+				const storedNaturalWidth = tableElement.customData?.naturalWidth ?? newImageElement.width
+				const storedNaturalHeight = tableElement.customData?.naturalHeight ?? newImageElement.height
+				const scaleX = tableElement.width / storedNaturalWidth
+				const scaleY = tableElement.height / storedNaturalHeight
+				const scaleFactor = (scaleX + scaleY) / 2
+
 				const updatedElement = {
 					...newImageElement,
 					// Preserve the original element's ID and position
@@ -115,8 +122,10 @@ export function useTableInsertion() {
 					x: tableElement.x,
 					y: tableElement.y,
 					angle: tableElement.angle,
-					width: tableElement.width,
-					height: (tableElement.width / newImageElement.width) * newImageElement.height,
+
+					// Apply scale factor to new natural dimensions
+					width: newImageElement.width * scaleFactor,
+					height: newImageElement.height * scaleFactor,
 
 					// Increment version numbers to ensure this update wins during collaborative reconciliation
 					// Excalidraw uses these to resolve conflicts when multiple users edit simultaneously
