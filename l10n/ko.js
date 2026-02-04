@@ -33,6 +33,7 @@ OC.L10N.register(
     "Online" : "온라인",
     "Unknown" : "알 수 없음",
     "Recording" : "녹음/녹화 중",
+    "Stop recording" : "녹음/녹화 중단",
     "Unknown user" : "알 수 없는 사용자",
     "File" : "파일",
     "Running" : "달리기",

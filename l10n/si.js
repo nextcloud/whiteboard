@@ -9,9 +9,9 @@ OC.L10N.register(
     "Edit" : "සංස්කරණය",
     "Reply" : "පිළිතුර",
     "Send" : "යවන්න",
+    "Duration" : "කාල සීමාව",
     "Unknown user" : "නොදන්නා පරිශීලකයෙකි",
     "File" : "ගොනුව",
-    "Duration" : "කාල සීමාව",
     "Open" : "විවෘත",
     "Closed" : "වසා ඇත"
 },
