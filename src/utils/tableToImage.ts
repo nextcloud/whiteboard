@@ -7,7 +7,7 @@ import type { FileId, ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 
 // Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)
-const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;'
+const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4; white-space: normal; word-wrap: break-word; overflow-wrap: break-word;'
 const HEADER_CELL_STYLE = `${CELL_BASE_STYLE} background-color: #f5f5f5; font-weight: 600;`
 const TABLE_STYLE = 'border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Arial, sans-serif; font-size: 14px;'
 
@@ -104,7 +104,6 @@ function applyStylesToHtml(html: string): string {
 			if (el instanceof HTMLElement) {
 				el.style.wordWrap = 'break-word'
 				el.style.overflowWrap = 'break-word'
-				el.style.wordBreak = 'break-word'
 				el.style.whiteSpace = 'normal'
 			}
 		})
