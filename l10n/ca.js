@@ -30,6 +30,7 @@ OC.L10N.register(
     "Online" : "En línia",
     "Unknown" : "Desconegut",
     "Recording" : "Enregistrament",
+    "Stop recording" : "Aturar l'enregistrament",
     "Unknown user" : "Usuari desconegut",
     "File" : "Fitxer",
     "Running" : "Córrer",

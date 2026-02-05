@@ -24,6 +24,7 @@ OC.L10N.register(
     "Online" : "En llinia",
     "Unknown" : "Desconocí­u",
     "Duration" : "Duración",
+    "Stop recording" : "Parar la grabación",
     "Unknown user" : "Usuariu desconocíu",
     "File" : "Ficheru",
     "Paused" : "En posa",

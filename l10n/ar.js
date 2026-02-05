@@ -39,6 +39,7 @@ OC.L10N.register(
     "Stop" : "إيقاف",
     "Recording" : "تسجيل",
     "Duration" : "المُدَّة",
+    "Stop recording" : "إيقاف التسجيل",
     "Unknown user" : "المستخدم مجهول",
     "File" : "File",
     "Running" : "ركض",

@@ -29,6 +29,7 @@ OC.L10N.register(
     "Stop" : "Спиране /на/",
     "Recording" : "Записване",
     "Duration" : "Продължителност",
+    "Stop recording" : "Спиране на записването",
     "Unknown user" : "Непознат потребител",
     "File" : "Файл",
     "Running" : "Бягане",

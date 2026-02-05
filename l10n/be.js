@@ -32,6 +32,7 @@ OC.L10N.register(
     "Loading version..." : "Загрузка версіі...",
     "Recording" : "Запіс",
     "Duration" : "Працягласць",
+    "Stop recording" : "Спыніць запіс",
     "File" : "Файл",
     "Paused" : "Прыпынена",
     "Start" : "Запусціць",
