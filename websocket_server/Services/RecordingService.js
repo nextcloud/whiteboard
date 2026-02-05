@@ -334,39 +334,14 @@ export default class RecordingService extends EventEmitter {
 			const sessionPath = path.join(this.recordingsPath, sessionKey)
 			session.sessionPath = sessionPath
 			session.lastRecordingPath = null
+
 			await fs.mkdir(sessionPath, { recursive: true })
+			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-')
+			const outputPath = path.join(sessionPath, `${formattedDate}.webm`)
 
 			// Start browser-based recording
-			await page.evaluate(() => {
-				return new Promise((resolve, reject) => {
-					navigator.mediaDevices.getDisplayMedia({
-						video: {
-							displaySurface: 'browser',
-							width: { ideal: 1920 },
-							height: { ideal: 1080 },
-							frameRate: { ideal: 30 },
-						},
-					}).then(stream => {
-						const mediaRecorder = new MediaRecorder(stream, {
-							mimeType: 'video/webm;codecs=vp9',
-							videoBitsPerSecond: 2500000,
-						})
-
-						window.recordedChunks = []
-						mediaRecorder.ondataavailable = (event) => {
-							if (event.data.size > 0) {
-								window.recordedChunks.push(event.data)
-							}
-						}
-
-						window.recordingStream = stream
-						mediaRecorder.start(1000)
-						window.mediaRecorder = mediaRecorder
-						resolve()
-					}).catch(err => {
-						reject(new Error('Failed to get display media: ' + err))
-					})
-				})
+			page.screencast({ path: outputPath, ffmpegPath: '/usr/bin/ffmpeg' }).then(mediaRecorder => {
+				session.mediaRecorder = mediaRecorder
 			})
 
 			// Update status
@@ -392,7 +367,6 @@ export default class RecordingService extends EventEmitter {
 		}
 
 		try {
-			const { page } = session
 			session.isRecording = false
 			const sessionPath = session.sessionPath || path.join(this.recordingsPath, sessionKey)
 			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-')
@@ -400,26 +374,10 @@ export default class RecordingService extends EventEmitter {
 			session.lastRecordingPath = outputPath
 
 			// Stop recording and get the array buffer
-			const buffer = await page.evaluate(() => {
-				return new Promise((resolve) => {
-					const mediaRecorder = window.mediaRecorder
-					mediaRecorder.onstop = () => {
-						const blob = new Blob(window.recordedChunks, { type: 'video/webm' })
-						const reader = new FileReader()
-						reader.onloadend = () => {
-							// Convert ArrayBuffer to Uint8Array for proper serialization
-							const array = new Uint8Array(reader.result)
-							resolve(Array.from(array))
-						}
-						reader.readAsArrayBuffer(blob)
-						window.recordingStream.getTracks().forEach(track => track.stop())
-					}
-					mediaRecorder.stop()
-				})
-			})
+			await session.mediaRecorder.stop()
 
-			// Create Buffer from the array of numbers and save locally
-			await fs.writeFile(outputPath, Buffer.from(buffer))
+			// Read the file into a buffer
+			const recordingData = await fs.readFile(outputPath)
 
 			// Update status
 			const status = this.#status.get(sessionKey)
@@ -429,7 +387,7 @@ export default class RecordingService extends EventEmitter {
 			console.log(`Recording stopped for session [${sessionKey}]`)
 			return {
 				localPath: outputPath,
-				recordingData: buffer, // Return raw recording data for client upload
+				recordingData, // Return raw recording data for client upload
 			}
 		} catch (error) {
 			console.error(`Failed to stop recording [${sessionKey}]:`, error)
