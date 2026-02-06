@@ -15,6 +15,7 @@ use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
+use OCP\IUserSession;
 use OCP\Util;
 
 /** @template-implements IEventListener<LoadViewer|Event> */
@@ -22,6 +23,7 @@ class LoadViewerListener implements IEventListener {
 	public function __construct(
 		private IInitialState $initialState,
 		private ConfigService $configService,
+		private IUserSession $userSession,
 	) {
 	}
 
@@ -45,6 +47,11 @@ class LoadViewerListener implements IEventListener {
 		$this->initialState->provideInitialState(
 			'disableExternalLibraries',
 			$this->configService->getDisableExternalLibraries()
+		);
+		$user = $this->userSession->getUser();
+		$this->initialState->provideInitialState(
+			'autoUploadOnDisconnect',
+			$user ? $this->configService->getUserAutoUploadOnDisconnect($user->getUID()) : false
 		);
 	}
 }

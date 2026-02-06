@@ -71,7 +71,7 @@ export interface ClientToServerEvents {
 	'request-viewport': (payload: { fileId: string; userId: string }) => void
 
 	// Recording
-	'start-recording': (payload: { fileId: number; recordingUrl: string; uploadToken: string }) => void
+	'start-recording': (payload: { fileId: number; recordingUrl: string; uploadToken: string; autoUploadOnDisconnect?: boolean }) => void
 	'stop-recording': (roomId: string) => void
 	'check-recording-availability': () => void
 

@@ -27,6 +27,7 @@ export interface RecordingState {
 	isAvailable: boolean | null
 	unavailableReason: string | null
 	showUnavailableInfo: boolean
+	autoUploadOnDisconnect: boolean
 }
 
 export interface RecordingActions {

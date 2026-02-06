@@ -127,7 +127,7 @@ export default class RecordingService extends EventEmitter {
 			await page.setViewport({ ...this.config.viewport, isLandscape: true })
 
 			// Set a proper user-agent to avoid being treated as a bot
-			await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+			await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 WhiteboardRecording/1.0')
 
 			// Consolidated event listeners
 			page.on('console', msg =>
