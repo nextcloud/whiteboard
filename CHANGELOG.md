@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.5.5
+
+### Fixed
+
+- fix: add ffmpeg to dockerfile for recording by @benjaminfrueh [#1025](https://github.com/nextcloud/whiteboard/pull/1025)
+- fix: use native puppeteer recording by @grnd-alt [#1023](https://github.com/nextcloud/whiteboard/pull/1023)
+- fix: recording stop on disconnect by @hweihwang [#993](https://github.com/nextcloud/whiteboard/pull/993)
+- fix: word wrapping in tables cuts svg image for short words by @benjaminfrueh [#1020](https://github.com/nextcloud/whiteboard/pull/1020)
+- fix: adjust zindex so comments don't overlap controls by @benjaminfrueh [#1022](https://github.com/nextcloud/whiteboard/pull/1022)
+- fix: calculate a scale factor based on natural dimensions by @benjaminfrueh [#1018](https://github.com/nextcloud/whiteboard/pull/1018)
+- fix: prevent memory leaks in whiteboard canvas interactions by @silverkszlo [#998](https://github.com/nextcloud/whiteboard/pull/998)
+- fix: include existing elements when adding voting to canvas by @benjaminfrueh [#1013](https://github.com/nextcloud/whiteboard/pull/1013)
+- fix: enable zen mode shortcut by @hweihwang [#1003](https://github.com/nextcloud/whiteboard/pull/1003)
+- fix: recording initial viewport follow by @hweihwang [#996](https://github.com/nextcloud/whiteboard/pull/996)
+- fix: recording runtime cache busting by @hweihwang [#994](https://github.com/nextcloud/whiteboard/pull/994)
+- fix: enforce admin max image size for all image inserts by @hweihwang [#997](https://github.com/nextcloud/whiteboard/pull/997)
+- fix: scroll to linked element by @hweihwang [#991](https://github.com/nextcloud/whiteboard/pull/991)
+- fix: proper placeholders for presenter strings in javascript by @juliusknorr [#999](https://github.com/nextcloud/whiteboard/pull/999)
+
+### Added
+- Improve recording overlay UI by @hweihwang [#995](https://github.com/nextcloud/whiteboard/pull/995)
+
+### Other
+- chore: Bump max-version to 33 by @juliusknorr [#1002](https://github.com/nextcloud/whiteboard/pull/1002)
+
 ## 1.5.4
 
 ### Fixed
