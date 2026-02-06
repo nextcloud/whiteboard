@@ -3,13 +3,17 @@ OC.L10N.register(
     {
     "Whiteboard" : "Ploča za pisanje",
     "Shared secret" : "Dijeljen tajni ključ",
+    "Save settings" : "Spremi postavke",
     "Advanced settings" : "Napredne postavke",
     "Close" : "Zatvori",
     "Generating…" : "Generiranje…",
+    "Insert Table" : "Umetni tablicu",
     "Cancel" : "Cancel",
     "Update" : "Ažuriraj",
+    "Insert" : "Umetni",
     "Multiple choice" : "Višestruki izbor",
     "Question" : "Pitanje",
+    "Option" : "Opcija",
     "Add option" : "Dodaj mogućnost",
     "Comments" : "Komentari",
     "Dismiss" : "Odpusti",
@@ -35,7 +39,10 @@ OC.L10N.register(
     "Status" : "Status",
     "Open" : "Otvori",
     "Closed" : "Zatvoreno",
+    "Assistant" : "Asistent",
     "Add comment" : "Dodaj komentar",
+    "Smart picker" : "Pametni odabir",
+    "Version {version}" : "Verzija {version}",
     "Version restored" : "Verzija vraćena"
 },
 "nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;");
