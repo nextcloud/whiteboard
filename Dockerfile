@@ -31,7 +31,8 @@ RUN apk add --no-cache \
         nss \
         freetype \
         harfbuzz \
-        ttf-freefont && \
+        ttf-freefont \
+        ffmpeg && \
     chromium-browser --version && \
     install -d -m 0700 -o nobody -g nobody /tmp/chromium-runtime /tmp/chrome-crashpad /tmp/whiteboard-recordings && \
     mv /usr/lib/chromium/chrome_crashpad_handler /usr/lib/chromium/chrome_crashpad_handler.real && \
