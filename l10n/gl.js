@@ -38,6 +38,7 @@ OC.L10N.register(
     "Generating…" : "Xerando…",
     "Generate" : "Xerar",
     "Add reaction" : "Engadir reacción",
+    "Recording" : "Gravando",
     "Nextcloud Text app is not available. Please install and enable it." : "A aplicación Texto de Nextcloud non está dispoñíbel. Instálea e actívea.",
     "Editor container not found" : "Non foi atopado o contedor do editor",
     "Failed to load the editor: {error}" : "Produciuse un fallo ao cargar o editor: {error}",
@@ -143,7 +144,6 @@ OC.L10N.register(
     "✓ Capture engine ready" : "✓ Motor de captura listo",
     "• This may take a few seconds" : "• Isto pode levar uns segundos…",
     "Stopping recording…" : "Detendo a gravación…",
-    "Recording" : "Gravando",
     "Duration" : "Duración",
     "Stop recording" : "Deter a gravación",
     "Unknown user" : "Usuario descoñecido",
@@ -231,7 +231,7 @@ OC.L10N.register(
     "Just now" : "Agora mesmo",
     "minute ago" : "hai un minuto",
     "minutes ago" : "hai minutos",
-    "hour ago" : "hai hora",
+    "hour ago" : "hai unha hora",
     "hours ago" : "hai horas"
 },
 "nplurals=2; plural=(n != 1);");
