@@ -62,6 +62,7 @@ OC.L10N.register(
     "Add comment" : "Ongeza maoni",
     "Smart picker" : "Kiteua mahiri",
     "Version {version}" : "Version {version}",
-    "Version restored" : "Toleo limerejeshwa"
+    "Version restored" : "Toleo limerejeshwa",
+    "Just now" : "Sasa hivi"
 },
 "nplurals=2; plural=(n != 1);");
