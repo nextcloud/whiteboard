@@ -434,8 +434,9 @@ export default function App({
 			const maxSizeMb = maxImageSizeMb ?? 0
 			throw new Error(t('whiteboard', 'Max image size is {max} MB', { max: maxSizeMb }))
 		}
-		// Return empty string so Excalidraw falls back to its default ID generator.
-		return ''
+
+		// must return an id, excalidraws id generator only runs when the callback prop is not set
+		return Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
 	}, [maxImageSizeBytes, maxImageSizeMb])
 
 	const handleOnChange = useCallback(() => {
