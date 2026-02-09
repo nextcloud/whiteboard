@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.6
+
+### Fixed
+
+- fix: generate file id when validating image uploads by @benjaminfrueh [#1035](https://github.com/nextcloud/whiteboard/pull/1035)
+
 ## 1.5.5
 
 ### Fixed
