@@ -36,6 +36,7 @@ OC.L10N.register(
     "Comments" : "Commenti",
     "Voting" : "Votazione",
     "Dismiss" : "Rifiuta",
+    "Guest" : "Ospite",
     "Delete thread" : "Elimina conversazione",
     "Edit" : "Modifica",
     "Save" : "Salva",
