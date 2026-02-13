@@ -32,6 +32,7 @@ OC.L10N.register(
     "Connecting" : "Verbinden",
     "Online" : "Online",
     "Unknown" : "Onbekend",
+    "Stop" : "Stop",
     "Duration" : "Duur",
     "Stop recording" : "Beëindig opname",
     "Unknown user" : "Onbekende gebruiker",
