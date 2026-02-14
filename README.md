@@ -86,7 +86,7 @@ services:
 
 ### Recording prerequisites
 
-Board recordings require a headless Chromium browser on the collaboration server. The system automatically detects Chrome installations:
+Board recordings require a headless Chromium browser and [ffmpeg](https://ffmpeg.org/) on the collaboration server. The system automatically detects Chrome installations:
 
 - **Self-hosted**: Auto-detects Chrome/Chromium in standard locations
 - **Docker**: Uses bundled Alpine Chromium package
