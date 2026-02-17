@@ -339,6 +339,8 @@ export default class RecordingService extends EventEmitter {
 			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-')
 			const outputPath = path.join(sessionPath, `${formattedDate}.webm`)
 
+			await page.addStyleTag({ content: '.recording-overlay { display: none !important; }' })
+
 			// Start browser-based recording
 			page.screencast({ path: outputPath, ffmpegPath: '/usr/bin/ffmpeg' }).then(mediaRecorder => {
 				session.mediaRecorder = mediaRecorder
