@@ -93,8 +93,17 @@ export function useFollowedUser({ excalidrawAPI, fileId }: UseFollowedUserOption
 				status: state.status,
 			})
 		}
+
+		const unsubscribe = useCollaborationStore.subscribe((state) => {
+			if (state.socket?.connected) {
+				window.collaborationReady = true
+				unsubscribe()
+			}
+		})
+
 		return () => {
 			delete window.followUser
+			delete window.collaborationReady
 		}
 	}, [excalidrawAPI, fileId])
 }
