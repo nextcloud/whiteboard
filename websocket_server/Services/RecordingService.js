@@ -11,7 +11,11 @@ import { constants as fsConstants } from 'fs'
 import os from 'os'
 import path from 'path'
 import EventEmitter from 'events'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import Config from '../Utilities/ConfigUtility.js'
+
+const execFileAsync = promisify(execFile)
 
 const DEFAULT_CONFIG = {
 	viewport: { width: 1920, height: 1080 },
@@ -258,7 +262,7 @@ export default class RecordingService extends EventEmitter {
 
 	async #waitForWhiteboardReady(page, sessionKey) {
 		await page.waitForFunction(
-			() => document.querySelector('.excalidraw') && window.followUser,
+			() => document.querySelector('.excalidraw') && window.followUser && window.collaborationReady === true,
 			{ timeout: this.config.timeouts.navigation },
 		)
 		console.log(`Whiteboard loaded [${sessionKey}]`)
@@ -266,41 +270,8 @@ export default class RecordingService extends EventEmitter {
 
 	async #initializeUserTracking(page, userId) {
 		await page.evaluate(userId => {
-			// Add debugging to see if the recording agent is receiving messages
-			console.log('Recording agent initializing user tracking for:', userId)
-
-			// Wait a bit for the websocket to connect
-			setTimeout(() => {
-				if (window.followUser) {
-					window.followUser(userId)
-					console.log('Recording agent now following user:', userId)
-
-					// Test if we can manually trigger viewport following
-					window.testViewportFollow = () => {
-						console.log('Testing viewport follow functionality...')
-						const testPayload = {
-							userId,
-							scrollX: 100,
-							scrollY: 100,
-							zoom: 1.5,
-						}
-						console.log('Simulating viewport update:', testPayload)
-						// This should trigger the viewport update logic
-						if (window.useCollaborationStore) {
-							const store = window.useCollaborationStore.getState()
-							console.log('Collaboration store state:', {
-								followedUserId: store.followedUserId,
-								status: store.status,
-							})
-						}
-					}
-
-					// Make test function available
-					window.testViewportFollow()
-				} else {
-					console.error('Recording agent: window.followUser not available')
-				}
-			}, 2000) // Wait 2 seconds for websocket connection
+			window.followUser(userId)
+			console.log('Recording agent now following user:', userId)
 		}, userId)
 	}
 
@@ -320,6 +291,16 @@ export default class RecordingService extends EventEmitter {
 		})
 	}
 
+	async #waitForFileFlush(filePath) {
+		let lastSize = -1
+		while (true) {
+			const { size } = await fs.stat(filePath)
+			if (size === lastSize) break
+			lastSize = size
+			await new Promise(resolve => setTimeout(resolve, 200))
+		}
+	}
+
 	async startRecording(roomId, userId) {
 		const sessionKey = this.#getSessionKey(roomId, userId)
 		const session = this.#sessions.get(sessionKey)
@@ -333,18 +314,16 @@ export default class RecordingService extends EventEmitter {
 			session.isRecording = true
 			const sessionPath = path.join(this.recordingsPath, sessionKey)
 			session.sessionPath = sessionPath
-			session.lastRecordingPath = null
 
 			await fs.mkdir(sessionPath, { recursive: true })
 			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-')
 			const outputPath = path.join(sessionPath, `${formattedDate}.webm`)
+			session.lastRecordingPath = outputPath
 
 			await page.addStyleTag({ content: '.recording-overlay { display: none !important; }' })
 
 			// Start browser-based recording
-			page.screencast({ path: outputPath, ffmpegPath: '/usr/bin/ffmpeg' }).then(mediaRecorder => {
-				session.mediaRecorder = mediaRecorder
-			})
+			session.mediaRecorder = await page.screencast({ path: outputPath, ffmpegPath: '/usr/bin/ffmpeg' })
 
 			// Update status
 			const status = this.#status.get(sessionKey)
@@ -370,13 +349,18 @@ export default class RecordingService extends EventEmitter {
 
 		try {
 			session.isRecording = false
-			const sessionPath = session.sessionPath || path.join(this.recordingsPath, sessionKey)
-			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-')
-			const outputPath = path.join(sessionPath, `${formattedDate}.webm`)
-			session.lastRecordingPath = outputPath
+			const outputPath = session.lastRecordingPath
 
-			// Stop recording and get the array buffer
+			// Stop recording
 			await session.mediaRecorder.stop()
+
+			// Screencast may not have fully flushed the file to disk yet
+			await this.#waitForFileFlush(outputPath)
+
+			// Screencast produces WebM without duration and index metadata, remux with ffmpeg to fix this
+			const tmpPath = outputPath + '.tmp.webm'
+			await execFileAsync('/usr/bin/ffmpeg', ['-i', outputPath, '-c', 'copy', tmpPath])
+			await fs.rename(tmpPath, outputPath)
 
 			// Read the file into a buffer
 			const recordingData = await fs.readFile(outputPath)
