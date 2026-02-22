@@ -8,6 +8,7 @@ OC.L10N.register(
     "Recording" : "Enregistrament",
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
+    "Insert" : "Inserir",
     "Question" : "Question",
     "Comments" : "Comentaris",
     "Voting" : "Vòte",
