@@ -166,6 +166,7 @@ OC.L10N.register(
     "Closed" : "Хаагдсан",
     "Vote" : "Санал өгөх",
     "Voted" : "Санал өгсөн",
+    "_%n vote_::_%n votes_" : ["%n санал","%n санал"],
     "Assistant" : "Туслах",
     "Add comment" : "Сэтгэгдэл нэмэх",
     "Select an item on canvas to add it here, or add a local library below." : "Самбар дээрх элементийг сонгож энд нэмэх, эсвэл доорх локал санг нэмнэ үү.",

@@ -210,7 +210,7 @@ OC.L10N.register(
     "Please share the board with users; otherwise, they will not be able to see it." : "Palun jaga seda tahvlit teiste kasutajatega, vastasel juhul nad ei saa seda näha.",
     "Assistant" : "Abiline",
     "Add comment" : "Lisa kommentaar",
-    "Select an item on canvas to add it here, or add a local library below." : "Siia lisamiseks vali kanvaalt objekt või lisa kohalik meediakogu alljärgnevalt.",
+    "Select an item on canvas to add it here, or add a local library below." : "Siia lisamiseks vali kanvaalt objekt või lisa alt nupust kohalik meediakogu.",
     "Add local library" : "Lisa kohalikku meediakogusse",
     "Presentation requires connection to collaboration server. Please check your network connection." : "Esitlus eeldab toimivat ühendust ühistööserveriga. Palun kontrolli, kas sinu arvuti/nutiseadme võrguühendus toimib.",
     "Another user is already presenting. Please wait for them to finish." : "Üks teine kasutaja on hetkel esitlemas. Palun oota, kuni ta lõpetab.",
