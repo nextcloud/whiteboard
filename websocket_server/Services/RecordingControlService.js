@@ -57,7 +57,6 @@ export default class RecordingControlService {
 		const { fileId, recordingUrl, uploadToken, autoUploadOnDisconnect = false } = data
 		const roomID = fileId.toString()
 		const sessionKey = `${roomID}_${socket.id}`
-		const startedAt = Date.now()
 
 		try {
 			if (!socket.rooms.has(roomID)) {
@@ -91,6 +90,7 @@ export default class RecordingControlService {
 
 			console.log(`[${sessionKey}] Starting recording`)
 			await recorder.startRecording(roomID, socketData.user.id)
+			const startedAt = Date.now()
 
 			const username = socketData.user.displayName || socketData.user.name || 'Unknown User'
 			this.recordingServices.set(recordingKey, {
