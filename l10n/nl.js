@@ -21,6 +21,7 @@ OC.L10N.register(
     "Comments" : "Reacties",
     "Voting" : "Stemming",
     "Dismiss" : "Wijs af",
+    "Guest" : "Gast",
     "Delete thread" : "Verwijder draadje",
     "Edit" : "Bewerken",
     "Save" : "Opslaan",
