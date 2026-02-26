@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.7
+
+### Fixed
+- fix: improve recording stability by @benjaminfrueh [#1053](https://github.com/nextcloud/whiteboard/pull/1053)
+- fix: hide loading message from recording by @benjaminfrueh [#1057](https://github.com/nextcloud/whiteboard/pull/1057)
+- fix: hide recording overlay in screencast video by @benjaminfrueh [#1050](https://github.com/nextcloud/whiteboard/pull/1050)
+
+### Other
+- mention ffmpeg installation for recordings in readme by @silverkszlo [#1024](https://github.com/nextcloud/whiteboard/pull/1024)
+- chore: update @nextcloud/excalidraw to @next by @benjaminfrueh [#1051](https://github.com/nextcloud/whiteboard/pull/1051)
+
 ## 1.5.6
 
 ### Fixed
