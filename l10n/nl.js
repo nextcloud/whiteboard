@@ -29,6 +29,7 @@ OC.L10N.register(
     "Add a comment" : "Reactie toevoegen",
     "Send" : "Verzenden",
     "No comments yet" : "Nog geen reacties",
+    "replies" : "antwoorden",
     "Offline" : "Offline",
     "Connecting" : "Verbinden",
     "Online" : "Online",
@@ -58,6 +59,10 @@ OC.L10N.register(
     "Smart picker" : "Smart Picker",
     "Version {version}" : "Versie {version}",
     "Version restored" : "Versie hersteld",
-    "Just now" : "Zojuist"
+    "Just now" : "Zojuist",
+    "minute ago" : "minuut geleden",
+    "minutes ago" : "minuten geleden",
+    "hour ago" : "uur geleden",
+    "hours ago" : "uren geleden"
 },
 "nplurals=2; plural=(n != 1);");
