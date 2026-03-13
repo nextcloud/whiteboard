@@ -182,13 +182,13 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 			<MainMenu.Item
 				icon={<Icon path={mdiImageMultiple} size={0.75} />}
 				onSelect={openExportDialog}
-				shortcut={isMacPlatform ? '⌘+⇧+E' : 'Ctrl+Shift+E'}>
+				shortcut={isMacPlatform ? '⌘+⇧+E' : t('whiteboard', 'Ctrl+Shift+E')}>
 				{t('whiteboard', 'Export image…')}
 			</MainMenu.Item>
 			<MainMenu.Item
 				icon={<Icon path={mdiMonitorScreenshot} size={0.75} />}
 				onSelect={takeScreenshot}
-				shortcut={isMacPlatform ? '⌘+⌥+S' : 'Ctrl+Alt+S'}>
+				shortcut={isMacPlatform ? '⌘+⌥+S' : t('whiteboard', 'Ctrl+Alt+S')}>
 				{t('whiteboard', 'Download screenshot')}
 			</MainMenu.Item>
 			<MainMenu.Item
@@ -199,7 +199,7 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 			<MainMenu.Item
 				icon={<Icon path={mdiMagnify} size={0.75} />}
 				onSelect={openLibrarySearch}
-				shortcut={isMacPlatform ? '⌘+F' : 'Ctrl+F'}>
+				shortcut={isMacPlatform ? '⌘+F' : t('whiteboard', 'Ctrl+F')}>
 				{t('whiteboard', 'Find text on canvas')}
 			</MainMenu.Item>
 			<RecordingMenuItem
