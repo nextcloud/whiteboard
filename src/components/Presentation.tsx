@@ -102,8 +102,8 @@ const PresentationStatus = memo(function PresentationStatus({
 					<Icon path={mdiPresentationPlay} size={1} />
 					<div className="presentation-status__info">
 						<div className="presentation-status__title">
-							You are presenting
-							<span className="presentation-status__live-indicator">LIVE</span>
+							{t('whiteboard', 'You are presenting')}
+							<span className="presentation-status__live-indicator">{t('whiteboard', 'LIVE')}</span>
 						</div>
 						<div className="presentation-status__duration">{duration}</div>
 					</div>
@@ -129,7 +129,7 @@ const PresentationStatus = memo(function PresentationStatus({
 				<div className="presentation-status__content">
 					<Icon path={mdiAccount} size={1} />
 					<div className="presentation-status__info">
-						<div className="presentation-status__title">{presenterName} is presenting</div>
+						<div className="presentation-status__title">{t('whiteboard', '{presenterName} is presenting', { presenterName })}</div>
 						<div className="presentation-status__duration">{duration}</div>
 					</div>
 					<button
@@ -138,7 +138,7 @@ const PresentationStatus = memo(function PresentationStatus({
 						title={autoFollowPresenter ? t('whiteboard', 'Stop following presenter') : t('whiteboard', 'Follow presenter')}
 					>
 						<Icon path={autoFollowPresenter ? mdiEye : mdiEyeOff} size={0.9} />
-						{autoFollowPresenter ? 'Following' : 'Follow'}
+						{autoFollowPresenter ? t('whiteboard', 'Following') : t('whiteboard', 'Follow')}
 					</button>
 				</div>
 			</div>
