@@ -21,6 +21,7 @@ OC.L10N.register(
     "Offline" : "Offline",
     "Connecting" : "Se conectează",
     "Unknown" : "Necunoscut",
+    "LIVE" : "LIVE",
     "Duration" : "Durată",
     "Unknown user" : "Utilizator necunoscut",
     "File" : "Fișier",

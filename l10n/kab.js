@@ -16,6 +16,7 @@ OC.L10N.register(
     "Offline" : "D aruqqin",
     "Online" : "D uqqin",
     "Unknown" : "Arussin",
+    "LIVE" : "SRID",
     "File" : "Afaylu",
     "Finished" : "Immed",
     "Pause" : "Aḥbas",

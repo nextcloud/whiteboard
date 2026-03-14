@@ -115,6 +115,7 @@ OC.L10N.register(
     "Unknown connection status." : "Status koneksi tidak diketahui.",
     "Authentication configuration issue detected." : "Masalah konfigurasi autentikasi terdeteksi.",
     "Authentication issues detected." : "Masalah autentikasi terdeteksi.",
+    "LIVE" : "LANGSUNG",
     "Stop presentation" : "Hentikan presentasi",
     "Stopping…" : "Menghentikan…",
     "Stop" : "Hentikan",

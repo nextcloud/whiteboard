@@ -18,6 +18,8 @@ OC.L10N.register(
     "Reply" : "Risponde",
     "No comments yet" : "Perunu cummentu ancora",
     "Unknown" : "Disconnotu",
+    "Following" : "Sighende",
+    "Follow" : "Sighi",
     "Duration" : "Durata",
     "Unknown user" : "Utèntzia disconnota",
     "File" : "Archìviu",

@@ -15,6 +15,8 @@ OC.L10N.register(
     "Connecting" : "Conectando",
     "Online" : "En línea",
     "Unknown" : "Desconocido",
+    "LIVE" : "EN VIVO",
+    "Follow" : "Seguir",
     "Unknown user" : "Ususario desconocido",
     "File" : "Archivo",
     "Paused" : "Pausado",

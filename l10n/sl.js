@@ -27,6 +27,8 @@ OC.L10N.register(
     "Connecting" : "Poteka vzpostavljanje povezave ...",
     "Online" : "Trenutno na spletu",
     "Unknown" : "Neznano",
+    "Following" : "Sledenje",
+    "Follow" : "Sledi",
     "Duration" : "Trajanje",
     "Stop recording" : "Ustavi snemanje",
     "Unknown user" : "Nepoznan uporabnik",

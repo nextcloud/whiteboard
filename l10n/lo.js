@@ -28,6 +28,7 @@ OC.L10N.register(
     "Connecting" : "Connecting",
     "Online" : "ອອນລາຍ",
     "Unknown" : "ບໍ່ຮູ້",
+    "LIVE" : "LIVE",
     "Stop" : "Stop",
     "Duration" : "ໄລຍະເວລາ",
     "Stop recording" : "Stop recording",

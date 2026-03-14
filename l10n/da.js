@@ -36,6 +36,7 @@ OC.L10N.register(
     "Connecting" : "Frobinder",
     "Online" : "Online",
     "Unknown" : "Ukendt",
+    "LIVE" : "LIVE",
     "Duration" : "Varighed",
     "Stop recording" : "Stop optagelse",
     "Unknown user" : "Ukendt bruger",

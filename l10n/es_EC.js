@@ -29,6 +29,8 @@ OC.L10N.register(
     "Online" : "En línea",
     "Unknown" : "Desconocido",
     "Stop" : " detener",
+    "Following" : "Seguidos",
+    "Follow" : "Seguir",
     "Duration" : "Duración",
     "Stop recording" : "Detener grabación",
     "Unknown user" : "Ususario desconocido",

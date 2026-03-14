@@ -20,6 +20,8 @@ OC.L10N.register(
     "No comments yet" : "Vēl nav piebilžu",
     "Connecting" : "Savienojuma izveide",
     "Unknown" : "Nezināms",
+    "Following" : "Seko",
+    "Follow" : "Sekot",
     "Duration" : "Ilgums",
     "Unknown user" : "Nezināms lietotājs",
     "File" : "Datne",

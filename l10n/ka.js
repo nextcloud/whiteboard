@@ -21,6 +21,7 @@ OC.L10N.register(
     "Connecting" : "Connecting",
     "Online" : "Online",
     "Unknown" : "Unknown",
+    "LIVE" : "LIVE",
     "Duration" : "Duration",
     "Stop recording" : "Stop recording",
     "Unknown user" : "Unknown user",

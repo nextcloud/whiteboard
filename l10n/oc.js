@@ -22,6 +22,7 @@ OC.L10N.register(
     "Connecting" : "Connexion",
     "Online" : "En linha",
     "Unknown" : "Desconegut",
+    "Follow" : "Seguir",
     "Duration" : "Durada",
     "Stop recording" : "Arrestar l'enregistrament",
     "File" : "Fichier",

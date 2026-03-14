@@ -17,6 +17,8 @@ OC.L10N.register(
     "Offline" : "Offline",
     "Online" : "Onlayn",
     "Unknown" : "Noma'lum",
+    "Following" : "Kuzatish",
+    "Follow" : "Kuzatish",
     "Duration" : "Davomiyligi",
     "Unknown user" : "Unknown user",
     "File" : "Fayl",

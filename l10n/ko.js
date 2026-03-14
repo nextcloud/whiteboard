@@ -33,6 +33,7 @@ OC.L10N.register(
     "Connecting" : "연결 중",
     "Online" : "온라인",
     "Unknown" : "알 수 없음",
+    "LIVE" : "라이브",
     "Stop recording" : "녹음/녹화 중단",
     "Unknown user" : "알 수 없는 사용자",
     "File" : "파일",

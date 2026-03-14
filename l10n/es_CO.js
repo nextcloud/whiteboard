@@ -15,6 +15,7 @@ OC.L10N.register(
     "Send" : "Enviar",
     "Connecting" : "Conectando",
     "Unknown" : "Desconocido",
+    "LIVE" : "EN VIVO",
     "Unknown user" : "Ususario desconocido",
     "File" : "Archivo",
     "Paused" : "Pausado",

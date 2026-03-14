@@ -30,6 +30,8 @@ OC.L10N.register(
     "Connecting" : "S'està connectant",
     "Online" : "En línia",
     "Unknown" : "Desconegut",
+    "Following" : "S'està seguint",
+    "Follow" : "Segueix",
     "Stop recording" : "Aturar l'enregistrament",
     "Unknown user" : "Usuari desconegut",
     "File" : "Fitxer",

@@ -30,6 +30,7 @@ OC.L10N.register(
     "Connecting" : "Jungiamasi",
     "Unknown" : "Nežinoma",
     "Stop" : "Stabdyti",
+    "Follow" : "Sekti",
     "Duration" : "Trukmė",
     "Unknown user" : "Nežinomas naudotojas",
     "File" : "Failas",

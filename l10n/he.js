@@ -22,6 +22,8 @@ OC.L10N.register(
     "Connecting" : "מתבצע חיבור",
     "Online" : "מקוון",
     "Unknown" : "לא ידוע",
+    "Following" : "במעקב",
+    "Follow" : "עקוב",
     "Duration" : "משך",
     "Unknown user" : "משתמש לא ידוע",
     "File" : "קובץ",
