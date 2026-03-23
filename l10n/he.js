@@ -7,6 +7,7 @@ OC.L10N.register(
     "Add reaction" : "הוספת תגובון",
     "Cancel" : "ביטול",
     "Update" : "עדכון",
+    "Insert" : "הכנסה",
     "Multiple choice" : "שאלון אמריקאי",
     "Comments" : "תגובות",
     "Dismiss" : "שחרור",
