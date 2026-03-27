@@ -35,6 +35,15 @@ function mapNextcloudToExcalidrawLang(nextcloudLang: string): string {
 	return 'en'
 }
 
+function getLangFromQuery(): string | null {
+	if (typeof window === 'undefined') {
+		return null
+	}
+
+	const queryLang = new URLSearchParams(window.location.search).get('lang')
+	return queryLang?.trim() || null
+}
+
 interface ExcalidrawLangStore {
 	lang: string
 	updateLang: () => void
@@ -42,10 +51,10 @@ interface ExcalidrawLangStore {
 }
 
 export const useLangStore = create<ExcalidrawLangStore>()((set) => ({
-	lang: mapNextcloudToExcalidrawLang(getLanguage()),
+	lang: mapNextcloudToExcalidrawLang(getLangFromQuery() || getLanguage()),
 
 	updateLang: () => {
-		const nextcloudLang = getLanguage()
+		const nextcloudLang = getLangFromQuery() || getLanguage()
 		set({ lang: mapNextcloudToExcalidrawLang(nextcloudLang) })
 	},
 
