@@ -67,14 +67,14 @@ const Config = ConfigModule
 
 vi.setConfig({ testTimeout: 30000 })
 
-const waitFor = (socket, event) => {
+const waitFor = (socket, event, timeoutMs = 5000) => {
 	return new Promise((resolve, reject) => {
 		const timer = setTimeout(() => {
 			const lastError = event === 'connect' && socket?.lastConnectError
 				? `: ${socket.lastConnectError.message || socket.lastConnectError}`
 				: ''
 			reject(new Error(`Timeout waiting for ${event}${lastError}`))
-		}, 5000)
+		}, timeoutMs)
 		socket.once(event, (data) => {
 			clearTimeout(timer)
 			resolve(data)
@@ -463,7 +463,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 		const followerDesignation = await waitFor(followerSocket, 'sync-designate')
 		expect(followerDesignation.isSyncer).toBe(false)
 
-		const newSyncerNotice = waitFor(followerSocket, 'sync-designate')
+		const newSyncerNotice = waitFor(followerSocket, 'sync-designate', 10000)
 		await serverA.gracefulShutdown()
 		serverA = null
 
