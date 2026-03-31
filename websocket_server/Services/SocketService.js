@@ -112,7 +112,6 @@ export default class SocketService {
 		this.viewportController = new ViewportService({
 			io: this.io,
 			sessionStore: this.sessionStore,
-			getRoomSyncer: this.getRoomSyncer.bind(this),
 		})
 		this.roomLifecycleController = new RoomLifecycleService({
 			io: this.io,

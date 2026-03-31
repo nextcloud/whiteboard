@@ -315,7 +315,7 @@ describe('Socket handling', () => {
 		secondarySocket.disconnect()
 	})
 
-	it('only relays SCENE_INIT from the designated syncer', async () => {
+	it('relays scene and viewport broadcasts from writable collaborators', async () => {
 		const roomID = 'scene-broadcast-ownership'
 		const syncerToken = jwt.sign(
 			{ roomID, user: { id: 'syncer-user', name: 'Syncer' } },
@@ -353,19 +353,16 @@ describe('Socket handling', () => {
 			payload: { elements: [{ id: 'scene-1', type: 'rectangle' }] },
 		}))
 
-		const unexpectedScene = new Promise((resolve, reject) => {
-			const timer = setTimeout(resolve, 300)
+		const relayedFollowerScene = new Promise((resolve, reject) => {
+			const timer = setTimeout(() => reject(new Error('Timed out waiting for follower scene broadcast')), 1000)
 			viewerSocket.once('client-broadcast', (data) => {
-				const decoded = decodeBroadcastPayload(data)
-				if (decoded.type === 'SCENE_INIT') {
-					clearTimeout(timer)
-					reject(new Error('Non-syncer scene broadcast should not be relayed'))
-				}
+				clearTimeout(timer)
+				resolve(decodeBroadcastPayload(data))
 			})
 		})
 
 		followerSocket.emit('server-broadcast', roomID, scenePayload, [])
-		await unexpectedScene
+		expect(await relayedFollowerScene).toMatchObject({ type: 'SCENE_INIT' })
 
 		const relayedScene = new Promise((resolve, reject) => {
 			const timer = setTimeout(() => reject(new Error('Timed out waiting for syncer scene broadcast')), 1000)

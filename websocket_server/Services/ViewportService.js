@@ -12,57 +12,14 @@ export default class ViewportService {
 	constructor({
 		io,
 		sessionStore,
-		getRoomSyncer = null,
 	}) {
 		this.io = io
 		this.sessionStore = sessionStore
-		this.getRoomSyncer = getRoomSyncer
-	}
-
-	getBroadcastType(encryptedData) {
-		try {
-			const payload = JSON.parse(
-				GeneralUtility.convertArrayBufferToString(encryptedData),
-			)
-			return payload?.type || null
-		} catch (error) {
-			console.warn('[ViewportService] Failed to parse broadcast payload type', error)
-			return null
-		}
-	}
-
-	async canBroadcastSceneInit(socket, roomID) {
-		if (!this.getRoomSyncer) {
-			return true
-		}
-
-		const [socketData, currentSyncer] = await Promise.all([
-			this.sessionStore.getSocketData(socket.id),
-			this.getRoomSyncer(roomID),
-		])
-
-		if (!socketData?.user?.id || !currentSyncer) {
-			return false
-		}
-
-		if (currentSyncer.socketId) {
-			return currentSyncer.socketId === socket.id
-		}
-
-		return currentSyncer.userId === socketData.user.id
 	}
 
 	async serverBroadcast(socket, roomID, encryptedData, iv) {
 		const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
 		if (!socket.rooms.has(roomID) || isReadOnly) return
-
-		if (this.getBroadcastType(encryptedData) === 'SCENE_INIT') {
-			const canBroadcast = await this.canBroadcastSceneInit(socket, roomID)
-			if (!canBroadcast) {
-				console.warn(`[${roomID}] Ignoring SCENE_INIT from non-syncer socket ${socket.id}`)
-				return
-			}
-		}
 
 		socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
 	}
