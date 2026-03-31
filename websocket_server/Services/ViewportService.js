@@ -26,6 +26,7 @@ export default class ViewportService {
 			)
 			return payload?.type || null
 		} catch (error) {
+			console.warn('[ViewportService] Failed to parse broadcast payload type', error)
 			return null
 		}
 	}
