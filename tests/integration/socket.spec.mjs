@@ -204,4 +204,55 @@ describe('Socket handling', () => {
 		newSocket.disconnect()
 	})
 
+	it('keeps sync ownership on one socket per user and transfers it on disconnect', async () => {
+		const roomID = 'same-user-syncer-room'
+		const token = jwt.sign(
+			{
+				roomID,
+				user: { id: 'same-user', name: 'SameUser' },
+			},
+			Config.JWT_SECRET_KEY,
+		)
+
+		const primarySocket = io(Config.NEXTCLOUD_URL, {
+			forceNew: true,
+			auth: { token },
+		})
+		const secondarySocket = io(Config.NEXTCLOUD_URL, {
+			forceNew: true,
+			auth: { token },
+		})
+
+		await waitFor(primarySocket, 'connect')
+		await waitFor(secondarySocket, 'connect')
+
+		primarySocket.emit('join-room', roomID)
+		const primaryDesignation = await waitFor(primarySocket, 'sync-designate')
+		expect(primaryDesignation.isSyncer).toBe(true)
+
+		secondarySocket.emit('join-room', roomID)
+		const secondaryDesignation = await waitFor(secondarySocket, 'sync-designate')
+		expect(secondaryDesignation.isSyncer).toBe(false)
+
+		const initialSyncer = await serverManager.socketService.getRoomSyncer(roomID)
+		expect(initialSyncer).toMatchObject({
+			userId: 'same-user',
+			socketId: primarySocket.id,
+		})
+
+		const reassignedSyncerNotice = waitFor(secondarySocket, 'sync-designate')
+		primarySocket.disconnect()
+
+		const reassignedDesignation = await reassignedSyncerNotice
+		expect(reassignedDesignation.isSyncer).toBe(true)
+
+		const reassignedSyncer = await serverManager.socketService.getRoomSyncer(roomID)
+		expect(reassignedSyncer).toMatchObject({
+			userId: 'same-user',
+			socketId: secondarySocket.id,
+		})
+
+		secondarySocket.disconnect()
+	})
+
 })

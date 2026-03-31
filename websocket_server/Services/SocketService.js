@@ -202,12 +202,12 @@ export default class SocketService {
 		return this.clusterService.getSyncer(roomID)
 	}
 
-	async setRoomSyncer(roomID, userId) {
-		await this.clusterService.setSyncer(roomID, userId)
+	async setRoomSyncer(roomID, syncerEntry) {
+		await this.clusterService.setSyncer(roomID, syncerEntry)
 	}
 
-	async trySetRoomSyncer(roomID, userId) {
-		return this.clusterService.trySetSyncer(roomID, userId)
+	async trySetRoomSyncer(roomID, syncerEntry) {
+		return this.clusterService.trySetSyncer(roomID, syncerEntry)
 	}
 
 	async clearRoomSyncer(roomID) {
@@ -411,6 +411,7 @@ export default class SocketService {
 			await this.sessionStore.setSocketData(socket.id, {
 				...decodedData,
 				clientType,
+				nodeId: this.nodeId,
 			})
 
 			next()

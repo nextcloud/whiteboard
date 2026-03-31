@@ -27,6 +27,27 @@ export default class RoomLifecycleService {
 		this.votingService = votingService
 	}
 
+	async setSocketSyncerState(socketId, roomID, isSyncer) {
+		const socketData = await this.sessionStore.getSocketData(socketId)
+		if (!socketData) {
+			return
+		}
+
+		const nextSocketData = {
+			...socketData,
+			isSyncer,
+		}
+
+		if (isSyncer) {
+			nextSocketData.syncerFor = roomID
+		} else {
+			delete nextSocketData.syncerFor
+		}
+
+		await this.sessionStore.setSocketData(socketId, nextSocketData)
+		this.io.to(socketId).emit('sync-designate', { isSyncer })
+	}
+
 	async joinRoom(socket, roomID) {
 		const validatedRoomId = GeneralUtility.validateRoomId(roomID)
 		if (!validatedRoomId) {
@@ -52,57 +73,53 @@ export default class RoomLifecycleService {
 
 		await socket.join(validatedRoomId)
 
-		const currentSyncer = await this.cluster.getRoomSyncer(validatedRoomId)
-		let currentSyncerUserId = currentSyncer?.userId
+		let currentSyncer = await this.cluster.getRoomSyncer(validatedRoomId)
 		if (currentSyncer?.nodeId && !(await this.cluster.isNodeAlive(currentSyncer.nodeId))) {
 			await this.cluster.clearRoomSyncer(validatedRoomId)
-			currentSyncerUserId = null
+			currentSyncer = null
+		}
+
+		if (currentSyncer?.socketId) {
+			const roomSockets = await this.getUserSocketsInRoom(validatedRoomId)
+			const syncerStillPresent = roomSockets.some(({ socketId }) => socketId === currentSyncer.socketId)
+			if (!syncerStillPresent) {
+				console.log(`[${validatedRoomId}] Clearing stale syncer socket ${currentSyncer.socketId}`)
+				await this.cluster.clearRoomSyncer(validatedRoomId)
+				currentSyncer = null
+			}
 		}
 		const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
 
 		let isSyncer = false
 
-		if (currentSyncerUserId === userId) {
-			await this.sessionStore.setSocketData(socket.id, {
-				...socketData,
-				isSyncer: true,
-				syncerFor: validatedRoomId,
+		if (!currentSyncer?.socketId && currentSyncer?.userId === userId && !isReadOnly) {
+			await this.cluster.setRoomSyncer(validatedRoomId, {
+				userId,
+				socketId: socket.id,
+				nodeId: socketData.nodeId,
+			})
+			await this.setSocketSyncerState(socket.id, validatedRoomId, true)
+			isSyncer = true
+			console.log(`[${validatedRoomId}] Recovered legacy syncer state for ${userName}`)
+		} else if (!currentSyncer && !isReadOnly) {
+			const elected = await this.cluster.trySetRoomSyncer(validatedRoomId, {
+				userId,
+				socketId: socket.id,
+				nodeId: socketData.nodeId,
 			})
 
-			isSyncer = true
-			socket.emit('sync-designate', { isSyncer: true })
-			console.log(`[${validatedRoomId}] User ${userName} reconnected as existing syncer`)
-		} else if (!currentSyncerUserId && !isReadOnly) {
-			const elected = await this.cluster.trySetRoomSyncer(validatedRoomId, userId)
-
 			if (elected) {
-				await this.sessionStore.setSocketData(socket.id, {
-					...socketData,
-					isSyncer: true,
-					syncerFor: validatedRoomId,
-				})
-
+				await this.setSocketSyncerState(socket.id, validatedRoomId, true)
 				isSyncer = true
-				socket.emit('sync-designate', { isSyncer: true })
-				console.log(`[${validatedRoomId}] Designated new syncer: ${userName}`)
+				console.log(`[${validatedRoomId}] Designated new syncer: ${userName} (${socket.id})`)
 			} else {
-				await this.sessionStore.setSocketData(socket.id, {
-					...socketData,
-					isSyncer: false,
-				})
-
+				await this.setSocketSyncerState(socket.id, validatedRoomId, false)
 				isSyncer = false
-				socket.emit('sync-designate', { isSyncer: false })
 				console.log(`[${validatedRoomId}] User ${userName} lost syncer election (another user won)`)
 			}
 		} else {
-			await this.sessionStore.setSocketData(socket.id, {
-				...socketData,
-				isSyncer: false,
-			})
-
+			await this.setSocketSyncerState(socket.id, validatedRoomId, false)
 			isSyncer = false
-			socket.emit('sync-designate', { isSyncer: false })
 		}
 
 		const roomUsers = await this.getUserSocketsAndIds(validatedRoomId)
@@ -175,26 +192,18 @@ export default class RoomLifecycleService {
 			console.log(`[${roomID}] User ${userName} disconnecting`)
 
 			const currentSyncer = await this.cluster.getRoomSyncer(roomID)
-			const currentSyncerUserId = currentSyncer?.userId
-			const wasSyncer = currentSyncerUserId === userId
+			const wasSyncer = currentSyncer?.socketId
+				? currentSyncer.socketId === socket.id
+				: currentSyncer?.userId === userId
 
 			if (wasSyncer) {
-				const userSockets = await this.getUserSocketsInRoom(roomID)
-				const userStillConnected = userSockets
-					.filter((s) => s.socketId !== socket.id)
-					.some((s) => s.userId === userId)
-
-				if (!userStillConnected) {
-					console.log(`[${roomID}] Syncer disconnected (all sessions), finding new syncer`)
-					await this.findNewSyncer(roomID)
-				} else {
-					console.log(`[${roomID}] Syncer disconnected but has other active connections, maintaining syncer status`)
-				}
+				console.log(`[${roomID}] Syncer socket disconnecting, finding replacement`)
+				await this.findNewSyncer(roomID, { preferredUserId: userId, excludeSocketId: socket.id })
 			}
 
 			const presentationSession = await this.presentationState.getPresentationSession(roomID)
 			if (presentationSession) {
-				const isPublicSharingUser = userId.startsWith('shared_')
+				const isPublicSharingUser = typeof userId === 'string' && userId.startsWith('shared_')
 				let shouldEndPresentation = false
 
 				if (presentationSession.presenterId === userId) {
@@ -233,8 +242,9 @@ export default class RoomLifecycleService {
 		}
 	}
 
-	async findNewSyncer(roomID) {
-		const userSockets = await this.getUserSocketsInRoom(roomID)
+	async findNewSyncer(roomID, { preferredUserId = null, excludeSocketId = null } = {}) {
+		const userSockets = (await this.getUserSocketsInRoom(roomID))
+			.filter(({ socketId }) => socketId !== excludeSocketId)
 
 		console.log(`[${roomID}] Finding new syncer. Users in room: ${userSockets.length}`)
 
@@ -252,38 +262,27 @@ export default class RoomLifecycleService {
 
 		await this.cluster.clearRoomSyncer(roomID)
 
-		const userMap = new Map()
-		userSockets.forEach((s) => {
-			if (!userMap.has(s.userId)) {
-				userMap.set(s.userId, [])
-			}
-			userMap.get(s.userId).push(s)
-		})
+		const prioritizedSockets = preferredUserId
+			? [
+				...userSockets.filter((socketInfo) => socketInfo.userId === preferredUserId),
+				...userSockets.filter((socketInfo) => socketInfo.userId !== preferredUserId),
+			]
+			: userSockets
 
-		for (const [userId, sockets] of userMap.entries()) {
-			for (const socketInfo of sockets) {
-				const isReadOnly = await this.sessionStore.isReadOnly(socketInfo.socketId)
+		for (const socketInfo of prioritizedSockets) {
+			const isReadOnly = await this.sessionStore.isReadOnly(socketInfo.socketId)
 
-				if (!isReadOnly) {
-					const elected = await this.cluster.trySetRoomSyncer(roomID, userId)
+			if (!isReadOnly) {
+				const elected = await this.cluster.trySetRoomSyncer(roomID, {
+					userId: socketInfo.userId,
+					socketId: socketInfo.socketId,
+					nodeId: socketInfo.nodeId,
+				})
 
-					if (elected) {
-						for (const s of sockets) {
-							const socketData = await this.sessionStore.getSocketData(s.socketId)
-							if (socketData) {
-								await this.sessionStore.setSocketData(s.socketId, {
-									...socketData,
-									isSyncer: true,
-									syncerFor: roomID,
-								})
-
-								this.io.to(s.socketId).emit('sync-designate', { isSyncer: true })
-							}
-						}
-
-						console.log(`[${roomID}] Promoted new syncer: ${sockets[0].userName}`)
-						return
-					}
+				if (elected) {
+					await this.setSocketSyncerState(socketInfo.socketId, roomID, true)
+					console.log(`[${roomID}] Promoted new syncer: ${socketInfo.userName} (${socketInfo.socketId})`)
+					return
 				}
 			}
 		}
@@ -350,6 +349,7 @@ export default class RoomLifecycleService {
 					userId: data.user.id,
 					userName: data.user.name,
 					clientType: data.clientType,
+					nodeId: data.nodeId || null,
 				}
 			}),
 		).then((results) => results.filter(Boolean))

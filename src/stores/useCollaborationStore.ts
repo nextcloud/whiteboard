@@ -24,7 +24,7 @@ interface AuthErrorState {
 interface CollaborationStore {
 	status: CollaborationConnectionStatus
 	socket: CollaborationSocket | null
-	isDedicatedSyncer: boolean // Is this client responsible for syncing to server/broadcasting?
+	isDedicatedSyncer: boolean // Is this socket the room's persistence/bootstrap owner?
 	authError: AuthErrorState
 	followedUserId: string | null // User ID being followed for viewport synchronization
 	isInRoom: boolean // Whether the socket has joined the current room

@@ -473,6 +473,46 @@ describe('Multi node websocket cluster with redis streams', () => {
 		await restartServerA()
 	})
 
+	it('keeps sync ownership on a single same-user socket across nodes', async () => {
+		const roomID = 'room-syncer-same-user'
+		const sharedToken = buildToken(roomID, { id: 'shared-user', name: 'SharedUser', displayName: 'SharedUser' })
+
+		const primarySocket = createSocket(serverAUrl, sharedToken)
+		await waitFor(primarySocket, 'connect')
+		primarySocket.emit('join-room', roomID)
+		const primaryDesignation = await waitFor(primarySocket, 'sync-designate')
+		expect(primaryDesignation.isSyncer).toBe(true)
+
+		const secondarySocket = createSocket(serverBUrl, sharedToken)
+		await waitFor(secondarySocket, 'connect')
+		secondarySocket.emit('join-room', roomID)
+		const secondaryDesignation = await waitFor(secondarySocket, 'sync-designate')
+		expect(secondaryDesignation.isSyncer).toBe(false)
+
+		const initialSyncer = await serverB.socketService.getRoomSyncer(roomID)
+		expect(initialSyncer).toMatchObject({
+			userId: 'shared-user',
+			socketId: primarySocket.id,
+			nodeId: serverA.socketService.nodeId,
+		})
+
+		const reassignedSyncerNotice = waitFor(secondarySocket, 'sync-designate')
+		await serverA.gracefulShutdown()
+		serverA = null
+
+		const reassignedDesignation = await reassignedSyncerNotice
+		expect(reassignedDesignation.isSyncer).toBe(true)
+
+		const reassignedSyncer = await serverB.socketService.getRoomSyncer(roomID)
+		expect(reassignedSyncer).toMatchObject({
+			userId: 'shared-user',
+			socketId: secondarySocket.id,
+			nodeId: serverB.socketService.nodeId,
+		})
+
+		await restartServerA()
+	})
+
 	it('removes stale presentation entries during the cluster sweep', async () => {
 		const roomID = 'room-stale-presentation'
 		await serverB.socketService.roomStateStore.setValue(

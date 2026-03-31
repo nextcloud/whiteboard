@@ -28,6 +28,30 @@ export default class ClusterService {
 		this.stateSweepInterval = null
 	}
 
+	normalizeSyncerEntry(entry, fallbackNodeId = null) {
+		if (!entry) {
+			return null
+		}
+
+		if (typeof entry === 'string') {
+			return {
+				userId: entry,
+				socketId: null,
+				nodeId: fallbackNodeId,
+			}
+		}
+
+		if (!entry.userId) {
+			return null
+		}
+
+		return {
+			userId: entry.userId,
+			socketId: entry.socketId || null,
+			nodeId: entry.nodeId || fallbackNodeId,
+		}
+	}
+
 	shouldUseRedis() {
 		return !!this.redisClient
 	}
@@ -220,23 +244,35 @@ export default class ClusterService {
 	}
 
 	async getSyncer(roomId) {
-		return this.roomStateStore.getValue(this.getRoomSyncerKey(roomId), {
+		const syncer = await this.roomStateStore.getValue(this.getRoomSyncerKey(roomId), {
 			isStale: async (entry) => entry?.nodeId && !(await this.isNodeAlive(entry.nodeId)),
 		})
+		return this.normalizeSyncerEntry(syncer)
 	}
 
-	async setSyncer(roomId, userId) {
+	async setSyncer(roomId, syncerEntry) {
+		const normalizedSyncer = this.normalizeSyncerEntry(syncerEntry, this.nodeId)
+		if (!normalizedSyncer) {
+			await this.clearSyncer(roomId)
+			return
+		}
+
 		await this.roomStateStore.setValue(
 			this.getRoomSyncerKey(roomId),
-			{ userId, nodeId: this.nodeId },
+			normalizedSyncer,
 			{ ttlMs: this.sessionTtl },
 		)
 	}
 
-	async trySetSyncer(roomId, userId) {
+	async trySetSyncer(roomId, syncerEntry) {
+		const normalizedSyncer = this.normalizeSyncerEntry(syncerEntry, this.nodeId)
+		if (!normalizedSyncer) {
+			return false
+		}
+
 		return this.roomStateStore.setValueIfNotExists(
 			this.getRoomSyncerKey(roomId),
-			{ userId, nodeId: this.nodeId },
+			normalizedSyncer,
 			{ ttlMs: this.sessionTtl },
 		)
 	}
