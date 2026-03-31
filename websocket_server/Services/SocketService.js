@@ -104,24 +104,26 @@ export default class SocketService {
 			sessionStore: this.sessionStore,
 			roomStateStore: this.roomStateStore,
 		})
-			this.votingService = new VotingService({
-				io: this.io,
-				sessionStore: this.sessionStore,
-				roomStateStore: this.roomStateStore,
-			})
-			this.viewportController = new ViewportService({
-				io: this.io,
-				sessionStore: this.sessionStore,
-				getRoomSyncer: this.getRoomSyncer.bind(this),
-			})
-			this.roomLifecycleController = new RoomLifecycleService({
+		this.votingService = new VotingService({
+			io: this.io,
+			sessionStore: this.sessionStore,
+			roomStateStore: this.roomStateStore,
+		})
+		this.viewportController = new ViewportService({
+			io: this.io,
+			sessionStore: this.sessionStore,
+			getRoomSyncer: this.getRoomSyncer.bind(this),
+		})
+		this.roomLifecycleController = new RoomLifecycleService({
 			io: this.io,
 			sessionStore: this.sessionStore,
 			cluster: {
 				getRoomSyncer: this.getRoomSyncer.bind(this),
 				setRoomSyncer: this.setRoomSyncer.bind(this),
 				trySetRoomSyncer: this.trySetRoomSyncer.bind(this),
+				replaceRoomSyncerIfMatches: this.replaceRoomSyncerIfMatches.bind(this),
 				clearRoomSyncer: this.clearRoomSyncer.bind(this),
+				clearRoomSyncerIfMatches: this.clearRoomSyncerIfMatches.bind(this),
 				isNodeAlive: this.isNodeAlive.bind(this),
 			},
 			presentationState: {
@@ -211,8 +213,16 @@ export default class SocketService {
 		return this.clusterService.trySetSyncer(roomID, syncerEntry)
 	}
 
+	async replaceRoomSyncerIfMatches(roomID, expectedSyncerEntry, nextSyncerEntry) {
+		return this.clusterService.replaceSyncerIfMatches(roomID, expectedSyncerEntry, nextSyncerEntry)
+	}
+
 	async clearRoomSyncer(roomID) {
 		await this.clusterService.clearSyncer(roomID)
+	}
+
+	async clearRoomSyncerIfMatches(roomID, expectedSyncerEntry) {
+		return this.clusterService.clearSyncerIfMatches(roomID, expectedSyncerEntry)
 	}
 
 	async init() {

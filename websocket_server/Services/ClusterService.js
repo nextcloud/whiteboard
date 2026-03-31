@@ -68,6 +68,43 @@ export default class ClusterService {
 		return `room:${roomId}:syncer`
 	}
 
+	buildSyncerMatchCandidates(syncerEntry) {
+		const normalizedSyncer = this.normalizeSyncerEntry(syncerEntry)
+		if (!normalizedSyncer?.userId) {
+			return []
+		}
+
+		const candidates = []
+
+		if (typeof syncerEntry === 'string') {
+			candidates.push(syncerEntry)
+		} else if (syncerEntry && typeof syncerEntry === 'object') {
+			candidates.push(syncerEntry)
+		}
+
+		candidates.push({
+			userId: normalizedSyncer.userId,
+			socketId: normalizedSyncer.socketId,
+			nodeId: normalizedSyncer.nodeId,
+		})
+
+		if (!normalizedSyncer.socketId) {
+			candidates.push(normalizedSyncer.userId)
+			candidates.push({
+				userId: normalizedSyncer.userId,
+				socketId: null,
+			})
+			if (normalizedSyncer.nodeId) {
+				candidates.push({
+					userId: normalizedSyncer.userId,
+					nodeId: normalizedSyncer.nodeId,
+				})
+			}
+		}
+
+		return candidates
+	}
+
 	extractRoomId(key, suffix) {
 		const parts = key.split(':')
 		if (parts.length < 3) return null
@@ -277,8 +314,39 @@ export default class ClusterService {
 		)
 	}
 
+	async replaceSyncerIfMatches(roomId, expectedSyncerEntry, nextSyncerEntry) {
+		const normalizedNextSyncer = this.normalizeSyncerEntry(nextSyncerEntry, this.nodeId)
+		if (!normalizedNextSyncer) {
+			return this.clearSyncerIfMatches(roomId, expectedSyncerEntry)
+		}
+
+		const expectedCandidates = this.buildSyncerMatchCandidates(expectedSyncerEntry)
+		if (expectedCandidates.length === 0) {
+			return false
+		}
+
+		return this.roomStateStore.setValueIfMatches(
+			this.getRoomSyncerKey(roomId),
+			expectedCandidates,
+			normalizedNextSyncer,
+			{ ttlMs: this.sessionTtl },
+		)
+	}
+
 	async clearSyncer(roomId) {
 		await this.roomStateStore.deleteValue(this.getRoomSyncerKey(roomId))
+	}
+
+	async clearSyncerIfMatches(roomId, expectedSyncerEntry) {
+		const expectedCandidates = this.buildSyncerMatchCandidates(expectedSyncerEntry)
+		if (expectedCandidates.length === 0) {
+			return false
+		}
+
+		return this.roomStateStore.deleteValueIfMatches(
+			this.getRoomSyncerKey(roomId),
+			expectedCandidates,
+		)
 	}
 
 	async sweep() {
@@ -334,7 +402,7 @@ export default class ClusterService {
 			if (!syncer?.nodeId) continue
 			if (await this.isNodeAlive(syncer.nodeId)) continue
 
-			await this.clearSyncer(roomId)
+			await this.clearSyncerIfMatches(roomId, syncer)
 			syncersCleared.push({
 				roomId,
 				userId: syncer.userId,
@@ -392,7 +460,7 @@ export default class ClusterService {
 			const syncer = await this.roomStateStore.getValue(key)
 			if (!syncer?.nodeId || syncer.nodeId !== nodeId) continue
 
-			await this.clearSyncer(roomId)
+			await this.clearSyncerIfMatches(roomId, syncer)
 			syncersCleared.push({
 				roomId,
 				userId: syncer.userId,

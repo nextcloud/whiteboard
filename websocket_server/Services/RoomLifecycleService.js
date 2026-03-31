@@ -75,8 +75,8 @@ export default class RoomLifecycleService {
 
 		let currentSyncer = await this.cluster.getRoomSyncer(validatedRoomId)
 		if (currentSyncer?.nodeId && !(await this.cluster.isNodeAlive(currentSyncer.nodeId))) {
-			await this.cluster.clearRoomSyncer(validatedRoomId)
-			currentSyncer = null
+			const clearedSyncer = await this.cluster.clearRoomSyncerIfMatches(validatedRoomId, currentSyncer)
+			currentSyncer = clearedSyncer ? null : await this.cluster.getRoomSyncer(validatedRoomId)
 		}
 
 		if (currentSyncer?.socketId) {
@@ -84,8 +84,8 @@ export default class RoomLifecycleService {
 			const syncerStillPresent = roomSockets.some(({ socketId }) => socketId === currentSyncer.socketId)
 			if (!syncerStillPresent) {
 				console.log(`[${validatedRoomId}] Clearing stale syncer socket ${currentSyncer.socketId}`)
-				await this.cluster.clearRoomSyncer(validatedRoomId)
-				currentSyncer = null
+				const clearedSyncer = await this.cluster.clearRoomSyncerIfMatches(validatedRoomId, currentSyncer)
+				currentSyncer = clearedSyncer ? null : await this.cluster.getRoomSyncer(validatedRoomId)
 			}
 		}
 		const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
@@ -93,15 +93,26 @@ export default class RoomLifecycleService {
 		let isSyncer = false
 
 		if (!currentSyncer?.socketId && currentSyncer?.userId === userId && !isReadOnly) {
-			await this.cluster.setRoomSyncer(validatedRoomId, {
+			const recoveredSyncer = {
 				userId,
 				socketId: socket.id,
 				nodeId: socketData.nodeId,
-			})
-			await this.setSocketSyncerState(socket.id, validatedRoomId, true)
-			isSyncer = true
-			console.log(`[${validatedRoomId}] Recovered legacy syncer state for ${userName}`)
-		} else if (!currentSyncer && !isReadOnly) {
+			}
+			const recovered = await this.cluster.replaceRoomSyncerIfMatches(
+				validatedRoomId,
+				currentSyncer,
+				recoveredSyncer,
+			)
+			if (recovered) {
+				await this.setSocketSyncerState(socket.id, validatedRoomId, true)
+				isSyncer = true
+				console.log(`[${validatedRoomId}] Recovered legacy syncer state for ${userName}`)
+			} else {
+				currentSyncer = await this.cluster.getRoomSyncer(validatedRoomId)
+			}
+		}
+
+		if (!isSyncer && !currentSyncer && !isReadOnly) {
 			const elected = await this.cluster.trySetRoomSyncer(validatedRoomId, {
 				userId,
 				socketId: socket.id,
@@ -118,8 +129,10 @@ export default class RoomLifecycleService {
 				console.log(`[${validatedRoomId}] User ${userName} lost syncer election (another user won)`)
 			}
 		} else {
-			await this.setSocketSyncerState(socket.id, validatedRoomId, false)
-			isSyncer = false
+			if (!isSyncer) {
+				await this.setSocketSyncerState(socket.id, validatedRoomId, false)
+				isSyncer = false
+			}
 		}
 
 		const roomUsers = await this.getUserSocketsAndIds(validatedRoomId)
@@ -198,7 +211,11 @@ export default class RoomLifecycleService {
 
 			if (wasSyncer) {
 				console.log(`[${roomID}] Syncer socket disconnecting, finding replacement`)
-				await this.findNewSyncer(roomID, { preferredUserId: userId, excludeSocketId: socket.id })
+				await this.findNewSyncer(roomID, {
+					preferredUserId: userId,
+					excludeSocketId: socket.id,
+					expectedSyncer: currentSyncer,
+				})
 			}
 
 			const presentationSession = await this.presentationState.getPresentationSession(roomID)
@@ -242,7 +259,7 @@ export default class RoomLifecycleService {
 		}
 	}
 
-	async findNewSyncer(roomID, { preferredUserId = null, excludeSocketId = null } = {}) {
+	async findNewSyncer(roomID, { preferredUserId = null, excludeSocketId = null, expectedSyncer = null } = {}) {
 		const userSockets = (await this.getUserSocketsInRoom(roomID))
 			.filter(({ socketId }) => socketId !== excludeSocketId)
 
@@ -250,7 +267,11 @@ export default class RoomLifecycleService {
 
 		if (userSockets.length === 0) {
 			console.log(`[${roomID}] No users left in room, no syncer needed`)
-			await this.cluster.clearRoomSyncer(roomID)
+			if (expectedSyncer) {
+				await this.cluster.clearRoomSyncerIfMatches(roomID, expectedSyncer)
+			} else {
+				await this.cluster.clearRoomSyncer(roomID)
+			}
 			if (this.timerService) {
 				await this.timerService.clearRoom(roomID)
 			}
@@ -260,7 +281,18 @@ export default class RoomLifecycleService {
 			return
 		}
 
-		await this.cluster.clearRoomSyncer(roomID)
+		if (expectedSyncer) {
+			const clearedSyncer = await this.cluster.clearRoomSyncerIfMatches(roomID, expectedSyncer)
+			if (!clearedSyncer) {
+				const currentSyncer = await this.cluster.getRoomSyncer(roomID)
+				if (currentSyncer) {
+					console.log(`[${roomID}] Syncer already changed while reassigning, keeping ${currentSyncer.userId} (${currentSyncer.socketId || 'legacy'})`)
+					return
+				}
+			}
+		} else {
+			await this.cluster.clearRoomSyncer(roomID)
+		}
 
 		const prioritizedSockets = preferredUserId
 			? [
@@ -288,7 +320,6 @@ export default class RoomLifecycleService {
 		}
 
 		console.log(`[${roomID}] No eligible users found for syncer role`)
-		await this.cluster.clearRoomSyncer(roomID)
 	}
 
 	async getUserSocketsAndIds(roomID) {

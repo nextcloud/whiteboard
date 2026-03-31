@@ -267,6 +267,54 @@ describe('Socket handling', () => {
 		secondarySocket.disconnect()
 	})
 
+	it('migrates a legacy syncer entry to a single socket owner', async () => {
+		const roomID = 'legacy-syncer-migration-room'
+		const token = jwt.sign(
+			{
+				roomID,
+				user: { id: 'legacy-user', name: 'LegacyUser' },
+			},
+			Config.JWT_SECRET_KEY,
+		)
+
+		await serverManager.socketService.roomStateStore.setValue(`room:${roomID}:syncer`, 'legacy-user')
+
+		const primarySocket = io(Config.NEXTCLOUD_URL, {
+			forceNew: true,
+			auth: { token },
+		})
+		const secondarySocket = io(Config.NEXTCLOUD_URL, {
+			forceNew: true,
+			auth: { token },
+		})
+
+		await waitFor(primarySocket, 'connect')
+		await waitFor(secondarySocket, 'connect')
+
+		const primaryDesignationPromise = waitFor(primarySocket, 'sync-designate')
+		const secondaryDesignationPromise = waitFor(secondarySocket, 'sync-designate')
+
+		primarySocket.emit('join-room', roomID)
+		secondarySocket.emit('join-room', roomID)
+
+		const [primaryDesignation, secondaryDesignation] = await Promise.all([
+			primaryDesignationPromise,
+			secondaryDesignationPromise,
+		])
+
+		expect([primaryDesignation, secondaryDesignation].filter(({ isSyncer }) => isSyncer)).toHaveLength(1)
+
+		const migratedSyncer = await serverManager.socketService.getRoomSyncer(roomID)
+		expect(migratedSyncer).toMatchObject({
+			userId: 'legacy-user',
+			nodeId: serverManager.socketService.nodeId,
+		})
+		expect([primarySocket.id, secondarySocket.id]).toContain(migratedSyncer.socketId)
+
+		primarySocket.disconnect()
+		secondarySocket.disconnect()
+	})
+
 	it('only relays SCENE_INIT from the designated syncer', async () => {
 		const roomID = 'scene-broadcast-ownership'
 		const syncerToken = jwt.sign(

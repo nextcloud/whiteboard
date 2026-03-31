@@ -203,6 +203,146 @@ export default class RoomStateStore {
 		return true
 	}
 
+	async setValueIfMatches(key, expectedValues, nextValue, { ttlMs } = {}) {
+		const fullKey = this.#fullKey(key)
+		const ttlToUse = ttlMs || this.defaultTtlMs
+		const serializedExpectedValues = Array.from(
+			new Set(
+				(Array.isArray(expectedValues) ? expectedValues : [expectedValues])
+					.filter((value) => value !== undefined)
+					.map((value) => this.#stringify(value)),
+			),
+		)
+
+		if (serializedExpectedValues.length === 0) {
+			return false
+		}
+
+		if (this.shouldUseRedis()) {
+			try {
+				const serializedNextValue = this.#stringify(nextValue)
+				const ttlSeconds = this.#ttlSeconds(ttlToUse)
+				const result = await this.redisClient.eval(
+					`
+					local current = redis.call('GET', KEYS[1])
+					if not current then
+						return 0
+					end
+					local expectedCount = tonumber(ARGV[1])
+					for i = 1, expectedCount do
+						if current == ARGV[1 + i] then
+							local nextValue = ARGV[expectedCount + 2]
+							local ttl = ARGV[expectedCount + 3]
+							if ttl ~= '' then
+								redis.call('SET', KEYS[1], nextValue, 'EX', ttl)
+							else
+								redis.call('SET', KEYS[1], nextValue)
+							end
+							return 1
+						end
+					end
+					return 0
+					`,
+					{
+						keys: [fullKey],
+						arguments: [
+							String(serializedExpectedValues.length),
+							...serializedExpectedValues,
+							serializedNextValue,
+							ttlSeconds ? String(ttlSeconds) : '',
+						],
+					},
+				)
+				return Number(result) === 1
+			} catch (error) {
+				if (this.#isClientClosedError(error)) {
+					return false
+				}
+				throw error
+			}
+		}
+
+		const entry = this.memoryStore.get(fullKey)
+		if (!entry || this.#isExpired(entry.expiresAt)) {
+			this.memoryStore.delete(fullKey)
+			return false
+		}
+
+		const serializedCurrentValue = this.#stringify(entry.value)
+		if (!serializedExpectedValues.includes(serializedCurrentValue)) {
+			return false
+		}
+
+		this.memoryStore.set(fullKey, {
+			value: nextValue,
+			expiresAt: this.#expiresAt(ttlToUse),
+		})
+		return true
+	}
+
+	async deleteValueIfMatches(key, expectedValues) {
+		const fullKey = this.#fullKey(key)
+		const serializedExpectedValues = Array.from(
+			new Set(
+				(Array.isArray(expectedValues) ? expectedValues : [expectedValues])
+					.filter((value) => value !== undefined)
+					.map((value) => this.#stringify(value)),
+			),
+		)
+
+		if (serializedExpectedValues.length === 0) {
+			return false
+		}
+
+		if (this.shouldUseRedis()) {
+			try {
+				const result = await this.redisClient.eval(
+					`
+					local current = redis.call('GET', KEYS[1])
+					if not current then
+						return 0
+					end
+					local expectedCount = tonumber(ARGV[1])
+					for i = 1, expectedCount do
+						if current == ARGV[1 + i] then
+							redis.call('DEL', KEYS[1])
+							return 1
+						end
+					end
+					return 0
+					`,
+					{
+						keys: [fullKey],
+						arguments: [
+							String(serializedExpectedValues.length),
+							...serializedExpectedValues,
+						],
+					},
+				)
+				return Number(result) === 1
+			} catch (error) {
+				if (this.#isClientClosedError(error)) {
+					return false
+				}
+				throw error
+			}
+		}
+
+		const entry = this.memoryStore.get(fullKey)
+		if (!entry || this.#isExpired(entry.expiresAt)) {
+			this.memoryStore.delete(fullKey)
+			return false
+		}
+
+		const serializedCurrentValue = this.#stringify(entry.value)
+		if (!serializedExpectedValues.includes(serializedCurrentValue)) {
+			return false
+		}
+
+		this.memoryStore.delete(fullKey)
+		return true
+	}
+
 	async getHash(key, { isStale } = {}) {
 		const fullKey = this.#fullKey(key)
 
