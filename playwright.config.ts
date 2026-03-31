@@ -33,10 +33,10 @@ export default defineConfig({
 		baseURL: 'http://localhost:8089/index.php/',
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-		trace: 'on',
+		trace: process.env.CI ? 'on-first-retry' : 'on',
 
-		/* Capture video of test runs - only keep videos for failed tests */
-		video: 'on',
+		/* Record videos only when CI retries a failing test to keep the suite lighter. */
+		video: process.env.CI ? 'on-first-retry' : 'on',
 	},
 
 	projects: [

@@ -52,11 +52,11 @@ jobs:
           composer remove nextcloud/ocp --dev --no-scripts
           composer i
 
-      - name: Check for vulnerable PHP dependencies
-        run: composer require --dev roave/security-advisories:dev-latest
-
       - name: Install nextcloud/ocp
         run: composer require --dev nextcloud/ocp:dev-${{ steps.versions.outputs.branches-max }} --ignore-platform-reqs --with-dependencies
+
+      - name: Audit PHP dependency advisories
+        run: composer audit --locked --format=summary
 
       - name: Run coding standards check
         run: composer run psalm -- --threads=1 --monochrome --no-progress --output-format=github

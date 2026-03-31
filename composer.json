@@ -2,6 +2,11 @@
 	"name": "nextcloud/whiteboard",
 	"config": {
 		"autoloader-suffix": "Whiteboard",
+		"audit": {
+			"ignore": {
+				"PKSA-y2cr-5h3j-g3ys": "Temporary CI exception until firebase/php-jwt can be upgraded without changing existing shared-secret requirements."
+			}
+		},
 		"optimize-autoloader": true,
 		"platform": {
 			"php": "8.4"

@@ -10,12 +10,13 @@ jobs:
     strategy:
       matrix:
         server_version: [stable29, stable30, stable31, stable32, master]
+        shard: [1, 2, 3]
       fail-fast: false
     timeout-minutes: 60
     runs-on: ubuntu-latest
     env:
       SERVER_VERSION: ${{ matrix.server_version }}
-    name: Playwright Tests on Nextcloud ${{ matrix.server_version }}
+    name: Playwright Tests on Nextcloud ${{ matrix.server_version }} (${{ matrix.shard }}/3)
     steps:
       - name: Checkout app
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -57,11 +58,11 @@ jobs:
 
       - name: Run Playwright tests
         run: |
-          npx playwright test
+          npx playwright test --reporter=line,html --shard=${{ matrix.shard }}/3
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: playwright-report-${{ matrix.server_version }}
+          name: playwright-report-${{ matrix.server_version }}-shard-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 30
