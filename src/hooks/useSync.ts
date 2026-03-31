@@ -173,9 +173,9 @@ export function useSync() {
 		return `${len}:${start}:${end}`
 	}
 
-	// Syncs scene and files via WebSocket
+	// Syncs the authoritative scene and files via WebSocket
 	const doSyncViaWebSocket = useCallback(async () => {
-		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly) {
+		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly || !isDedicatedSyncer) {
 			return
 		}
 
@@ -214,7 +214,7 @@ export function useSync() {
 			logger.error('[Sync] WebSocket sync failed:', error)
 			logSyncResult('websocket', { status: 'sync error', error: error instanceof Error ? error.message : String(error) })
 		}
-	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly])
+		}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isDedicatedSyncer])
 
 	const throttledSyncToLocal = useMemo(() =>
 		// Use both leading and trailing edge executions to ensure changes are saved immediately and after delay

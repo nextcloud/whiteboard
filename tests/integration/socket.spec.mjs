@@ -31,6 +31,18 @@ function waitFor(socket, event) {
 	})
 }
 
+function decodeBroadcastPayload(data) {
+	if (typeof data === 'string') {
+		return JSON.parse(data)
+	}
+
+	if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+		return JSON.parse(new TextDecoder().decode(data))
+	}
+
+	throw new Error(`Unexpected client-broadcast payload type: ${typeof data}`)
+}
+
 describe('Socket handling', () => {
 	let serverManager, socket
 
@@ -253,6 +265,88 @@ describe('Socket handling', () => {
 		})
 
 		secondarySocket.disconnect()
+	})
+
+	it('only relays SCENE_INIT from the designated syncer', async () => {
+		const roomID = 'scene-broadcast-ownership'
+		const syncerToken = jwt.sign(
+			{ roomID, user: { id: 'syncer-user', name: 'Syncer' } },
+			Config.JWT_SECRET_KEY,
+		)
+		const followerToken = jwt.sign(
+			{ roomID, user: { id: 'follower-user', name: 'Follower' } },
+			Config.JWT_SECRET_KEY,
+		)
+		const viewerToken = jwt.sign(
+			{ roomID, user: { id: 'viewer-user', name: 'Viewer' } },
+			Config.JWT_SECRET_KEY,
+		)
+
+		const syncerSocket = io(Config.NEXTCLOUD_URL, { forceNew: true, auth: { token: syncerToken } })
+		const followerSocket = io(Config.NEXTCLOUD_URL, { forceNew: true, auth: { token: followerToken } })
+		const viewerSocket = io(Config.NEXTCLOUD_URL, { forceNew: true, auth: { token: viewerToken } })
+
+		await waitFor(syncerSocket, 'connect')
+		await waitFor(followerSocket, 'connect')
+		await waitFor(viewerSocket, 'connect')
+
+		syncerSocket.emit('join-room', roomID)
+		expect((await waitFor(syncerSocket, 'sync-designate')).isSyncer).toBe(true)
+
+		followerSocket.emit('join-room', roomID)
+		expect((await waitFor(followerSocket, 'sync-designate')).isSyncer).toBe(false)
+
+		viewerSocket.emit('join-room', roomID)
+		expect((await waitFor(viewerSocket, 'sync-designate')).isSyncer).toBe(false)
+
+		const encoder = new TextEncoder()
+		const scenePayload = encoder.encode(JSON.stringify({
+			type: 'SCENE_INIT',
+			payload: { elements: [{ id: 'scene-1', type: 'rectangle' }] },
+		}))
+
+		const unexpectedScene = new Promise((resolve, reject) => {
+			const timer = setTimeout(resolve, 300)
+			viewerSocket.once('client-broadcast', (data) => {
+				const decoded = decodeBroadcastPayload(data)
+				if (decoded.type === 'SCENE_INIT') {
+					clearTimeout(timer)
+					reject(new Error('Non-syncer scene broadcast should not be relayed'))
+				}
+			})
+		})
+
+		followerSocket.emit('server-broadcast', roomID, scenePayload, [])
+		await unexpectedScene
+
+		const relayedScene = new Promise((resolve, reject) => {
+			const timer = setTimeout(() => reject(new Error('Timed out waiting for syncer scene broadcast')), 1000)
+			viewerSocket.once('client-broadcast', (data) => {
+				clearTimeout(timer)
+				resolve(decodeBroadcastPayload(data))
+			})
+		})
+
+		syncerSocket.emit('server-broadcast', roomID, scenePayload, [])
+		expect(await relayedScene).toMatchObject({ type: 'SCENE_INIT' })
+
+		const relayedViewport = new Promise((resolve, reject) => {
+			const timer = setTimeout(() => reject(new Error('Timed out waiting for viewport broadcast')), 1000)
+			viewerSocket.once('client-broadcast', (data) => {
+				clearTimeout(timer)
+				resolve(decodeBroadcastPayload(data))
+			})
+		})
+
+		followerSocket.emit('server-broadcast', roomID, encoder.encode(JSON.stringify({
+			type: 'VIEWPORT_UPDATE',
+			payload: { scrollX: 1, scrollY: 2, zoom: 1.1 },
+		})), [])
+		expect(await relayedViewport).toMatchObject({ type: 'VIEWPORT_UPDATE' })
+
+		syncerSocket.disconnect()
+		followerSocket.disconnect()
+		viewerSocket.disconnect()
 	})
 
 })
