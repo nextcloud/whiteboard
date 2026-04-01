@@ -12,6 +12,7 @@ namespace OCA\Whiteboard\Controller;
 use Exception;
 use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Exception\UnauthorizedException;
+use OCA\Whiteboard\Exception\WhiteboardConflictException;
 use OCA\Whiteboard\Service\Authentication\GetUserFromIdServiceFactory;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
@@ -20,6 +21,7 @@ use OCA\Whiteboard\Service\JWTService;
 use OCA\Whiteboard\Service\WhiteboardContentService;
 use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\AppFramework\ApiController;
+use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
@@ -75,23 +77,40 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
 		$lockKey = "sync_lock_{$fileId}";
-		$lockValue = uniqid();
+		$lockValue = uniqid('', true);
 		$lockTTL = 5; // 5 seconds
 
-		// Simple distributed lock
-		if (!$this->cache->add($lockKey, $lockValue, $lockTTL)) {
-			return new DataResponse(['status' => 'conflict'], 409);
-		}
-
 		try {
+			$maxLockAttempts = 5;
+			for ($attempt = 0; $attempt < $maxLockAttempts; $attempt++) {
+				if ($this->cache->add($lockKey, $lockValue, $lockTTL)) {
+					break;
+				}
+
+				if ($attempt === $maxLockAttempts - 1) {
+					throw new Exception('Whiteboard sync is temporarily busy', Http::STATUS_SERVICE_UNAVAILABLE);
+				}
+
+				usleep(100000);
+			}
+
 			$jwt = $this->getJwtFromRequest();
 			$userId = $this->jwtService->getUserIdFromJWT($jwt);
 			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
 			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
 
-			$this->contentService->updateContent($file, $data);
+			$meta = $this->contentService->updateContent($file, $data, $userId);
 
-			return new DataResponse(['status' => 'success']);
+			return new DataResponse([
+				'status' => 'success',
+				'meta' => $meta,
+			]);
+
+		} catch (WhiteboardConflictException $e) {
+			return new DataResponse([
+				'status' => 'conflict',
+				'data' => $e->getCurrentDocument(),
+			], Http::STATUS_CONFLICT);
 
 		} catch (Exception $e) {
 			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());

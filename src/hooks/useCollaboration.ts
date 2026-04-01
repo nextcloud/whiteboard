@@ -571,14 +571,19 @@ export function useCollaboration() {
 						// Persist authoritative snapshot locally to avoid stale IndexedDB data
 						if (fileId) {
 							try {
+								const existing = await db.get(fileId)
 								await db.put(
 									fileId,
 									restoredElements,
 									files || {},
 									appStatePatch,
 									{
+										scrollToContent,
 										hasPendingLocalChanges: false,
 										lastSyncedHash: computeElementVersionHash(restoredElements),
+										persistedRev: existing?.persistedRev ?? 0,
+										lastServerUpdatedAt: existing?.lastServerUpdatedAt ?? null,
+										lastServerUpdatedBy: existing?.lastServerUpdatedBy ?? null,
 									},
 								)
 							} catch (persistError) {

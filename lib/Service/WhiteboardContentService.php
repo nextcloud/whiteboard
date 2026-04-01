@@ -9,7 +9,10 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Service;
 
+use InvalidArgumentException;
 use JsonException;
+use OCA\Whiteboard\Exception\WhiteboardConflictException;
+use OCP\AppFramework\Http;
 use OCP\Files\File;
 use OCP\Files\GenericFileException;
 use OCP\Files\NotPermittedException;
@@ -23,6 +26,8 @@ final class WhiteboardContentService {
 	}
 
 	/**
+	 * @return array<string,mixed>
+	 *
 	 * @throws NotPermittedException
 	 * @throws GenericFileException
 	 * @throws LockedException
@@ -31,56 +36,273 @@ final class WhiteboardContentService {
 	public function getContent(File $file): array {
 		$fileContent = $file->getContent();
 		if ($fileContent === '') {
-			$fileContent = '{"elements":[],"scrollToContent":true}';
+			return $this->getEmptyDocument();
 		}
 
-		return json_decode($fileContent, true, 512, JSON_THROW_ON_ERROR);
+		$decoded = json_decode($fileContent, true, 512, JSON_THROW_ON_ERROR);
+		if (!is_array($decoded)) {
+			return $this->getEmptyDocument();
+		}
+
+		return $this->normalizeStoredDocument($decoded);
 	}
 
 	/**
+	 * @return array<string,mixed>
+	 *
 	 * @throws NotPermittedException
 	 * @throws GenericFileException
 	 * @throws LockedException
 	 * @throws JsonException
+	 * @throws WhiteboardConflictException
 	 */
-	public function updateContent(File $file, array $data): void {
+	public function updateContent(File $file, array $data, string $updatedBy): array {
 		$fileId = $file->getId();
-		$incoming = $this->normalizeIncomingData($data);
-
-		if ($this->isEffectivelyEmptyPayload($incoming)) {
-			$this->logger->debug('Skipping whiteboard save because payload is empty', [
-				'app' => 'whiteboard',
-				'fileId' => $fileId,
-			]);
-			return;
-		}
+		$hadPersistedMeta = false;
 
 		try {
-			$current = $this->normalizeStoredData($this->getContent($file));
+			$fileContent = $file->getContent();
+			if ($fileContent === '') {
+				$currentDocument = $this->getEmptyDocument();
+			} else {
+				$decoded = json_decode($fileContent, true, 512, JSON_THROW_ON_ERROR);
+				if (!is_array($decoded)) {
+					$currentDocument = $this->getEmptyDocument();
+				} else {
+					$unwrapped = $this->unwrapData($decoded);
+					$hadPersistedMeta = array_key_exists('meta', $unwrapped) && is_array($unwrapped['meta']);
+					$currentDocument = $this->normalizeStoredDocument($decoded);
+				}
+			}
 		} catch (JsonException $e) {
 			$this->logger->warning('Existing whiteboard content is invalid JSON, resetting to defaults', [
 				'app' => 'whiteboard',
 				'fileId' => $fileId,
 				'error' => $e->getMessage(),
 			]);
-			$current = $this->getEmptyState();
+			$currentDocument = $this->getEmptyDocument();
 		}
 
-		$merged = $this->mergeData($current, $incoming);
+		$incoming = $this->normalizeIncomingPayload($data);
+		$currentSnapshot = $this->canonicalize($this->extractSnapshot($currentDocument));
+		$incomingSnapshot = $this->canonicalize($this->extractSnapshot($incoming['document']));
 
-		$canonicalCurrent = $this->canonicalize($current);
-		$canonicalMerged = $this->canonicalize($merged);
+		if ($currentSnapshot === $incomingSnapshot) {
+			if (!$hadPersistedMeta && $incoming['baseRev'] === $currentDocument['meta']['persistedRev']) {
+				$updatedDocument = $incoming['document'];
+				$updatedDocument['meta'] = [
+					'persistedRev' => 1,
+					'updatedAt' => $this->currentTimeMs(),
+					'updatedBy' => $updatedBy,
+				];
 
-		if ($canonicalCurrent === $canonicalMerged) {
+				$this->writeDocument($file, $updatedDocument);
+
+				return $updatedDocument['meta'];
+			}
+
 			$this->logger->debug('Skipping whiteboard save because payload matches stored content', [
 				'app' => 'whiteboard',
 				'fileId' => $fileId,
+				'persistedRev' => $currentDocument['meta']['persistedRev'],
 			]);
-			return;
+			return $currentDocument['meta'];
 		}
 
+		$currentRev = $currentDocument['meta']['persistedRev'];
+		if ($incoming['baseRev'] !== $currentRev) {
+			throw new WhiteboardConflictException($currentDocument);
+		}
+
+		$updatedDocument = $incoming['document'];
+		$updatedDocument['meta'] = [
+			'persistedRev' => $currentRev + 1,
+			'updatedAt' => $this->currentTimeMs(),
+			'updatedBy' => $updatedBy,
+		];
+
+		$this->writeDocument($file, $updatedDocument);
+
+		return $updatedDocument['meta'];
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	private function getEmptyDocument(): array {
+		return [
+			'meta' => [
+				'persistedRev' => 0,
+				'updatedAt' => null,
+				'updatedBy' => null,
+			],
+			'elements' => [],
+			'files' => [],
+			'appState' => [],
+			'scrollToContent' => true,
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $payload
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function unwrapData(array $payload): array {
+		if (array_key_exists('data', $payload) && is_array($payload['data'])) {
+			return $payload['data'];
+		}
+
+		return $payload;
+	}
+
+	/**
+	 * @param array<string,mixed> $payload
+	 *
+	 * @return array{baseRev:int,document:array<string,mixed>}
+	 */
+	private function normalizeIncomingPayload(array $payload): array {
+		$payload = $this->unwrapData($payload);
+		$baseRev = $this->parseBaseRev($payload);
+
+		return [
+			'baseRev' => $baseRev,
+			'document' => $this->normalizeSnapshot($payload, true),
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $stored
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function normalizeStoredDocument(array $stored): array {
+		$stored = $this->unwrapData($stored);
+
+		if (empty($stored)) {
+			return $this->getEmptyDocument();
+		}
+
+		$document = $this->normalizeSnapshot($stored, false);
+		$document['meta'] = $this->normalizeMeta($stored['meta'] ?? null);
+
+		return [
+			'meta' => $document['meta'],
+			'elements' => $document['elements'],
+			'files' => $document['files'],
+			'appState' => $document['appState'],
+			'scrollToContent' => $document['scrollToContent'],
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $payload
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function normalizeSnapshot(array $payload, bool $requireElements): array {
+		if ($requireElements && (!array_key_exists('elements', $payload) || !is_array($payload['elements']))) {
+			throw new InvalidArgumentException('Invalid whiteboard payload: elements must be an array', Http::STATUS_BAD_REQUEST);
+		}
+
+		if (array_key_exists('files', $payload) && !is_array($payload['files'])) {
+			throw new InvalidArgumentException('Invalid whiteboard payload: files must be an object', Http::STATUS_BAD_REQUEST);
+		}
+
+		if (array_key_exists('appState', $payload) && !is_array($payload['appState'])) {
+			throw new InvalidArgumentException('Invalid whiteboard payload: appState must be an object', Http::STATUS_BAD_REQUEST);
+		}
+
+		return [
+			'elements' => (array_key_exists('elements', $payload) && is_array($payload['elements']))
+				? $this->sanitizeElements($payload['elements'])
+				: [],
+			'files' => (array_key_exists('files', $payload) && is_array($payload['files']))
+				? $this->sanitizeFiles($payload['files'])
+				: [],
+			'appState' => (array_key_exists('appState', $payload) && is_array($payload['appState']))
+				? $this->sanitizeAppState($payload['appState'])
+				: [],
+			'scrollToContent' => $this->resolveScrollToContent($payload),
+		];
+	}
+
+	/**
+	 * @param mixed $value
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function normalizeMeta($value): array {
+		if (!is_array($value)) {
+			return $this->getEmptyDocument()['meta'];
+		}
+
+		return [
+			'persistedRev' => (is_int($value['persistedRev'] ?? null) && $value['persistedRev'] >= 0)
+				? $value['persistedRev']
+				: 0,
+			'updatedAt' => (is_int($value['updatedAt'] ?? null) || is_float($value['updatedAt'] ?? null))
+				? (int)$value['updatedAt']
+				: null,
+			'updatedBy' => is_string($value['updatedBy'] ?? null)
+				? $value['updatedBy']
+				: null,
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $payload
+	 */
+	private function parseBaseRev(array $payload): int {
+		if (!array_key_exists('baseRev', $payload) || !is_int($payload['baseRev']) || $payload['baseRev'] < 0) {
+			throw new InvalidArgumentException('Invalid whiteboard payload: baseRev must be a non-negative integer', Http::STATUS_BAD_REQUEST);
+		}
+
+		return $payload['baseRev'];
+	}
+
+	/**
+	 * @param array<string,mixed> $payload
+	 */
+	private function resolveScrollToContent(array $payload): bool {
+		if (array_key_exists('scrollToContent', $payload)) {
+			return (bool)$payload['scrollToContent'];
+		}
+
+		if (array_key_exists('appState', $payload) && is_array($payload['appState']) && array_key_exists('scrollToContent', $payload['appState'])) {
+			return (bool)$payload['appState']['scrollToContent'];
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param array<string,mixed> $document
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function extractSnapshot(array $document): array {
+		return [
+			'elements' => $document['elements'],
+			'files' => $document['files'],
+			'appState' => $document['appState'],
+			'scrollToContent' => $document['scrollToContent'],
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $document
+	 *
+	 * @throws JsonException
+	 * @throws LockedException
+	 * @throws GenericFileException
+	 * @throws NotPermittedException
+	 */
+	private function writeDocument(File $file, array $document): void {
+		$fileId = $file->getId();
+
 		try {
-			$encodedPayload = json_encode($canonicalMerged, JSON_THROW_ON_ERROR);
+			$encodedPayload = json_encode($this->canonicalize($document), JSON_THROW_ON_ERROR);
 		} catch (JsonException $e) {
 			$this->logger->error('Failed to encode whiteboard content before saving', [
 				'app' => 'whiteboard',
@@ -91,13 +313,12 @@ final class WhiteboardContentService {
 		}
 
 		$maxRetries = 3;
-		$baseDelay = 1000000; // 1 second
+		$baseDelay = 1000000;
 
 		for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
 			try {
 				$file->putContent($encodedPayload);
 				return;
-
 			} catch (LockedException $e) {
 				if ($attempt === $maxRetries - 1) {
 					$this->logger->error('Whiteboard file write failed after retries', [
@@ -118,175 +339,6 @@ final class WhiteboardContentService {
 				usleep($delay);
 			}
 		}
-	}
-
-	/**
-	 * @return array<string,mixed>
-	 */
-	private function getEmptyState(): array {
-		return [
-			'elements' => [],
-			'files' => [],
-			'scrollToContent' => true,
-		];
-	}
-
-	/**
-	 * @param array<string,mixed> $payload
-	 *
-	 * @return array<string,mixed>
-	 */
-	private function unwrapData(array $payload): array {
-		if (array_key_exists('data', $payload) && is_array($payload['data'])) {
-			return $payload['data'];
-		}
-
-		return $payload;
-	}
-
-	/**
-	 * @param array<string,mixed> $incoming
-	 *
-	 * @return array<string,mixed>
-	 */
-	private function normalizeIncomingData(array $incoming): array {
-		$incoming = $this->unwrapData($incoming);
-
-		if (empty($incoming)) {
-			return $this->getEmptyState();
-		}
-
-		$normalized = [];
-
-		if (array_key_exists('elements', $incoming) && is_array($incoming['elements'])) {
-			$normalized['elements'] = $this->sanitizeElements($incoming['elements']);
-		}
-
-		if (array_key_exists('files', $incoming)) {
-			$normalized['files'] = is_array($incoming['files'])
-				? $this->sanitizeFiles($incoming['files'])
-				: [];
-		}
-
-		if (array_key_exists('appState', $incoming) && is_array($incoming['appState'])) {
-			$normalized['appState'] = $this->sanitizeAppState($incoming['appState']);
-		}
-
-		if (array_key_exists('scrollToContent', $incoming)) {
-			$normalized['scrollToContent'] = (bool)$incoming['scrollToContent'];
-		}
-
-		return $normalized;
-	}
-
-	/**
-	 * @param array<string,mixed> $payload
-	 */
-	private function isEffectivelyEmptyPayload(array $payload): bool {
-		$hasFiles = array_key_exists('files', $payload)
-			&& is_array($payload['files'])
-			&& !empty($payload['files']);
-
-		if ($hasFiles) {
-			return false;
-		}
-
-		$hasAppState = array_key_exists('appState', $payload)
-			&& is_array($payload['appState'])
-			&& !empty($payload['appState']);
-
-		if ($hasAppState) {
-			return false;
-		}
-
-		if (array_key_exists('scrollToContent', $payload) && $payload['scrollToContent'] !== true) {
-			return false;
-		}
-
-		if (!array_key_exists('elements', $payload) || !is_array($payload['elements'])) {
-			return false;
-		}
-
-		if (!empty($payload['elements'])) {
-			return false;
-		}
-
-		foreach ($payload as $key => $_value) {
-			if (!in_array($key, ['elements', 'files', 'appState', 'scrollToContent'], true)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * @param array<string,mixed> $stored
-	 *
-	 * @return array<string,mixed>
-	 *
-	 * @throws JsonException
-	 */
-	private function normalizeStoredData(array $stored): array {
-		$stored = $this->unwrapData($stored);
-
-		if (empty($stored)) {
-			return $this->getEmptyState();
-		}
-
-		$normalized = $this->getEmptyState();
-
-		if (array_key_exists('elements', $stored) && is_array($stored['elements'])) {
-			$normalized['elements'] = $this->sanitizeElements($stored['elements']);
-		}
-
-		if (array_key_exists('files', $stored) && is_array($stored['files'])) {
-			$normalized['files'] = $this->sanitizeFiles($stored['files']);
-		}
-
-		if (array_key_exists('appState', $stored) && is_array($stored['appState'])) {
-			$normalized['appState'] = $this->sanitizeAppState($stored['appState']);
-		} elseif (array_key_exists('appState', $stored) && $stored['appState'] === null) {
-			unset($normalized['appState']);
-		}
-
-		if (array_key_exists('scrollToContent', $stored)) {
-			$normalized['scrollToContent'] = (bool)$stored['scrollToContent'];
-		}
-
-		return $normalized;
-	}
-
-	/**
-	 * @param array<string,mixed> $current
-	 * @param array<string,mixed> $incoming
-	 *
-	 * @return array<string,mixed>
-	 */
-	private function mergeData(array $current, array $incoming): array {
-		$merged = $current;
-
-		if (array_key_exists('elements', $incoming)) {
-			$merged['elements'] = $incoming['elements'];
-		}
-
-		if (array_key_exists('files', $incoming)) {
-			$merged['files'] = $incoming['files'];
-		}
-
-		if (array_key_exists('appState', $incoming)) {
-			if ($incoming['appState'] === null) {
-				unset($merged['appState']);
-			} else {
-				$merged['appState'] = $incoming['appState'];
-			}
-		}
-
-		if (array_key_exists('scrollToContent', $incoming)) {
-			$merged['scrollToContent'] = (bool)$incoming['scrollToContent'];
-		}
-
-		return $merged;
 	}
 
 	/**
@@ -337,7 +389,7 @@ final class WhiteboardContentService {
 	 * @return array<string,mixed>
 	 */
 	private function sanitizeAppState(array $appState): array {
-		unset($appState['collaborators'], $appState['selectedElementIds']);
+		unset($appState['collaborators'], $appState['selectedElementIds'], $appState['scrollToContent']);
 
 		if (!empty($appState)) {
 			ksort($appState);
@@ -363,6 +415,10 @@ final class WhiteboardContentService {
 		}
 
 		return $value;
+	}
+
+	private function currentTimeMs(): int {
+		return (int)round(microtime(true) * 1000);
 	}
 
 	private function isList(array $array): bool {

@@ -13,10 +13,16 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useShallow } from 'zustand/react/shallow'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
+import { useSyncStore } from '../stores/useSyncStore'
 import { db } from '../database/db'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import logger from '../utils/logger'
+import {
+	areSnapshotsEquivalent,
+	normalizePersistedBoardDocument,
+	type PersistedBoardMeta,
+} from '../utils/persistedBoardData'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 import { generateUrl } from '@nextcloud/router'
@@ -26,13 +32,7 @@ type RestoredSnapshot = {
 	files: BinaryFiles
 	appState: Partial<AppState>
 	scrollToContent: boolean
-}
-
-type ParsedVersionContent = {
-	elements?: unknown
-	files?: unknown
-	appState?: unknown
-	scrollToContent?: boolean
+	meta?: PersistedBoardMeta
 }
 
 interface UseVersionPreviewOptions {
@@ -154,26 +154,6 @@ export function useVersionPreview({
 
 	const captureRestoredSnapshot = useCallback(async (sourceOverride?: string | null): Promise<RestoredSnapshot | null> => {
 		try {
-			if (!sourceOverride && excalidrawAPI) {
-				const rawElements = excalidrawAPI.getSceneElementsIncludingDeleted?.() || []
-				const sanitizedElements = restoreElements(rawElements, null) as ExcalidrawElement[]
-				const rawFiles = excalidrawAPI.getFiles?.() || {}
-				const filesCopy: BinaryFiles = { ...rawFiles }
-				const rawAppState = excalidrawAPI.getAppState?.() || {}
-				const appStateCopy = sanitizeAppStateForSync(rawAppState)
-				appStateCopy.viewModeEnabled = false
-				const scrollToContent = typeof rawAppState.scrollToContent === 'boolean'
-					? rawAppState.scrollToContent
-					: true
-
-				return {
-					elements: sanitizedElements,
-					files: filesCopy,
-					appState: appStateCopy,
-					scrollToContent,
-				}
-			}
-
 			const effectiveSource = sourceOverride ?? currentVersionSource
 			if (effectiveSource) {
 				const response = await fetch(effectiveSource, {
@@ -195,37 +175,59 @@ export function useVersionPreview({
 						files: {},
 						appState: {},
 						scrollToContent: true,
+						meta: undefined,
 					}
 				}
 
-				let parsedContent: ParsedVersionContent | null = null
+				let parsedContent: unknown = null
 				try {
-					parsedContent = JSON.parse(rawContent) as ParsedVersionContent
-				} catch (error) {
+					parsedContent = JSON.parse(rawContent)
+				} catch {
 					throw new Error('Failed to parse version content JSON')
 				}
 
-				if (!parsedContent || !Array.isArray(parsedContent.elements)) {
+				if (!parsedContent) {
 					throw new Error('Version content is missing elements array')
 				}
 
-				const sanitizedElements = restoreElements(parsedContent.elements as ExcalidrawElement[], null) as ExcalidrawElement[]
-				const rawFiles = (parsedContent.files && typeof parsedContent.files === 'object')
-					? parsedContent.files
-					: {}
-				const files = rawFiles as BinaryFiles
-				const rawAppState = (parsedContent.appState && typeof parsedContent.appState === 'object')
-					? parsedContent.appState
-					: {}
-				const parsedAppState = sanitizeAppStateForSync(rawAppState)
+				const persistedDocument = normalizePersistedBoardDocument(parsedContent)
+				const sanitizedElements = restoreElements(persistedDocument.elements, null) as ExcalidrawElement[]
+				const parsedAppState = sanitizeAppStateForSync(persistedDocument.appState)
 				const appStateCopy: Partial<AppState> = { ...parsedAppState }
 				appStateCopy.viewModeEnabled = false
 
 				return {
 					elements: sanitizedElements,
-					files,
+					files: persistedDocument.files,
 					appState: appStateCopy,
-					scrollToContent: parsedContent.scrollToContent ?? true,
+					scrollToContent: persistedDocument.scrollToContent,
+					meta: persistedDocument.meta,
+				}
+			}
+
+			if (excalidrawAPI) {
+				const rawElements = excalidrawAPI.getSceneElementsIncludingDeleted?.() || []
+				const sanitizedElements = restoreElements(rawElements, null) as ExcalidrawElement[]
+				const rawFiles = excalidrawAPI.getFiles?.() || {}
+				const filesCopy: BinaryFiles = { ...rawFiles }
+				const rawAppState = excalidrawAPI.getAppState?.() || {}
+				const appStateCopy = sanitizeAppStateForSync(rawAppState)
+				appStateCopy.viewModeEnabled = false
+				const scrollToContent = typeof rawAppState.scrollToContent === 'boolean'
+					? rawAppState.scrollToContent
+					: true
+				const runtimeSyncState = useSyncStore.getState()
+
+				return {
+					elements: sanitizedElements,
+					files: filesCopy,
+					appState: appStateCopy,
+					scrollToContent,
+					meta: {
+						persistedRev: runtimeSyncState.persistedRev,
+						updatedAt: runtimeSyncState.lastServerUpdatedAt,
+						updatedBy: runtimeSyncState.lastServerUpdatedBy,
+					},
 				}
 			}
 		} catch (error) {
@@ -310,6 +312,12 @@ export function useVersionPreview({
 			viewModeEnabled: false,
 		}
 		const filesToStore: BinaryFiles = files || {}
+		const existing = await db.get(fileId)
+		const localMeta = snapshot.meta ?? {
+			persistedRev: existing?.persistedRev ?? 0,
+			updatedAt: existing?.lastServerUpdatedAt ?? null,
+			updatedBy: existing?.lastServerUpdatedBy ?? null,
+		}
 
 		await db.put(
 			fileId,
@@ -317,10 +325,15 @@ export function useVersionPreview({
 			filesToStore,
 			sanitizedAppState,
 			{
+				scrollToContent,
 				hasPendingLocalChanges: false,
 				lastSyncedHash: computeElementVersionHash(elements),
+				persistedRev: localMeta.persistedRev,
+				lastServerUpdatedAt: localMeta.updatedAt,
+				lastServerUpdatedBy: localMeta.updatedBy,
 			},
 		)
+		useSyncStore.getState().setPersistedMetadata(localMeta)
 
 		try {
 			const jwt = await getJWT()
@@ -334,6 +347,7 @@ export function useVersionPreview({
 					},
 					body: JSON.stringify({
 						data: {
+							baseRev: useSyncStore.getState().persistedRev,
 							elements,
 							files: filesToStore,
 							appState: sanitizedAppState,
@@ -344,6 +358,66 @@ export function useVersionPreview({
 
 				if (!response.ok && response.status !== 409) {
 					throw new Error(`Unexpected status ${response.status}`)
+				}
+
+				if (response.status === 409) {
+					const conflictResponse = await response.json()
+					const conflictDocument = normalizePersistedBoardDocument(conflictResponse?.data)
+
+					if (areSnapshotsEquivalent(snapshot, conflictDocument)) {
+						await db.put(
+							fileId,
+							elements,
+							filesToStore,
+							sanitizedAppState,
+							{
+								scrollToContent,
+								hasPendingLocalChanges: false,
+								lastSyncedHash: computeElementVersionHash(conflictDocument.elements),
+								persistedRev: conflictDocument.meta.persistedRev,
+								lastServerUpdatedAt: conflictDocument.meta.updatedAt,
+								lastServerUpdatedBy: conflictDocument.meta.updatedBy,
+							},
+						)
+						useSyncStore.getState().setPersistedMetadata(conflictDocument.meta)
+					} else {
+						await db.put(
+							fileId,
+							conflictDocument.elements,
+							conflictDocument.files,
+							conflictDocument.appState,
+							{
+								scrollToContent: conflictDocument.scrollToContent,
+								hasPendingLocalChanges: false,
+								lastSyncedHash: computeElementVersionHash(conflictDocument.elements),
+								persistedRev: conflictDocument.meta.persistedRev,
+								lastServerUpdatedAt: conflictDocument.meta.updatedAt,
+								lastServerUpdatedBy: conflictDocument.meta.updatedBy,
+							},
+						)
+						useSyncStore.getState().setPersistedMetadata(conflictDocument.meta)
+						logger.warn('[useVersionPreview] Restored snapshot diverged from durable server state, using server document')
+					}
+				} else {
+					const responseData = await response.json()
+					const responseMeta = normalizePersistedBoardDocument({
+						meta: responseData?.meta,
+					}).meta
+					await db.put(
+						fileId,
+						elements,
+						filesToStore,
+						sanitizedAppState,
+						{
+							scrollToContent,
+							hasPendingLocalChanges: false,
+							lastSyncedHash: computeElementVersionHash(elements),
+							persistedRev: responseMeta.persistedRev,
+							lastServerUpdatedAt: responseMeta.updatedAt,
+							lastServerUpdatedBy: responseMeta.updatedBy,
+						},
+					)
+					useSyncStore.getState().setPersistedMetadata(responseMeta)
 				}
 			} else {
 				logger.warn('[useVersionPreview] Skipping server sync for restored version due to missing JWT')
