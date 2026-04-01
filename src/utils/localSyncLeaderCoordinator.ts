@@ -102,23 +102,6 @@ const isLeaseStale = (lease: LocalSyncLeaderLease | null, now: number) => (
 	!lease || lease.expiresAt <= now
 )
 
-const compareTabIds = (left: string, right: string) => left.localeCompare(right)
-
-const selectPreferredLease = (
-	currentLease: LocalSyncLeaderLease,
-	candidateLease: LocalSyncLeaderLease,
-): LocalSyncLeaderLease => {
-	if (currentLease.visibilityState !== candidateLease.visibilityState) {
-		return candidateLease.visibilityState === 'visible' ? candidateLease : currentLease
-	}
-
-	if (currentLease.updatedAt !== candidateLease.updatedAt) {
-		return currentLease.updatedAt > candidateLease.updatedAt ? currentLease : candidateLease
-	}
-
-	return compareTabIds(currentLease.tabId, candidateLease.tabId) <= 0 ? currentLease : candidateLease
-}
-
 export const createLocalSyncLeaderCoordinator = ({
 	leaseKey,
 	tabId,
@@ -217,24 +200,9 @@ export const createLocalSyncLeaderCoordinator = ({
 		}
 
 		if (!isLeaseStale(existingLease, now) && existingLease) {
-			if (existingLease.visibilityState === 'visible') {
-				log('[LocalLeader] Existing visible leader retained', { reason, existingLease })
-				applyLease(existingLease)
-				return
-			}
-
-			if (ownLease.visibilityState !== 'visible') {
-				log('[LocalLeader] Hidden tab retained follower state behind current leader', { reason, existingLease })
-				applyLease(existingLease)
-				return
-			}
-
-			const preferredLease = selectPreferredLease(existingLease, ownLease)
-			if (preferredLease.tabId === existingLease.tabId) {
-				log('[LocalLeader] Existing hidden leader retained', { reason, existingLease })
-				applyLease(existingLease)
-				return
-			}
+			log('[LocalLeader] Existing leader retained', { reason, existingLease })
+			applyLease(existingLease)
+			return
 		}
 
 		writeLease(ownLease, `${reason}:claim`)

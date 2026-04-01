@@ -423,18 +423,10 @@ export function useSync() {
 			flushAndYieldLeadership('beforeunload')
 		}
 
-		const handleVisibilityChange = () => {
-			if (document.visibilityState === 'hidden') {
-				flushAndYieldLeadership('hidden')
-			}
-		}
-
 		window.addEventListener('beforeunload', handleBeforeUnload)
-		document.addEventListener('visibilitychange', handleVisibilityChange)
 
 		return () => {
 			window.removeEventListener('beforeunload', handleBeforeUnload)
-			document.removeEventListener('visibilitychange', handleVisibilityChange)
 			flushAndYieldLeadership('unmount')
 			cancelThrottledSyncs()
 		}

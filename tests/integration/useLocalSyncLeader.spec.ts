@@ -227,6 +227,25 @@ describe('useLocalSyncLeader coordinator', () => {
 		expect(bus.getLease(leaseKey)?.tabId).toBe('tab-b')
 	})
 
+	it('hidden leader stays authoritative until it stops or goes stale', () => {
+		const bus = new SharedLeaderTestBus()
+		const leaseKey = 'whiteboard-sync:42:user-a'
+		const tabA = bus.createTab(leaseKey, 'tab-a', 'visible')
+		const tabB = bus.createTab(leaseKey, 'tab-b', 'hidden')
+
+		tabA.start()
+		tabB.start()
+
+		tabA.handleVisibilityChange('hidden')
+		tabB.handleVisibilityChange('visible')
+
+		expect(tabA.snapshot.isLocalLeader).toBe(true)
+		expect(tabA.snapshot.leaderTabId).toBe('tab-a')
+		expect(tabB.snapshot.isLocalLeader).toBe(false)
+		expect(tabB.snapshot.isPassiveFollower).toBe(true)
+		expect(tabB.snapshot.leaderTabId).toBe('tab-a')
+	})
+
 	it('same user on different fileIds does not interfere', () => {
 		const bus = new SharedLeaderTestBus()
 		const fileOneLeader = bus.createTab('whiteboard-sync:42:user-a', 'tab-a')
