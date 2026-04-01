@@ -7,7 +7,7 @@ import Vue from 'vue'
 import { mdiTable } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { selectEffectiveReadOnly, useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
 // @ts-expect-error - Vue component import
 import TableEditorDialog from '../components/TableEditorDialog.vue'
@@ -27,6 +27,9 @@ export function useTableInsertion() {
 			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
 		})),
 	)
+	const { effectiveReadOnly } = useWhiteboardConfigStore(useShallow((state) => ({
+		effectiveReadOnly: selectEffectiveReadOnly(state),
+	})))
 
 	// Track last click for double-click detection
 	const lastClickRef = useRef<{ elementId: string; timestamp: number } | null>(null)
@@ -70,7 +73,7 @@ export function useTableInsertion() {
 	const editTable = useCallback(async (tableElement: ExcalidrawImageElement) => {
 		// Get fresh values from stores to avoid stale closures
 		const currentAPI = useExcalidrawStore.getState().excalidrawAPI as ExcalidrawImperativeAPI | null
-		const currentReadOnly = useWhiteboardConfigStore.getState().isReadOnly
+		const currentReadOnly = selectEffectiveReadOnly(useWhiteboardConfigStore.getState())
 
 		if (!currentAPI) {
 			console.error('Excalidraw API is not available')
@@ -155,7 +158,7 @@ export function useTableInsertion() {
 	const insertTable = useCallback(async () => {
 		// Get fresh values from stores to avoid stale closures
 		const currentAPI = useExcalidrawStore.getState().excalidrawAPI as ExcalidrawImperativeAPI | null
-		const currentReadOnly = useWhiteboardConfigStore.getState().isReadOnly
+		const currentReadOnly = selectEffectiveReadOnly(useWhiteboardConfigStore.getState())
 
 		if (!currentAPI) {
 			console.error('Excalidraw API is not available')
@@ -283,6 +286,11 @@ export function useTableInsertion() {
 	 * Only renders if Text app is available and compatible.
 	 */
 	const renderTable = useCallback(async () => {
+		if (effectiveReadOnly) {
+			document.querySelector('.table-container')?.remove()
+			return
+		}
+
 		const isCompatible = await checkTextAppCompatibility()
 		if (!isCompatible) {
 			return
@@ -294,7 +302,7 @@ export function useTableInsertion() {
 			label: t('whiteboard', 'Insert table'),
 			onClick: insertTable,
 		})
-	}, [insertTable])
+	}, [effectiveReadOnly, insertTable])
 
 	useEffect(() => {
 		if (excalidrawAPI) renderTable()

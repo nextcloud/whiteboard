@@ -13,7 +13,7 @@ import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElement
 import '@excalidraw/excalidraw/index.css'
 import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
-import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
+import { selectEffectiveReadOnly, useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
 import { useCollaboration } from './hooks/useCollaboration'
 import { useSmartPicker } from './hooks/useSmartPicker'
@@ -54,6 +54,7 @@ import { VotingSidebar } from './components/VotingSidebar'
 import { useVoting } from './hooks/useVoting'
 import { useContextMenuFilter } from './hooks/useContextMenuFilter'
 import { useDisableExternalLibraries } from './hooks/useDisableExternalLibraries'
+import { useLocalSyncLeader } from './hooks/useLocalSyncLeader'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -101,6 +102,7 @@ export default function App({
 
 	const {
 		setConfig,
+		effectiveReadOnly,
 		gridModeEnabled,
 		initialDataPromise,
 		resetInitialDataPromise,
@@ -108,6 +110,7 @@ export default function App({
 		setGridModeEnabled,
 	} = useWhiteboardConfigStore(useShallow(state => ({
 		setConfig: state.setConfig,
+		effectiveReadOnly: selectEffectiveReadOnly(state),
 		gridModeEnabled: state.gridModeEnabled,
 		initialDataPromise: state.initialDataPromise,
 		resetInitialDataPromise: state.resetInitialDataPromise,
@@ -129,6 +132,7 @@ export default function App({
 	const { renderTable } = useTableInsertion()
 	const { renderAssistant } = useAssistant()
 	const { renderEmojiPicker } = useEmojiPicker()
+	const { isPassiveFollower } = useLocalSyncLeader()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
 	useCollaboration()
@@ -346,7 +350,7 @@ export default function App({
 	const [commentSidebarDocked, setCommentSidebarDocked] = useState(false)
 	const { renderComment, commentThreads, panToThread, deleteThread } = useComment({
 		activeCommentThreadId,
-		isReadOnly,
+		isReadOnly: effectiveReadOnly,
 		onCommentThreadClick: (commentThreadId) => {
 			setActiveCommentThreadId(commentThreadId)
 			if (commentThreadId) {
@@ -440,12 +444,12 @@ export default function App({
 	}, [maxImageSizeBytes, maxImageSizeMb])
 
 	const handleOnChange = useCallback(() => {
-		if (isVersionPreview) {
+		if (isVersionPreview || effectiveReadOnly) {
 			return
 		}
 		if (!excalidrawAPI || !normalizedFileId || isLoading) return
 		onChangeSync()
-	}, [excalidrawAPI, normalizedFileId, isLoading, onChangeSync, isVersionPreview])
+	}, [effectiveReadOnly, excalidrawAPI, normalizedFileId, isLoading, onChangeSync, isVersionPreview])
 
 	const canvasActions = useMemo(() => {
 		if (isVersionPreview) {
@@ -511,6 +515,25 @@ export default function App({
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				{!isVersionPreview && <MemoizedNetworkStatusIndicator />}
 				<MemoizedAuthErrorNotification />
+				{isPassiveFollower && !isVersionPreview && (
+					<div
+						style={{
+							position: 'absolute',
+							top: 16,
+							left: 16,
+							zIndex: 10002,
+							padding: '8px 12px',
+							borderRadius: 8,
+							background: 'rgba(31, 41, 55, 0.88)',
+							color: '#fff',
+							fontSize: 13,
+							fontWeight: 600,
+							boxShadow: '0 8px 24px rgba(15, 23, 42, 0.18)',
+						}}
+					>
+						{t('whiteboard', 'Another tab is the active editor for this board.')}
+					</div>
+				)}
 				{isVersionPreview && (
 					<VersionPreviewBanner
 						versionLabel={versionLabel}
@@ -529,7 +552,7 @@ export default function App({
 					generateIdForFile={generateIdForFile}
 					onPointerUpdate={onPointerUpdate}
 					onChange={handleOnChange}
-					viewModeEnabled={isReadOnly}
+					viewModeEnabled={effectiveReadOnly}
 					gridModeEnabled={gridModeEnabled}
 					theme={theme}
 					name={fileNameWithoutExtension}
@@ -551,7 +574,7 @@ export default function App({
 								<CommentSidebar
 									threads={commentThreads}
 									activeThreadId={activeCommentThreadId}
-									isReadOnly={isReadOnly}
+									isReadOnly={effectiveReadOnly}
 									onThreadClick={panToThread}
 									onDeleteThread={(threadId) => {
 										activeCommentThreadId === threadId && setActiveCommentThreadId(null)
@@ -573,7 +596,7 @@ export default function App({
 									onEndVoting={endVoting}
 									onStartVoting={startVoting}
 									excalidrawAPI={excalidrawAPI}
-									isReadOnly={isReadOnly}
+									isReadOnly={effectiveReadOnly}
 								/>
 							</Sidebar.Tab>
 						</Sidebar.Tabs>

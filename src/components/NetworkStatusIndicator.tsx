@@ -10,6 +10,7 @@ import { mdiWifiOff, mdiWifi, mdiWifiStrength1, mdiWifiStrength2, mdiLoading } f
 import { t } from '@nextcloud/l10n'
 // Import the correct store
 import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { useLocalSyncLeaderStore } from '../stores/useLocalSyncLeaderStore'
 import type { CollaborationConnectionStatus } from '../stores/useCollaborationStore'
 
 interface StatusConfig {
@@ -70,6 +71,12 @@ const NetworkStatusIndicatorComponent = () => {
 			authError: state.authError,
 		})),
 	)
+	const { isLocalLeader, isPassiveFollower } = useLocalSyncLeaderStore(
+		useShallow(state => ({
+			isLocalLeader: state.isLocalLeader,
+			isPassiveFollower: state.isPassiveFollower,
+		})),
+	)
 	const [expanded, setExpanded] = useState(false)
 
 	// Refs to track previous status to avoid unnecessary effects
@@ -92,10 +99,31 @@ const NetworkStatusIndicatorComponent = () => {
 	// Memoize status config to prevent recalculation on every render
 	const statusConfig = useMemo(() => getStatusConfig(status), [status])
 	const { icon, text, className, description } = statusConfig
+	const leadershipStatus = useMemo(() => {
+		if (isPassiveFollower) {
+			return {
+				text: t('whiteboard', 'Passive tab'),
+				className: 'network-status--passive',
+				description: t('whiteboard', 'Another tab is handling sync and editing for this board.'),
+			}
+		}
+
+		if (isLocalLeader) {
+			return {
+				text: t('whiteboard', 'Active sync tab'),
+				className: 'network-status--leader',
+				description: t('whiteboard', 'This tab is handling sync and authoritative collaboration traffic.'),
+			}
+		}
+
+		return null
+	}, [isLocalLeader, isPassiveFollower])
 
 	// Enhanced description with auth error context
 	const enhancedDescription = useMemo(() => {
-		let baseDescription = description
+		let baseDescription = status === 'online' && leadershipStatus
+			? leadershipStatus.description
+			: description
 
 		// Add auth error context if there's a persistent auth issue
 		if (authError.isPersistent && authError.type === 'jwt_secret_mismatch') {
@@ -105,7 +133,10 @@ const NetworkStatusIndicatorComponent = () => {
 		}
 
 		return baseDescription
-	}, [description, authError])
+	}, [authError, description, leadershipStatus, status])
+
+	const displayedText = status === 'online' && leadershipStatus ? leadershipStatus.text : text
+	const displayedClassName = status === 'online' && leadershipStatus ? leadershipStatus.className : className
 
 	const toggleExpanded = useCallback(() => {
 		setExpanded(prev => !prev)
@@ -119,17 +150,17 @@ const NetworkStatusIndicatorComponent = () => {
 	}, [toggleExpanded])
 
 	// Hide the indicator when status is online
-	if (status === 'online') return null
+	if (status === 'online' && !leadershipStatus) return null
 
 	return (
 		<div
-			className={`network-status ${className} ${expanded ? 'network-status--expanded' : ''}`}
+			className={`network-status ${displayedClassName} ${expanded ? 'network-status--expanded' : ''}`}
 			onClick={toggleExpanded}
 			onKeyDown={handleKeyDown}
 			title={enhancedDescription} // Tooltip shows detailed info
 			role="button" // More appropriate role than status if clickable
 			aria-live="polite" // Announce changes politely
-			aria-label={`Connection: ${text}. ${expanded ? enhancedDescription : 'Click to expand.'}`} // Dynamic label
+			aria-label={`Connection: ${displayedText}. ${expanded ? enhancedDescription : 'Click to expand.'}`} // Dynamic label
 			tabIndex={0} // Make focusable
 		>
 			<div className="network-status__icon-container">
@@ -141,7 +172,7 @@ const NetworkStatusIndicatorComponent = () => {
 			{/* Show text only when expanded */}
 			{expanded && (
 				<div className="network-status__content">
-					<span className="network-status__text">{text}</span>
+					<span className="network-status__text">{displayedText}</span>
 				</div>
 			)}
 		</div>

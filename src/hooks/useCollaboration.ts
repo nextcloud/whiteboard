@@ -22,12 +22,18 @@ import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { useLocalSyncLeaderStore } from '../stores/useLocalSyncLeaderStore'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
 import { db } from '../database/db'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } from '../types/collaboration'
+import logger from '../utils/logger'
+import {
+	sendRequestedImageIfAllowed,
+	sendSceneBootstrapIfAllowed,
+} from '../utils/collaborationBootstrap'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT', // Incoming scene data from others
@@ -621,22 +627,27 @@ export function useCollaboration() {
 				case BroadcastType.ImageRequest:
 					// Handle image request from another client
 					if (decoded.payload?.fileId && excalidrawAPI) {
-						const requestedFileId = decoded.payload.fileId
-						const files = excalidrawAPI.getFiles()
-						const file = files[requestedFileId]
-
-						if (file && file.dataURL) {
-							console.log(`[Collaboration] Sending requested image: ${requestedFileId}`)
-							const currentSocket = useCollaborationStore.getState().socket
-
-							if (currentSocket && currentSocket.connected && fileId) {
-								// Send the image using the existing broadcast mechanism
-								const fileData = { type: BroadcastType.ImageAdd, payload: { file } }
-								const fileJson = JSON.stringify(fileData)
-								const fileBuffer = new TextEncoder().encode(fileJson)
-								currentSocket.emit('server-broadcast', `${fileId}`, fileBuffer, [])
-							}
+						const { isDedicatedSyncer, socket: currentSocket } = useCollaborationStore.getState()
+						const currentLeaderState = useLocalSyncLeaderStore.getState()
+						if (!sendRequestedImageIfAllowed({
+							isDedicatedSyncer,
+							isLocalLeader: currentLeaderState.isLocalLeader,
+							fileId,
+							excalidrawAPI,
+							socket: currentSocket,
+							requestedFileId: decoded.payload.fileId,
+						})) {
+							logger.debug('[LocalLeader] Passive tab ignored image request', {
+								fileId,
+								requestedFileId: decoded.payload.fileId,
+							})
+							break
 						}
+
+						logger.debug('[LocalLeader] Sending requested image', {
+							fileId,
+							requestedFileId: decoded.payload.fileId,
+						})
 					}
 					break
 				case BroadcastType.ViewportUpdate:
@@ -662,28 +673,30 @@ export function useCollaboration() {
 		setDedicatedSyncer(data.isSyncer)
 	}, [setDedicatedSyncer])
 
-	// Handle user joined event - broadcast all images if we're the syncer
+	// Handle user joined event - only the active local leader should answer bootstrap traffic
 	const handleUserJoined = useCallback((data: { userId: string, userName: string, socketId: string, isSyncer: boolean }) => {
-		// If we are the syncer, broadcast all our images to the new user
-		const { isDedicatedSyncer } = useCollaborationStore.getState()
-		if (isDedicatedSyncer && excalidrawAPI) {
-			console.log(`[Collaboration] Broadcasting images to new user: ${data.userName}`)
-
-			const files = excalidrawAPI.getFiles()
-			const socket = useCollaborationStore.getState().socket
-
-			if (!socket || !socket.connected || !fileId) return
-
-			// Broadcast each image file
-			Object.entries(files).forEach(([, file]) => {
-				if (file && file.dataURL) {
-					const fileData = { type: BroadcastType.ImageAdd, payload: { file } }
-					const fileJson = JSON.stringify(fileData)
-					const fileBuffer = new TextEncoder().encode(fileJson)
-					socket.emit('server-broadcast', `${fileId}`, fileBuffer, [])
-				}
+		const { isDedicatedSyncer, socket } = useCollaborationStore.getState()
+		const currentLeaderState = useLocalSyncLeaderStore.getState()
+		if (!sendSceneBootstrapIfAllowed({
+			isDedicatedSyncer,
+			isLocalLeader: currentLeaderState.isLocalLeader,
+			fileId,
+			excalidrawAPI,
+			socket,
+		})) {
+			logger.debug('[LocalLeader] Passive tab skipped scene bootstrap response', {
+				fileId,
+				joinedUserId: data.userId,
+				socketId: data.socketId,
 			})
+			return
 		}
+
+		logger.debug('[LocalLeader] Sending scene bootstrap and images for joined user', {
+			fileId,
+			joinedUserId: data.userId,
+			socketId: data.socketId,
+		})
 	}, [excalidrawAPI, fileId])
 
 	// No custom reconnection strategy needed - socket.io will handle reconnection with Infinity attempts

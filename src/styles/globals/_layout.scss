@@ -202,6 +202,18 @@
 		border: 1px solid rgba(76, 175, 80, 0.4);
 	}
 
+	&--leader {
+		background-color: rgba(34, 197, 94, 0.18);
+		color: rgb(21, 128, 61);
+		border: 1px solid rgba(34, 197, 94, 0.38);
+	}
+
+	&--passive {
+		background-color: rgba(59, 130, 246, 0.16);
+		color: rgb(29, 78, 216);
+		border: 1px solid rgba(59, 130, 246, 0.32);
+	}
+
 	&--expanded {
 		max-width: 150px;
 		padding: 8px 12px;

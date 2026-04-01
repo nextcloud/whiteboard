@@ -299,7 +299,7 @@ export function useComment(props?: UseCommentProps) {
 	}, [excalidrawAPI, getAllThreads])
 
 	const deleteThread = useCallback((threadId: string) => {
-		if (!excalidrawAPI) return
+		if (!excalidrawAPI || isReadOnly) return
 
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 		const updatedElements = elements.map((el: unknown) =>
@@ -309,10 +309,10 @@ export function useComment(props?: UseCommentProps) {
 		)
 
 		excalidrawAPI.updateScene({ elements: updatedElements })
-	}, [excalidrawAPI])
+	}, [excalidrawAPI, isReadOnly])
 
 	const cleanupEmptyThreads = useCallback(() => {
-		if (!excalidrawAPI) return
+		if (!excalidrawAPI || isReadOnly) return
 
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 		const emptyThreadIds = elements
@@ -321,10 +321,10 @@ export function useComment(props?: UseCommentProps) {
 			.filter(Boolean)
 
 		emptyThreadIds.forEach((threadId: string) => deleteThread(threadId))
-	}, [excalidrawAPI, deleteThread])
+	}, [excalidrawAPI, deleteThread, isReadOnly])
 
 	const updateThread = useCallback((threadId: string, updater: (thread: CommentThread) => Partial<Record<string, unknown>>) => {
-		if (!excalidrawAPI) return
+		if (!excalidrawAPI || isReadOnly) return
 
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 		const updatedElements = elements.map((el: unknown) => {
@@ -338,7 +338,7 @@ export function useComment(props?: UseCommentProps) {
 		})
 
 		excalidrawAPI.updateScene({ elements: updatedElements })
-	}, [excalidrawAPI])
+	}, [excalidrawAPI, isReadOnly])
 
 	const updateThreadPosition = useCallback((threadId: string, x: number, y: number) => {
 		if (pendingThread?.id === threadId) {
@@ -563,7 +563,7 @@ export function useComment(props?: UseCommentProps) {
 	}, [excalidrawAPI, renderCommentPins])
 
 	useEffect(() => {
-		if (!isPlacingComment || !excalidrawAPI) return
+		if (!isPlacingComment || !excalidrawAPI || isReadOnly) return
 
 		const canvasElement = document.querySelector('.excalidraw') as HTMLElement
 		if (!canvasElement) {
@@ -613,7 +613,7 @@ export function useComment(props?: UseCommentProps) {
 			document.removeEventListener('click', handleCanvasClick)
 			if (canvasElement) canvasElement.style.cursor = ''
 		}
-	}, [isPlacingComment, excalidrawAPI, onCommentThreadClick])
+	}, [isPlacingComment, excalidrawAPI, isReadOnly, onCommentThreadClick])
 
 	useEffect(() => {
 		if (!activeCommentThreadId || !excalidrawAPI) return
@@ -629,6 +629,9 @@ export function useComment(props?: UseCommentProps) {
 		if (!canvasElement || !pinElement) return
 
 		const handleSubmitComment = (text: string) => {
+			if (isReadOnly) {
+				return
+			}
 
 			if (!text || !text.trim()) {
 				console.warn('[Comment] Cannot submit empty comment')
@@ -690,6 +693,10 @@ export function useComment(props?: UseCommentProps) {
 		}
 
 		const handleEditComment = (commentId: string, text: string) => {
+			if (isReadOnly) {
+				return
+			}
+
 			try {
 				updateThread(activeCommentThreadId, (thread: CommentThread) => ({
 					customData: {
@@ -708,6 +715,10 @@ export function useComment(props?: UseCommentProps) {
 		}
 
 		const handleDeleteThread = () => {
+			if (isReadOnly) {
+				return
+			}
+
 			try {
 				deleteThread(activeCommentThreadId)
 				onThreadClickRef.current?.(null)
@@ -777,6 +788,11 @@ export function useComment(props?: UseCommentProps) {
 	}, [activeCommentThreadId, onCommentThreadClick, cleanupEmptyThreads, pendingThread])
 
 	const renderComment = useCallback(() => {
+		if (isReadOnly) {
+			document.querySelector('.comment-container')?.remove()
+			return
+		}
+
 		renderToolbarButton({
 			class: 'comment-container',
 			buttonClass: 'comment-trigger',
@@ -787,7 +803,7 @@ export function useComment(props?: UseCommentProps) {
 				props?.onOpenSidebar?.()
 			},
 		})
-	}, [props])
+	}, [isReadOnly, props])
 
 	const panToThread = useCallback((threadId: string) => {
 		if (!excalidrawAPI) return

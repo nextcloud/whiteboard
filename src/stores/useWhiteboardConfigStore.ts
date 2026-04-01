@@ -15,6 +15,7 @@ interface WhiteboardConfigState {
 	fileName: string
 	publicSharingToken: string | null
 	isReadOnly: boolean // Single source of truth for read-only state, determined by JWT
+	isPassiveFollower: boolean
 	isEmbedded: boolean
 	initialDataPromise: InitialDataPromise
 	pendingInitialDataPromises: InitialDataPromise[]
@@ -53,6 +54,7 @@ interface WhiteboardConfigState {
 
 	// Permission actions
 	setReadOnly: (readOnly: boolean) => void
+	setPassiveFollower: (isPassiveFollower: boolean) => void
 }
 
 // Create the store without persistence
@@ -62,6 +64,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	fileName: '',
 	publicSharingToken: null,
 	isReadOnly: false,
+	isPassiveFollower: false,
 	isEmbedded: false,
 	initialDataPromise: createResolvablePromise(),
 	pendingInitialDataPromises: [],
@@ -124,6 +127,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 			fileVersion: null,
 			// Reset these values
 			isReadOnly: false,
+			isPassiveFollower: false,
 			initialDataPromise: createResolvablePromise(),
 			pendingInitialDataPromises: [],
 			zenModeEnabled: false,
@@ -144,7 +148,13 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 		}
 		set({ isReadOnly: readOnly })
 	},
+
+	setPassiveFollower: (isPassiveFollower: boolean) => set({ isPassiveFollower }),
 }))
+
+export const selectEffectiveReadOnly = (
+	state: Pick<WhiteboardConfigState, 'isReadOnly' | 'isPassiveFollower' | 'isVersionPreview'>,
+) => state.isReadOnly || state.isPassiveFollower || state.isVersionPreview
 
 type WhiteboardTestHooks = {
 	whiteboardConfigStore?: typeof useWhiteboardConfigStore

@@ -6,10 +6,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useState, useRef } from 'react'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { selectEffectiveReadOnly, useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useSyncStore } from '../stores/useSyncStore'
+import { useLocalSyncLeaderStore } from '../stores/useLocalSyncLeaderStore'
+import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { db } from '../database/db'
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
@@ -316,9 +318,11 @@ export function useBoardDataManager() {
 		}
 
 		const api = useExcalidrawStore.getState().excalidrawAPI
-		const currentIsReadOnly = useWhiteboardConfigStore.getState().isReadOnly
+		const currentIsReadOnly = selectEffectiveReadOnly(useWhiteboardConfigStore.getState())
+		const { isLocalLeader } = useLocalSyncLeaderStore.getState()
+		const { isDedicatedSyncer } = useCollaborationStore.getState()
 
-		if (api && !currentIsReadOnly) {
+		if (api && !currentIsReadOnly && isLocalLeader && isDedicatedSyncer) {
 
 			const currentFileId = useWhiteboardConfigStore.getState().fileId
 			const currentWorker = useSyncStore.getState().worker
