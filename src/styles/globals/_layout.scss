@@ -115,7 +115,8 @@
 	}
 }
 
-.network-status {
+.network-status,
+.sync-tab-status {
 	display: flex;
 	align-items: center;
 	padding: 8px;
@@ -381,7 +382,8 @@
 }
 
 @media (prefers-reduced-motion) {
-	.network-status {
+	.network-status,
+	.sync-tab-status {
 		transition: none;
 		animation: none !important;
 
@@ -393,7 +395,8 @@
 
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
-	.network-status {
+	.network-status,
+	.sync-tab-status {
 		bottom: 90px;
 		inset-inline-end: 8px;
 		padding: 6px;

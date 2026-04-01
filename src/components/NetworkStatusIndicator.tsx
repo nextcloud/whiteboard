@@ -137,6 +137,7 @@ const NetworkStatusIndicatorComponent = () => {
 
 	const displayedText = status === 'online' && leadershipStatus ? leadershipStatus.text : text
 	const displayedClassName = status === 'online' && leadershipStatus ? leadershipStatus.className : className
+	const rootClassName = status === 'online' && leadershipStatus ? 'sync-tab-status' : 'network-status'
 
 	const toggleExpanded = useCallback(() => {
 		setExpanded(prev => !prev)
@@ -154,7 +155,7 @@ const NetworkStatusIndicatorComponent = () => {
 
 	return (
 		<div
-			className={`network-status ${displayedClassName} ${expanded ? 'network-status--expanded' : ''}`}
+			className={`${rootClassName} ${displayedClassName} ${expanded ? 'network-status--expanded' : ''}`}
 			onClick={toggleExpanded}
 			onKeyDown={handleKeyDown}
 			title={enhancedDescription} // Tooltip shows detailed info
