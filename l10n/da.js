@@ -33,7 +33,7 @@ OC.L10N.register(
     "Send" : "Send",
     "No comments yet" : "Endnu ingen kommentarer",
     "Offline" : "Offline",
-    "Connecting" : "Frobinder",
+    "Connecting" : "Forbinder",
     "Online" : "Online",
     "Unknown" : "Ukendt",
     "LIVE" : "LIVE",
