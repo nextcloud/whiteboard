@@ -13,7 +13,7 @@ import { generateUrl } from '@nextcloud/router'
 import { loadState } from '@nextcloud/initial-state'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { RecordingHookState, RecordingState, RecordingUser } from '../types/recording'
-import { t } from '@nextcloud/l10n'
+import { getLanguage, t } from '@nextcloud/l10n'
 
 interface UseRecordingProps {
 	fileId: number
@@ -388,7 +388,8 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 
 				// Generate recording URL using existing JWT (absolute URL for Puppeteer)
 				const relativeUrl = generateUrl(`apps/whiteboard/recording/${fileId}/${jwtPayload.userid}`)
-				const recordingUrl = `${window.location.origin}${relativeUrl}?token=${jwt}`
+				const language = encodeURIComponent(getLanguage() || 'en')
+				const recordingUrl = `${window.location.origin}${relativeUrl}?token=${jwt}&lang=${language}`
 
 				// Tell Node.js to start recording with the URL and existing JWT
 				updateState({ startingPhase: 'initializing' })
