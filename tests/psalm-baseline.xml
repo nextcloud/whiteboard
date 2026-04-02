@@ -24,9 +24,6 @@
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
-    <UnusedProperty>
-      <code><![CDATA[$request]]></code>
-    </UnusedProperty>
   </file>
   <file src="lib/Listener/BeforeTemplateRenderedListener.php">
     <PossiblyUnusedMethod>
