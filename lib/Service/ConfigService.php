@@ -14,6 +14,7 @@ use OCP\IConfig;
 
 final class ConfigService {
 	private const USER_AUTO_UPLOAD_ON_DISCONNECT = 'recording_auto_upload_on_disconnect';
+	private const ALLOWED_COLLAB_CSP_SCHEMES = ['http', 'https', 'ws', 'wss'];
 
 	public function __construct(
 		private IAppConfig $appConfig,
@@ -61,6 +62,43 @@ final class ConfigService {
 		}
 
 		$this->appConfig->setAppValueString('collabBackendUrl', $collabBackendUrl);
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public function getCollabBackendCspConnectDomains(): array {
+		$url = $this->getCollabBackendUrl();
+		if ($url === '') {
+			return [];
+		}
+
+		$parts = parse_url($url);
+		if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+			return [];
+		}
+
+		$scheme = strtolower($parts['scheme']);
+		if (!in_array($scheme, self::ALLOWED_COLLAB_CSP_SCHEMES, true)) {
+			return [];
+		}
+
+		$host = $parts['host'];
+		$port = isset($parts['port']) ? ':' . $parts['port'] : '';
+		$origin = $scheme . '://' . $host . $port;
+
+		$domains = [$origin];
+		if ($scheme === 'http') {
+			$domains[] = 'ws://' . $host . $port;
+		} elseif ($scheme === 'https') {
+			$domains[] = 'wss://' . $host . $port;
+		} elseif ($scheme === 'ws') {
+			$domains[] = 'http://' . $host . $port;
+		} elseif ($scheme === 'wss') {
+			$domains[] = 'https://' . $host . $port;
+		}
+
+		return array_values(array_unique($domains));
 	}
 
 	private function trimUrl(string $url): string {
