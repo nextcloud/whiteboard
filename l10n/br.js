@@ -10,6 +10,7 @@ OC.L10N.register(
     "Save" : "Enrollañ",
     "Send" : "Kas",
     "Unknown" : "Dianv",
+    "LIVE" : "WAR-EEUN",
     "Unknown user" : "Implijer dianv",
     "File" : "Restr",
     "Running" : "O redek",

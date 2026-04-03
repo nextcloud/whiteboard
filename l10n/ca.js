@@ -30,6 +30,7 @@ OC.L10N.register(
     "Connecting" : "S'està connectant",
     "Online" : "En línia",
     "Unknown" : "Desconegut",
+    "LIVE" : "DIRECTE",
     "Following" : "S'està seguint",
     "Follow" : "Segueix",
     "Stop recording" : "Aturar l'enregistrament",
