@@ -39,7 +39,7 @@
     "@socket.io/redis-streams-adapter": "^0.3.1",
     "@svgmoji/noto": "^3.2.0",
     "axios": "^1.14.0",
-    "dexie": "^4.4.1",
+    "dexie": "^4.4.2",
     "dotenv": "^17.4.0",
     "express": "^5.2.1",
     "form-data": "^4.0.5",
