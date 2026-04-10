@@ -7,6 +7,7 @@ declare(strict_types=1);
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+use OCA\Whiteboard\Controller\AiController;
 use OCA\Whiteboard\Controller\JWTController;
 use OCA\Whiteboard\Controller\RecordingController;
 use OCA\Whiteboard\Controller\SettingsController;
@@ -14,6 +15,8 @@ use OCA\Whiteboard\Controller\WhiteboardController;
 
 return [
 	'routes' => [
+		/** @see AiController::tagFile() */
+		['name' => 'Ai#tagFile', 'url' => 'ai/tag/{fileId}', 'verb' => 'POST'],
 		/** @see JWTController::getJWT() */
 		['name' => 'JWT#getJWT', 'url' => '{fileId}/token', 'verb' => 'GET'],
 		/** @see WhiteboardController::getLib() */
