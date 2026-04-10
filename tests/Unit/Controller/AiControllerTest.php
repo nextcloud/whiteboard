@@ -17,7 +17,8 @@ use Test\TestCase;
 
 class AiControllerTest extends TestCase {
 	private AiController $controller;
-	private AiTagService&MockObject $aiTagService;
+	/** @var AiTagService&MockObject */
+	private AiTagService $aiTagService;
 
 	protected function setUp(): void {
 		parent::setUp();

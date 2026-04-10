@@ -15,6 +15,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 
+/** @psalm-suppress UnusedClass */
 class AiController extends ApiController {
 	public function __construct(
 		string $appName,

@@ -13,6 +13,7 @@ use OCP\SystemTag\ISystemTagObjectMapper;
 use Psr\Log\LoggerInterface;
 
 class AiTagService {
+	/** @psalm-suppress PossiblyUnusedMethod */
 	public function __construct(
 		private ISystemTagObjectMapper $systemTagObjectMapper,
 		private LoggerInterface $logger,
@@ -30,6 +31,7 @@ class AiTagService {
 	 */
 	public function tagFileAsAiGenerated(int $fileId): void {
 		try {
+			/** @psalm-suppress UndefinedInterfaceMethod */
 			$this->systemTagObjectMapper->assignGeneratedByAITag((string)$fileId, 'files');
 		} catch (\Exception $e) {
 			$this->logger->warning('failed to tag file {fileId} as AI-generated: {error}', [
