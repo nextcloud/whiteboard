@@ -23,6 +23,7 @@ OC.L10N.register(
     "Voting" : "Balsavimas",
     "Access Denied" : "Prieiga negalima",
     "Dismiss" : "Atmesti",
+    "Guest" : "Svečias",
     "Delete thread" : "Ištrinti giją",
     "Edit" : "Taisyti",
     "Save" : "Įrašyti",
