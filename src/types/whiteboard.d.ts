@@ -10,11 +10,16 @@ export interface ElementCreatorInfo {
 	createdAt: number
 }
 
+export interface WhiteboardElementCustomData {
+	creator?: ElementCreatorInfo
+	lastModifiedBy?: ElementCreatorInfo
+	aiGenerated?: 'assistant-mermaid'
+	aiDisclosureLabel?: true
+	[key: string]: unknown
+}
+
 export type WhiteboardElement ={
-	customData?: {
-		creator?: ElementCreatorInfo
-		lastModifiedBy?: ElementCreatorInfo
-	},
+	customData?: WhiteboardElementCustomData,
 } & ExcalidrawLinearElement & ExcalidrawElement
 
 export interface CreatorDisplaySettings {
