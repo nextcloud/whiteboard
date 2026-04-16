@@ -518,6 +518,43 @@ describe('Multi node websocket cluster with redis streams', () => {
 		await restartServerA()
 	})
 
+	it('ignores missing disconnect metadata while another user is presenting', async () => {
+		const roomID = 'room-missing-disconnect-meta'
+		const presenterToken = buildToken(roomID, { id: 'presenter', name: 'Presenter', displayName: 'Presenter' })
+		const viewerToken = buildToken(roomID, { id: 'viewer', name: 'Viewer', displayName: 'Viewer' })
+
+		const presenterSocket = createSocket(serverBUrl, presenterToken)
+		await waitFor(presenterSocket, 'connect')
+		presenterSocket.emit('join-room', roomID)
+		await waitFor(presenterSocket, 'sync-designate')
+
+		presenterSocket.emit('presentation-start', { fileId: roomID, userId: 'presenter' })
+		await waitFor(presenterSocket, 'presentation-started')
+
+		const viewerSocket = createSocket(serverAUrl, viewerToken)
+		await waitFor(viewerSocket, 'connect')
+		viewerSocket.emit('join-room', roomID)
+		await waitFor(viewerSocket, 'sync-designate')
+		await waitFor(viewerSocket, 'user-started-presenting')
+
+		const serverSideViewer = serverA.socketService.io.sockets.sockets.get(viewerSocket.id)
+		expect(serverSideViewer).toBeDefined()
+
+		await serverA.socketService.sessionStore.clearSocketMeta(viewerSocket.id)
+
+		const roomChangeNotice = waitFor(presenterSocket, 'room-user-change')
+		await expect(
+			serverA.socketService.roomLifecycleController.onDisconnecting(serverSideViewer, [roomID]),
+		).resolves.toBeUndefined()
+
+		const roomUsers = await roomChangeNotice
+		expect(roomUsers).toHaveLength(1)
+		expect(roomUsers[0].userId).toBe('presenter')
+
+		const presentationSession = await serverB.socketService.getPresentationSession(roomID)
+		expect(presentationSession?.presenterId).toBe('presenter')
+	})
+
 	it('cleans stale recording entries from dead nodes before notifying joiners', async () => {
 		const roomID = 'room-stale-recording'
 

@@ -194,12 +194,12 @@ export default class RoomLifecycleService {
 
 			const presentationSession = await this.presentationState.getPresentationSession(roomID)
 			if (presentationSession) {
-				const isPublicSharingUser = userId.startsWith('shared_')
+				const isPublicSharingUser = typeof userId === 'string' && userId.startsWith('shared_')
 				let shouldEndPresentation = false
 
 				if (presentationSession.presenterId === userId) {
 					shouldEndPresentation = true
-				} else if (isPublicSharingUser) {
+				} else if (isPublicSharingUser && typeof presentationSession.presenterId === 'string') {
 					const userTokenPart = userId.split('_')[1]
 					const presenterTokenPart = presentationSession.presenterId.split('_')[1]
 					if (userTokenPart === presenterTokenPart) {
