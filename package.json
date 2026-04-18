@@ -24,7 +24,7 @@
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
     "@mdi/svg": "^7.4.47",
-    "@nextcloud/auth": "^2.5.3",
+    "@nextcloud/auth": "^2.6.0",
     "@nextcloud/axios": "^2.5.2",
     "@nextcloud/capabilities": "^1.2.1",
     "@nextcloud/dialogs": "^6.4.1",
