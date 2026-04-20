@@ -524,7 +524,7 @@ export default function App({
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
 					beforeElementCreated={beforeElementCreated}
-					excalidrawAPI={setExcalidrawAPI}
+					onExcalidrawAPI={setExcalidrawAPI}
 					initialData={initialDataPromise}
 					generateIdForFile={generateIdForFile}
 					onPointerUpdate={onPointerUpdate}

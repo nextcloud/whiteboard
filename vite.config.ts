@@ -25,6 +25,14 @@ const AppConfig = createAppConfig({
 					find: /^@excalidraw\/excalidraw(.*)$/,
 					replacement: '@nextcloud/excalidraw$1',
 				},
+				{
+					find: 'react',
+					replacement: normalizePath(resolve('node_modules/react')),
+				},
+				{
+					find: 'react-dom',
+					replacement: normalizePath(resolve('node_modules/react-dom')),
+				},
 			],
 		},
 		build: {
