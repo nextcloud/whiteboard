@@ -14,11 +14,41 @@ interface ExcalidrawStore {
 	scrollToContent: () => void
 }
 
+type WhiteboardTestHooks = {
+	excalidrawStore?: {
+		getState?: () => {
+			excalidrawAPI: ExcalidrawImperativeAPI | null
+		}
+	}
+}
+
+declare global {
+	interface Window {
+		__whiteboardTest?: boolean
+		__whiteboardTestHooks?: WhiteboardTestHooks & Record<string, unknown>
+	}
+}
+
+const attachTestHooks = () => {
+	if (typeof window === 'undefined' || !window.__whiteboardTest) {
+		return
+	}
+
+	window.__whiteboardTestHooks = window.__whiteboardTestHooks || {}
+	window.__whiteboardTestHooks.excalidrawStore = useExcalidrawStore
+}
+
 export const useExcalidrawStore = create<ExcalidrawStore>((set, get) => ({
 	excalidrawAPI: null,
 
-	setExcalidrawAPI: (api: ExcalidrawImperativeAPI) => set({ excalidrawAPI: api }),
-	resetExcalidrawAPI: () => set({ excalidrawAPI: null }),
+	setExcalidrawAPI: (api: ExcalidrawImperativeAPI) => {
+		set({ excalidrawAPI: api })
+		attachTestHooks()
+	},
+	resetExcalidrawAPI: () => {
+		set({ excalidrawAPI: null })
+		attachTestHooks()
+	},
 	scrollToContent: () => {
 		const { excalidrawAPI } = get()
 		if (!excalidrawAPI) return
@@ -31,3 +61,5 @@ export const useExcalidrawStore = create<ExcalidrawStore>((set, get) => ({
 		})
 	},
 }))
+
+attachTestHooks()

@@ -44,6 +44,28 @@ type SceneSnapshot = {
 	appState: Partial<AppState>
 }
 
+declare global {
+	interface Window {
+		__whiteboardTest?: boolean
+		__whiteboardTestHooks?: Record<string, unknown> & {
+			syncDebugState?: Record<string, unknown>
+		}
+	}
+}
+
+const publishSyncDebugState = (partialState: Record<string, unknown>) => {
+	if (typeof window === 'undefined' || !window.__whiteboardTest) {
+		return
+	}
+
+	window.__whiteboardTestHooks = window.__whiteboardTestHooks || {}
+	const currentState = (window.__whiteboardTestHooks.syncDebugState as Record<string, unknown> | undefined) || {}
+	window.__whiteboardTestHooks.syncDebugState = {
+		...currentState,
+		...partialState,
+	}
+}
+
 export function useSync() {
 	const { fileId, isReadOnly } = useWhiteboardConfigStore(
 		useShallow(state => ({
@@ -116,6 +138,11 @@ export function useSync() {
 			appState: snapshotAppState,
 		}
 
+		publishSyncDebugState({
+			latestElementsCount: snapshotElements.length,
+			latestFileCount: Object.keys(snapshotFiles || {}).length,
+		})
+
 		return latestSnapshotRef.current
 	}, [excalidrawAPI])
 
@@ -135,6 +162,11 @@ export function useSync() {
 		pendingLocalSyncRef.current = false
 		pendingServerSyncRef.current = false
 		pendingWebSocketSyncRef.current = false
+		publishSyncDebugState({
+			pendingLocalSync: false,
+			pendingServerSync: false,
+			pendingWebSocketSync: false,
+		})
 		useCollaborationStore.getState().resetSceneSyncState()
 	}, [fileId])
 
@@ -147,6 +179,15 @@ export function useSync() {
 
 	const doSyncToLocal = useCallback(async () => {
 		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly) {
+			publishSyncDebugState({
+				lastLocalSyncSkip: {
+					isWorkerReady,
+					hasWorker: Boolean(worker),
+					fileId,
+					hasExcalidrawAPI: Boolean(excalidrawAPI),
+					isReadOnly,
+				},
+			})
 			return
 		}
 
@@ -165,6 +206,10 @@ export function useSync() {
 			}
 			worker.postMessage(message)
 			pendingLocalSyncRef.current = false
+			publishSyncDebugState({
+				lastLocalSyncPostedAt: Date.now(),
+				pendingLocalSync: false,
+			})
 			logSyncResult('local', { status: 'syncing' })
 		} catch (error) {
 			logger.error('[Sync] Local sync failed:', error)
@@ -174,10 +219,27 @@ export function useSync() {
 
 	const doSyncToServerAPI = useCallback(async (forceSync = false) => {
 		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, isDedicatedSyncer, collabStatus })
+		publishSyncDebugState({
+			lastServerSyncAttemptAt: Date.now(),
+			lastServerSyncForce: forceSync,
+			lastServerSyncGate: {
+				isWorkerReady,
+				hasWorker: Boolean(worker),
+				fileId,
+				hasExcalidrawAPI: Boolean(excalidrawAPI),
+				isDedicatedSyncer,
+				isReadOnly,
+				collabStatus,
+			},
+		})
 
 		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online')) {
 			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
 				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus,
+			})
+			publishSyncDebugState({
+				lastServerSyncSkippedAt: Date.now(),
+				lastServerSyncSkipReason: 'normal-conditions-not-met',
 			})
 			return
 		}
@@ -185,6 +247,10 @@ export function useSync() {
 		if (forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly)) {
 			logger.debug('[Sync] Skipping forced server sync - minimum requirements not met', {
 				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isReadOnly,
+			})
+			publishSyncDebugState({
+				lastServerSyncSkippedAt: Date.now(),
+				lastServerSyncSkipReason: 'forced-minimum-requirements-not-met',
 			})
 			return
 		}
@@ -215,14 +281,30 @@ export function useSync() {
 			worker.postMessage(message)
 			logger.debug('[Sync] SYNC_TO_SERVER message sent to worker')
 			pendingServerSyncRef.current = false
+			publishSyncDebugState({
+				lastServerSyncPostedAt: Date.now(),
+				pendingServerSync: false,
+			})
 		} catch (error) {
 			logger.error('[Sync] Server API sync failed:', error)
+			publishSyncDebugState({
+				lastServerSyncErrorAt: Date.now(),
+				lastServerSyncError: error instanceof Error ? error.message : String(error),
+			})
 			logSyncResult('server', { status: 'error API', error: error instanceof Error ? error.message : String(error) })
 		}
 	}, [isWorkerReady, worker, fileId, excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus, getJWT, getLatestSnapshot])
 
 	const doSyncViaWebSocket = useCallback(async () => {
 		if (!fileId || !socket || collabStatus !== 'online' || isReadOnly) {
+			publishSyncDebugState({
+				lastWebSocketSyncSkip: {
+					fileId,
+					hasSocket: Boolean(socket),
+					collabStatus,
+					isReadOnly,
+				},
+			})
 			return
 		}
 
@@ -281,6 +363,10 @@ export function useSync() {
 			}
 
 			pendingWebSocketSyncRef.current = false
+			publishSyncDebugState({
+				lastWebSocketSyncPostedAt: Date.now(),
+				pendingWebSocketSync: false,
+			})
 			logSyncResult('websocket', { status: 'sync success', elementsCount: syncedElementsCount })
 		} catch (error) {
 			logger.error('[Sync] WebSocket sync failed:', error)
@@ -306,10 +392,12 @@ export function useSync() {
 
 	useEffect(() => {
 		if (pendingLocalSyncRef.current && isWorkerReady && worker && fileId && excalidrawAPI && !isReadOnly) {
+			publishSyncDebugState({ lastLocalSyncRescheduledAt: Date.now() })
 			throttledSyncToLocal()
 		}
 
 		if (pendingWebSocketSyncRef.current && fileId && socket && collabStatus === 'online' && !isReadOnly) {
+			publishSyncDebugState({ lastWebSocketSyncRescheduledAt: Date.now() })
 			throttledSyncViaWebSocket()
 		}
 
@@ -323,6 +411,7 @@ export function useSync() {
 			&& !isReadOnly
 			&& collabStatus === 'online'
 		) {
+			publishSyncDebugState({ lastServerSyncRescheduledAt: Date.now() })
 			throttledSyncToServerAPI()
 		}
 	}, [
@@ -427,6 +516,12 @@ export function useSync() {
 		pendingLocalSyncRef.current = true
 		pendingServerSyncRef.current = true
 		pendingWebSocketSyncRef.current = true
+		publishSyncDebugState({
+			lastOnChangeAt: Date.now(),
+			pendingLocalSync: true,
+			pendingServerSync: true,
+			pendingWebSocketSync: true,
+		})
 
 		const snapshot = captureSnapshot(elements, appState, files)
 		if (snapshot) {

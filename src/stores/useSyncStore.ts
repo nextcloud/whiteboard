@@ -113,6 +113,19 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 					}
 				}
 
+				syncWorker.onerror = (event) => {
+					logger.error('[SyncStore] Worker runtime error:', {
+						message: event.message,
+						filename: event.filename,
+						lineno: event.lineno,
+						colno: event.colno,
+					})
+				}
+
+				syncWorker.onmessageerror = (event) => {
+					logger.error('[SyncStore] Worker message error:', event)
+				}
+
 				// Initialize the worker
 				syncWorker.postMessage({
 					type: 'INIT',
@@ -139,3 +152,25 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 		}
 	},
 }))
+
+type WhiteboardTestHooks = {
+	syncStore?: typeof useSyncStore
+}
+
+declare global {
+	interface Window {
+		__whiteboardTest?: boolean
+		__whiteboardTestHooks?: WhiteboardTestHooks & Record<string, unknown>
+	}
+}
+
+const attachTestHooks = () => {
+	if (typeof window === 'undefined' || !window.__whiteboardTest) {
+		return
+	}
+
+	window.__whiteboardTestHooks = window.__whiteboardTestHooks || {}
+	window.__whiteboardTestHooks.syncStore = useSyncStore
+}
+
+attachTestHooks()

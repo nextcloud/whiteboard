@@ -65,7 +65,12 @@ export async function createWhiteboard(page: Page, { name }: { name?: string } =
 		await waitForCanvas(page, { timeout: 20000 })
 	} catch (error) {
 		await openFilesApp(page)
-		await openWhiteboardFromFiles(page, boardName)
+		const resolvedFileId = await resolveFileIdByDav(page, boardName)
+		if (resolvedFileId) {
+			await openWhiteboardById(page, resolvedFileId)
+		} else {
+			await openWhiteboardFromFiles(page, boardName)
+		}
 	}
 
 	return boardName
@@ -345,7 +350,7 @@ export async function openWhiteboardById(
 	await waitForCanvas(page)
 }
 
-async function resolveFileIdByDav(page: Page, name: string): Promise<string | null> {
+export async function resolveFileIdByDav(page: Page, name: string): Promise<string | null> {
 	const origin = new URL(await page.url()).origin
 	const userResponse = await page.request.get(`${origin}/ocs/v2.php/cloud/user?format=json`, {
 		headers: { 'OCS-APIREQUEST': 'true' },

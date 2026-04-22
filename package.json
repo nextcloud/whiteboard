@@ -16,6 +16,7 @@
     "server:start": "node websocket_server/main.js",
     "server:watch": "nodemon websocket_server/main.js",
     "test": "vitest run",
+    "bench:incremental-sync": "node tools/benchmarks/runIncrementalSyncBenchmark.mjs",
     "test:watch": "vitest",
     "start:nextcloud": "node playwright/start-nextcloud-server.mjs"
   },
