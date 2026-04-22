@@ -37,7 +37,6 @@ const AppConfig = createAppConfig({
 					manualChunks: {
 						vendor: ['react', 'react-dom'],
 					},
-					// assetFileNames: 'js/[name]-[hash].[ext]',
 				},
 			},
 		},
@@ -46,6 +45,8 @@ const AppConfig = createAppConfig({
 			rollupOptions: {
 				output: {
 					entryFileNames: 'js/[name]-[hash].js',
+					chunkFileNames: 'js/[name]-[hash].chunk.js',
+					assetFileNames: 'dist/[name]-[hash][extname]',
 				},
 			},
 		},

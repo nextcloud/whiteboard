@@ -18,37 +18,40 @@ interface AuthErrorState {
 	message: string | null
 	consecutiveFailures: number
 	lastFailureTime: number | null
-	isPersistent: boolean // True when we've detected a persistent auth issue (likely JWT secret mismatch)
+	isPersistent: boolean
 }
 
 interface CollaborationStore {
 	status: CollaborationConnectionStatus
 	socket: CollaborationSocket | null
-	isDedicatedSyncer: boolean // Is this client responsible for syncing to server/broadcasting?
+	isDedicatedSyncer: boolean
 	authError: AuthErrorState
-	followedUserId: string | null // User ID being followed for viewport synchronization
-	isInRoom: boolean // Whether the socket has joined the current room
+	followedUserId: string | null
+	isInRoom: boolean
+	lastSceneHash: number | null
+	broadcastedElementVersions: Record<string, number>
 
-	// Presentation state
-	presenterId: string | null // User ID of current presenter
-	isPresentationMode: boolean // Whether presentation mode is active in the room
-	isPresenting: boolean // Whether current user is presenting
-	presentationStartTime: number | null // When presentation started
-	autoFollowPresenter: boolean // Whether to automatically follow presenter (can be disabled by user)
+	presenterId: string | null
+	isPresentationMode: boolean
+	isPresenting: boolean
+	presentationStartTime: number | null
+	autoFollowPresenter: boolean
 
 	votings: Voting[]
 
-	// Actions
 	setStatus: (status: CollaborationConnectionStatus) => void
 	setSocket: (socket: CollaborationSocket | null) => void
 	setDedicatedSyncer: (isSyncer: boolean) => void
 	setIsInRoom: (inRoom: boolean) => void
+	setLastSceneHash: (hash: number | null) => void
+	replaceBroadcastedElementVersions: (versions: Record<string, number>) => void
+	mergeBroadcastedElementVersions: (versions: Record<string, number>) => void
+	resetSceneSyncState: () => void
 	setAuthError: (error: Partial<AuthErrorState>) => void
 	incrementAuthFailure: (errorType: AuthErrorType, message: string) => void
 	clearAuthError: () => void
 	resetStore: () => void
 
-	// Presentation actions
 	setPresentationState: (state: {
 		presenterId?: string | null
 		isPresentationMode?: boolean
@@ -57,7 +60,6 @@ interface CollaborationStore {
 	}) => void
 	setAutoFollowPresenter: (autoFollow: boolean) => void
 
-	// Voting actions
 	addVoting: (voting: Voting) => void
 	updateVoting: (voting: Voting) => void
 	setVotings: (votings: Voting[]) => void
@@ -71,15 +73,35 @@ const initialAuthErrorState: AuthErrorState = {
 	isPersistent: false,
 }
 
-const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'setAuthError' | 'incrementAuthFailure' | 'clearAuthError' | 'resetStore' | 'setPresentationState' | 'setAutoFollowPresenter' | 'addVoting' | 'updateVoting' | 'setVotings'> = {
+const initialState: Omit<
+CollaborationStore,
+| 'setStatus'
+| 'setSocket'
+| 'setDedicatedSyncer'
+| 'setIsInRoom'
+| 'setLastSceneHash'
+| 'replaceBroadcastedElementVersions'
+| 'mergeBroadcastedElementVersions'
+| 'resetSceneSyncState'
+| 'setAuthError'
+| 'incrementAuthFailure'
+| 'clearAuthError'
+| 'resetStore'
+| 'setPresentationState'
+| 'setAutoFollowPresenter'
+| 'addVoting'
+| 'updateVoting'
+| 'setVotings'
+> = {
 	status: 'offline',
 	socket: null,
 	isDedicatedSyncer: false,
 	authError: initialAuthErrorState,
 	followedUserId: null,
 	isInRoom: false,
+	lastSceneHash: null,
+	broadcastedElementVersions: {},
 
-	// Presentation initial state
 	presenterId: null,
 	isPresentationMode: false,
 	isPresenting: false,
@@ -89,9 +111,8 @@ const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDed
 	votings: [],
 }
 
-// Constants for auth failure detection
 const MAX_AUTH_FAILURES = 3
-const PERSISTENT_FAILURE_THRESHOLD = 5 * 60 * 1000 // 5 minutes
+const PERSISTENT_FAILURE_THRESHOLD = 5 * 60 * 1000
 
 export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	...initialState,
@@ -100,6 +121,20 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	setSocket: (socket) => set({ socket }),
 	setDedicatedSyncer: (isSyncer) => set({ isDedicatedSyncer: isSyncer }),
 	setIsInRoom: (inRoom) => set({ isInRoom: inRoom }),
+	setLastSceneHash: (hash) => set({ lastSceneHash: hash }),
+	replaceBroadcastedElementVersions: (versions) => set({ broadcastedElementVersions: versions }),
+	mergeBroadcastedElementVersions: (versions) => set((state) => ({
+		broadcastedElementVersions: Object.entries(versions).reduce<Record<string, number>>((nextVersions, [id, version]) => {
+			nextVersions[id] = nextVersions[id] === undefined
+				? version
+				: Math.max(nextVersions[id], version)
+			return nextVersions
+		}, { ...state.broadcastedElementVersions }),
+	})),
+	resetSceneSyncState: () => set({
+		lastSceneHash: null,
+		broadcastedElementVersions: {},
+	}),
 
 	setAuthError: (error) => set((state) => ({
 		authError: { ...state.authError, ...error },
@@ -108,8 +143,6 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	incrementAuthFailure: (errorType, message) => set((state) => {
 		const now = Date.now()
 		const newFailureCount = state.authError.consecutiveFailures + 1
-
-		// Determine if this is a persistent issue (likely JWT secret mismatch)
 		const isPersistent = newFailureCount >= MAX_AUTH_FAILURES
 			&& (state.authError.lastFailureTime === null
 			 || now - state.authError.lastFailureTime < PERSISTENT_FAILURE_THRESHOLD)
@@ -129,7 +162,6 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 
 	resetStore: () => set(initialState),
 
-	// Presentation actions
 	setPresentationState: (state) => set((currentState) => ({
 		...currentState,
 		...state,
@@ -137,7 +169,6 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 
 	setAutoFollowPresenter: (autoFollow) => set({ autoFollowPresenter: autoFollow }),
 
-	// Voting actions
 	addVoting: (voting) => set((state) => ({
 		votings: [...state.votings, voting],
 	})),

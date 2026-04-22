@@ -14,7 +14,7 @@ import type {
 	Collaborator,
 	ExcalidrawImageElement,
 } from '@excalidraw/excalidraw/types/types'
-import { restoreElements } from '@nextcloud/excalidraw'
+import { CaptureUpdateAction, restoreElements } from '@nextcloud/excalidraw'
 import { loadState } from '@nextcloud/initial-state'
 import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata'
 import { io } from 'socket.io-client'
@@ -26,11 +26,13 @@ import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
 import { db } from '../database/db'
-import { computeElementVersionHash } from '../utils/syncSceneData'
+import { buildBroadcastedElementVersions, computeElementVersionHash, mergeSceneElements } from '../utils/syncSceneData'
 import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } from '../types/collaboration'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT', // Incoming scene data from others
+	SceneInitRequest = 'SCENE_INIT_REQUEST', // Request targeted bootstrap from current syncer
+	SceneUpdate = 'SCENE_UPDATE', // Incremental scene data from others
 	SceneRestore = 'SCENE_RESTORE', // Force replace scene from authoritative source
 	MouseLocation = 'MOUSE_LOCATION', // Incoming cursor data
 	ImageAdd = 'IMAGE_ADD', // Incoming image data from others
@@ -39,10 +41,11 @@ enum BroadcastType {
 }
 
 const CURSOR_UPDATE_DELAY = 50
+type DisconnectCallback = () => void
 
 export function useCollaboration() {
 	const joinedRoomRef = useRef<string | null>(null)
-	const pendingSceneUpdateRef = useRef<readonly ExcalidrawElement[] | null>(null)
+	const pendingSceneUpdatesRef = useRef<readonly ExcalidrawElement[][]>([])
 	const pendingImageUpdatesRef = useRef<Map<string, BinaryFileData>>(new Map())
 	const pendingSceneReplaceRef = useRef<{
 		elements: ExcalidrawElement[]
@@ -81,6 +84,9 @@ export function useCollaboration() {
 		setStatus,
 		setSocket,
 		setDedicatedSyncer,
+		replaceBroadcastedElementVersions,
+		mergeBroadcastedElementVersions,
+		resetSceneSyncState,
 		incrementAuthFailure,
 		clearAuthError,
 		resetStore, // Use resetStore for full cleanup
@@ -90,6 +96,9 @@ export function useCollaboration() {
 			setStatus: state.setStatus,
 			setSocket: state.setSocket,
 			setDedicatedSyncer: state.setDedicatedSyncer,
+			replaceBroadcastedElementVersions: state.replaceBroadcastedElementVersions,
+			mergeBroadcastedElementVersions: state.mergeBroadcastedElementVersions,
+			resetSceneSyncState: state.resetSceneSyncState,
 			incrementAuthFailure: state.incrementAuthFailure,
 			clearAuthError: state.clearAuthError,
 			resetStore: state.resetStore,
@@ -98,41 +107,58 @@ export function useCollaboration() {
 	)
 
 	// --- Remote Update Handlers ---
+	const requestMissingImages = useCallback((remoteElements: readonly ExcalidrawElement[]) => {
+		if (!excalidrawAPI) return
+
+		const currentFiles = excalidrawAPI.getFiles()
+		const currentSocket = useCollaborationStore.getState().socket
+
+		if (!currentSocket?.connected || !fileId) {
+			return
+		}
+
+		const missingImages = remoteElements
+			.filter(el => el.type === 'image'
+				&& (el as ExcalidrawImageElement).fileId
+				&& !currentFiles[(el as ExcalidrawImageElement).fileId])
+
+		missingImages.forEach(el => {
+			const imageId = (el as ExcalidrawImageElement).fileId
+			console.log(`[Collaboration] Requesting missing image: ${imageId}`)
+			currentSocket.emit('image-get', `${fileId}`, imageId)
+		})
+	}, [excalidrawAPI, fileId])
+
 	const reconcileAndApplyRemoteElements = useCallback(
 		(remoteElements: readonly ExcalidrawElement[]) => {
 			if (!excalidrawAPI) return
 
 			try {
-				// Restore and reconcile elements
 				const restoredRemoteElements = restoreElements(remoteElements, null)
 				const localElements = excalidrawAPI.getSceneElementsIncludingDeleted() || []
 				const appState = excalidrawAPI.getAppState()
 				const reconciledElements = mergeElementsWithMetadata(localElements, restoredRemoteElements, appState)
-				excalidrawAPI.updateScene({ elements: reconciledElements })
+				const localSceneHash = computeElementVersionHash(localElements)
+				const reconciledHash = computeElementVersionHash(reconciledElements)
+				const remoteVersions = buildBroadcastedElementVersions(restoredRemoteElements)
 
-				// Request any missing images
-				const currentFiles = excalidrawAPI.getFiles()
-				const currentSocket = useCollaborationStore.getState().socket
-
-				if (currentSocket?.connected && fileId) {
-					// Find image elements with missing file data
-					const missingImages = restoredRemoteElements
-						.filter(el => el.type === 'image'
-							&& (el as ExcalidrawImageElement).fileId
-							&& !currentFiles[(el as ExcalidrawImageElement).fileId])
-
-					// Request each missing image
-					missingImages.forEach(el => {
-						const imageId = (el as ExcalidrawImageElement).fileId
-						console.log(`[Collaboration] Requesting missing image: ${imageId}`)
-						currentSocket.emit('image-get', `${fileId}`, imageId)
-					})
+				if (localSceneHash === reconciledHash) {
+					mergeBroadcastedElementVersions(remoteVersions)
+					requestMissingImages(restoredRemoteElements)
+					return
 				}
+
+				mergeBroadcastedElementVersions(remoteVersions)
+				excalidrawAPI.updateScene({
+					elements: reconciledElements,
+					captureUpdate: CaptureUpdateAction.NEVER,
+				})
+				requestMissingImages(restoredRemoteElements)
 			} catch (error) {
 				console.error('[Collaboration] Error reconciling remote elements:', error)
 			}
 		},
-		[excalidrawAPI, fileId],
+		[excalidrawAPI, mergeBroadcastedElementVersions, requestMissingImages],
 	)
 
 	const handleRemoteImageAdd = useCallback(
@@ -158,7 +184,14 @@ export function useCollaboration() {
 	const queueSceneUpdate = useCallback(
 		(remoteElements: readonly ExcalidrawElement[]) => {
 			if (!excalidrawAPI) {
-				pendingSceneUpdateRef.current = remoteElements
+				const restoredRemoteElements = restoreElements(remoteElements, null)
+				pendingSceneUpdatesRef.current = pendingSceneUpdatesRef.current.length === 0
+					? [restoredRemoteElements]
+					: [mergeSceneElements(
+						pendingSceneUpdatesRef.current[0],
+						restoredRemoteElements,
+						{} as AppState,
+					)]
 				return
 			}
 
@@ -191,6 +224,7 @@ export function useCollaboration() {
 			}
 
 			try {
+				replaceBroadcastedElementVersions(buildBroadcastedElementVersions(payload.elements))
 				excalidrawAPI.resetScene()
 
 				const currentAppState = excalidrawAPI.getAppState()
@@ -204,6 +238,7 @@ export function useCollaboration() {
 				excalidrawAPI.updateScene({
 					elements: payload.elements,
 					appState: mergedAppState,
+					captureUpdate: CaptureUpdateAction.NEVER,
 				})
 
 				const filesArray = Object.values(payload.files || {}).filter(
@@ -217,7 +252,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error applying restored scene:', error)
 			}
 		},
-		[excalidrawAPI],
+		[excalidrawAPI, replaceBroadcastedElementVersions],
 	)
 
 	useEffect(() => {
@@ -231,10 +266,11 @@ export function useCollaboration() {
 			applySceneReplacement(payload)
 		}
 
-		if (pendingSceneUpdateRef.current) {
-			const latestScene = pendingSceneUpdateRef.current
-			pendingSceneUpdateRef.current = null
-			reconcileAndApplyRemoteElements(latestScene)
+		if (pendingSceneUpdatesRef.current.length > 0) {
+			const [queuedScene] = pendingSceneUpdatesRef.current.splice(0)
+			if (queuedScene) {
+				reconcileAndApplyRemoteElements(queuedScene)
+			}
 		}
 
 		if (pendingImageUpdatesRef.current.size > 0) {
@@ -247,10 +283,11 @@ export function useCollaboration() {
 	}, [excalidrawAPI, handleRemoteImageAdd, reconcileAndApplyRemoteElements, applySceneReplacement])
 
 	useEffect(() => {
-		pendingSceneUpdateRef.current = null
+		pendingSceneUpdatesRef.current = []
 		pendingImageUpdatesRef.current.clear()
 		pendingSceneReplaceRef.current = null
-	}, [fileId])
+		resetSceneSyncState()
+	}, [fileId, resetSceneSyncState])
 
 	// --- Collaborator State Management ---
 	const updateCollaboratorsState = useCallback(
@@ -516,7 +553,56 @@ export function useCollaboration() {
 		debouncedJoinRoom(currentSocket, roomIdStr)
 	}, [fileId, debouncedJoinRoom]) // Dependencies read via store state
 
-	let lastElementsString = null
+	const sendSceneBootstrapToSocket = useCallback((targetSocketId: string) => {
+		const currentExcalidrawAPI = useExcalidrawStore.getState().excalidrawAPI
+		const currentFileId = useWhiteboardConfigStore.getState().fileId
+		const { isDedicatedSyncer, socket } = useCollaborationStore.getState()
+		if (!isDedicatedSyncer || !socket || !socket.connected || !currentFileId || !currentExcalidrawAPI) {
+			return
+		}
+
+		if (socket.id === targetSocketId) {
+			return
+		}
+
+		console.log(`[Collaboration] Sending targeted scene bootstrap to socket: ${targetSocketId}`)
+		const sceneElements = currentExcalidrawAPI.getSceneElementsIncludingDeleted()
+		const sceneData = {
+			type: BroadcastType.SceneInit,
+			payload: {
+				elements: sceneElements,
+			},
+		}
+		const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
+		socket.emit('server-direct-broadcast', `${currentFileId}`, targetSocketId, sceneBuffer, [])
+
+		const files = currentExcalidrawAPI.getFiles()
+		Object.entries(files).forEach(([, file]) => {
+			if (!file?.dataURL) {
+				return
+			}
+
+			const fileData = { type: BroadcastType.ImageAdd, payload: { file } }
+			const fileBuffer = new TextEncoder().encode(JSON.stringify(fileData))
+			socket.emit('server-direct-broadcast', `${currentFileId}`, targetSocketId, fileBuffer, [])
+		})
+	}, [])
+
+	const requestSceneBootstrap = useCallback((targetSocketId: string) => {
+		const socket = useCollaborationStore.getState().socket
+		if (!socket || !socket.connected || !fileId) {
+			return
+		}
+
+		const requestData = {
+			type: BroadcastType.SceneInitRequest,
+			payload: {
+				socketId: targetSocketId,
+			},
+		}
+		const requestBuffer = new TextEncoder().encode(JSON.stringify(requestData))
+		socket.emit('server-broadcast', `${fileId}`, requestBuffer, [])
+	}, [fileId])
 
 	const handleClientBroadcast = useCallback(
 		async (data: ArrayBuffer) => {
@@ -549,7 +635,7 @@ export function useCollaboration() {
 						const scrollToContent = payload.scrollToContent ?? true
 
 						// Clear pending queue state since we have an authoritative snapshot
-						pendingSceneUpdateRef.current = null
+						pendingSceneUpdatesRef.current = []
 						pendingImageUpdatesRef.current.clear()
 
 						if (excalidrawAPI) {
@@ -591,16 +677,18 @@ export function useCollaboration() {
 					break
 				}
 				case BroadcastType.SceneInit:
+				case BroadcastType.SceneUpdate:
 					if (Array.isArray(decoded.payload?.elements)) {
-						const elementsString = JSON.stringify(decoded.payload.elements)
-						if (elementsString === lastElementsString) {
-							console.warn('[Collaboration] Received identical SceneInit payload, skipping update')
-							break
-						}
 						queueSceneUpdate(decoded.payload.elements)
-						lastElementsString = JSON.stringify(decoded.payload.elements)
 					} else {
-						console.warn('[Collaboration] Invalid SceneInit payload:', decoded.payload)
+						console.warn('[Collaboration] Invalid scene payload:', decoded.payload)
+					}
+					break
+				case BroadcastType.SceneInitRequest:
+					if (typeof decoded.payload?.socketId === 'string') {
+						sendSceneBootstrapToSocket(decoded.payload.socketId)
+					} else {
+						console.warn('[Collaboration] Invalid scene bootstrap request payload:', decoded.payload)
 					}
 					break
 				case BroadcastType.MouseLocation:
@@ -654,7 +742,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error processing client broadcast:', error)
 			}
 		},
-		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId, applySceneReplacement],
+		[queueSceneUpdate, sendSceneBootstrapToSocket, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId, applySceneReplacement],
 	)
 
 	const handleSyncDesignate = useCallback((data: { isSyncer: boolean }) => {
@@ -662,29 +750,15 @@ export function useCollaboration() {
 		setDedicatedSyncer(data.isSyncer)
 	}, [setDedicatedSyncer])
 
-	// Handle user joined event - broadcast all images if we're the syncer
-	const handleUserJoined = useCallback((data: { userId: string, userName: string, socketId: string, isSyncer: boolean }) => {
-		// If we are the syncer, broadcast all our images to the new user
-		const { isDedicatedSyncer } = useCollaborationStore.getState()
-		if (isDedicatedSyncer && excalidrawAPI) {
-			console.log(`[Collaboration] Broadcasting images to new user: ${data.userName}`)
-
-			const files = excalidrawAPI.getFiles()
-			const socket = useCollaborationStore.getState().socket
-
-			if (!socket || !socket.connected || !fileId) return
-
-			// Broadcast each image file
-			Object.entries(files).forEach(([, file]) => {
-				if (file && file.dataURL) {
-					const fileData = { type: BroadcastType.ImageAdd, payload: { file } }
-					const fileJson = JSON.stringify(fileData)
-					const fileBuffer = new TextEncoder().encode(fileJson)
-					socket.emit('server-broadcast', `${fileId}`, fileBuffer, [])
-				}
-			})
+	const handleUserJoined = useCallback((data: { socketId: string }) => {
+		const socket = useCollaborationStore.getState().socket
+		if (!socket || !socket.connected || !fileId || socket.id !== data.socketId) {
+			return
 		}
-	}, [excalidrawAPI, fileId])
+
+		console.log(`[Collaboration] Requesting targeted scene bootstrap for socket: ${data.socketId}`)
+		requestSceneBootstrap(data.socketId)
+	}, [fileId, requestSceneBootstrap])
 
 	// No custom reconnection strategy needed - socket.io will handle reconnection with Infinity attempts
 
@@ -712,7 +786,7 @@ export function useCollaboration() {
 
 					// Stop auto reconnection attempts on auth error and try token refresh
 					socketInstance.disconnect()
-					await handleTokenRefresh()
+					await handleTokenRefreshRef.current()
 				} else {
 					setStatus('offline')
 				}
@@ -745,7 +819,7 @@ export function useCollaboration() {
 
 			socketInstance.on('disconnect', (reason) => {
 				console.warn(`[Collaboration] Socket disconnect event fired: ${reason}`)
-				clearExcalidrawCollaborators()
+				clearExcalidrawCollaboratorsRef.current()
 				setIsInRoom(false)
 
 				// Only set to offline if this is an intentional disconnect
@@ -826,32 +900,40 @@ export function useCollaboration() {
 
 				// This is the primary trigger for joining a room - the server sends this event
 				// when a socket connects, and we respond by joining the appropriate room
-				handleInitRoom()
+				handleInitRoomRef.current()
 			})
 
 			socketInstance.on('room-user-change', (data) => {
 				console.log(`[Collaboration] Room user change: ${data.length} users`)
 				setIsInRoom(true)
-				updateCollaboratorsState(data)
+				updateCollaboratorsStateRef.current(data)
 			})
 
-			socketInstance.on('client-broadcast', handleClientBroadcast)
-			socketInstance.on('sync-designate', handleSyncDesignate)
+			socketInstance.on('client-broadcast', (data) => {
+				handleClientBroadcastRef.current(data).catch((error) => {
+					console.error('[Collaboration] Error processing client broadcast:', error)
+				})
+			})
+			socketInstance.on('sync-designate', (data) => {
+				handleSyncDesignateRef.current(data)
+			})
 
 			socketInstance.on('user-joined', (data) => {
 				console.log(`[Collaboration] User joined: ${data.userName} (${data.userId})`)
-				handleUserJoined(data)
+				handleUserJoinedRef.current(data)
 			})
 
 			// Handle request for presenter's viewport
 			socketInstance.on('request-presenter-viewport', async () => {
 				console.log('[Collaboration] Presenter viewport requested')
+				const currentExcalidrawAPI = excalidrawAPIRef.current
+				const currentFileId = fileIdRef.current
 
 				// Check if we're the presenter
 				const { isPresenting } = useCollaborationStore.getState()
 
-				if (isPresenting && excalidrawAPI) {
-					const appState = excalidrawAPI.getAppState()
+				if (isPresenting && currentExcalidrawAPI && currentFileId) {
+					const appState = currentExcalidrawAPI.getAppState()
 					const { presenterId } = useCollaborationStore.getState()
 
 					const viewportData = {
@@ -867,7 +949,7 @@ export function useCollaboration() {
 					// Broadcast viewport to all users
 					const viewportJson = JSON.stringify(viewportData)
 					const viewportBuffer = new TextEncoder().encode(viewportJson)
-					socketInstance.emit('server-broadcast', `${fileId}`, viewportBuffer, [])
+					socketInstance.emit('server-broadcast', `${currentFileId}`, viewportBuffer, [])
 
 					console.log('[Collaboration] Sent presenter viewport:', viewportData.payload)
 				}
@@ -877,10 +959,12 @@ export function useCollaboration() {
 			socketInstance.on('send-viewport-request', async (data) => {
 				const { requesterId } = data
 				console.log(`[Collaboration] Viewport requested by user ${requesterId}`)
+				const currentExcalidrawAPI = excalidrawAPIRef.current
+				const currentFileId = fileIdRef.current
 
 				// Send our current viewport back to the requester
-				if (excalidrawAPI) {
-					const appState = excalidrawAPI.getAppState()
+				if (currentExcalidrawAPI && currentFileId) {
+					const appState = currentExcalidrawAPI.getAppState()
 
 					// Check if we're the presenter
 					const { isPresenting, presenterId: currentPresenterId } = useCollaborationStore.getState()
@@ -892,7 +976,7 @@ export function useCollaboration() {
 						userId = currentPresenterId
 					} else {
 						// Otherwise get our actual user ID from JWT
-						const jwt = await getJWT()
+						const jwt = await getJWTRef.current()
 						if (jwt) {
 							try {
 								const payload = JSON.parse(atob(jwt.split('.')[1]))
@@ -916,7 +1000,7 @@ export function useCollaboration() {
 					// Send directly to the requester via server broadcast
 					const viewportJson = JSON.stringify(viewportData)
 					const viewportBuffer = new TextEncoder().encode(viewportJson)
-					socketInstance.emit('server-broadcast', `${fileId}`, viewportBuffer, [])
+					socketInstance.emit('server-broadcast', `${currentFileId}`, viewportBuffer, [])
 
 					console.log('[Collaboration] Sent viewport to requester:', viewportData.payload)
 				}
@@ -942,6 +1026,20 @@ export function useCollaboration() {
 	// --- Socket Connection Logic ---
 	const connectSocketRef = useRef(() => Promise.resolve())
 	const socketInstanceRef = useRef<CollaborationSocket | null>(null)
+	const disconnectSocketRef = useRef<DisconnectCallback>(function noop() {})
+	const resetStoreRef = useRef(resetStore)
+	const debouncedJoinRoomRef = useRef(debouncedJoinRoom)
+	const throttledUpdateCursorRef = useRef(throttledUpdateCursor)
+	const handleTokenRefreshRef = useRef(handleTokenRefresh)
+	const handleInitRoomRef = useRef(handleInitRoom)
+	const updateCollaboratorsStateRef = useRef(updateCollaboratorsState)
+	const handleClientBroadcastRef = useRef(handleClientBroadcast)
+	const handleSyncDesignateRef = useRef(handleSyncDesignate)
+	const clearExcalidrawCollaboratorsRef = useRef(clearExcalidrawCollaborators)
+	const handleUserJoinedRef = useRef(handleUserJoined)
+	const excalidrawAPIRef = useRef(excalidrawAPI)
+	const fileIdRef = useRef(fileId)
+	const getJWTRef = useRef(getJWT)
 
 	const connectSocket = useCallback(async () => {
 		// Use the fileId from our selective subscription instead of getState
@@ -1079,24 +1177,82 @@ export function useCollaboration() {
 		socketInstanceRef.current = null
 	}, [setSocket, setStatus, clearExcalidrawCollaborators])
 
+	useEffect(() => {
+		disconnectSocketRef.current = disconnectSocket
+	}, [disconnectSocket])
+
+	useEffect(() => {
+		resetStoreRef.current = resetStore
+	}, [resetStore])
+
+	useEffect(() => {
+		debouncedJoinRoomRef.current = debouncedJoinRoom
+	}, [debouncedJoinRoom])
+
+	useEffect(() => {
+		throttledUpdateCursorRef.current = throttledUpdateCursor
+	}, [throttledUpdateCursor])
+
+	useEffect(() => {
+		handleTokenRefreshRef.current = handleTokenRefresh
+	}, [handleTokenRefresh])
+
+	useEffect(() => {
+		handleInitRoomRef.current = handleInitRoom
+	}, [handleInitRoom])
+
+	useEffect(() => {
+		updateCollaboratorsStateRef.current = updateCollaboratorsState
+	}, [updateCollaboratorsState])
+
+	useEffect(() => {
+		handleClientBroadcastRef.current = handleClientBroadcast
+	}, [handleClientBroadcast])
+
+	useEffect(() => {
+		handleSyncDesignateRef.current = handleSyncDesignate
+	}, [handleSyncDesignate])
+
+	useEffect(() => {
+		clearExcalidrawCollaboratorsRef.current = clearExcalidrawCollaborators
+	}, [clearExcalidrawCollaborators])
+
+	useEffect(() => {
+		handleUserJoinedRef.current = handleUserJoined
+	}, [handleUserJoined])
+
+	useEffect(() => {
+		excalidrawAPIRef.current = excalidrawAPI
+	}, [excalidrawAPI])
+
+	useEffect(() => {
+		fileIdRef.current = fileId
+	}, [fileId])
+
+	useEffect(() => {
+		getJWTRef.current = getJWT
+	}, [getJWT])
+
 	// --- Effects ---
 	// Connect/Disconnect based on fileId
 	useEffect(() => {
 		if (fileId) {
 			console.log(`[Collaboration] FileId ${fileId} active, connecting socket`)
-			connectSocket()
+			connectSocketRef.current().catch((error) => {
+				console.error('[Collaboration] Connection effect failed:', error)
+			})
 		} else {
 			console.log('[Collaboration] No fileId, disconnecting socket')
-			disconnectSocket()
+			disconnectSocketRef.current()
 			setIsInRoom(false)
 		}
 
 		// Cleanup when fileId changes
 		return () => {
 			// Cancel any pending debounced room joins
-			debouncedJoinRoom.cancel()
+			debouncedJoinRoomRef.current.cancel()
 		}
-	}, [fileId, connectSocket, disconnectSocket, debouncedJoinRoom])
+	}, [fileId, setIsInRoom])
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -1104,16 +1260,16 @@ export function useCollaboration() {
 			console.log('[Collaboration] Unmounting, performing full cleanup')
 
 			// Cancel any pending operations
-			debouncedJoinRoom.cancel()
-			throttledUpdateCursor.cancel()
+			debouncedJoinRoomRef.current.cancel()
+			throttledUpdateCursorRef.current.cancel()
 
 			// Disconnect socket
-			disconnectSocket()
+			disconnectSocketRef.current()
 
 			// Reset store state
-			resetStore()
+			resetStoreRef.current()
 		}
-	}, [disconnectSocket, resetStore, throttledUpdateCursor, debouncedJoinRoom])
+	}, [])
 
 	// --- Exported Hook API ---
 	return {

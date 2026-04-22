@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { AppState } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { isObject } from 'lodash'
 
 /**
@@ -14,34 +14,97 @@ import { isObject } from 'lodash'
 export const computeElementVersionHash = (
 	elements: readonly ExcalidrawElement[],
 ): number => {
-	let hash = 5381 // djb2 starting point
+	// Keep this hash worker-safe: importing the full excalidraw runtime pulls in
+	// browser-only globals such as `window`, which breaks the sync worker.
+	let hash = 5381
+	for (let i = 0; i < elements.length; i++) {
+		hash = (hash << 5) + hash + elements[i].versionNonce
+	}
+	return hash >>> 0
+}
 
-	// Special case: empty elements array should have a unique hash
-	// This ensures that when all elements are deleted, the hash changes
-	if (elements.length === 0) {
-		return 1 // Special hash for empty array
+export const buildBroadcastedElementVersions = (
+	elements: readonly ExcalidrawElement[],
+): Record<string, number> => {
+	return elements.reduce<Record<string, number>>((versions, element) => {
+		versions[element.id] = element.version
+		return versions
+	}, {})
+}
+
+export const mergeBroadcastedElementVersions = (
+	currentVersions: Record<string, number>,
+	elements: readonly ExcalidrawElement[],
+): Record<string, number> => {
+	const nextVersions = { ...currentVersions }
+
+	elements.forEach((element) => {
+		const currentVersion = nextVersions[element.id]
+		nextVersions[element.id] = currentVersion === undefined
+			? element.version
+			: Math.max(currentVersion, element.version)
+	})
+
+	return nextVersions
+}
+
+export const getIncrementalSceneElements = (
+	elements: readonly ExcalidrawElement[],
+	broadcastedElementVersions: Record<string, number>,
+): readonly ExcalidrawElement[] => {
+	return elements.filter((element) => broadcastedElementVersions[element.id] !== element.version)
+}
+
+type SceneSyncPlanNoop = {
+	type: 'noop'
+}
+
+type SceneSyncPlanAdvance = {
+	type: 'advance'
+	sceneHash: number
+	broadcastedElementVersions: Record<string, number>
+}
+
+type SceneSyncPlanBroadcast = {
+	type: 'broadcast'
+	sceneHash: number
+	sceneElements: readonly ExcalidrawElement[]
+	broadcastedElementVersions: Record<string, number>
+}
+
+export type IncrementalSceneSyncPlan = SceneSyncPlanNoop | SceneSyncPlanAdvance | SceneSyncPlanBroadcast
+
+export const planIncrementalSceneSync = ({
+	elements,
+	broadcastedElementVersions,
+	lastSceneHash,
+}: {
+	elements: readonly ExcalidrawElement[]
+	broadcastedElementVersions: Record<string, number>
+	lastSceneHash: number | null
+}): IncrementalSceneSyncPlan => {
+	const sceneHash = computeElementVersionHash(elements)
+
+	if (lastSceneHash === sceneHash) {
+		return { type: 'noop' }
 	}
 
-	// Count deleted elements to ensure hash changes when elements are deleted
-	let deletedCount = 0
+	const incrementalElements = getIncrementalSceneElements(elements, broadcastedElementVersions)
 
-	for (const el of elements) {
-		// Combine version, nonce, and deletion status into the hash
-		// Using prime numbers helps distribute values
-		hash = (hash * 33) ^ (el.version || 0)
-		hash = (hash * 33) ^ (el.versionNonce || 0)
-
-		// Track deletion status
-		if (el.isDeleted) {
-			deletedCount++
-			hash = (hash * 33) ^ 1 // Include isDeleted status
+	if (incrementalElements.length === 0) {
+		return {
+			type: 'advance',
+			sceneHash,
+			broadcastedElementVersions: buildBroadcastedElementVersions(elements),
 		}
 	}
 
-	// Include deleted count in the hash to ensure it changes when elements are deleted
-	hash = (hash * 33) ^ deletedCount
-
-	return hash >>> 0 // Ensure positive integer
+	return {
+		type: 'broadcast',
+		sceneHash,
+		sceneElements: incrementalElements,
+		broadcastedElementVersions: buildBroadcastedElementVersions(incrementalElements),
+	}
 }
 
 /**

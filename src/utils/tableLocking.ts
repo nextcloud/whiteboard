@@ -7,6 +7,7 @@ import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import { updateElementCustomData } from './updateElementCustomData'
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -91,14 +92,10 @@ export function setLockOnElement(
 	if (idx === -1) return
 
 	// Update the element with the new lock state
-	elements[idx] = {
-		...elements[idx],
-		customData: {
-			...elements[idx].customData,
-			// Set tableLock to the provided value, or explicitly undefined to clear
-			...(lock ? { tableLock: lock } : { tableLock: undefined }),
-		},
-	}
+	elements[idx] = updateElementCustomData(elements[idx], (customData) => ({
+		...customData,
+		...(lock ? { tableLock: lock } : { tableLock: undefined }),
+	}))
 	// Trigger onChange which syncs to other users
 	excalidrawAPI.updateScene({ elements })
 }

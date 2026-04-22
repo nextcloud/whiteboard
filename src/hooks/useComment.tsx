@@ -8,12 +8,13 @@ import { createRoot } from 'react-dom/client'
 import { mdiCommentOutline, mdiAccount } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
-import { viewportCoordsToSceneCoords, convertToExcalidrawElements } from '@nextcloud/excalidraw'
+import { viewportCoordsToSceneCoords, convertToExcalidrawElements, newElementWith } from '@nextcloud/excalidraw'
 import { generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { CommentPopover } from '../components/CommentPopover'
 import { renderToolbarButton } from '../components/ToolbarButton'
 import { getRelativeTime } from '../utils/time'
+import { updateElementCustomData } from '../utils/updateElementCustomData'
 import './useComment.scss'
 import { t } from '@nextcloud/l10n'
 
@@ -329,10 +330,16 @@ export function useComment(props?: UseCommentProps) {
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 		const updatedElements = elements.map((el: unknown) => {
 			if (isCommentElement(el) && el.customData?.commentThread?.id === threadId) {
-				return {
-					...el,
-					...updater(el.customData.commentThread),
+				const patch = updater(el.customData.commentThread)
+
+				if (patch.customData && typeof patch.customData === 'object') {
+					return updateElementCustomData(el, (customData) => ({
+						...customData,
+						...(patch.customData as Record<string, unknown>),
+					}))
 				}
+
+				return newElementWith(el, patch)
 			}
 			return el
 		})

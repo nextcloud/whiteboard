@@ -65,6 +65,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
 	'join-room': (roomId: string) => void
 	'server-broadcast': (roomId: string, payload: ArrayBuffer | Uint8Array, iv: ArrayBuffer | number[] | []) => void
+	'server-direct-broadcast': (roomId: string, targetSocketId: string, payload: ArrayBuffer | Uint8Array, iv: ArrayBuffer | number[] | []) => void
 	'server-volatile-broadcast': (roomId: string, payload: Uint8Array) => void
 	'image-get': (roomId: string, id: string) => void
 	'request-presenter-viewport': (payload: { fileId: string }) => void

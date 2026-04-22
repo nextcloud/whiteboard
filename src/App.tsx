@@ -11,7 +11,7 @@ import { translate as t } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
-import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { AppState, BinaryFiles, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
@@ -439,12 +439,12 @@ export default function App({
 		return Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
 	}, [maxImageSizeBytes, maxImageSizeMb])
 
-	const handleOnChange = useCallback(() => {
+	const handleOnChange = useCallback((elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
 		if (isVersionPreview) {
 			return
 		}
 		if (!excalidrawAPI || !normalizedFileId || isLoading) return
-		onChangeSync()
+		onChangeSync(elements, appState, files)
 	}, [excalidrawAPI, normalizedFileId, isLoading, onChangeSync, isVersionPreview])
 
 	const canvasActions = useMemo(() => {

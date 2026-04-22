@@ -501,6 +501,7 @@ export default class SocketService {
 		const events = {
 			'join-room': this.joinRoomHandler,
 			'server-broadcast': this.serverBroadcastHandler,
+			'server-direct-broadcast': this.serverDirectBroadcastHandler,
 			'server-volatile-broadcast': this.serverVolatileBroadcastHandler,
 			'image-get': this.imageGetHandler,
 			'check-recording-availability': this.checkRecordingAvailabilityHandler,
@@ -536,8 +537,10 @@ export default class SocketService {
 			const rooms = Array.from(socket.rooms).filter(
 				(room) => room !== socket.id,
 			)
-			this.safeSocketHandler(socket, () =>
-				this.disconnectingHandler(socket, rooms),
+			this.safeSocketHandler(socket, async () => {
+				const socketData = await this.sessionStore.getSocketData(socket.id)
+				return this.disconnectingHandler(socket, rooms, socketData)
+			},
 			)
 		})
 	}
@@ -552,6 +555,10 @@ export default class SocketService {
 
 	async serverBroadcastHandler(socket, roomID, encryptedData, iv) {
 		return this.viewportController.serverBroadcast(socket, roomID, encryptedData, iv)
+	}
+
+	async serverDirectBroadcastHandler(socket, roomID, targetSocketId, encryptedData, iv) {
+		return this.viewportController.serverDirectBroadcast(socket, roomID, targetSocketId, encryptedData, iv)
 	}
 
 	async serverVolatileBroadcastHandler(socket, roomID, encryptedData) {
@@ -582,14 +589,17 @@ export default class SocketService {
 		}
 	}
 
-	async disconnectingHandler(socket, rooms) {
+	async disconnectingHandler(socket, rooms, socketData) {
 		if (this.shuttingDown) {
 			return
 		}
 
-		await this.stopRecordingOnDisconnect(socket, rooms)
+		await this.stopRecordingOnDisconnect(socket, rooms, socketData)
 
-		return this.roomLifecycleController.onDisconnecting(socket, rooms, { shuttingDown: this.shuttingDown })
+		return this.roomLifecycleController.onDisconnecting(socket, rooms, {
+			shuttingDown: this.shuttingDown,
+			socketData,
+		})
 	}
 
 	cancelPendingRecordingStop(roomID, userId) {
@@ -700,8 +710,8 @@ export default class SocketService {
 		})
 	}
 
-	async stopRecordingOnDisconnect(socket, rooms) {
-		const socketData = await this.sessionStore.getSocketData(socket.id)
+	async stopRecordingOnDisconnect(socket, rooms, initialSocketData = null) {
+		const socketData = initialSocketData || await this.sessionStore.getSocketData(socket.id)
 		if (!socketData?.user?.id) {
 			return
 		}

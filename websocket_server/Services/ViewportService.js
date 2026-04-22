@@ -24,6 +24,20 @@ export default class ViewportService {
 		socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
 	}
 
+	async serverDirectBroadcast(socket, roomID, targetSocketId, encryptedData, iv) {
+		const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
+		if (!socket.rooms.has(roomID) || isReadOnly) return
+
+		const targetSockets = await this.io.in(targetSocketId).fetchSockets()
+		const targetSocket = targetSockets[0]
+
+		if (!targetSocket || !targetSocket.rooms.has(roomID)) {
+			return
+		}
+
+		this.io.to(targetSocketId).emit('client-broadcast', encryptedData, iv)
+	}
+
 	async serverVolatileBroadcast(socket, roomID, encryptedData) {
 		if (!socket.rooms.has(roomID)) return
 

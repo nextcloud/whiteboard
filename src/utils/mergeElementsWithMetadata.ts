@@ -43,13 +43,13 @@ export function mergeElementsWithMetadata(
 		const whiteboardElement = element as WhiteboardElement
 		const remoteElement = remoteElementsMap.get(element.id)
 		const localElement = localElementsMap.get(element.id)
+		const customData = { ...(whiteboardElement.customData || {}) }
+		let hasCustomDataChanges = false
 
 		// If remote element has creator info, preserve it
 		if (remoteElement?.customData?.creator) {
-			if (!whiteboardElement.customData) {
-				whiteboardElement.customData = {}
-			}
-			whiteboardElement.customData.creator = remoteElement.customData.creator
+			customData.creator = remoteElement.customData.creator
+			hasCustomDataChanges = true
 		}
 
 		// If remote element has lastModifiedBy info, check if it's newer
@@ -58,43 +58,45 @@ export function mergeElementsWithMetadata(
 			const localModTime = localElement?.customData?.lastModifiedBy?.createdAt || 0
 
 			if (remoteModTime > localModTime) {
-				if (!whiteboardElement.customData) {
-					whiteboardElement.customData = {}
-				}
-				whiteboardElement.customData.lastModifiedBy = remoteElement.customData.lastModifiedBy
+				customData.lastModifiedBy = remoteElement.customData.lastModifiedBy
+				hasCustomDataChanges = true
 			}
 		}
 
 		// If local element had creator info but remote doesn't, preserve local
 		if (localElement?.customData?.creator && !whiteboardElement.customData?.creator) {
-			if (!whiteboardElement.customData) {
-				whiteboardElement.customData = {}
-			}
-			whiteboardElement.customData.creator = localElement.customData.creator
+			customData.creator = localElement.customData.creator
+			hasCustomDataChanges = true
 		}
 
 		// Preserve table-specific custom data from whichever version won reconciliation
 		// This ensures tableHtml, isTable, and tableLock are not lost
 		const sourceElement = remoteElement || localElement
 		if (sourceElement?.customData) {
-			if (!whiteboardElement.customData) {
-				whiteboardElement.customData = {}
-			}
-
 			// Preserve table metadata
 			if (sourceElement.customData.isTable !== undefined) {
-				whiteboardElement.customData.isTable = sourceElement.customData.isTable
+				customData.isTable = sourceElement.customData.isTable
+				hasCustomDataChanges = true
 			}
 			if (sourceElement.customData.tableHtml !== undefined) {
-				whiteboardElement.customData.tableHtml = sourceElement.customData.tableHtml
+				customData.tableHtml = sourceElement.customData.tableHtml
+				hasCustomDataChanges = true
 			}
 			// Preserve or clear lock status from the source element
 			if ('tableLock' in sourceElement.customData) {
-				whiteboardElement.customData.tableLock = sourceElement.customData.tableLock
+				customData.tableLock = sourceElement.customData.tableLock
+				hasCustomDataChanges = true
 			}
 		}
 
-		return whiteboardElement
+		if (!hasCustomDataChanges) {
+			return whiteboardElement
+		}
+
+		return {
+			...whiteboardElement,
+			customData,
+		}
 	})
 
 	return finalElements

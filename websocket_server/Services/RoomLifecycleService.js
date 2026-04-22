@@ -161,16 +161,17 @@ export default class RoomLifecycleService {
 		}
 	}
 
-	async onDisconnecting(socket, rooms, { shuttingDown = false } = {}) {
+	async onDisconnecting(socket, rooms, { shuttingDown = false, socketData: initialSocketData = null } = {}) {
 		if (shuttingDown) {
 			return
 		}
+
+		const socketData = initialSocketData || await this.sessionStore.getSocketData(socket.id)
+		const userId = socketData?.user?.id
+		const userName = socketData?.user?.name || 'Unknown'
+
 		for (const roomID of rooms) {
 			if (roomID === socket.id) continue
-
-			const socketData = await this.sessionStore.getSocketData(socket.id)
-			const userId = socketData?.user?.id
-			const userName = socketData?.user?.name || 'Unknown'
 
 			console.log(`[${roomID}] User ${userName} disconnecting`)
 
