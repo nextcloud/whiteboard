@@ -4,9 +4,33 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { isLockExpired, setLockOnElement, tryAcquireLock, releaseLock } from '../../src/utils/tableLocking.ts'
-import * as auth from '@nextcloud/auth'
-import * as dialogs from '@nextcloud/dialogs'
+
+vi.mock('@nextcloud/excalidraw', () => ({
+	newElementWith: vi.fn((element, updates = {}, force = false) => {
+		let didChange = false
+		for (const [key, value] of Object.entries(updates)) {
+			if (typeof value === 'undefined') {
+				continue
+			}
+			if (element[key] === value && (typeof value !== 'object' || value === null)) {
+				continue
+			}
+			didChange = true
+		}
+
+		if (!didChange && !force) {
+			return element
+		}
+
+		return {
+			...element,
+			...updates,
+			updated: 1,
+			version: (element.version ?? 0) + 1,
+			versionNonce: 1,
+		}
+	}),
+}))
 
 // Mock the Nextcloud modules
 vi.mock('@nextcloud/auth', () => ({
@@ -19,6 +43,10 @@ vi.mock('@nextcloud/auth', () => ({
 vi.mock('@nextcloud/dialogs', () => ({
 	showError: vi.fn(),
 }))
+
+const { isLockExpired, setLockOnElement, tryAcquireLock, releaseLock } = await import('../../src/utils/tableLocking.ts')
+const auth = await import('@nextcloud/auth')
+const dialogs = await import('@nextcloud/dialogs')
 
 describe('tableLocking utilities', () => {
 	describe('isLockExpired', () => {

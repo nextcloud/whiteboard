@@ -417,6 +417,54 @@ describe('Multi node websocket cluster with redis streams', () => {
 		})
 	})
 
+	it('delivers direct scene broadcasts across nodes only to the targeted socket', async () => {
+		const roomID = 'room-direct-scene'
+		const senderToken = buildToken(roomID, { id: 'sender', name: 'Sender', displayName: 'Sender' })
+		const targetToken = buildToken(roomID, { id: 'target', name: 'Target', displayName: 'Target' })
+		const observerToken = buildToken(roomID, { id: 'observer', name: 'Observer', displayName: 'Observer' })
+
+		const senderSocket = createSocket(serverAUrl, senderToken)
+		await waitFor(senderSocket, 'connect')
+		senderSocket.emit('join-room', roomID)
+		await waitFor(senderSocket, 'sync-designate')
+
+		const targetSocket = createSocket(serverBUrl, targetToken)
+		await waitFor(targetSocket, 'connect')
+		targetSocket.emit('join-room', roomID)
+		await waitFor(targetSocket, 'sync-designate')
+
+		const observerSocket = createSocket(serverBUrl, observerToken)
+		await waitFor(observerSocket, 'connect')
+		observerSocket.emit('join-room', roomID)
+		await waitFor(observerSocket, 'sync-designate')
+
+		const payload = new TextEncoder().encode(JSON.stringify({
+			type: 'SCENE_INIT',
+			payload: {
+				elements: [{ id: 'shape-1' }],
+			},
+		}))
+		const targetMessagePromise = waitFor(targetSocket, 'client-broadcast')
+		const observerMessages = []
+		observerSocket.on('client-broadcast', (...args) => {
+			observerMessages.push(args)
+		})
+
+		senderSocket.emit('server-direct-broadcast', roomID, targetSocket.id, payload, [])
+
+		const receivedPayload = await Promise.race([
+			targetMessagePromise,
+			new Promise((_resolve, reject) =>
+				setTimeout(() => reject(new Error('Timeout waiting for targeted client-broadcast event')), 2000),
+			),
+		])
+		const decodedPayload = JSON.parse(new TextDecoder().decode(receivedPayload))
+
+		expect(decodedPayload.type).toBe('SCENE_INIT')
+		await new Promise(resolve => setTimeout(resolve, 200))
+		expect(observerMessages).toHaveLength(0)
+	})
+
 	it('broadcasts a presentation stop when the presenter node shuts down', async () => {
 		const roomID = 'room-presenter-shutdown'
 		const presenterToken = buildToken(roomID, { id: 'shutdown-presenter', name: 'Presenter', displayName: 'Presenter' })

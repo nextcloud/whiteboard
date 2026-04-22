@@ -204,4 +204,155 @@ describe('Socket handling', () => {
 		newSocket.disconnect()
 	})
 
+	it('clears the old syncer when the room empties', async () => {
+		const roomID = 456
+
+		const bobSocket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{
+						roomID,
+						user: { id: 'bob-user', name: 'Bob' },
+					},
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+
+		await waitFor(bobSocket, 'connect')
+		const bobDesignationPromise = waitFor(bobSocket, 'sync-designate')
+		bobSocket.emit('join-room', roomID)
+		const bobDesignation = await bobDesignationPromise
+		expect(bobDesignation.isSyncer).toBe(true)
+
+		bobSocket.disconnect()
+		await new Promise(resolve => setTimeout(resolve, 100))
+
+		const adminSocket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{
+						roomID,
+						user: { id: 'admin-user', name: 'Admin' },
+					},
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+
+		await waitFor(adminSocket, 'connect')
+		const adminDesignationPromise = waitFor(adminSocket, 'sync-designate')
+		adminSocket.emit('join-room', roomID)
+		const adminDesignation = await adminDesignationPromise
+		expect(adminDesignation.isSyncer).toBe(true)
+
+		const bobReconnectSocket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{
+						roomID,
+						user: { id: 'bob-user', name: 'Bob' },
+					},
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+
+		await waitFor(bobReconnectSocket, 'connect')
+		const bobReconnectDesignationPromise = waitFor(bobReconnectSocket, 'sync-designate')
+		bobReconnectSocket.emit('join-room', roomID)
+		const bobReconnectDesignation = await bobReconnectDesignationPromise
+		expect(bobReconnectDesignation.isSyncer).toBe(false)
+
+		bobReconnectSocket.disconnect()
+		adminSocket.disconnect()
+	})
+
+	it('direct scene broadcasts reach only the targeted socket', async () => {
+		const roomID = 789
+		const senderSocket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{
+						roomID,
+						user: { id: 'sender-user', name: 'Sender' },
+					},
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+		const targetSocket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{
+						roomID,
+						user: { id: 'target-user', name: 'Target' },
+					},
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+		const observerSocket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{
+						roomID,
+						user: { id: 'observer-user', name: 'Observer' },
+					},
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+
+		await Promise.all([
+			waitFor(senderSocket, 'connect'),
+			waitFor(targetSocket, 'connect'),
+			waitFor(observerSocket, 'connect'),
+		])
+
+		const senderDesignationPromise = waitFor(senderSocket, 'sync-designate')
+		const targetDesignationPromise = waitFor(targetSocket, 'sync-designate')
+		const observerDesignationPromise = waitFor(observerSocket, 'sync-designate')
+
+		senderSocket.emit('join-room', roomID)
+		targetSocket.emit('join-room', roomID)
+		observerSocket.emit('join-room', roomID)
+
+		await Promise.all([
+			senderDesignationPromise,
+			targetDesignationPromise,
+			observerDesignationPromise,
+		])
+
+		const payload = new TextEncoder().encode(JSON.stringify({
+			type: 'SCENE_INIT',
+			payload: {
+				elements: [{ id: 'shape-1' }],
+			},
+		}))
+		const targetMessagePromise = waitFor(targetSocket, 'client-broadcast')
+		const observerMessages = []
+		observerSocket.on('client-broadcast', (...args) => {
+			observerMessages.push(args)
+		})
+
+		senderSocket.emit('server-direct-broadcast', `${roomID}`, targetSocket.id, payload, [])
+
+		const receivedPayload = await Promise.race([
+			targetMessagePromise,
+			new Promise((_resolve, reject) =>
+				setTimeout(() => reject(new Error('Timeout waiting for targeted client-broadcast event')), 2000),
+			),
+		])
+		const decodedPayload = new TextDecoder().decode(receivedPayload)
+
+		expect(decodedPayload).toContain('"type":"SCENE_INIT"')
+		await new Promise(resolve => setTimeout(resolve, 200))
+		expect(observerMessages).toHaveLength(0)
+
+		senderSocket.disconnect()
+		targetSocket.disconnect()
+		observerSocket.disconnect()
+	})
+
 })
