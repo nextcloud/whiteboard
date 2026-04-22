@@ -5,6 +5,7 @@
 import { useCallback } from 'react'
 import { t } from '@nextcloud/l10n'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
 import { mdiCreation } from '@mdi/js'
 import AssistantDialog from '../components/AssistantDialog.vue'
@@ -15,6 +16,7 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/typ
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
 import { getCapabilities } from '@nextcloud/capabilities'
 import { renderToolbarButton } from '../components/ToolbarButton'
+import { markFileAsAiGenerated } from '../services/ai'
 
 export function useAssistant() {
 	const capabilities = getCapabilities() as { assistant?: { version: string, enabled: boolean } }
@@ -26,6 +28,8 @@ export function useAssistant() {
 			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
 		})),
 	)
+
+	const fileId = useWhiteboardConfigStore((state) => state.fileId)
 
 	/**
 	 * renders AssistantDialog.vue
@@ -87,8 +91,11 @@ export function useAssistant() {
 		getMermaidFromAssistant().then((generatedElements) => {
 			// dialog is closed now
 			loadToExcalidraw(generatedElements)
+			if (fileId) {
+				markFileAsAiGenerated(fileId)
+			}
 		})
-	}, [getMermaidFromAssistant, loadToExcalidraw])
+	}, [getMermaidFromAssistant, loadToExcalidraw, fileId])
 
 	/**
 	 * injects assistant button in toolbar, handles assistant dialog
