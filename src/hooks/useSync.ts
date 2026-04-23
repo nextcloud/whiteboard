@@ -18,9 +18,17 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/typ
 import type { BinaryFiles } from '@excalidraw/excalidraw/types/types'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { WorkerInboundMessage } from '../types/protocol'
+import {
+	buildBroadcastedElementVersions,
+	computeElementVersionHash,
+	getIncrementalSceneElements,
+	updateBroadcastedElementVersions,
+} from '../utils/syncSceneData'
+import type { BroadcastedElementVersions } from '../utils/syncSceneData'
 
 enum SyncMessageType {
 	SceneInit = 'SCENE_INIT',
+	SceneUpdate = 'SCENE_UPDATE',
 	ImageAdd = 'IMAGE_ADD',
 	MouseLocation = 'MOUSE_LOCATION',
 	ViewportUpdate = 'VIEWPORT_UPDATE',
@@ -28,9 +36,10 @@ enum SyncMessageType {
 	ServerVolatileBroadcast = 'server-volatile-broadcast',
 }
 
-const LOCAL_SYNC_DELAY = 1000
+const LOCAL_SYNC_DELAY = 200
 const SERVER_API_SYNC_DELAY = 10000
 const WEBSOCKET_SYNC_DELAY = 500
+const FULL_SCENE_HEALING_INTERVAL = 20000
 const CURSOR_SYNC_DELAY = 50
 
 export function useSync() {
@@ -67,11 +76,12 @@ export function useSync() {
 		})),
 	)
 
-	const { isDedicatedSyncer, status: collabStatus, socket } = useCollaborationStore(
+	const { isDedicatedSyncer, status: collabStatus, socket, isInRoom } = useCollaborationStore(
 		useShallow(state => ({
 			isDedicatedSyncer: state.isDedicatedSyncer,
 			status: state.status,
 			socket: state.socket as CollaborationSocket | null,
+			isInRoom: state.isInRoom,
 		})),
 	)
 
@@ -85,11 +95,31 @@ export function useSync() {
 
 	// Keep track of previously synced files to avoid resending unchanged files
 	const prevSyncedFilesRef = useRef<Record<string, string>>({})
+	const lastBroadcastedSceneHashRef = useRef<number | null>(null)
+	const broadcastedElementVersionsRef = useRef<BroadcastedElementVersions>({})
+	const hasBroadcastedSceneRef = useRef(false)
 
 	// Reset prevSyncedFilesRef when fileId changes to prevent leakage across files
 	useEffect(() => {
 		prevSyncedFilesRef.current = {}
+		lastBroadcastedSceneHashRef.current = null
+		broadcastedElementVersionsRef.current = {}
+		hasBroadcastedSceneRef.current = false
 	}, [fileId]) // Depends on fileId from the hook scope
+
+	useEffect(() => {
+		lastBroadcastedSceneHashRef.current = null
+		broadcastedElementVersionsRef.current = {}
+		hasBroadcastedSceneRef.current = false
+	}, [socket?.id])
+
+	useEffect(() => {
+		if (!isInRoom) {
+			lastBroadcastedSceneHashRef.current = null
+			broadcastedElementVersionsRef.current = {}
+			hasBroadcastedSceneRef.current = false
+		}
+	}, [isInRoom])
 
 	// --- Sync Logic ---
 
@@ -175,19 +205,49 @@ export function useSync() {
 
 	// Syncs scene and files via WebSocket
 	const doSyncViaWebSocket = useCallback(async () => {
-		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly) {
+		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly || !isInRoom) {
 			return
 		}
 
 		try {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
 			const files = excalidrawAPI.getFiles() as BinaryFiles
+			const sceneHash = computeElementVersionHash(elements)
+			let syncedElementsCount = 0
 
-			// 1. Send Scene
-			const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
-			const sceneJson = JSON.stringify(sceneData)
-			const sceneBuffer = new TextEncoder().encode(sceneJson)
-			socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
+			if (!hasBroadcastedSceneRef.current) {
+				const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
+				const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
+				socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
+				hasBroadcastedSceneRef.current = true
+				lastBroadcastedSceneHashRef.current = sceneHash
+				broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
+				syncedElementsCount = elements.length
+			} else if (lastBroadcastedSceneHashRef.current !== sceneHash) {
+				const incrementalElements = getIncrementalSceneElements(
+					elements,
+					broadcastedElementVersionsRef.current,
+				)
+
+				if (incrementalElements.length === 0) {
+					const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
+					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
+					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
+					broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
+					syncedElementsCount = elements.length
+				} else {
+					const sceneData = { type: SyncMessageType.SceneUpdate, payload: { elements: incrementalElements } }
+					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
+					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
+					broadcastedElementVersionsRef.current = updateBroadcastedElementVersions(
+						broadcastedElementVersionsRef.current,
+						incrementalElements,
+					)
+					syncedElementsCount = incrementalElements.length
+				}
+
+				lastBroadcastedSceneHashRef.current = sceneHash
+			}
 
 			// 2. Send only new or changed files
 			if (files && Object.keys(files).length > 0) {
@@ -205,16 +265,34 @@ export function useSync() {
 					}
 				}
 				prevSyncedFilesRef.current = currentFileHashes
-				logSyncResult('websocket', { status: 'sync success', elementsCount: elements.length })
+				logSyncResult('websocket', { status: 'sync success', elementsCount: syncedElementsCount })
 			} else {
-				logSyncResult('websocket', { status: 'sync success', elementsCount: elements.length })
+				logSyncResult('websocket', { status: 'sync success', elementsCount: syncedElementsCount })
 				prevSyncedFilesRef.current = {}
 			}
 		} catch (error) {
 			logger.error('[Sync] WebSocket sync failed:', error)
 			logSyncResult('websocket', { status: 'sync error', error: error instanceof Error ? error.message : String(error) })
 		}
-	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly])
+	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isInRoom])
+
+	const doPeriodicFullSceneHealing = useCallback(() => {
+		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly || !isInRoom || !hasBroadcastedSceneRef.current) {
+			return
+		}
+
+		try {
+			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+			const sceneHash = computeElementVersionHash(elements)
+			const sceneData = { type: SyncMessageType.SceneUpdate, payload: { elements } }
+			const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
+			socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
+			lastBroadcastedSceneHashRef.current = sceneHash
+			broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
+		} catch (error) {
+			logger.error('[Sync] Periodic full-scene healing failed:', error)
+		}
+	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isInRoom])
 
 	const throttledSyncToLocal = useMemo(() =>
 		// Use both leading and trailing edge executions to ensure changes are saved immediately and after delay
@@ -230,6 +308,24 @@ export function useSync() {
 		// Use both leading and trailing edge executions for WebSocket sync
 		throttle(doSyncViaWebSocket, WEBSOCKET_SYNC_DELAY, { leading: true, trailing: true })
 	, [doSyncViaWebSocket])
+
+	const throttledFullSceneHealing = useMemo(() =>
+		throttle(doPeriodicFullSceneHealing, FULL_SCENE_HEALING_INTERVAL, { leading: false, trailing: true })
+	, [doPeriodicFullSceneHealing])
+
+	const flushPendingWebSocketSync = useCallback(() => {
+		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly || !isInRoom) {
+			return
+		}
+
+		throttledSyncViaWebSocket.flush()
+	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isInRoom, throttledSyncViaWebSocket])
+
+	useEffect(() => {
+		if (isInRoom && fileId && socket && collabStatus === 'online' && !isReadOnly) {
+			throttledSyncViaWebSocket()
+		}
+	}, [isInRoom, fileId, socket, collabStatus, isReadOnly, throttledSyncViaWebSocket])
 
 	// --- Cursor Sync ---
 	const doSyncCursors = useCallback(
@@ -324,6 +420,10 @@ export function useSync() {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 			const files = excalidrawAPI.getFiles()
 			cachedStateRef.current = { elements, files }
+			const sceneHash = computeElementVersionHash(elements)
+			if (sceneHash !== lastBroadcastedSceneHashRef.current) {
+				throttledFullSceneHealing()
+			}
 		}
 
 		throttledSyncToLocal()
@@ -337,7 +437,7 @@ export function useSync() {
 		}
 
 		logger.debug('[Sync] Changes detected, triggered sync operations')
-	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncViewport, excalidrawAPI])
+	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledFullSceneHealing, throttledSyncViewport, excalidrawAPI])
 
 	const onPointerUpdate = useCallback(
 		(payload: {
@@ -355,11 +455,7 @@ export function useSync() {
 	// Capture syncer state immediately to avoid closure issues
 	const isSyncerRef = useRef(isDedicatedSyncer)
 	useEffect(() => {
-		if (isDedicatedSyncer !== isSyncerRef.current) {
-			// eslint-disable-next-line no-console
-			console.log('[Sync] SYNCER STATUS:', isDedicatedSyncer ? 'DESIGNATED AS SYNCER' : 'NOT SYNCER')
-			isSyncerRef.current = isDedicatedSyncer
-		}
+		isSyncerRef.current = isDedicatedSyncer
 	}, [isDedicatedSyncer])
 
 	// Cache the latest state for final sync - update on EVERY change
@@ -402,19 +498,18 @@ export function useSync() {
 			xhr.setRequestHeader('Authorization', `Bearer ${jwt}`)
 
 			xhr.send(data)
-			// eslint-disable-next-line no-console
-			console.log('[Sync] Final sync done, status:', xhr.status)
 		} catch (error) {
-			// eslint-disable-next-line no-console
-			console.error('[Sync] Final sync failed:', error)
+			logger.error('[Sync] Final sync failed:', error)
 		}
 	}, [fileId])
 
 	useEffect(() => {
 		const handleBeforeUnload = () => {
+			if (excalidrawAPI && !isReadOnly) {
+				flushPendingWebSocketSync()
+			}
+
 			if (excalidrawAPI && !isReadOnly && isSyncerRef.current) {
-				// eslint-disable-next-line no-console
-				console.log('[Sync] Page unloading - syncing as dedicated syncer')
 				// Cancel any pending throttled trailing call FIRST
 				throttledSyncToLocal.cancel()
 				throttledSyncToServerAPI.cancel()
@@ -426,7 +521,13 @@ export function useSync() {
 
 		// Also handle visibility change as backup for mobile/tabs
 		const handleVisibilityChange = () => {
-			if (document.visibilityState === 'hidden' && isSyncerRef.current && excalidrawAPI && !isReadOnly) {
+			if (document.visibilityState !== 'hidden' || !excalidrawAPI || isReadOnly) {
+				return
+			}
+
+			flushPendingWebSocketSync()
+
+			if (isSyncerRef.current) {
 				throttledSyncToLocal.cancel()
 				throttledSyncToServerAPI.cancel()
 				doSyncToLocal()
@@ -442,6 +543,10 @@ export function useSync() {
 			window.removeEventListener('beforeunload', handleBeforeUnload)
 			document.removeEventListener('visibilitychange', handleVisibilityChange)
 
+			if (excalidrawAPI && !isReadOnly) {
+				flushPendingWebSocketSync()
+			}
+
 			// If we're the dedicated syncer and unmounting, do a final sync
 			if (isSyncerRef.current && excalidrawAPI && !isReadOnly) {
 				// Cancel pending throttled calls
@@ -456,9 +561,10 @@ export function useSync() {
 			throttledSyncToLocal.cancel()
 			throttledSyncToServerAPI.cancel()
 			throttledSyncViaWebSocket.cancel()
+			throttledFullSceneHealing.cancel()
 			throttledSyncCursors.cancel()
 		}
-	}, [doSyncToLocal, doSyncToServerAPI, doFinalServerSync, throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledSyncCursors, excalidrawAPI, isReadOnly])
+	}, [doSyncToLocal, doSyncToServerAPI, doFinalServerSync, throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledFullSceneHealing, throttledSyncCursors, excalidrawAPI, isReadOnly, flushPendingWebSocketSync])
 
 	return { onChange, onPointerUpdate }
 }
