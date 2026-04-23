@@ -23,6 +23,7 @@ OC.L10N.register(
     "Advanced settings" : "Avancerade inställningar",
     "Close" : "Stäng",
     "Generating…" : "Genererar...",
+    "Generate" : "Generera",
     "Add reaction" : "Lägg till reaktion",
     "Recording" : "Inspelning",
     "Nextcloud Text app is not available. Please install and enable it." : "Nextcloud Textapp är inte tillgänglig. Installera och aktivera den.",
