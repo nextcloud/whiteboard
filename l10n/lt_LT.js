@@ -42,6 +42,7 @@ OC.L10N.register(
     "Duration" : "Trukmė",
     "Stop recording" : "Sustabdykite įrašymą",
     "Unknown user" : "Nežinomas naudotojas",
+    "{count} users" : "{count} vartotojų",
     "File" : "Failas",
     "Running" : "Bėgimas",
     "Paused" : "Pristabdyti",
