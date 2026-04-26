@@ -7,6 +7,7 @@ OC.L10N.register(
     "Whiteboard app" : "Rašymo lentos programėlė",
     "Failed to verify the connection:" : "Nepavyko patikrinti ryšio:",
     "Verifying connection…" : "Tikrinamas ryšys…",
+    "Shared secret" : "Bendrinama paslaptis",
     "Save settings" : "Įrašyti nustatymus",
     "Advanced settings" : "Išplėstiniai nustatymai",
     "Close" : "Užverti",
