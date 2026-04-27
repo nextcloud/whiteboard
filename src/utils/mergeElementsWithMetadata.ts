@@ -73,6 +73,26 @@ export function mergeElementsWithMetadata(
 			whiteboardElement.customData.creator = localElement.customData.creator
 		}
 
+		const aiGenerated = remoteElement?.customData?.aiGenerated
+			?? localElement?.customData?.aiGenerated
+			?? whiteboardElement.customData?.aiGenerated
+		if (aiGenerated) {
+			if (!whiteboardElement.customData) {
+				whiteboardElement.customData = {}
+			}
+			whiteboardElement.customData.aiGenerated = aiGenerated
+		}
+
+		const aiDisclosureLabel = remoteElement?.customData?.aiDisclosureLabel
+			?? localElement?.customData?.aiDisclosureLabel
+			?? whiteboardElement.customData?.aiDisclosureLabel
+		if (aiDisclosureLabel) {
+			if (!whiteboardElement.customData) {
+				whiteboardElement.customData = {}
+			}
+			whiteboardElement.customData.aiDisclosureLabel = aiDisclosureLabel
+		}
+
 		// Preserve table-specific custom data from whichever version won reconciliation
 		// This ensures tableHtml, isTable, and tableLock are not lost
 		const sourceElement = remoteElement || localElement
