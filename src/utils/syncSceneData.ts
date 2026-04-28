@@ -44,6 +44,57 @@ export const computeElementVersionHash = (
 	return hash >>> 0 // Ensure positive integer
 }
 
+export type BroadcastedElementVersion = {
+	version: number
+	versionNonce: number
+}
+
+export type BroadcastedElementVersions = Record<string, BroadcastedElementVersion>
+
+const buildElementVersionMarker = (
+	element: Pick<ExcalidrawElement, 'version' | 'versionNonce'>,
+): BroadcastedElementVersion => ({
+	version: element.version,
+	versionNonce: element.versionNonce,
+})
+
+export const buildBroadcastedElementVersions = (
+	elements: readonly ExcalidrawElement[],
+): BroadcastedElementVersions => {
+	return elements.reduce<BroadcastedElementVersions>((versions, element) => {
+		versions[element.id] = buildElementVersionMarker(element)
+		return versions
+	}, {})
+}
+
+export const updateBroadcastedElementVersions = (
+	currentVersions: BroadcastedElementVersions,
+	elements: readonly ExcalidrawElement[],
+): BroadcastedElementVersions => {
+	if (elements.length === 0) {
+		return currentVersions
+	}
+
+	const nextVersions = { ...currentVersions }
+
+	elements.forEach((element) => {
+		nextVersions[element.id] = buildElementVersionMarker(element)
+	})
+
+	return nextVersions
+}
+
+export const getIncrementalSceneElements = (
+	elements: readonly ExcalidrawElement[],
+	broadcastedElementVersions: BroadcastedElementVersions,
+): readonly ExcalidrawElement[] => {
+	return elements.filter((element) => {
+		const currentVersion = broadcastedElementVersions[element.id]
+		return currentVersion?.version !== element.version
+			|| currentVersion.versionNonce !== element.versionNonce
+	})
+}
+
 /**
  *
  * @param obj1 object 1 to compare
