@@ -13,6 +13,10 @@ import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import logger from '../utils/logger'
+import {
+	normalizePersistedBoardDocument,
+	normalizePersistedBoardMeta,
+} from '../utils/persistedBoardData'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
 import type { BinaryFiles } from '@excalidraw/excalidraw/types/types'
@@ -46,12 +50,14 @@ export function useSync() {
 		terminateWorker,
 		isWorkerReady,
 		worker,
+		resetPersistedMetadata,
 	} = useSyncStore(
 		useShallow(state => ({
 			initializeWorker: state.initializeWorker,
 			terminateWorker: state.terminateWorker,
 			isWorkerReady: state.isWorkerReady,
 			worker: state.worker,
+			resetPersistedMetadata: state.resetPersistedMetadata,
 		})),
 	)
 
@@ -89,7 +95,8 @@ export function useSync() {
 	// Reset prevSyncedFilesRef when fileId changes to prevent leakage across files
 	useEffect(() => {
 		prevSyncedFilesRef.current = {}
-	}, [fileId]) // Depends on fileId from the hook scope
+		resetPersistedMetadata()
+	}, [fileId, resetPersistedMetadata]) // Depends on fileId from the hook scope
 
 	// --- Sync Logic ---
 
@@ -105,7 +112,16 @@ export function useSync() {
 			const files = excalidrawAPI.getFiles() as BinaryFiles
 			const filteredAppState = sanitizeAppStateForSync(appState)
 
-			const message: WorkerInboundMessage = { type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState }
+			const message: WorkerInboundMessage = {
+				type: 'SYNC_TO_LOCAL',
+				fileId,
+				elements,
+				files,
+				appState: filteredAppState,
+				scrollToContent: typeof appState.scrollToContent === 'boolean'
+					? appState.scrollToContent
+					: true,
+			}
 			worker.postMessage(message)
 			logSyncResult('local', { status: 'syncing' })
 		} catch (error) {
@@ -146,6 +162,7 @@ export function useSync() {
 
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
 			const files = excalidrawAPI.getFiles() as BinaryFiles
+			const appState = excalidrawAPI.getAppState()
 
 			const message: WorkerInboundMessage = {
 				type: 'SYNC_TO_SERVER',
@@ -154,6 +171,10 @@ export function useSync() {
 				jwt,
 				elements,
 				files,
+				appState: sanitizeAppStateForSync(appState),
+				scrollToContent: typeof appState.scrollToContent === 'boolean'
+					? appState.scrollToContent
+					: true,
 			}
 
 			worker.postMessage(message)
@@ -323,7 +344,15 @@ export function useSync() {
 		if (excalidrawAPI) {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 			const files = excalidrawAPI.getFiles()
-			cachedStateRef.current = { elements, files }
+			const appState = excalidrawAPI.getAppState()
+			cachedStateRef.current = {
+				elements,
+				files,
+				appState: sanitizeAppStateForSync(appState),
+				scrollToContent: typeof appState.scrollToContent === 'boolean'
+					? appState.scrollToContent
+					: true,
+			}
 		}
 
 		throttledSyncToLocal()
@@ -363,7 +392,17 @@ export function useSync() {
 	}, [isDedicatedSyncer])
 
 	// Cache the latest state for final sync - update on EVERY change
-	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[]; files: BinaryFiles }>({ elements: [], files: {} as BinaryFiles })
+	const cachedStateRef = useRef<{
+		elements: readonly ExcalidrawElement[]
+		files: BinaryFiles
+		appState: ReturnType<typeof sanitizeAppStateForSync>
+		scrollToContent: boolean
+	}>({
+		elements: [],
+		files: {} as BinaryFiles,
+		appState: {},
+		scrollToContent: true,
+	})
 
 	// Direct sync when leaving - synchronous to ensure it completes
 	const doFinalServerSync = useCallback(() => {
@@ -383,15 +422,29 @@ export function useSync() {
 				return
 			}
 
-			// Use CACHED state instead of trying to get it now (might be cleared already)
-			const { elements, files } = cachedStateRef.current
+			const api = useExcalidrawStore.getState().excalidrawAPI
+			const currentRuntimeMeta = useSyncStore.getState()
+			const snapshot = api ? {
+				elements: api.getSceneElementsIncludingDeleted(),
+				files: api.getFiles() as BinaryFiles,
+				appState: sanitizeAppStateForSync(api.getAppState()),
+				scrollToContent: typeof api.getAppState().scrollToContent === 'boolean'
+					? api.getAppState().scrollToContent
+					: true,
+			} : cachedStateRef.current
 			// eslint-disable-next-line no-console
-			console.log('[Sync] Using cached state with', elements.length, 'elements')
+			console.log('[Sync] Using cached state with', snapshot.elements.length, 'elements')
 
 			const url = generateUrl(`apps/whiteboard/${fileId}`)
 
 			const data = JSON.stringify({
-				data: { elements, files: files || {} },
+				data: {
+					baseRev: currentRuntimeMeta.persistedRev,
+					elements: snapshot.elements,
+					files: snapshot.files || {},
+					appState: snapshot.appState,
+					scrollToContent: snapshot.scrollToContent,
+				},
 			})
 
 			// Use synchronous XMLHttpRequest (works in beforeunload)
@@ -402,6 +455,20 @@ export function useSync() {
 			xhr.setRequestHeader('Authorization', `Bearer ${jwt}`)
 
 			xhr.send(data)
+			if (xhr.responseText) {
+				try {
+					const responseData = JSON.parse(xhr.responseText)
+					if (xhr.status >= 200 && xhr.status < 300) {
+						const responseMeta = normalizePersistedBoardMeta(responseData?.meta)
+						useSyncStore.getState().setPersistedMetadata(responseMeta)
+					} else if (xhr.status === 409) {
+						const conflictDocument = normalizePersistedBoardDocument(responseData?.data)
+						useSyncStore.getState().setPersistedMetadata(conflictDocument.meta)
+					}
+				} catch (parseError) {
+					logger.warn('[Sync] Failed to parse final sync response', parseError)
+				}
+			}
 			// eslint-disable-next-line no-console
 			console.log('[Sync] Final sync done, status:', xhr.status)
 		} catch (error) {

@@ -14,6 +14,7 @@ export type WorkerInboundMessage =
 		elements: readonly ExcalidrawElement[]
 		files: BinaryFiles
 		appState?: Partial<AppState>
+		scrollToContent?: boolean
 	}
 	| {
 		type: 'SYNC_TO_SERVER'
@@ -22,14 +23,36 @@ export type WorkerInboundMessage =
 		jwt: string
 		elements: readonly ExcalidrawElement[]
 		files: BinaryFiles
+		appState?: Partial<AppState>
+		scrollToContent?: boolean
 	}
 
 export type WorkerOutboundMessage =
 	| { type: 'INIT_COMPLETE' }
 	| { type: 'INIT_ERROR'; error: string }
-	| { type: 'LOCAL_SYNC_COMPLETE'; duration: number; elementsCount: number }
-	| { type: 'LOCAL_SYNC_ERROR'; error: string }
-	| { type: 'SERVER_SYNC_COMPLETE'; duration: number; elementsCount: number; success: boolean; response?: unknown; skipped?: boolean }
-	| { type: 'SERVER_SYNC_ERROR'; error: string }
+	| { type: 'LOCAL_SYNC_COMPLETE'; fileId: number; duration: number; elementsCount: number }
+	| { type: 'LOCAL_SYNC_ERROR'; fileId?: number; error: string }
+	| {
+		type: 'SERVER_SYNC_COMPLETE'
+		fileId: number
+		duration: number
+		elementsCount: number
+		success: boolean
+		response?: unknown
+		skipped?: boolean
+		conflict?: boolean
+		persistedRev?: number
+		updatedAt?: number | null
+		updatedBy?: string | null
+	}
+	| {
+		type: 'SERVER_SYNC_CONFLICT'
+		fileId: number
+		error?: string
+		persistedRev?: number
+		updatedAt?: number | null
+		updatedBy?: string | null
+	}
+	| { type: 'SERVER_SYNC_ERROR'; fileId?: number; error: string }
 
 export type WorkerMessage = WorkerInboundMessage | WorkerOutboundMessage

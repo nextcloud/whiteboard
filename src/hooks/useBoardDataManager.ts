@@ -5,17 +5,20 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useState, useRef } from 'react'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { generateUrl } from '@nextcloud/router'
+import { useShallow } from 'zustand/react/shallow'
+import { db } from '../database/db'
+import { initialDataState } from '../constants/excalidraw'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useSyncStore } from '../stores/useSyncStore'
-import { db } from '../database/db'
-import { generateUrl } from '@nextcloud/router'
-import { useShallow } from 'zustand/react/shallow'
-import { initialDataState } from '../constants/excalidraw'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import logger from '../utils/logger'
-import { computeElementVersionHash, mergeSceneElements } from '../utils/syncSceneData'
+import {
+	extractSnapshotFromPersistedBoard,
+	resolveBoardLoadState,
+} from '../utils/persistedBoardData'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 export function useBoardDataManager() {
@@ -39,7 +42,12 @@ export function useBoardDataManager() {
 		fileVersion: state.fileVersion,
 	})))
 
-	const fetchDataFromServer = useCallback(async (fileId: number) => {
+	const { setPersistedMetadata, resetPersistedMetadata } = useSyncStore(useShallow(state => ({
+		setPersistedMetadata: state.setPersistedMetadata,
+		resetPersistedMetadata: state.resetPersistedMetadata,
+	})))
+
+	const fetchDataFromServer = useCallback(async (currentFileId: number) => {
 		try {
 			const jwt = await useJWTStore.getState().getJWT()
 			if (!jwt) {
@@ -47,7 +55,7 @@ export function useBoardDataManager() {
 				return null
 			}
 
-			const url = generateUrl(`apps/whiteboard/${fileId}`)
+			const url = generateUrl(`apps/whiteboard/${currentFileId}`)
 			const response = await fetch(url, {
 				method: 'GET',
 				headers: {
@@ -75,7 +83,6 @@ export function useBoardDataManager() {
 		}
 	}, [])
 
-	// Cleanup function to cancel all pending timeouts
 	const cancelPendingTimeouts = useCallback(() => {
 		loadingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout))
 		loadingTimeoutsRef.current.clear()
@@ -124,7 +131,7 @@ export function useBoardDataManager() {
 					}
 				}
 
-				if (!parsedContent || !Array.isArray(parsedContent.elements)) {
+				if (!parsedContent) {
 					logger.warn('[BoardDataManager] Version content missing elements array, falling back to defaults', {
 						versionSource,
 					})
@@ -133,17 +140,18 @@ export function useBoardDataManager() {
 					return
 				}
 
-				const sanitizedAppState = sanitizeAppStateForSync(parsedContent.appState)
+				const versionSnapshot = extractSnapshotFromPersistedBoard(parsedContent)
+				const sanitizedAppState = sanitizeAppStateForSync(versionSnapshot.appState)
 				const finalAppState = {
 					...initialDataState.appState,
 					...sanitizedAppState,
 				}
 
 				resolveInitialData({
-					elements: parsedContent.elements,
-					files: parsedContent.files || {},
+					elements: versionSnapshot.elements,
+					files: versionSnapshot.files || {},
 					appState: finalAppState,
-					scrollToContent: parsedContent.scrollToContent ?? true,
+					scrollToContent: versionSnapshot.scrollToContent,
 				})
 				setIsLoading(false)
 			} catch (error) {
@@ -156,12 +164,12 @@ export function useBoardDataManager() {
 
 		if (!fileId) {
 			logger.warn('[BoardDataManager] No fileId provided, cannot load data')
+			resetPersistedMetadata()
 			resolveInitialData(initialDataState)
 			setIsLoading(false)
 			return
 		}
 
-		// Store the current fileId to validate later
 		currentFileIdRef.current = fileId
 
 		try {
@@ -172,121 +180,23 @@ export function useBoardDataManager() {
 			}
 
 			const localData = await db.get(fileId)
-			const hasPendingLocalChanges = localData?.hasPendingLocalChanges ?? false
-
-			// Validate that we're still loading the same file
 			if (currentFileIdRef.current !== fileId) {
 				return
 			}
 
-			// ALWAYS fetch from server to get latest data
 			const serverData = await fetchDataFromServer(fileId)
-
-			// Validate that we're still loading the same file
 			if (currentFileIdRef.current !== fileId) {
 				return
 			}
 
-			let dataToUse = null
+			const boardState = resolveBoardLoadState({
+				localBoard: localData,
+				serverBoard: serverData,
+			})
 
-			if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
-				// Server has data
-				const { restoreElements } = await import('@nextcloud/excalidraw')
-
-				const restoredServerElements = restoreElements(serverData.elements, null)
-				const serverHash = computeElementVersionHash(restoredServerElements)
-				const serverScrollToContent = serverData.scrollToContent ?? true
-				const sanitizedServerAppState = sanitizeAppStateForSync(serverData.appState)
-				const sanitizedLocalAppState = sanitizeAppStateForSync(localData?.appState)
-
-				if (localData && localData.elements && Array.isArray(localData.elements) && hasPendingLocalChanges) {
-					// Local has pending changes – reconcile to avoid losing unsynced work
-					const restoredLocalElements = restoreElements(localData.elements, null)
-					const reconciledElements = mergeSceneElements(restoredLocalElements, restoredServerElements, {})
-
-					const mergedFiles = { ...localData.files, ...serverData.files }
-					const mergedAppState = { ...sanitizedLocalAppState, ...sanitizedServerAppState }
-
-					dataToUse = {
-						elements: reconciledElements,
-						files: mergedFiles,
-						appState: mergedAppState,
-						scrollToContent: serverScrollToContent,
-					}
-
-					await db.put(
-						fileId,
-						reconciledElements,
-						mergedFiles || {},
-						mergedAppState,
-						{
-							hasPendingLocalChanges: true,
-							lastSyncedHash: serverHash,
-						},
-					)
-				} else {
-					// Use server content as source of truth (restores, clean loads, etc.)
-					const mergedAppState = { ...sanitizedLocalAppState, ...sanitizedServerAppState }
-					const files = serverData.files || {}
-
-					dataToUse = {
-						...serverData,
-						files,
-						appState: mergedAppState,
-						scrollToContent: serverScrollToContent,
-					}
-
-					await db.put(
-						fileId,
-						serverData.elements,
-						files,
-						mergedAppState,
-						{
-							hasPendingLocalChanges: false,
-							lastSyncedHash: serverHash,
-						},
-					)
-				}
-			} else if (localData && localData.elements) {
-				// Only local has data
-				dataToUse = localData
-			} else {
-				// No data from either source
-				dataToUse = null
-			}
-
-			// Final validation before resolving data
-			if (currentFileIdRef.current !== fileId) {
-				return
-			}
-
-			// Use the reconciled/fetched data
-			if (dataToUse && dataToUse.elements) {
-				const elements = dataToUse.elements
-				const sanitizedAppState = sanitizeAppStateForSync(dataToUse.appState)
-				const finalAppState = { ...defaultSettings, ...sanitizedAppState }
-				const files = dataToUse.files || {}
-
-				// Force a small delay to ensure the component is ready to receive the data
+			if (!boardState) {
+				resetPersistedMetadata()
 				const timeout = setTimeout(() => {
-					// Validate one more time before resolving
-					if (currentFileIdRef.current === fileId) {
-						resolveInitialData({
-							elements,
-							appState: finalAppState,
-							files,
-							scrollToContent: dataToUse.scrollToContent ?? true,
-						})
-						setIsLoading(false)
-					}
-					loadingTimeoutsRef.current.delete(timeout)
-				}, 50)
-				loadingTimeoutsRef.current.add(timeout)
-			} else {
-				// No valid data from either source, use defaults
-				// Force a small delay to ensure the component is ready to receive the data
-				const timeout = setTimeout(() => {
-					// Validate one more time before resolving
 					if (currentFileIdRef.current === fileId) {
 						resolveInitialData(initialDataState)
 						setIsLoading(false)
@@ -294,13 +204,46 @@ export function useBoardDataManager() {
 					loadingTimeoutsRef.current.delete(timeout)
 				}, 50)
 				loadingTimeoutsRef.current.add(timeout)
+				return
 			}
+
+			await db.put(
+				fileId,
+				boardState.snapshot.elements,
+				boardState.snapshot.files || {},
+				boardState.snapshot.appState,
+				{
+					scrollToContent: boardState.snapshot.scrollToContent,
+					hasPendingLocalChanges: boardState.hasPendingLocalChanges,
+					lastSyncedHash: boardState.lastSyncedHash,
+					persistedRev: boardState.meta.persistedRev,
+					lastServerUpdatedAt: boardState.meta.updatedAt,
+					lastServerUpdatedBy: boardState.meta.updatedBy,
+				},
+			)
+
+			setPersistedMetadata(boardState.meta)
+
+			const sanitizedAppState = sanitizeAppStateForSync(boardState.snapshot.appState)
+			const finalAppState = { ...defaultSettings, ...sanitizedAppState }
+			const timeout = setTimeout(() => {
+				if (currentFileIdRef.current === fileId) {
+					resolveInitialData({
+						elements: boardState.snapshot.elements,
+						appState: finalAppState,
+						files: boardState.snapshot.files || {},
+						scrollToContent: boardState.snapshot.scrollToContent,
+					})
+					setIsLoading(false)
+				}
+				loadingTimeoutsRef.current.delete(timeout)
+			}, 50)
+			loadingTimeoutsRef.current.add(timeout)
 		} catch (error) {
 			logger.error('[BoardDataManager] Error loading data:', error)
-			// Force a small delay to ensure the component is ready to receive the data
 			const timeout = setTimeout(() => {
-				// Validate one more time before resolving
 				if (currentFileIdRef.current === fileId) {
+					resetPersistedMetadata()
 					resolveInitialData(initialDataState)
 					setIsLoading(false)
 				}
@@ -308,7 +251,17 @@ export function useBoardDataManager() {
 			}, 50)
 			loadingTimeoutsRef.current.add(timeout)
 		}
-	}, [fileId, resolveInitialData, fetchDataFromServer, isVersionPreview, versionSource, fileVersion])
+	}, [
+		fileId,
+		fileVersion,
+		fetchDataFromServer,
+		isVersionPreview,
+		resetPersistedMetadata,
+		resetInitialDataPromise,
+		resolveInitialData,
+		setPersistedMetadata,
+		versionSource,
+	])
 
 	const saveOnUnmount = useCallback(() => {
 		if (useWhiteboardConfigStore.getState().isVersionPreview) {
@@ -319,7 +272,6 @@ export function useBoardDataManager() {
 		const currentIsReadOnly = useWhiteboardConfigStore.getState().isReadOnly
 
 		if (api && !currentIsReadOnly) {
-
 			const currentFileId = useWhiteboardConfigStore.getState().fileId
 			const currentWorker = useSyncStore.getState().worker
 			const currentIsWorkerReady = useSyncStore.getState().isWorkerReady
@@ -331,7 +283,6 @@ export function useBoardDataManager() {
 					const files = api.getFiles()
 					const filteredAppState = sanitizeAppStateForSync(appState)
 
-					// Set up a one-time message handler to detect when sync is complete
 					const messageHandler = (event: MessageEvent) => {
 						if (event.data.type === 'LOCAL_SYNC_COMPLETE') {
 							currentWorker.removeEventListener('message', messageHandler)
@@ -341,19 +292,18 @@ export function useBoardDataManager() {
 						}
 					}
 
-					// Add the message handler
 					currentWorker.addEventListener('message', messageHandler)
-
-					// Send the sync message
 					currentWorker.postMessage({
 						type: 'SYNC_TO_LOCAL',
 						fileId: currentFileId,
 						elements,
 						files,
 						appState: filteredAppState,
+						scrollToContent: typeof appState.scrollToContent === 'boolean'
+							? appState.scrollToContent
+							: true,
 					})
 
-					// Set a timeout to remove the handler after 500ms in case we don't get a response
 					setTimeout(() => {
 						currentWorker.removeEventListener('message', messageHandler)
 					}, 500)
@@ -364,7 +314,6 @@ export function useBoardDataManager() {
 		}
 	}, [])
 
-	// Load data when fileId changes
 	useEffect(() => {
 		const shouldLoad = (
 			(isVersionPreview && !!versionSource)
@@ -372,13 +321,9 @@ export function useBoardDataManager() {
 		)
 
 		if (shouldLoad) {
-			// Cancel any pending timeouts from previous loads
 			cancelPendingTimeouts()
-
-			// Reset the initialDataPromise to ensure clean state
 			resetInitialDataPromise()
 
-			// Clear any existing Excalidraw data
 			const api = useExcalidrawStore.getState().excalidrawAPI
 			if (api) {
 				api.resetScene()
@@ -389,7 +334,6 @@ export function useBoardDataManager() {
 		}
 	}, [fileId, fileVersion, isVersionPreview, versionSource, loadBoard, cancelPendingTimeouts, resetInitialDataPromise])
 
-	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
 			cancelPendingTimeouts()

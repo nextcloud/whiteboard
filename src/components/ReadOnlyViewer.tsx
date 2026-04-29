@@ -19,16 +19,10 @@ import logger from '../utils/logger'
 import type { WhiteboardAppProps } from '../App'
 import { initialDataState } from '../constants/excalidraw'
 import { useThemeHandling } from '../hooks/useThemeHandling'
+import { extractSnapshotFromPersistedBoard } from '../utils/persistedBoardData'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 const ReadOnlyExcalidraw = memo(ExcalidrawComponent)
-
-type ParsedVersionContent = {
-	elements?: unknown
-	files?: unknown
-	appState?: unknown
-	scrollToContent?: boolean
-}
 
 type SceneState = ExcalidrawInitialDataState & {
 	scrollToContent?: boolean
@@ -112,24 +106,25 @@ export default function ReadOnlyViewer({
 					return
 				}
 
-				let parsed: ParsedVersionContent = {}
+				let parsed: unknown = {}
 				if (rawContent.trim().length > 0) {
 					try {
-						parsed = JSON.parse(rawContent) as ParsedVersionContent
-					} catch (parseError) {
+						parsed = JSON.parse(rawContent)
+					} catch {
 						throw new Error('Failed to parse version JSON')
 					}
 				}
 
-				const elements = sanitizeElements(parsed.elements)
-				const files = sanitizeFiles(parsed.files)
-				const appState = sanitizeAppState(parsed.appState)
+				const snapshot = extractSnapshotFromPersistedBoard(parsed)
+				const elements = sanitizeElements(snapshot.elements)
+				const files = sanitizeFiles(snapshot.files)
+				const appState = sanitizeAppState(snapshot.appState)
 
 				setScene({
 					elements,
 					files,
 					appState,
-					scrollToContent: parsed.scrollToContent ?? true,
+					scrollToContent: snapshot.scrollToContent,
 				})
 			} catch (fetchError) {
 				if (abortController.signal.aborted) {

@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import logger from '../utils/logger'
+import { useWhiteboardConfigStore } from './useWhiteboardConfigStore'
 
 export type SyncOperation = 'local' | 'server' | 'websocket' | 'cursor'
 
@@ -21,10 +22,19 @@ interface SyncStore {
 	// Core state
 	worker: Worker | null
 	isWorkerReady: boolean
+	persistedRev: number
+	lastServerUpdatedAt: number | null
+	lastServerUpdatedBy: string | null
 
 	// Actions
 	setWorker: (worker: Worker | null) => void
 	setIsWorkerReady: (ready: boolean) => void
+	setPersistedMetadata: (meta: {
+		persistedRev?: number
+		updatedAt?: number | null
+		updatedBy?: string | null
+	}) => void
+	resetPersistedMetadata: () => void
 
 	// Worker functions
 	initializeWorker: () => Worker | null
@@ -35,12 +45,35 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 	// State
 	worker: null,
 	isWorkerReady: false,
+	persistedRev: 0,
+	lastServerUpdatedAt: null,
+	lastServerUpdatedBy: null,
 
 	// Actions
 	setWorker: (worker) => set({ worker }),
 
 	setIsWorkerReady: (ready) => {
 		set({ isWorkerReady: ready })
+	},
+
+	setPersistedMetadata: (meta) => {
+		set((state) => ({
+			persistedRev: meta.persistedRev ?? state.persistedRev,
+			lastServerUpdatedAt: Object.prototype.hasOwnProperty.call(meta, 'updatedAt')
+				? meta.updatedAt ?? null
+				: state.lastServerUpdatedAt,
+			lastServerUpdatedBy: Object.prototype.hasOwnProperty.call(meta, 'updatedBy')
+				? meta.updatedBy ?? null
+				: state.lastServerUpdatedBy,
+		}))
+	},
+
+	resetPersistedMetadata: () => {
+		set({
+			persistedRev: 0,
+			lastServerUpdatedAt: null,
+			lastServerUpdatedBy: null,
+		})
 	},
 
 	// Worker functions
@@ -66,6 +99,9 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 			if (syncWorker) {
 				syncWorker.onmessage = (event) => {
 					const { type, ...data } = event.data
+					const currentFileId = useWhiteboardConfigStore.getState().fileId
+					const messageFileId = typeof data.fileId === 'number' ? data.fileId : null
+					const isActiveFileMessage = messageFileId === null || messageFileId === currentFileId
 
 					switch (type) {
 					case 'INIT_COMPLETE':
@@ -91,11 +127,33 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 						break
 
 					case 'SERVER_SYNC_COMPLETE':
+						if (isActiveFileMessage) {
+							get().setPersistedMetadata({
+								persistedRev: data.persistedRev,
+								updatedAt: data.updatedAt,
+								updatedBy: data.updatedBy,
+							})
+						}
 						// Use the imported logSyncResult function
 						logSyncResult('server', {
-							status: 'success',
+							status: data.conflict ? 'success after conflict' : 'success',
 							elementsCount: data.elementsCount,
 							error: null,
+						})
+						break
+
+					case 'SERVER_SYNC_CONFLICT':
+						if (isActiveFileMessage) {
+							get().setPersistedMetadata({
+								persistedRev: data.persistedRev,
+								updatedAt: data.updatedAt,
+								updatedBy: data.updatedBy,
+							})
+						}
+						logger.warn('[SyncStore] Worker server sync conflict:', data.error)
+						logSyncResult('server', {
+							status: 'conflict',
+							error: data.error,
 						})
 						break
 
@@ -135,6 +193,9 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 			set({
 				worker: null,
 				isWorkerReady: false,
+				persistedRev: 0,
+				lastServerUpdatedAt: null,
+				lastServerUpdatedBy: null,
 			})
 		}
 	},
