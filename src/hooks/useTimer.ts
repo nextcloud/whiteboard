@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { selectEffectiveReadOnly, useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
@@ -108,8 +108,8 @@ export function useTimer({ fileId }: UseTimerProps): UseTimerResult {
 		status: state.status,
 	})))
 
-	const { isReadOnly } = useWhiteboardConfigStore(useShallow(state => ({
-		isReadOnly: state.isReadOnly,
+	const { effectiveReadOnly } = useWhiteboardConfigStore(useShallow(state => ({
+		effectiveReadOnly: selectEffectiveReadOnly(state),
 	})))
 
 	const isConnected = connectionStatus === 'online' && socket?.connected === true
@@ -223,7 +223,7 @@ export function useTimer({ fileId }: UseTimerProps): UseTimerResult {
 			handleTimerError(t('whiteboard', 'Missing whiteboard identifier'))
 			return false
 		}
-		if (isReadOnly) {
+		if (effectiveReadOnly) {
 			handleTimerError(t('whiteboard', 'You need write access to control the timer'))
 			return false
 		}
@@ -233,7 +233,7 @@ export function useTimer({ fileId }: UseTimerProps): UseTimerResult {
 		}
 		console.debug(`[Timer] Proceeding with action "${action}"`)
 		return true
-	}, [fileIdStr, isReadOnly, isConnected, socket, handleTimerError])
+	}, [effectiveReadOnly, fileIdStr, isConnected, socket, handleTimerError])
 
 	const startTimer = useCallback((durationMs: number) => {
 		if (!ensureCanControl('start')) return
@@ -279,7 +279,7 @@ export function useTimer({ fileId }: UseTimerProps): UseTimerResult {
 		...timerState,
 		displayRemainingMs,
 		isConnected,
-		canControl: isConnected && !isReadOnly,
+		canControl: isConnected && !effectiveReadOnly,
 		error,
 		startTimer,
 		pauseTimer,

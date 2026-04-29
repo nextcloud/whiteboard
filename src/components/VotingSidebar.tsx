@@ -30,7 +30,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	const isOpen = (voting: Voting) => voting.state === 'open'
 	const hasVotedInVoting = (voting: Voting) => voting.options.some(hasVoted)
 	const canVote = (voting: Voting) => {
-		if (!currentUserId || !isOpen(voting)) return false
+		if (isReadOnly || !currentUserId || !isOpen(voting)) return false
 		// For single-choice, can't vote if already voted
 		if (voting.type === 'single-choice' && hasVotedInVoting(voting)) return false
 		// For multiple-choice, can always vote (on options not yet voted for)
@@ -44,10 +44,18 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	}
 
 	const handleVote = (voting: Voting, option: VotingOption) => {
+		if (isReadOnly) {
+			return
+		}
+
 		if (isOpen(voting)) onVote(voting.uuid, option.uuid)
 	}
 
 	const handleEndVoting = (voting: Voting) => {
+		if (isReadOnly) {
+			return
+		}
+
 		if (isOpen(voting)) onEndVoting(voting.uuid)
 	}
 
@@ -68,6 +76,11 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	}
 
 	const addResultAsElements = (voting: Voting) => {
+		if (isReadOnly) {
+			showError(t('whiteboard', 'This tab is currently view-only'))
+			return
+		}
+
 		if (!excalidrawAPI) {
 			showError(t('whiteboard', 'Canvas not ready. Please try again.'))
 			return
@@ -250,6 +263,10 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	}
 
 	const handleStartVoting = () => {
+		if (isReadOnly) {
+			return
+		}
+
 		spawnDialog(VotingModal, {
 			onStartVoting,
 		}, () => {})
@@ -272,14 +289,14 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 				<div key={voting.uuid} className="voting-item">
 					<h4>{voting.question}</h4>
 					<div className="voting-actions">
-						{isAuthor(voting) && isOpen(voting) && (
+						{!isReadOnly && isAuthor(voting) && isOpen(voting) && (
 							<button
 								onClick={() => handleEndVoting(voting)}
 								className="end-voting-button">
 								{t('whiteboard', 'End voting')}
 							</button>
 						)}
-						{!isOpen(voting) && (
+						{!isReadOnly && !isOpen(voting) && (
 							<button
 								onClick={() => addResultAsElements(voting)}
 								className="add-result-button">

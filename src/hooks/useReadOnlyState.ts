@@ -7,22 +7,33 @@
 
 import { useEffect, useCallback } from 'react'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { selectEffectiveReadOnly, useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
 
 export function useReadOnlyState() {
 	const { excalidrawAPI } = useExcalidrawStore()
-	const { isReadOnly, setReadOnly, isVersionPreview } = useWhiteboardConfigStore()
+	const {
+		isReadOnly,
+		isPassiveFollower,
+		setReadOnly,
+		isVersionPreview,
+	} = useWhiteboardConfigStore()
 	const { getJWT, parseJwt } = useJWTStore()
 
 	// Update read-only state based on JWT
 	const updateReadOnlyState = useCallback((readOnly: boolean) => {
-		const effectiveReadOnly = isVersionPreview ? true : readOnly
+		const storeReadOnly = isVersionPreview ? true : readOnly
+		const effectiveReadOnly = selectEffectiveReadOnly({
+			isReadOnly: storeReadOnly,
+			isPassiveFollower,
+			isVersionPreview,
+		})
 
 		// Set the read-only state in the store
-		setReadOnly(effectiveReadOnly)
+		setReadOnly(storeReadOnly)
 		console.log('[Permissions] User has', effectiveReadOnly ? 'read-only' : 'write', 'access', {
 			forcedByPreview: isVersionPreview && !readOnly,
+			forcedByFollower: isPassiveFollower,
 		})
 
 		// If we have the Excalidraw API, update the view mode directly as well
@@ -49,7 +60,7 @@ export function useReadOnlyState() {
 				console.error('[Permissions] Error updating view mode via Excalidraw API:', error)
 			}
 		}
-	}, [excalidrawAPI, setReadOnly, isVersionPreview])
+	}, [excalidrawAPI, isPassiveFollower, isVersionPreview, setReadOnly])
 
 	// Refresh read-only state from JWT
 	const refreshReadOnlyState = useCallback(async () => {
@@ -97,7 +108,7 @@ export function useReadOnlyState() {
 				console.warn('[Permissions] Skipping JWT refresh due to invalid fileId')
 			}
 		}
-	}, [excalidrawAPI, isReadOnly, updateReadOnlyState, refreshReadOnlyState])
+	}, [excalidrawAPI, isReadOnly, isPassiveFollower, updateReadOnlyState, refreshReadOnlyState])
 
 	// Initial setup - refresh read-only state from JWT
 	useEffect(() => {
@@ -115,6 +126,7 @@ export function useReadOnlyState() {
 
 	return {
 		isReadOnly,
+		effectiveReadOnly: selectEffectiveReadOnly({ isReadOnly, isPassiveFollower, isVersionPreview }),
 		updateReadOnlyState,
 		refreshReadOnlyState,
 	}

@@ -115,7 +115,8 @@
 	}
 }
 
-.network-status {
+.network-status,
+.sync-tab-status {
 	display: flex;
 	align-items: center;
 	padding: 8px;
@@ -200,6 +201,18 @@
 		background-color: rgba(76, 175, 80, 0.2);
 		color: rgba(76, 175, 80, 1);
 		border: 1px solid rgba(76, 175, 80, 0.4);
+	}
+
+	&--leader {
+		background-color: rgba(34, 197, 94, 0.18);
+		color: rgb(21, 128, 61);
+		border: 1px solid rgba(34, 197, 94, 0.38);
+	}
+
+	&--passive {
+		background-color: rgba(59, 130, 246, 0.16);
+		color: rgb(29, 78, 216);
+		border: 1px solid rgba(59, 130, 246, 0.32);
 	}
 
 	&--expanded {
@@ -369,7 +382,8 @@
 }
 
 @media (prefers-reduced-motion) {
-	.network-status {
+	.network-status,
+	.sync-tab-status {
 		transition: none;
 		animation: none !important;
 
@@ -381,7 +395,8 @@
 
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
-	.network-status {
+	.network-status,
+	.sync-tab-status {
 		bottom: 90px;
 		inset-inline-end: 8px;
 		padding: 6px;
