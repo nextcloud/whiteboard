@@ -31,6 +31,7 @@ import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } 
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT', // Incoming scene data from others
+	SceneUpdate = 'SCENE_UPDATE', // Incoming incremental scene data from others
 	SceneRestore = 'SCENE_RESTORE', // Force replace scene from authoritative source
 	MouseLocation = 'MOUSE_LOCATION', // Incoming cursor data
 	ImageAdd = 'IMAGE_ADD', // Incoming image data from others
@@ -591,16 +592,22 @@ export function useCollaboration() {
 					break
 				}
 				case BroadcastType.SceneInit:
+				case BroadcastType.SceneUpdate:
 					if (Array.isArray(decoded.payload?.elements)) {
+						console.log('[Collaboration] Received scene payload', {
+							type: decoded.type,
+							elementCount: decoded.payload.elements.length,
+							sampleElementIds: decoded.payload.elements.slice(0, 10).map((element: ExcalidrawElement) => element.id),
+						})
 						const elementsString = JSON.stringify(decoded.payload.elements)
 						if (elementsString === lastElementsString) {
-							console.warn('[Collaboration] Received identical SceneInit payload, skipping update')
+							console.warn('[Collaboration] Received identical scene payload, skipping update')
 							break
 						}
 						queueSceneUpdate(decoded.payload.elements)
 						lastElementsString = JSON.stringify(decoded.payload.elements)
 					} else {
-						console.warn('[Collaboration] Invalid SceneInit payload:', decoded.payload)
+						console.warn('[Collaboration] Invalid scene payload:', decoded.payload)
 					}
 					break
 				case BroadcastType.MouseLocation:
@@ -662,17 +669,32 @@ export function useCollaboration() {
 		setDedicatedSyncer(data.isSyncer)
 	}, [setDedicatedSyncer])
 
-	// Handle user joined event - broadcast all images if we're the syncer
+	// Handle user joined event - broadcast the current full scene and images if we're the syncer
 	const handleUserJoined = useCallback((data: { userId: string, userName: string, socketId: string, isSyncer: boolean }) => {
-		// If we are the syncer, broadcast all our images to the new user
+		// If we are the syncer, re-broadcast the current full scene so late joiners
+		// reconcile against the latest peer state via Excalidraw's built-in merge.
 		const { isDedicatedSyncer } = useCollaborationStore.getState()
 		if (isDedicatedSyncer && excalidrawAPI) {
-			console.log(`[Collaboration] Broadcasting images to new user: ${data.userName}`)
+			console.log(`[Collaboration] Broadcasting full scene to new user: ${data.userName}`)
 
+			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 			const files = excalidrawAPI.getFiles()
 			const socket = useCollaborationStore.getState().socket
 
 			if (!socket || !socket.connected || !fileId) return
+
+			const sceneData = { type: BroadcastType.SceneInit, payload: { elements } }
+			const sceneJson = JSON.stringify(sceneData)
+			const sceneBuffer = new TextEncoder().encode(sceneJson)
+			socket.emit('server-broadcast', `${fileId}`, sceneBuffer, [])
+
+			console.log('[Collaboration] Re-broadcasted full scene for room convergence', {
+				targetUser: data.userName,
+				elementsCount: elements.length,
+				sampleElementIds: elements.slice(0, 10).map((element) => element.id),
+			})
+
+			console.log(`[Collaboration] Broadcasting images to new user: ${data.userName}`)
 
 			// Broadcast each image file
 			Object.entries(files).forEach(([, file]) => {
