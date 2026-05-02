@@ -12,6 +12,7 @@ OC.L10N.register(
     "Advanced settings" : "Išplėstiniai nustatymai",
     "Close" : "Užverti",
     "Generating…" : "Generuojama…",
+    "Generate" : "Generuoti",
     "Recording" : "Įrašymas",
     "Insert Table" : "Įterpti lentelę",
     "Cancel" : "Atsisakyti",
