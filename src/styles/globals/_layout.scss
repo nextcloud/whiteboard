@@ -237,6 +237,120 @@
 	}
 }
 
+.save-scoped-dialog__backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: 100021;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	background: rgba(0, 0, 0, 0.35);
+}
+
+.save-scoped-dialog {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: min(420px, 100%);
+	padding: 20px;
+	color: var(--color-main-text);
+	background: var(--color-main-background);
+	border-radius: var(--border-radius-large);
+	box-shadow: 0 4px 18px var(--color-box-shadow);
+
+	h2 {
+		margin: 0;
+		font-size: 20px;
+		font-weight: 700;
+	}
+
+	p {
+		margin: 0;
+	}
+
+	label {
+		font-weight: 600;
+	}
+
+	input[type="text"] {
+		width: 100%;
+		min-height: 38px;
+		padding: 8px 10px;
+		color: var(--color-main-text);
+		background: var(--color-main-background);
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius);
+	}
+}
+
+.save-scoped-dialog__hint {
+	color: var(--color-text-maxcontrast);
+	line-height: 1.4;
+}
+
+.save-scoped-dialog__scope {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	border: none;
+
+	legend {
+		margin-bottom: 4px;
+		padding: 0;
+		font-weight: 600;
+	}
+}
+
+.save-scoped-dialog__scope-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 400;
+	cursor: pointer;
+
+	input[type="radio"] {
+		flex: none;
+		width: auto;
+		min-height: 0;
+		margin: 0;
+	}
+}
+
+.save-scoped-dialog__error {
+	color: var(--color-text-error, var(--color-error, #d93025));
+	font-weight: 600;
+}
+
+.save-scoped-dialog__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.save-scoped-dialog__button {
+	min-height: 34px;
+	padding: 6px 14px;
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+	border: none;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+
+	&:disabled {
+		cursor: default;
+		opacity: 0.6;
+	}
+}
+
+.save-scoped-dialog__button--primary {
+	color: var(--color-primary-text);
+	background: var(--color-primary);
+}
+
 .version-preview-banner {
 	position: absolute;
 	top: calc(var(--default-grid-baseline) * 2);

@@ -67,6 +67,7 @@ export default {
 				this.saving = false
 			}
 		},
+		t,
 	},
 }
 </script>

@@ -12,6 +12,9 @@ import logger from '../utils/logger'
 
 type LibraryItemExtended = LibraryItem & {
 	filename?: string;
+	// Set on items resolved from a saved/org library (read-only section in the
+	// editor); never persisted back into the personal library.
+	libraryName?: string;
 }
 
 export function useLibrary() {
@@ -90,7 +93,7 @@ export function useLibrary() {
 			logger.error('[Library] Error fetching library:', error)
 			return null
 		}
-	})
+	}, [getJWT])
 
 	const updateLibraryItems = useCallback(async (items: LibraryItems): Promise<void> => {
 		try {
@@ -99,6 +102,9 @@ export function useLibrary() {
 				logger.warn('[Library] No JWT found, cannot update library')
 				return
 			}
+			// Persist only the writable "My library" items — items tagged with a
+			// libraryName belong to a read-only source resolved per board.
+			const itemsToSave = items.filter(item => !(item as LibraryItemExtended).libraryName)
 			const url = generateUrl('apps/whiteboard/library')
 			const response = await globalThis.fetch(url, {
 				method: 'PUT',
@@ -107,7 +113,7 @@ export function useLibrary() {
 					'X-Requested-With': 'XMLHttpRequest',
 					Authorization: `Bearer ${jwt}`,
 				},
-				body: JSON.stringify({ items }),
+				body: JSON.stringify({ items: itemsToSave }),
 			})
 
 			if (!response.ok) {
@@ -116,7 +122,7 @@ export function useLibrary() {
 		} catch (error) {
 			logger.error('[Library] Error updating library:', error)
 		}
-	})
+	}, [getJWT])
 
 	return {
 		fetchLibraryItems,

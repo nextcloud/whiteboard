@@ -17,6 +17,7 @@ use OCP\EventDispatcher\IEventDispatcher;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Files\File;
 use OCP\Files\NotFoundException;
+use OCP\IGroupManager;
 use OCP\IUserSession;
 use OCP\Util;
 
@@ -31,6 +32,7 @@ class BeforeTemplateRenderedListener implements IEventListener {
 		private ConfigService $configService,
 		private IEventDispatcher $eventDispatcher,
 		private IUserSession $userSession,
+		private IGroupManager $groupManager,
 	) {
 	}
 
@@ -74,5 +76,10 @@ class BeforeTemplateRenderedListener implements IEventListener {
 			'autoUploadOnDisconnect',
 			$user ? $this->configService->getUserAutoUploadOnDisconnect($user->getUID()) : false,
 		);
+		$this->initialState->provideInitialState(
+			'isAdmin',
+			$user !== null && $this->groupManager->isAdmin($user->getUID()),
+		);
+		$this->initialState->provideInitialState('orgTemplatesSupported', Util::getVersion()[0] >= 30);
 	}
 }

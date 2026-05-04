@@ -9,10 +9,13 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\AppInfo;
 
+use OCP\AppFramework\Bootstrap\IRegistrationContext;
+
 class ApplicationTest extends \Test\TestCase {
 
 	public function testApp(): void {
-		$registrationContext = $this->createMock(\OCP\AppFramework\Bootstrap\IRegistrationContext::class);
+		$registrationContext = $this->createMock(IRegistrationContext::class);
+
 		$app = new Application();
 		$app->register($registrationContext);
 		self::assertTrue(true);

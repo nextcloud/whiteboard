@@ -5,13 +5,13 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
 import { translate as t } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
-import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawImperativeAPI, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
@@ -27,7 +27,12 @@ import { AuthErrorNotification } from './components/AuthErrorNotification'
 import { useSync } from './hooks/useSync'
 import { useSyncStore } from './stores/useSyncStore'
 import { useLibrary } from './hooks/useLibrary'
+import { useLibraryCatalog } from './hooks/useLibraryCatalog'
+import { useCanvasTemplate } from './hooks/useCanvasTemplate'
+import { SaveScopedDialog } from './components/SaveScopedDialog'
+import type { SaveScope } from './components/SaveScopedDialog'
 import { useShallow } from 'zustand/react/shallow'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { useAssistant } from './hooks/useAssistant'
 import logger from './utils/logger'
@@ -132,6 +137,18 @@ export default function App({
 	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
+	const { resolveLibrary, saveLibrary } = useLibraryCatalog()
+	const { publishCanvasTemplate } = useCanvasTemplate()
+	// Org saves need admin rights and a server (30+) whose picker can
+	// actually surface org templates.
+	const canSaveOrg = useMemo(() => loadState<boolean>('whiteboard', 'isAdmin', false)
+		&& loadState<boolean>('whiteboard', 'orgTemplatesSupported', true), [])
+	const [libraryDialogOpen, setLibraryDialogOpen] = useState(false)
+	const [canvasTemplateDialogOpen, setCanvasTemplateDialogOpen] = useState(false)
+	const [saveDialogError, setSaveDialogError] = useState<string | null>(null)
+	const [isSavingDialog, setIsSavingDialog] = useState(false)
+	// Items captured when "Save as library" is triggered from the library ⋯ menu.
+	const libraryItemsRef = useRef<LibraryItems>([])
 	useCollaboration()
 	const { isReadOnly, refreshReadOnlyState } = useReadOnlyState()
 
@@ -286,7 +303,10 @@ export default function App({
 	}, [handleExternalRestore, normalizedFileId])
 
 	// Use the board data manager hook
-	const { saveOnUnmount, isLoading } = useBoardDataManager()
+	const {
+		saveOnUnmount,
+		isLoading,
+	} = useBoardDataManager()
 
 	useEffect(() => {
 		if (!isLoading && loadState('whiteboard', 'directEditing', false)) {
@@ -296,6 +316,8 @@ export default function App({
 
 	// Effect to handle fileId changes - cleanup previous board data
 	useEffect(() => {
+		setIsLibraryLoaded(false)
+
 		// Clear any existing Excalidraw data when fileId changes
 		if (excalidrawAPI) {
 			excalidrawAPI.resetScene()
@@ -310,32 +332,62 @@ export default function App({
 				saveOnUnmount()
 			}
 		}
-	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount])
+	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount, setIsLibraryLoaded])
 
 	useEffect(() => {
-		resetInitialDataPromise()
+		if (isLoading || !excalidrawAPI) {
+			return
+		}
 
 		// Fetch library items from the API
 		window.name = fileName
-		const fetchLibInterval = setInterval(async () => {
-			const api = useExcalidrawStore.getState().excalidrawAPI
-			if (!api) {
-				logger.warn('[App] Excalidraw API not available, cannot update library')
-				return
-			}
-			clearInterval(fetchLibInterval)
+		setIsLibraryLoaded(false)
+		let cancelled = false
+		;(async () => {
 			try {
-				const libraryItems = await fetchLibraryItems()
-				await api.updateLibrary({
-					libraryItems: libraryItems || [],
+				// Authoritative palette (merge:false): the writable "My library"
+				// (untagged) plus, if this board was created from a saved library,
+				// that library's CURRENT items resolved live (tagged libraryName ->
+				// rendered as a read-only section, never written back into My library).
+				const myLibrary = (await fetchLibraryItems()) ?? []
+				const ref = useWhiteboardConfigStore.getState().libraryRef
+				let refItems: LibraryItems = []
+				if (ref) {
+					try {
+						refItems = await resolveLibrary(ref.scope, ref.name)
+					} catch (error) {
+						// Board still opens with the personal library only.
+						showError(t('whiteboard', 'Could not load the library "{name}".', { name: ref.name }))
+						logger.error('[App] Error resolving library reference:', error)
+					}
+				}
+				if (cancelled) {
+					return
+				}
+				await excalidrawAPI.updateLibrary({
+					libraryItems: [...myLibrary, ...refItems],
+					merge: false,
 				})
 				setIsLibraryLoaded(true)
 			} catch (error) {
 				logger.error('[App] Error updating library items:', error)
 			}
-		}, 1000)
+		})()
 
-		// On unmount: Clean up all stores to prevent stale state
+		return () => {
+			cancelled = true
+		}
+	}, [
+		fileName,
+		fetchLibraryItems,
+		resolveLibrary,
+		isLoading,
+		excalidrawAPI,
+		normalizedFileId,
+		setIsLibraryLoaded,
+	])
+
+	useEffect(() => {
 		return () => {
 			// Save any pending changes before resetting stores
 			saveOnUnmount()
@@ -347,7 +399,7 @@ export default function App({
 			// Terminate the worker
 			terminateWorker()
 		}
-	}, [resetInitialDataPromise, resetStore, resetExcalidrawAPI, terminateWorker, saveOnUnmount])
+	}, [resetStore, resetExcalidrawAPI, terminateWorker, saveOnUnmount])
 
 	const [activeCommentThreadId, setActiveCommentThreadId] = useState<string | null>(null)
 	const [commentSidebarDocked, setCommentSidebarDocked] = useState(false)
@@ -408,7 +460,116 @@ export default function App({
 		} catch (error) {
 			logger.error('[App] Error syncing library items:', error)
 		}
-	}, [isLibraryLoaded])
+	}, [isLibraryLoaded, updateLibraryItems])
+
+	const handleLibrarySaveAs = useCallback((items: LibraryItems) => {
+		if (isReadOnly || isVersionPreview) {
+			return
+		}
+		libraryItemsRef.current = items ?? []
+		setSaveDialogError(null)
+		setLibraryDialogOpen(true)
+	}, [isReadOnly, isVersionPreview])
+
+	const closeSaveDialogs = useCallback(() => {
+		setLibraryDialogOpen(false)
+		setCanvasTemplateDialogOpen(false)
+		setSaveDialogError(null)
+	}, [])
+
+	const clearSaveDialogError = useCallback(() => {
+		setSaveDialogError(null)
+	}, [])
+
+	const submitLibraryDialog = useCallback(async (scope: SaveScope, name: string) => {
+		if (name === '') {
+			setSaveDialogError(t('whiteboard', 'Enter a library name.'))
+			return
+		}
+		const items = libraryItemsRef.current ?? []
+		if (items.length === 0) {
+			setSaveDialogError(t('whiteboard', 'Add at least one shape to your library first.'))
+			return
+		}
+		setIsSavingDialog(true)
+		setSaveDialogError(null)
+		try {
+			await saveLibrary(scope, name, items)
+			showSuccess(scope === 'org'
+				? t('whiteboard', 'Organization library saved.')
+				: t('whiteboard', 'Library saved.'))
+			setLibraryDialogOpen(false)
+		} catch (error) {
+			const message = (error as { status?: number }).status === 409
+				? t('whiteboard', 'A canvas template with this name already exists. Choose a different name.')
+				: t('whiteboard', 'Could not save library.')
+			setSaveDialogError(message)
+			showError(message)
+			logger.error('[App] Error saving library:', error)
+		} finally {
+			setIsSavingDialog(false)
+		}
+	}, [saveLibrary])
+
+	const handleSaveAsCanvasTemplate = useCallback(() => {
+		if (isReadOnly || isVersionPreview) {
+			return
+		}
+		setSaveDialogError(null)
+		setCanvasTemplateDialogOpen(true)
+	}, [isReadOnly, isVersionPreview])
+
+	const submitCanvasTemplateDialog = useCallback(async (scope: SaveScope, name: string) => {
+		if (name === '') {
+			setSaveDialogError(t('whiteboard', 'Enter a canvas name.'))
+			return
+		}
+		const api = useExcalidrawStore.getState().excalidrawAPI
+		if (!api) {
+			return
+		}
+		const elements = api.getSceneElements()
+		if (elements.length === 0) {
+			setSaveDialogError(t('whiteboard', 'This whiteboard has no content to save as a canvas.'))
+			return
+		}
+		// Only ship file blobs still referenced by an image element.
+		const allFiles = api.getFiles()
+		const files: typeof allFiles = {}
+		for (const element of elements) {
+			const fileId = (element as { fileId?: string | null }).fileId
+			if (element.type === 'image' && fileId && allFiles[fileId]) {
+				files[fileId] = allFiles[fileId]
+			}
+		}
+		const data = {
+			elements,
+			files,
+			appState: { viewBackgroundColor: api.getAppState().viewBackgroundColor },
+		}
+		if (JSON.stringify(data).length > 15 * 1024 * 1024) {
+			setSaveDialogError(t('whiteboard', 'Canvas is too large (max 15 MB).'))
+			return
+		}
+		setIsSavingDialog(true)
+		setSaveDialogError(null)
+		try {
+			await publishCanvasTemplate(scope, name, data)
+			showSuccess(scope === 'org'
+				? t('whiteboard', 'Organization canvas published.')
+				: t('whiteboard', 'Canvas saved to your Templates folder.'))
+			setCanvasTemplateDialogOpen(false)
+		} catch (error) {
+			const message = (error as { status?: number }).status === 409
+				? t('whiteboard', 'A library with this name already exists. Choose a different name.')
+				: t('whiteboard', 'Could not save canvas.')
+			setSaveDialogError(message)
+			showError(message)
+			logger.error('[App] Error saving canvas template:', error)
+		} finally {
+			setIsSavingDialog(false)
+		}
+	}, [publishCanvasTemplate])
 
 	const libraryReturnUrl = encodeURIComponent(window.location.href)
 
@@ -476,6 +637,15 @@ export default function App({
 		isVersionPreview ? 'App App--version-preview' : 'App'
 	), [isVersionPreview])
 
+	const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI | null) => {
+		if (api) {
+			setExcalidrawAPI(api)
+			return
+		}
+
+		resetExcalidrawAPI()
+	}, [resetExcalidrawAPI, setExcalidrawAPI])
+
 	if (isLoading) {
 		return (
 			<div className="App" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -531,7 +701,7 @@ export default function App({
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
 					beforeElementCreated={beforeElementCreated}
-					excalidrawAPI={setExcalidrawAPI}
+					excalidrawAPI={onExcalidrawAPI}
 					initialData={initialDataPromise}
 					generateIdForFile={generateIdForFile}
 					onPointerUpdate={onPointerUpdate}
@@ -548,6 +718,9 @@ export default function App({
 					onLibraryChange={onLibraryChange}
 					langCode={lang}
 					libraryReturnUrl={libraryReturnUrl}
+					libraryMenuTitle={t('whiteboard', 'My library')}
+					onLibrarySaveAs={(isReadOnly || isVersionPreview) ? undefined : handleLibrarySaveAs}
+					onSaveAsCanvasTemplate={(isReadOnly || isVersionPreview) ? undefined : handleSaveAsCanvasTemplate}
 				>
 					<Sidebar name="commentSidebar" docked={commentSidebarDocked} onDock={setCommentSidebarDocked}>
 						<Sidebar.Header>
@@ -621,6 +794,32 @@ export default function App({
 					<CreatorDisplay
 						excalidrawAPI={excalidrawAPI}
 						settings={creatorDisplaySettings}
+					/>
+				)}
+				{libraryDialogOpen && (
+					<SaveScopedDialog
+						title={t('whiteboard', 'Save as library')}
+						hint={t('whiteboard', 'Save your current library as a reusable, named library. New whiteboards can start from it, and updates reach every board using it.')}
+						nameLabel={t('whiteboard', 'Library name')}
+						isAdmin={canSaveOrg}
+						isSaving={isSavingDialog}
+						error={saveDialogError}
+						onClose={closeSaveDialogs}
+						onSubmit={submitLibraryDialog}
+						onErrorClear={clearSaveDialogError}
+					/>
+				)}
+				{canvasTemplateDialogOpen && (
+					<SaveScopedDialog
+						title={t('whiteboard', 'Save as canvas')}
+						hint={t('whiteboard', 'Save a copy of this whiteboard as a canvas. New whiteboards created from it start with its content.')}
+						nameLabel={t('whiteboard', 'Canvas name')}
+						isAdmin={canSaveOrg}
+						isSaving={isSavingDialog}
+						error={saveDialogError}
+						onClose={closeSaveDialogs}
+						onSubmit={submitCanvasTemplateDialog}
+						onErrorClear={clearSaveDialogError}
 					/>
 				)}
 			</div>

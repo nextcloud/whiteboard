@@ -13,6 +13,7 @@ const AppConfig = createAppConfig({
 	main: resolve(join('src', 'main.ts')),
 	settings: resolve(join('src', 'admin.ts')),
 	personal: resolve(join('src', 'personal.ts')),
+	files: resolve(join('src', 'files.ts')),
 }, {
 	config: defineConfig({
 		resolve: {
