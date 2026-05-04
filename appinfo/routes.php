@@ -23,6 +23,8 @@ return [
 		['name' => 'Whiteboard#getLib', 'url' => 'library', 'verb' => 'GET'],
 		/** @see WhiteboardController::updateLib() */
 		['name' => 'Whiteboard#updateLib', 'url' => 'library', 'verb' => 'PUT'],
+		/** @see WhiteboardController::saveLibTemplate() */
+		['name' => 'Whiteboard#saveLibTemplate', 'url' => 'library/template', 'verb' => 'POST'],
 		/** @see WhiteboardController::update() */
 		['name' => 'Whiteboard#update', 'url' => '{fileId}', 'verb' => 'PUT'],
 		/** @see WhiteboardController::show() */
@@ -33,6 +35,12 @@ return [
 		['name' => 'Recording#upload', 'url' => 'recording/{fileId}/upload', 'verb' => 'POST'],
 		/** @see SettingsController::update() */
 		['name' => 'Settings#update', 'url' => 'settings', 'verb' => 'POST'],
+		/** @see SettingsController::listGlobalLibraryTemplates() */
+		['name' => 'Settings#listGlobalLibraryTemplates', 'url' => 'settings/global-library', 'verb' => 'GET'],
+		/** @see SettingsController::uploadGlobalLibraryTemplate() */
+		['name' => 'Settings#uploadGlobalLibraryTemplate', 'url' => 'settings/global-library', 'verb' => 'POST'],
+		/** @see SettingsController::deleteGlobalLibraryTemplate() */
+		['name' => 'Settings#deleteGlobalLibraryTemplate', 'url' => 'settings/global-library/{templateName}', 'verb' => 'DELETE'],
 		/** @see SettingsController::updatePersonal() */
 		['name' => 'Settings#updatePersonal', 'url' => 'settings/personal', 'verb' => 'POST'],
 	]

@@ -18,10 +18,78 @@ import logger from '../utils/logger'
 import { computeElementVersionHash, mergeSceneElements } from '../utils/syncSceneData'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
+const VOLATILE_ELEMENT_KEYS = new Set([
+	'id',
+	'seed',
+	'version',
+	'versionNonce',
+	'updated',
+	'index',
+	'groupIds',
+	'frameId',
+	'boundElements',
+	'containerId',
+])
+
+function canonicalizeLibraryValue(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(canonicalizeLibraryValue)
+	}
+	if (value && typeof value === 'object') {
+		const normalized: Record<string, unknown> = {}
+		for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+			if (VOLATILE_ELEMENT_KEYS.has(key)) {
+				continue
+			}
+			normalized[key] = canonicalizeLibraryValue((value as Record<string, unknown>)[key])
+		}
+		return normalized
+	}
+	return value
+}
+
+function sanitizeLibraryItems(items: unknown): any[] {
+	if (!Array.isArray(items)) {
+		return []
+	}
+
+	const sanitized: any[] = []
+	const seen = new Set<string>()
+
+	for (const item of items) {
+		if (!item || typeof item !== 'object' || !Array.isArray((item as any).elements) || (item as any).elements.length === 0) {
+			continue
+		}
+
+		const cleanItem = { ...(item as any) }
+		delete cleanItem.templateName
+		delete cleanItem.scope
+		delete cleanItem.filename
+		delete cleanItem.basename
+		cleanItem.elements = [...cleanItem.elements]
+
+		let key = ''
+		try {
+			key = JSON.stringify(canonicalizeLibraryValue(cleanItem.elements))
+		} catch {
+			key = cleanItem.id || ''
+		}
+		if (!key || seen.has(key)) {
+			continue
+		}
+		seen.add(key)
+		sanitized.push(cleanItem)
+	}
+
+	return sanitized
+}
+
 export function useBoardDataManager() {
 	const [isLoading, setIsLoading] = useState(true)
 	const loadingTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set())
 	const currentFileIdRef = useRef<number | null>(null)
+	const initialLibraryItemsRef = useRef<any[]>([])
+	const initialLibraryItemsPresentRef = useRef(false)
 
 	const {
 		fileId,
@@ -82,6 +150,8 @@ export function useBoardDataManager() {
 	}, [])
 
 	const loadBoard = useCallback(async () => {
+		initialLibraryItemsRef.current = []
+		initialLibraryItemsPresentRef.current = false
 		if (isVersionPreview) {
 			try {
 				if (!versionSource) {
@@ -138,6 +208,11 @@ export function useBoardDataManager() {
 					...initialDataState.appState,
 					...sanitizedAppState,
 				}
+
+				const libraryItemsPresent = Array.isArray(parsedContent.libraryItems)
+				const libraryItems = sanitizeLibraryItems(parsedContent.libraryItems)
+				initialLibraryItemsRef.current = libraryItems
+				initialLibraryItemsPresentRef.current = libraryItemsPresent
 
 				resolveInitialData({
 					elements: parsedContent.elements,
@@ -210,6 +285,7 @@ export function useBoardDataManager() {
 					dataToUse = {
 						elements: reconciledElements,
 						files: mergedFiles,
+						libraryItems: sanitizeLibraryItems(serverData.libraryItems),
 						appState: mergedAppState,
 						scrollToContent: serverScrollToContent,
 					}
@@ -266,6 +342,11 @@ export function useBoardDataManager() {
 				const sanitizedAppState = sanitizeAppStateForSync(dataToUse.appState)
 				const finalAppState = { ...defaultSettings, ...sanitizedAppState }
 				const files = dataToUse.files || {}
+				const libraryItemsPresent = Object.prototype.hasOwnProperty.call(dataToUse, 'libraryItems')
+					&& Array.isArray(dataToUse.libraryItems)
+				const libraryItems = sanitizeLibraryItems(dataToUse.libraryItems)
+				initialLibraryItemsRef.current = libraryItems
+				initialLibraryItemsPresentRef.current = libraryItemsPresent
 
 				// Force a small delay to ensure the component is ready to receive the data
 				const timeout = setTimeout(() => {
@@ -283,6 +364,8 @@ export function useBoardDataManager() {
 				}, 50)
 				loadingTimeoutsRef.current.add(timeout)
 			} else {
+				initialLibraryItemsRef.current = []
+				initialLibraryItemsPresentRef.current = false
 				// No valid data from either source, use defaults
 				// Force a small delay to ensure the component is ready to receive the data
 				const timeout = setTimeout(() => {
@@ -301,6 +384,8 @@ export function useBoardDataManager() {
 			const timeout = setTimeout(() => {
 				// Validate one more time before resolving
 				if (currentFileIdRef.current === fileId) {
+					initialLibraryItemsRef.current = []
+					initialLibraryItemsPresentRef.current = false
 					resolveInitialData(initialDataState)
 					setIsLoading(false)
 				}
@@ -396,9 +481,14 @@ export function useBoardDataManager() {
 		}
 	}, [cancelPendingTimeouts])
 
+	const getInitialLibraryItems = useCallback(() => initialLibraryItemsRef.current, [])
+	const getInitialLibraryItemsPresent = useCallback(() => initialLibraryItemsPresentRef.current, [])
+
 	return {
 		isLoading,
 		loadBoard,
 		saveOnUnmount,
+		getInitialLibraryItems,
+		getInitialLibraryItemsPresent,
 	}
 }
