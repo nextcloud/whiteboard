@@ -14,6 +14,7 @@ use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
+use OCP\IGroupManager;
 use OCP\IUserSession;
 use OCP\Util;
 
@@ -23,6 +24,7 @@ class LoadViewerListener implements IEventListener {
 		private IInitialState $initialState,
 		private ConfigService $configService,
 		private IUserSession $userSession,
+		private IGroupManager $groupManager,
 	) {
 	}
 
@@ -52,5 +54,10 @@ class LoadViewerListener implements IEventListener {
 			'autoUploadOnDisconnect',
 			$user ? $this->configService->getUserAutoUploadOnDisconnect($user->getUID()) : false
 		);
+		$this->initialState->provideInitialState(
+			'isAdmin',
+			$user !== null && $this->groupManager->isAdmin($user->getUID())
+		);
+		$this->initialState->provideInitialState('orgTemplatesSupported', Util::getVersion()[0] >= 30);
 	}
 }

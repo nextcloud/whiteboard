@@ -40,7 +40,6 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 	public static function getTemplateFileCreator(IL10N $l10n): TemplateFileCreator {
 		$whiteboard = new TemplateFileCreator(Application::APP_ID, $l10n->t('New whiteboard'), '.whiteboard');
 		$whiteboard->addMimetype('application/vnd.excalidraw+json');
-		$whiteboard->addMimetype('application/octet-stream');
 
 		// Always use the custom SVG icon for consistency
 		$iconContent = file_get_contents(__DIR__ . '/../../img/app-filetype.svg');

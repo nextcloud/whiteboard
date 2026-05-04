@@ -9,15 +9,18 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\AppInfo;
 
+use OCA\Files\Event\LoadAdditionalScriptsEvent;
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
+use OCA\Whiteboard\Listener\FilesLoadAdditionalScriptsListener;
 use OCA\Whiteboard\Listener\LoadTextEditorListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterDirectEditorListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
 use OCA\Whiteboard\Settings\SetupCheck;
+use OCA\Whiteboard\Template\GlobalTemplateProvider;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -50,6 +53,14 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerEventListener(RegisterDirectEditorEvent::class, RegisterDirectEditorListener::class);
+
+		[$major] = Util::getVersion();
+		if ($major >= 30) {
+			$context->registerTemplateProvider(GlobalTemplateProvider::class);
+			// The picker enhancer only targets the template picker markup that
+			// ships alongside the template provider API gated above.
+			$context->registerEventListener(LoadAdditionalScriptsEvent::class, FilesLoadAdditionalScriptsListener::class);
+		}
 		$context->registerSetupCheck(SetupCheck::class);
 	}
 

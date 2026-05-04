@@ -13,6 +13,7 @@ use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\Settings\ISettings;
+use OCP\Util;
 
 class Admin implements ISettings {
 	public function __construct(
@@ -28,6 +29,9 @@ class Admin implements ISettings {
 		$this->initialState->provideInitialState('secret', $this->configService->getWhiteboardSharedSecret());
 		$this->initialState->provideInitialState('jwt', $this->jwtService->generateJWTFromPayload([]));
 		$this->initialState->provideInitialState('maxFileSize', $this->configService->getMaxFileSize());
+		// Org templates surface in the picker via the template provider API,
+		// which only exists on Nextcloud 30+ (see AppInfo\Application).
+		$this->initialState->provideInitialState('orgTemplatesSupported', Util::getVersion()[0] >= 30);
 		$response = new TemplateResponse(
 			'whiteboard',
 			'admin',

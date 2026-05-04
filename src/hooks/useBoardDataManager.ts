@@ -27,6 +27,7 @@ export function useBoardDataManager() {
 		fileId,
 		resolveInitialData,
 		resetInitialDataPromise,
+		setLibraryRef,
 		isVersionPreview,
 		versionSource,
 		fileVersion,
@@ -34,6 +35,7 @@ export function useBoardDataManager() {
 		fileId: state.fileId,
 		resolveInitialData: state.resolveInitialData,
 		resetInitialDataPromise: state.resetInitialDataPromise,
+		setLibraryRef: state.setLibraryRef,
 		isVersionPreview: state.isVersionPreview,
 		versionSource: state.versionSource,
 		fileVersion: state.fileVersion,
@@ -187,6 +189,9 @@ export function useBoardDataManager() {
 				return
 			}
 
+			// The library (if any) this board was created from; resolved live in App.
+			setLibraryRef(serverData?.libraryRef ?? null)
+
 			let dataToUse = null
 
 			if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
@@ -308,7 +313,7 @@ export function useBoardDataManager() {
 			}, 50)
 			loadingTimeoutsRef.current.add(timeout)
 		}
-	}, [fileId, resolveInitialData, fetchDataFromServer, isVersionPreview, versionSource, fileVersion])
+	}, [fileId, resolveInitialData, setLibraryRef, fetchDataFromServer, isVersionPreview, versionSource, fileVersion])
 
 	const saveOnUnmount = useCallback(() => {
 		if (useWhiteboardConfigStore.getState().isVersionPreview) {

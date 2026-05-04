@@ -9,6 +9,8 @@ import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/ty
 
 type InitialDataPromise = ReturnType<typeof createResolvablePromise>
 
+export type LibraryRef = { scope: string; name: string }
+
 interface WhiteboardConfigState {
 	// Core state
 	fileId: number
@@ -22,6 +24,7 @@ interface WhiteboardConfigState {
 	isVersionPreview: boolean
 	versionSource: string | null
 	fileVersion: string | null
+	libraryRef: LibraryRef | null // library this board was created from (resolved live)
 
 	// UI state
 	zenModeEnabled: boolean
@@ -46,6 +49,7 @@ interface WhiteboardConfigState {
 	resolveInitialData: (data: ExcalidrawInitialDataState) => void
 	resetInitialDataPromise: () => void
 	resetStore: () => void // Reset the entire store state
+	setLibraryRef: (ref: LibraryRef | null) => void
 
 	// UI actions
 	setZenModeEnabled: (enabled: boolean) => void
@@ -69,6 +73,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	isVersionPreview: false,
 	versionSource: null,
 	fileVersion: null,
+	libraryRef: null,
 
 	// UI state
 	zenModeEnabled: false,
@@ -126,10 +131,13 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 			isReadOnly: false,
 			initialDataPromise: createResolvablePromise(),
 			pendingInitialDataPromises: [],
+			libraryRef: null,
 			zenModeEnabled: false,
 			gridModeEnabled: false,
 		})
 	},
+
+	setLibraryRef: (ref: LibraryRef | null) => set({ libraryRef: ref }),
 
 	// UI actions
 	setZenModeEnabled: (enabled: boolean) => set({ zenModeEnabled: enabled }),

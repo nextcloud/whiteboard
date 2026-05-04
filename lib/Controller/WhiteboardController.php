@@ -10,9 +10,11 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Controller;
 
 use Exception;
+use InvalidArgumentException;
 use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Exception\UnauthorizedException;
 use OCA\Whiteboard\Service\Authentication\GetUserFromIdServiceFactory;
+use OCA\Whiteboard\Service\CanvasTemplateService;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
 use OCA\Whiteboard\Service\File\GetFileServiceFactory;
@@ -20,11 +22,13 @@ use OCA\Whiteboard\Service\JWTService;
 use OCA\Whiteboard\Service\WhiteboardContentService;
 use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\AppFramework\ApiController;
+use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\ICacheFactory;
+use OCP\IGroupManager;
 use OCP\IMemcache;
 use OCP\IRequest;
 use Psr\Log\LoggerInterface;
@@ -44,10 +48,12 @@ final class WhiteboardController extends ApiController {
 		private JWTService $jwtService,
 		private WhiteboardContentService $contentService,
 		private WhiteboardLibraryService $libraryService,
+		private CanvasTemplateService $canvasTemplateService,
 		private ExceptionService $exceptionService,
 		private ConfigService $configService,
 		private LoggerInterface $logger,
 		private ICacheFactory $cacheFactory,
+		private IGroupManager $groupManager,
 	) {
 		parent::__construct($appName, $request);
 		$this->cache = $cacheFactory->createLocking('whiteboard_sync');
@@ -108,8 +114,8 @@ final class WhiteboardController extends ApiController {
 	public function getLib(): DataResponse {
 		try {
 			$jwt = $this->getJwtFromRequest();
-			$this->jwtService->getUserIdFromJWT($jwt);
-			$data = $this->libraryService->getUserLib();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$data = $this->libraryService->getUserLib($userId);
 
 			return new DataResponse(['data' => $data]);
 		} catch (Exception $e) {
@@ -128,6 +134,99 @@ final class WhiteboardController extends ApiController {
 			$this->libraryService->updateUserLib($userId, $items);
 
 			return new DataResponse(['status' => 'success']);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function listLibraries(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			return new DataResponse(['data' => $this->libraryService->listLibraries($userId)]);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function resolveLibrary(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$scope = (string)$this->request->getParam('scope', '');
+			$name = (string)$this->request->getParam('name', '');
+			return new DataResponse(['data' => $this->libraryService->resolveLibrary($userId, $scope, $name)]);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function saveLibrary(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$scope = (string)$this->request->getParam('scope', 'personal');
+			$name = (string)$this->request->getParam('name', '');
+			$items = $this->request->getParam('items', []);
+			if (!is_array($items)) {
+				throw new InvalidArgumentException('Invalid library items', Http::STATUS_BAD_REQUEST);
+			}
+			if ($scope === 'org' && !$this->groupManager->isAdmin($userId)) {
+				throw new InvalidArgumentException('Only administrators can save organization libraries', Http::STATUS_FORBIDDEN);
+			}
+			return new DataResponse(['library' => $this->libraryService->saveLibrary($userId, $scope, $name, $items)]);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function deleteLibrary(string $scope, string $name): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			if ($scope === 'org' && !$this->groupManager->isAdmin($userId)) {
+				throw new InvalidArgumentException('Only administrators can delete organization libraries', Http::STATUS_FORBIDDEN);
+			}
+			$this->libraryService->deleteLibrary($userId, $scope, $name);
+			return new DataResponse(['status' => 'success']);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function publishCanvasTemplate(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$scope = (string)$this->request->getParam('scope', 'personal');
+			$name = (string)$this->request->getParam('name', '');
+			$data = $this->request->getParam('data');
+			if (!is_array($data)) {
+				throw new InvalidArgumentException('Invalid canvas template data', Http::STATUS_BAD_REQUEST);
+			}
+			if ($scope === 'org' && !$this->groupManager->isAdmin($userId)) {
+				throw new InvalidArgumentException('Only administrators can publish organization canvas templates', Http::STATUS_FORBIDDEN);
+			}
+			$parsed = $this->canvasTemplateService->parseCanvasTemplateData($data);
+			return new DataResponse(
+				['canvasTemplate' => $this->canvasTemplateService->publishCanvasTemplate($userId, $scope, $name, $parsed)],
+				Http::STATUS_CREATED
+			);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
 		}

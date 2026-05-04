@@ -167,12 +167,28 @@ final class WhiteboardContentService {
 				: [];
 		}
 
+		if (array_key_exists('libraryItems', $incoming) && is_array($incoming['libraryItems'])) {
+			$normalized['libraryItems'] = $this->sanitizeLibraryItems($incoming['libraryItems']);
+		}
+
 		if (array_key_exists('appState', $incoming) && is_array($incoming['appState'])) {
 			$normalized['appState'] = $this->sanitizeAppState($incoming['appState']);
 		}
 
 		if (array_key_exists('scrollToContent', $incoming)) {
 			$normalized['scrollToContent'] = (bool)$incoming['scrollToContent'];
+		}
+
+		if (array_key_exists('libraryRef', $incoming)) {
+			if ($incoming['libraryRef'] === null) {
+				// Explicit removal marker; mergeData() drops the stored ref.
+				$normalized['libraryRef'] = null;
+			} else {
+				$ref = $this->sanitizeLibraryRef($incoming['libraryRef']);
+				if ($ref !== null) {
+					$normalized['libraryRef'] = $ref;
+				}
+			}
 		}
 
 		return $normalized;
@@ -182,6 +198,10 @@ final class WhiteboardContentService {
 	 * @param array<string,mixed> $payload
 	 */
 	private function isEffectivelyEmptyPayload(array $payload): bool {
+		if (array_key_exists('libraryItems', $payload)) {
+			return false;
+		}
+
 		$hasFiles = array_key_exists('files', $payload)
 			&& is_array($payload['files'])
 			&& !empty($payload['files']);
@@ -211,7 +231,7 @@ final class WhiteboardContentService {
 		}
 
 		foreach ($payload as $key => $_value) {
-			if (!in_array($key, ['elements', 'files', 'appState', 'scrollToContent'], true)) {
+			if (!in_array($key, ['elements', 'files', 'libraryItems', 'appState', 'scrollToContent'], true)) {
 				return false;
 			}
 		}
@@ -243,6 +263,10 @@ final class WhiteboardContentService {
 			$normalized['files'] = $this->sanitizeFiles($stored['files']);
 		}
 
+		if (array_key_exists('libraryItems', $stored) && is_array($stored['libraryItems'])) {
+			$normalized['libraryItems'] = $this->sanitizeLibraryItems($stored['libraryItems']);
+		}
+
 		if (array_key_exists('appState', $stored) && is_array($stored['appState'])) {
 			$normalized['appState'] = $this->sanitizeAppState($stored['appState']);
 		} elseif (array_key_exists('appState', $stored) && $stored['appState'] === null) {
@@ -251,6 +275,13 @@ final class WhiteboardContentService {
 
 		if (array_key_exists('scrollToContent', $stored)) {
 			$normalized['scrollToContent'] = (bool)$stored['scrollToContent'];
+		}
+
+		if (array_key_exists('libraryRef', $stored)) {
+			$ref = $this->sanitizeLibraryRef($stored['libraryRef']);
+			if ($ref !== null) {
+				$normalized['libraryRef'] = $ref;
+			}
 		}
 
 		return $normalized;
@@ -273,6 +304,10 @@ final class WhiteboardContentService {
 			$merged['files'] = $incoming['files'];
 		}
 
+		if (array_key_exists('libraryItems', $incoming)) {
+			$merged['libraryItems'] = $incoming['libraryItems'];
+		}
+
 		if (array_key_exists('appState', $incoming)) {
 			if ($incoming['appState'] === null) {
 				unset($merged['appState']);
@@ -283,6 +318,17 @@ final class WhiteboardContentService {
 
 		if (array_key_exists('scrollToContent', $incoming)) {
 			$merged['scrollToContent'] = (bool)$incoming['scrollToContent'];
+		}
+
+		if (array_key_exists('libraryRef', $incoming)) {
+			if ($incoming['libraryRef'] === null) {
+				unset($merged['libraryRef']);
+			} else {
+				$ref = $this->sanitizeLibraryRef($incoming['libraryRef']);
+				if ($ref !== null) {
+					$merged['libraryRef'] = $ref;
+				}
+			}
 		}
 
 		return $merged;
@@ -331,6 +377,27 @@ final class WhiteboardContentService {
 	}
 
 	/**
+	 * @param array<mixed> $items
+	 *
+	 * @return array<int,mixed>
+	 */
+	private function sanitizeLibraryItems(array $items): array {
+		$sanitized = [];
+
+		foreach ($items as $item) {
+			if (!is_array($item) || !isset($item['elements']) || !is_array($item['elements']) || count($item['elements']) === 0) {
+				continue;
+			}
+
+			unset($item['libraryName'], $item['scope'], $item['filename'], $item['basename']);
+			$item['elements'] = array_values($item['elements']);
+			$sanitized[] = $item;
+		}
+
+		return $sanitized;
+	}
+
+	/**
 	 * @param array<string,mixed> $appState
 	 *
 	 * @return array<string,mixed>
@@ -343,6 +410,27 @@ final class WhiteboardContentService {
 		}
 
 		return $appState;
+	}
+
+	/**
+	 * A board references at most one library by {scope, name}; the live items
+	 * are resolved on open, so updating the library propagates to every board.
+	 *
+	 * @param mixed $ref
+	 *
+	 * @return array{scope: string, name: string}|null
+	 */
+	private function sanitizeLibraryRef($ref): ?array {
+		if (!is_array($ref)) {
+			return null;
+		}
+		$scope = $ref['scope'] ?? null;
+		$name = $ref['name'] ?? null;
+		if (($scope === WhiteboardFolderService::SCOPE_PERSONAL || $scope === WhiteboardFolderService::SCOPE_ORG)
+			&& is_string($name) && WhiteboardFolderService::isValidName($name)) {
+			return ['scope' => $scope, 'name' => $name];
+		}
+		return null;
 	}
 
 	/**
