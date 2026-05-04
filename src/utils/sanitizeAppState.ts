@@ -12,6 +12,7 @@ const NON_TRANSFERRED_KEYS: Array<keyof AppState> = [
 	'height',
 	'offsetTop',
 	'offsetLeft',
+	'searchMatches',
 ]
 
 export function sanitizeAppStateForSync(state: Partial<AppState> | AppState | null | undefined): Partial<AppState> {

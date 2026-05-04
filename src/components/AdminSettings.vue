@@ -49,6 +49,46 @@
 				</p>
 			</form>
 		</NcSettingsSection>
+		<NcSettingsSection :name="t('whiteboard', 'Organization library templates')">
+			<p class="settings-help">
+				{{ t('whiteboard', 'Upload .excalidrawlib files to make reusable library items available when users create a new whiteboard. New boards start with an empty canvas and copied library items. Changes affect only future whiteboards.') }}
+			</p>
+			<input ref="globalLibraryTemplateInput"
+				class="hidden-file-input"
+				type="file"
+				accept=".excalidrawlib"
+				@change="uploadGlobalLibraryTemplate">
+			<NcButton :disabled="uploadingGlobalLibraryTemplate"
+				@click="selectGlobalLibraryTemplateFile">
+				{{ uploadingGlobalLibraryTemplate ? t('whiteboard', 'Uploading…') : t('whiteboard', 'Upload library template') }}
+			</NcButton>
+
+			<NcNoteCard v-if="loadingGlobalLibraryTemplates" class="library-template-note" type="info">
+				<template #icon>
+					<NcLoadingIcon />
+				</template>
+				{{ t('whiteboard', 'Loading organization library templates…') }}
+			</NcNoteCard>
+			<p v-else-if="globalLibraryTemplates.length === 0" class="settings-help library-template-empty">
+				{{ t('whiteboard', 'No organization library templates yet. Upload an .excalidrawlib file to let users start new whiteboards with reusable library items.') }}
+			</p>
+			<ul v-else class="library-template-list">
+				<li v-for="template in globalLibraryTemplates"
+					:key="template.templateName"
+					class="library-template-row">
+					<div class="library-template-info">
+						<strong>{{ template.templateName }}</strong>
+						<span>{{ formatLibraryItemCount(template.itemCount) }}</span>
+					</div>
+					<NcButton type="tertiary"
+						:aria-label="t('whiteboard', 'Delete library template {name}', { name: template.templateName })"
+						:disabled="deletingGlobalLibraryTemplate === template.templateName"
+						@click="deleteGlobalLibraryTemplate(template.templateName)">
+						{{ t('whiteboard', 'Delete') }}
+					</NcButton>
+				</li>
+			</ul>
+		</NcSettingsSection>
 		<NcSettingsSection :name="t('whiteboard', 'Advanced settings')">
 			<p>
 				<NcTextField :label="t('whiteboard', 'Max image size (MB)')"
@@ -75,8 +115,8 @@ import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
 import NcSettingsSection from '@nextcloud/vue/dist/Components/NcSettingsSection.js'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
-import { t } from '@nextcloud/l10n'
-import { showError } from '@nextcloud/dialogs'
+import { t, n } from '@nextcloud/l10n'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 
 export default {
 	name: 'AdminSettings',
@@ -98,6 +138,10 @@ export default {
 			loadingSettings: false,
 			loadingSocket: false,
 			setupCheck: null,
+			globalLibraryTemplates: [],
+			loadingGlobalLibraryTemplates: false,
+			uploadingGlobalLibraryTemplate: false,
+			deletingGlobalLibraryTemplate: null,
 		}
 	},
 	computed: {
@@ -149,6 +193,7 @@ export default {
 		this.callSettings({
 			serverUrl: this.serverUrl,
 		})
+		this.fetchGlobalLibraryTemplates()
 		this.verifyConnection({ jwt: loadState('whiteboard', 'jwt', '') })
 		this.fetchWebsocketLimits()
 	},
@@ -244,6 +289,70 @@ export default {
 			})
 			socket.connect()
 		},
+		async fetchGlobalLibraryTemplates() {
+			this.loadingGlobalLibraryTemplates = true
+			try {
+				const { data } = await axios.get(generateUrl('/apps/whiteboard/settings/global-library'))
+				this.globalLibraryTemplates = Array.isArray(data.templates) ? data.templates : []
+			} catch (error) {
+				showError(this.getErrorMessage(error, t('whiteboard', 'Failed to load organization library templates.')))
+			} finally {
+				this.loadingGlobalLibraryTemplates = false
+			}
+		},
+		selectGlobalLibraryTemplateFile() {
+			this.$refs.globalLibraryTemplateInput.click()
+		},
+		async uploadGlobalLibraryTemplate(event) {
+			const file = event.target.files?.[0]
+			if (!file) {
+				return
+			}
+
+			const formData = new FormData()
+			formData.append('file', file)
+			this.uploadingGlobalLibraryTemplate = true
+			try {
+				const { data } = await axios.post(generateUrl('/apps/whiteboard/settings/global-library'), formData)
+				const template = data?.template
+				if (template?.templateName && Number.isFinite(template?.itemCount)) {
+					showSuccess(t('whiteboard', 'Uploaded "{name}" with {items}.', {
+						name: template.templateName,
+						items: this.formatLibraryItemCount(template.itemCount),
+					}))
+				} else {
+					showSuccess(t('whiteboard', 'Organization library template uploaded.'))
+				}
+				await this.fetchGlobalLibraryTemplates()
+			} catch (error) {
+				showError(this.getErrorMessage(error, t('whiteboard', 'Failed to upload organization library template.')))
+			} finally {
+				this.uploadingGlobalLibraryTemplate = false
+				event.target.value = ''
+			}
+		},
+		async deleteGlobalLibraryTemplate(templateName) {
+			if (!window.confirm(t('whiteboard', 'Delete "{name}"? This removes the library template from the new whiteboard picker. Existing whiteboards that started from it are not affected.', { name: templateName }))) {
+				return
+			}
+
+			this.deletingGlobalLibraryTemplate = templateName
+			try {
+				await axios.delete(`${generateUrl('/apps/whiteboard/settings/global-library')}/${encodeURIComponent(templateName)}`)
+				showSuccess(t('whiteboard', 'Organization library template deleted.'))
+				await this.fetchGlobalLibraryTemplates()
+			} catch (error) {
+				showError(this.getErrorMessage(error, t('whiteboard', 'Failed to delete organization library template.')))
+			} finally {
+				this.deletingGlobalLibraryTemplate = null
+			}
+		},
+		getErrorMessage(error, fallback) {
+			return error?.response?.data?.message || fallback
+		},
+		formatLibraryItemCount(count) {
+			return n('whiteboard', '%n library item', '%n library items', count)
+		},
 		t,
 	},
 }
@@ -263,4 +372,41 @@ p {
 	color: var(--color-text-maxcontrast);
 	font-size: 0.875rem;
 }
+
+.hidden-file-input {
+	display: none;
+}
+
+.library-template-note,
+.library-template-empty,
+.library-template-list {
+	margin-top: calc(var(--default-grid-baseline) * 3);
+}
+
+.library-template-list {
+	max-width: 700px;
+	padding: 0;
+	list-style: none;
+}
+
+.library-template-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: calc(var(--default-grid-baseline) * 4);
+	padding: calc(var(--default-grid-baseline) * 2) 0;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.library-template-info {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--default-grid-baseline) * 0.5);
+}
+
+.library-template-info span {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.875rem;
+}
+
 </style>

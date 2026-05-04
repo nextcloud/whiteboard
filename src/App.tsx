@@ -5,13 +5,14 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
-import '@excalidraw/excalidraw/index.css'
-import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import '@nextcloud/excalidraw/index.css'
+import type { ExcalidrawImperativeAPI, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
@@ -54,12 +55,21 @@ import { VotingSidebar } from './components/VotingSidebar'
 import { useVoting } from './hooks/useVoting'
 import { useContextMenuFilter } from './hooks/useContextMenuFilter'
 import { useDisableExternalLibraries } from './hooks/useDisableExternalLibraries'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
 const MemoizedNetworkStatusIndicator = memo(NetworkStatusIndicator)
 const MemoizedAuthErrorNotification = memo(AuthErrorNotification)
 const MemoizedExcalidrawMenu = memo(ExcalidrawMenu)
+
+type LoadLibraryForApi = (api: ExcalidrawImperativeAPI) => void
+type LibraryTemplateDialogSource = 'library' | 'selection'
+const LIBRARY_TEMPLATE_LOADED_STORAGE_KEY = 'whiteboard.libraryTemplateLoaded'
+
+function formatLibraryItemCount(count: number): string {
+	return n('whiteboard', '%n library item', '%n library items', count)
+}
 
 export interface WhiteboardAppProps {
 	fileId: number
@@ -98,6 +108,18 @@ export default function App({
 		setExcalidrawAPI: state.setExcalidrawAPI,
 		resetExcalidrawAPI: state.resetExcalidrawAPI,
 	})))
+	const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null)
+	const loadLibraryForApiRef = useRef<LoadLibraryForApi>(() => {})
+	const handleExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI | null) => {
+		if (api) {
+			excalidrawAPIRef.current = api
+			setExcalidrawAPI(api)
+			loadLibraryForApiRef.current(api)
+			return
+		}
+		excalidrawAPIRef.current = null
+		resetExcalidrawAPI()
+	}, [resetExcalidrawAPI, setExcalidrawAPI])
 
 	const {
 		setConfig,
@@ -130,7 +152,21 @@ export default function App({
 	const { renderAssistant } = useAssistant()
 	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
-	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
+	const {
+		fetchLibraryItems,
+		mergeInitialLibraryItems,
+		updateLibraryItems,
+		saveLibraryTemplate,
+		isLibraryLoaded,
+		setIsLibraryLoaded,
+	} = useLibrary()
+	const [libraryTemplateDialogItems, setLibraryTemplateDialogItems] = useState<LibraryItems | null>(null)
+	const [libraryTemplateDialogSource, setLibraryTemplateDialogSource] = useState<LibraryTemplateDialogSource>('library')
+	const [libraryTemplateName, setLibraryTemplateName] = useState('')
+	const [libraryTemplateError, setLibraryTemplateError] = useState<string | null>(null)
+	const [isSavingLibraryTemplate, setIsSavingLibraryTemplate] = useState(false)
+	const libraryTemplateNameInputRef = useRef<HTMLInputElement | null>(null)
+	const notifiedLibraryTemplateFileIdRef = useRef<number | null>(null)
 	useCollaboration()
 	const { isReadOnly, refreshReadOnlyState } = useReadOnlyState()
 
@@ -285,10 +321,67 @@ export default function App({
 	}, [handleExternalRestore, normalizedFileId])
 
 	// Use the board data manager hook
-	const { saveOnUnmount, isLoading } = useBoardDataManager()
+	const { saveOnUnmount, isLoading, getInitialLibraryItems, getInitialLibraryItemsPresent } = useBoardDataManager()
+
+	loadLibraryForApiRef.current = (api: ExcalidrawImperativeAPI) => {
+		if (isLoading) {
+			return
+		}
+
+		window.name = fileName
+		const loadLibraryItems = async () => {
+			try {
+				const initialLibraryItems = getInitialLibraryItems()
+				const hasInitialLibraryItems = getInitialLibraryItemsPresent() && initialLibraryItems.length > 0
+				const libraryItems = await fetchLibraryItems()
+				const mergedLibraryItems = mergeInitialLibraryItems(
+					libraryItems || [],
+					initialLibraryItems,
+					hasInitialLibraryItems,
+				)
+				await api.updateLibrary({
+					libraryItems: mergedLibraryItems,
+					merge: false,
+				})
+				if (hasInitialLibraryItems && !isVersionPreview) {
+					const notificationKey = `${LIBRARY_TEMPLATE_LOADED_STORAGE_KEY}.${normalizedFileId}`
+					let alreadyNotified = notifiedLibraryTemplateFileIdRef.current === normalizedFileId
+					try {
+						alreadyNotified = alreadyNotified || window.localStorage.getItem(notificationKey) === '1'
+					} catch {
+						// Ignore blocked storage. The notification is best-effort UI polish.
+					}
+					if (!alreadyNotified) {
+						api.toggleSidebar({ name: 'default', tab: 'library', force: true })
+						showSuccess(t('whiteboard', 'Library template loaded. {items} were added to the Library sidebar.', {
+							items: formatLibraryItemCount(initialLibraryItems.length),
+						}))
+						notifiedLibraryTemplateFileIdRef.current = normalizedFileId
+						try {
+							window.localStorage.setItem(notificationKey, '1')
+						} catch {
+							// Ignore blocked storage. The in-memory guard still prevents duplicate toasts this load.
+						}
+					}
+				}
+				setIsLibraryLoaded(true)
+			} catch (error) {
+				logger.error('[App] Error updating library items:', error)
+			}
+		}
+		loadLibraryItems()
+	}
+
+	useEffect(() => {
+		if (!excalidrawAPI || isLoading || isLibraryLoaded) {
+			return
+		}
+		loadLibraryForApiRef.current(excalidrawAPI)
+	}, [excalidrawAPI, isLoading, isLibraryLoaded])
 
 	// Effect to handle fileId changes - cleanup previous board data
 	useEffect(() => {
+		setIsLibraryLoaded(false)
 		// Clear any existing Excalidraw data when fileId changes
 		if (excalidrawAPI) {
 			excalidrawAPI.resetScene()
@@ -306,41 +399,18 @@ export default function App({
 	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount])
 
 	useEffect(() => {
-		resetInitialDataPromise()
-
-		// Fetch library items from the API
-		window.name = fileName
-		const fetchLibInterval = setInterval(async () => {
-			const api = useExcalidrawStore.getState().excalidrawAPI
-			if (!api) {
-				logger.warn('[App] Excalidraw API not available, cannot update library')
-				return
-			}
-			clearInterval(fetchLibInterval)
-			try {
-				const libraryItems = await fetchLibraryItems()
-				await api.updateLibrary({
-					libraryItems: libraryItems || [],
-				})
-				setIsLibraryLoaded(true)
-			} catch (error) {
-				logger.error('[App] Error updating library items:', error)
-			}
-		}, 1000)
-
-		// On unmount: Clean up all stores to prevent stale state
 		return () => {
-			// Save any pending changes before resetting stores
 			saveOnUnmount()
-
-			// Reset all stores
 			resetStore()
 			resetExcalidrawAPI()
-
-			// Terminate the worker
 			terminateWorker()
 		}
-	}, [resetInitialDataPromise, resetStore, resetExcalidrawAPI, terminateWorker, saveOnUnmount])
+	}, [
+		resetStore,
+		resetExcalidrawAPI,
+		terminateWorker,
+		saveOnUnmount,
+	])
 
 	const [activeCommentThreadId, setActiveCommentThreadId] = useState<string | null>(null)
 	const [commentSidebarDocked, setCommentSidebarDocked] = useState(false)
@@ -397,11 +467,98 @@ export default function App({
 			return
 		}
 		try {
-			await updateLibraryItems(items)
+			await updateLibraryItems(items, normalizedFileId, getInitialLibraryItemsPresent())
 		} catch (error) {
 			logger.error('[App] Error syncing library items:', error)
 		}
-	}, [isLibraryLoaded])
+	}, [getInitialLibraryItemsPresent, isLibraryLoaded, normalizedFileId, updateLibraryItems])
+
+	useEffect(() => {
+		if (!libraryTemplateDialogItems) {
+			return
+		}
+		requestAnimationFrame(() => libraryTemplateNameInputRef.current?.focus())
+	}, [libraryTemplateDialogItems])
+
+	const onLibrarySaveAsTemplate = useCallback((items: LibraryItems, context?: { source?: LibraryTemplateDialogSource }) => {
+		if (items.length === 0) {
+			showError(t('whiteboard', 'Add items to your library before saving a library template'))
+			return
+		}
+
+		setLibraryTemplateDialogSource(context?.source === 'selection' ? 'selection' : 'library')
+		setLibraryTemplateName('')
+		setLibraryTemplateError(null)
+		setLibraryTemplateDialogItems(items)
+	}, [])
+
+	const closeLibraryTemplateDialog = useCallback(() => {
+		if (isSavingLibraryTemplate) {
+			return
+		}
+		setLibraryTemplateDialogItems(null)
+		setLibraryTemplateDialogSource('library')
+		setLibraryTemplateName('')
+		setLibraryTemplateError(null)
+	}, [isSavingLibraryTemplate])
+
+	const submitLibraryTemplateDialog = useCallback(async (event?: FormEvent<HTMLFormElement>) => {
+		event?.preventDefault()
+		if (!libraryTemplateDialogItems || isSavingLibraryTemplate) {
+			return
+		}
+
+		const templateName = libraryTemplateName.trim()
+		if (!templateName) {
+			setLibraryTemplateError(t('whiteboard', 'Library template name is required'))
+			return
+		}
+
+		setIsSavingLibraryTemplate(true)
+		setLibraryTemplateError(null)
+		try {
+			await saveLibraryTemplate(templateName, libraryTemplateDialogItems)
+			const libraryItems = await fetchLibraryItems()
+			await (excalidrawAPI ?? excalidrawAPIRef.current)?.updateLibrary({
+				libraryItems: mergeInitialLibraryItems(
+					libraryItems || [],
+					getInitialLibraryItems(),
+					getInitialLibraryItemsPresent(),
+				),
+				merge: false,
+			})
+			setLibraryTemplateDialogItems(null)
+			setLibraryTemplateDialogSource('library')
+			setLibraryTemplateName('')
+			showSuccess(t('whiteboard', 'Saved "{name}" as a library template with {items}.', {
+				name: templateName,
+				items: formatLibraryItemCount(libraryTemplateDialogItems.length),
+			}))
+		} catch (error: any) {
+			if (error?.status === 409) {
+				const conflictMessage = t('whiteboard', 'A library template with this name or the same items already exists')
+				setLibraryTemplateError(conflictMessage)
+				showError(conflictMessage)
+				return
+			}
+			logger.error('[App] Error saving library template:', error)
+			const errorMessage = t('whiteboard', 'Could not save library template')
+			setLibraryTemplateError(errorMessage)
+			showError(errorMessage)
+		} finally {
+			setIsSavingLibraryTemplate(false)
+		}
+	}, [
+		excalidrawAPI,
+		fetchLibraryItems,
+		getInitialLibraryItems,
+		getInitialLibraryItemsPresent,
+		isSavingLibraryTemplate,
+		libraryTemplateDialogItems,
+		libraryTemplateName,
+		mergeInitialLibraryItems,
+		saveLibraryTemplate,
+	])
 
 	const libraryReturnUrl = encodeURIComponent(window.location.href)
 
@@ -524,7 +681,8 @@ export default function App({
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
 					beforeElementCreated={beforeElementCreated}
-					excalidrawAPI={setExcalidrawAPI}
+					excalidrawAPI={handleExcalidrawAPI}
+					onExcalidrawAPI={handleExcalidrawAPI}
 					initialData={initialDataPromise}
 					generateIdForFile={generateIdForFile}
 					onPointerUpdate={onPointerUpdate}
@@ -539,6 +697,7 @@ export default function App({
 					}}
 					onLinkOpen={onLinkOpen}
 					onLibraryChange={onLibraryChange}
+					onLibrarySaveAsTemplate={onLibrarySaveAsTemplate}
 					langCode={lang}
 					libraryReturnUrl={libraryReturnUrl}
 				>
@@ -615,6 +774,68 @@ export default function App({
 						excalidrawAPI={excalidrawAPI}
 						settings={creatorDisplaySettings}
 					/>
+				)}
+				{libraryTemplateDialogItems && (
+					<div className="library-template-dialog__backdrop">
+						<form
+							className="library-template-dialog"
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby="library-template-dialog-title"
+							onSubmit={submitLibraryTemplateDialog}
+							onKeyDown={(event) => {
+								if (event.key === 'Escape') {
+									event.stopPropagation()
+									closeLibraryTemplateDialog()
+								}
+							}}
+						>
+							<h2 id="library-template-dialog-title">
+								{libraryTemplateDialogSource === 'selection'
+									? t('whiteboard', 'Save selected items as library template')
+									: t('whiteboard', 'Save library as template')}
+							</h2>
+							<p className="library-template-dialog__hint">
+								{t('whiteboard', 'Creates a template for future whiteboards. The canvas is not included.')}
+							</p>
+							<p className="library-template-dialog__count">
+								{formatLibraryItemCount(libraryTemplateDialogItems.length)}
+							</p>
+							<label htmlFor="library-template-name">
+								{t('whiteboard', 'Library template name')}
+							</label>
+							<input
+								id="library-template-name"
+								ref={libraryTemplateNameInputRef}
+								type="text"
+								value={libraryTemplateName}
+								disabled={isSavingLibraryTemplate}
+								onChange={(event) => setLibraryTemplateName(event.target.value)}
+							/>
+							{libraryTemplateError && (
+								<p className="library-template-dialog__error">
+									{libraryTemplateError}
+								</p>
+							)}
+							<div className="library-template-dialog__actions">
+								<button
+									type="button"
+									className="library-template-dialog__button"
+									disabled={isSavingLibraryTemplate}
+									onClick={closeLibraryTemplateDialog}
+								>
+									{t('whiteboard', 'Cancel')}
+								</button>
+								<button
+									type="submit"
+									className="library-template-dialog__button library-template-dialog__button--primary"
+									disabled={isSavingLibraryTemplate}
+								>
+									{isSavingLibraryTemplate ? t('whiteboard', 'Saving...') : t('whiteboard', 'Save')}
+								</button>
+							</div>
+						</form>
+					</div>
 				)}
 			</div>
 		</div>

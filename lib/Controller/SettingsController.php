@@ -13,8 +13,10 @@ use Exception;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
 use OCA\Whiteboard\Service\JWTService;
+use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCA\Whiteboard\Settings\SetupCheck;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -31,6 +33,7 @@ final class SettingsController extends Controller {
 		private ConfigService $configService,
 		private SetupCheck $setupCheck,
 		private IUserSession $userSession,
+		private WhiteboardLibraryService $libraryService,
 	) {
 		parent::__construct('whiteboard', $request);
 	}
@@ -87,6 +90,46 @@ final class SettingsController extends Controller {
 			return new DataResponse([
 				'autoUploadOnDisconnect' => $this->configService->getUserAutoUploadOnDisconnect($user->getUID()),
 			]);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	public function listGlobalLibraryTemplates(): DataResponse {
+		try {
+			return new DataResponse($this->libraryService->getGlobalTemplateMetadata());
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	public function uploadGlobalLibraryTemplate(): DataResponse {
+		try {
+			$uploadedFile = $this->request->getUploadedFile('file');
+			if (!is_array($uploadedFile) || !isset($uploadedFile['tmp_name'], $uploadedFile['name'])) {
+				throw new Exception('No library template uploaded', Http::STATUS_BAD_REQUEST);
+			}
+			if (($uploadedFile['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+				throw new Exception('Library template upload failed', Http::STATUS_BAD_REQUEST);
+			}
+
+			$content = file_get_contents($uploadedFile['tmp_name']);
+			if ($content === false) {
+				throw new Exception('Failed to read uploaded library template', Http::STATUS_BAD_REQUEST);
+			}
+
+			return new DataResponse([
+				'template' => $this->libraryService->saveGlobalTemplateFromUpload($uploadedFile['name'], $content),
+			], Http::STATUS_CREATED);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	public function deleteGlobalLibraryTemplate(string $templateName): DataResponse {
+		try {
+			$this->libraryService->deleteGlobalTemplate($templateName);
+			return new DataResponse(['status' => 'success']);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
 		}
