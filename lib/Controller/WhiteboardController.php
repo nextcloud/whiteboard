@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Controller;
 
 use Exception;
+use InvalidArgumentException;
 use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Exception\UnauthorizedException;
 use OCA\Whiteboard\Service\Authentication\GetUserFromIdServiceFactory;
@@ -110,8 +111,8 @@ final class WhiteboardController extends ApiController {
 	public function getLib(): DataResponse {
 		try {
 			$jwt = $this->getJwtFromRequest();
-			$this->jwtService->getUserIdFromJWT($jwt);
-			$data = $this->libraryService->getUserLib();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$data = $this->libraryService->getTemplates($userId);
 
 			return new DataResponse(['data' => $data]);
 		} catch (Exception $e) {
@@ -126,10 +127,34 @@ final class WhiteboardController extends ApiController {
 		try {
 			$jwt = $this->getJwtFromRequest();
 			$userId = $this->jwtService->getUserIdFromJWT($jwt);
-			$items = $this->request->getParam('items', []);
-			$this->libraryService->updateUserLib($userId, $items);
+			$templates = $this->request->getParam('templates');
+			if (!is_array($templates)) {
+				throw new InvalidArgumentException('Library templates payload is required', 400);
+			}
+			$this->libraryService->updateUserTemplates($userId, $templates);
 
 			return new DataResponse(['status' => 'success']);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
+	public function saveLibTemplate(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$templateName = $this->request->getParam('templateName', '');
+			$items = $this->request->getParam('items', []);
+			if (!is_string($templateName) || !is_array($items)) {
+				throw new InvalidArgumentException('Invalid library template payload', 400);
+			}
+
+			$template = $this->libraryService->saveUserTemplate($userId, $templateName, $items);
+
+			return new DataResponse(['status' => 'success', 'template' => $template]);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
 		}

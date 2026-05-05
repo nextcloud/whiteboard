@@ -16,7 +16,20 @@ const AppConfig = createAppConfig({
 }, {
 	config: defineConfig({
 		resolve: {
+			dedupe: ['react', 'react-dom'],
 			alias: [
+				{
+					find: 'vite-plugin-node-polyfills/shims/buffer',
+					replacement: resolve('node_modules/vite-plugin-node-polyfills/shims/buffer/dist/index.js'),
+				},
+				{
+					find: 'vite-plugin-node-polyfills/shims/global',
+					replacement: resolve('node_modules/vite-plugin-node-polyfills/shims/global/dist/index.js'),
+				},
+				{
+					find: 'vite-plugin-node-polyfills/shims/process',
+					replacement: resolve('node_modules/vite-plugin-node-polyfills/shims/process/dist/index.js'),
+				},
 				{
 					find: /^@excalidraw\/element(.*)$/,
 					replacement: '@nextcloud/excalidraw-element$1',
