@@ -54,6 +54,7 @@ import { VotingSidebar } from './components/VotingSidebar'
 import { useVoting } from './hooks/useVoting'
 import { useContextMenuFilter } from './hooks/useContextMenuFilter'
 import { useDisableExternalLibraries } from './hooks/useDisableExternalLibraries'
+import { callMobileMessage } from './utils/mobileInterface'
 
 const Excalidraw = memo(ExcalidrawComponent)
 
@@ -286,6 +287,12 @@ export default function App({
 
 	// Use the board data manager hook
 	const { saveOnUnmount, isLoading } = useBoardDataManager()
+
+	useEffect(() => {
+		if (!isLoading && loadState('whiteboard', 'directEditing', false)) {
+			callMobileMessage('loaded')
+		}
+	}, [isLoading])
 
 	// Effect to handle fileId changes - cleanup previous board data
 	useEffect(() => {
