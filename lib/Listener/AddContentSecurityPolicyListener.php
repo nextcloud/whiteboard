@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Listener;
 
 use OCP\AppFramework\Http\EmptyContentSecurityPolicy;
+use OCP\AppFramework\IAppContainer;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\IRequest;
@@ -17,6 +18,7 @@ use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 class AddContentSecurityPolicyListener implements IEventListener {
 	public function __construct(
 		private IRequest $request,
+		private IAppContainer $appContainer,
 	) {
 	}
 
@@ -28,9 +30,12 @@ class AddContentSecurityPolicyListener implements IEventListener {
 
 		$policy = new EmptyContentSecurityPolicy();
 
-		$policy->addAllowedConnectDomain('*');
-		$policy->addAllowedWorkerSrcDomain('*');
-		$policy->addAllowedFontDomain('*');
+		$serverUrl = $this->appContainer->getConfig()->getAppValue('whiteboard', 'collabServerUrl', '');
+		if ($serverUrl !== '') {
+			$policy->addAllowedConnectDomain($serverUrl);
+			$policy->addAllowedWorkerSrcDomain($serverUrl);
+			$policy->addAllowedFontDomain($serverUrl);
+		}
 
 		$event->addPolicy($policy);
 	}
