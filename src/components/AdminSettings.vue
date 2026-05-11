@@ -36,7 +36,7 @@
 						:helper-text="t('whiteboard', 'URL where the WebSocket server for real-time collaboration is running. Must be accessible from users\' browsers.')" />
 				</p>
 				<p>
-					<NcTextField :label="t('whiteboard', 'Shared secret')"
+					<NcPasswordField :label="t('whiteboard', 'Shared secret')"
 						:value.sync="secret"
 						:helper-text="t('whiteboard', 'JWT secret key shared between Nextcloud and the WebSocket server for secure authentication.')" />
 				</p>
@@ -69,6 +69,7 @@
 import axios from '@nextcloud/axios'
 import { io } from 'socket.io-client'
 import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
+import NcPasswordField from '@nextcloud/vue/dist/Components/NcPasswordField.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
@@ -82,6 +83,7 @@ export default {
 	name: 'AdminSettings',
 	components: {
 		NcTextField,
+		NcPasswordField,
 		NcButton,
 		NcLoadingIcon,
 		NcNoteCard,
