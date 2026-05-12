@@ -163,7 +163,8 @@ final class RecordingController extends Controller {
 
 	private function createRecordingResponse(): PublicTemplateResponse {
 		$csp = new ContentSecurityPolicy();
-		$csp->allowEvalScript();
+		// NC34 removed allowEvalScript(), but the recording bundle still needs unsafe-eval.
+		$csp->addAllowedScriptDomain('\'unsafe-eval\'');
 
 		$response = new PublicTemplateResponse($this->appName, 'recording');
 		$response->setFooterVisible();

@@ -32,7 +32,7 @@ class Admin implements ISettings {
 			'whiteboard',
 			'admin',
 			[],
-			'blank'
+			TemplateResponse::RENDER_AS_BLANK
 		);
 		$csp = new ContentSecurityPolicy();
 		$csp->addAllowedConnectDomain('*');
