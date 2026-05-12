@@ -80,6 +80,7 @@ class WhiteboardDirectEditor implements IEditor {
 
 			Util::addScript('whiteboard', 'whiteboard-main');
 			Util::addStyle('whiteboard', 'whiteboard-main');
+			Util::addScript('text', 'text-editor');
 
 			$user = $this->authenticateUserServiceFactory->create(null)->authenticate();
 			$jwt = $this->jwtService->generateJWT($user, $file, false);
