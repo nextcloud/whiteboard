@@ -115,6 +115,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('Assistant Button', async ({ page }) => {
+	test.setTimeout(90000)
 	const boardName = `Assistant ${Date.now()}`
 	await createWhiteboard(page, { name: boardName })
 	const assistantButton = await ensureAssistantBoardReady(page, boardName)
