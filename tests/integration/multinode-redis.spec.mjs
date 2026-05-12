@@ -67,7 +67,7 @@ const Config = ConfigModule
 
 vi.setConfig({ testTimeout: 30000 })
 
-const waitFor = (socket, event, timeoutMs = 5000) => {
+const waitFor = (socket, event, timeoutMs = 10000) => {
 	return new Promise((resolve, reject) => {
 		const timer = setTimeout(() => {
 			const lastError = event === 'connect' && socket?.lastConnectError

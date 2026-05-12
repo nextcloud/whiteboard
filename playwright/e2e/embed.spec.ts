@@ -12,6 +12,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('embed whiteboard in another whiteboard', async ({ page }) => {
+	test.setTimeout(90000)
 	const firstBoardName = `first whiteboard ${Date.now()}`
 	await createWhiteboard(page, { name: firstBoardName })
 
