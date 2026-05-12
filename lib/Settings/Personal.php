@@ -37,7 +37,7 @@ class Personal implements ISettings {
 			'whiteboard',
 			'personal',
 			[],
-			'blank'
+			TemplateResponse::RENDER_AS_BLANK
 		);
 		$csp = new ContentSecurityPolicy();
 		$csp->addAllowedConnectDomain('*');

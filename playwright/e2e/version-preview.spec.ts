@@ -24,6 +24,13 @@ const versionPropfindBody = `<?xml version="1.0"?>
 	</d:prop>
 </d:propfind>`
 
+const skipWhenVersionContentUnavailable = () => {
+	test.skip(
+		process.env.SERVER_VERSION === 'stable29',
+		'Nextcloud 29 does not expose version content over the versions DAV endpoint',
+	)
+}
+
 const extractVersionIds = (xml: string, userId: string, fileId: number | string): string[] => {
 	const prefix = `/remote.php/dav/versions/${userId}/versions/${fileId}/`
 	const hrefRegex = /<[^:>]*:href>([^<]+)<\/[^:>]*:href>/g
@@ -189,6 +196,7 @@ test('version preview banner shows and exits to live board', async ({
 	page,
 	user,
 }) => {
+	skipWhenVersionContentUnavailable()
 	test.setTimeout(120000)
 	const boardName = `Version preview ${Date.now()}`
 	const initialText = 'Version one'
@@ -223,6 +231,7 @@ test('restore version replaces current content', async ({
 	page,
 	user,
 }) => {
+	skipWhenVersionContentUnavailable()
 	test.setTimeout(120000)
 	const boardName = `Version restore ${Date.now()}`
 	const initialText = 'Restore one'

@@ -12,6 +12,7 @@ namespace OCA\Whiteboard\Service\File;
 use InvalidArgumentException;
 use OCP\Constants;
 use OCP\Files\File;
+use OCP\Files\Folder;
 use OCP\Files\NotFoundException;
 use OCP\Share\Exceptions\ShareNotFound;
 use OCP\Share\IManager as ShareManager;
@@ -49,6 +50,10 @@ final class GetFileFromPublicSharingTokenService implements GetFileService {
 
 		if ($node instanceof File) {
 			return $node;
+		}
+
+		if (!$node instanceof Folder) {
+			throw new InvalidArgumentException('No proper share data');
 		}
 
 		$node = $node->getFirstNodeById($this->fileId);
