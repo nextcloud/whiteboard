@@ -59,6 +59,25 @@ export default class RecordingControlService {
 		const sessionKey = `${roomID}_${socket.id}`
 
 		try {
+			if (!Config.NEXTCLOUD_URL) {
+				throw new Error('NEXTCLOUD_URL is not configured')
+			}
+
+			if (!URL.canParse(recordingUrl)) {
+				throw new Error('Invalid recording URL')
+			}
+
+			const allowedOrigin = new URL(Config.NEXTCLOUD_URL).origin
+			const recordingUrlParsed = new URL(recordingUrl)
+
+			if (recordingUrlParsed.origin !== allowedOrigin) {
+				throw new Error('Invalid recording URL: does not match configured NEXTCLOUD_URL')
+			}
+
+			if (recordingUrlParsed.searchParams.get('token') !== uploadToken) {
+				throw new Error('Invalid recording URL: token mismatch')
+			}
+
 			if (!socket.rooms.has(roomID)) {
 				throw new Error('Not joined to room')
 			}
