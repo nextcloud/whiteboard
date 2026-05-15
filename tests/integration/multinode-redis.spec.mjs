@@ -122,6 +122,11 @@ describe('Multi node websocket cluster with redis streams', () => {
 	}
 
 	const buildToken = (roomID, user) => jwt.sign({ roomID, user }, Config.JWT_SECRET_KEY)
+	const buildRecordingUrl = (uploadToken) => {
+		const url = new URL('/apps/whiteboard/recording', Config.NEXTCLOUD_URL)
+		url.searchParams.set('token', uploadToken)
+		return url.toString()
+	}
 
 	beforeAll(async () => {
 		redisServer = new RedisMemoryServer()
@@ -210,7 +215,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 
 		recorderSocket.emit('start-recording', {
 			fileId: roomID,
-			recordingUrl: 'http://example.com',
+			recordingUrl: buildRecordingUrl('upload-token'),
 			uploadToken: 'upload-token',
 		})
 		await waitFor(recorderSocket, 'recording-started')
@@ -264,7 +269,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 
 			recorderSocket.emit('start-recording', {
 				fileId: roomID,
-				recordingUrl: 'http://example.com',
+				recordingUrl: buildRecordingUrl('upload-token'),
 				uploadToken: 'upload-token',
 			})
 			await waitFor(recorderSocket, 'recording-started')
@@ -313,7 +318,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 
 		recorderSocket.emit('start-recording', {
 			fileId: roomID,
-			recordingUrl: 'http://example.com',
+			recordingUrl: buildRecordingUrl('upload-token'),
 			uploadToken: 'upload-token',
 		})
 		await waitFor(recorderSocket, 'recording-started')
@@ -340,7 +345,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 
 		recorderSocket.emit('start-recording', {
 			fileId: roomID,
-			recordingUrl: 'http://example.com',
+			recordingUrl: buildRecordingUrl('upload-token'),
 			uploadToken: 'upload-token',
 		})
 		await waitFor(recorderSocket, 'recording-started')
