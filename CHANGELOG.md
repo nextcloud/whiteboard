@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.8
+
+### Added
+- incremental collaboration sync with targeted bootstrap by @hweihwang [#1081](https://github.com/nextcloud/whiteboard/pull/1081)
+- Add AI disclosure to assistant diagrams by @hweihwang [#1148](https://github.com/nextcloud/whiteboard/pull/1148)
+- Tag files when AI generated content gets added by @samin-z [#1136](https://github.com/nextcloud/whiteboard/pull/1136)
+
+### Changed
+- enh: use password field for shared secret input by @benjaminfrueh [#1188](https://github.com/nextcloud/whiteboard/pull/1188)
+- Support Nextcloud 34
+
+### Fixed
+- Harden resource source handling by @hweihwang [#1196](https://github.com/nextcloud/whiteboard/pull/1196)
+- Whiteboard recording language always in english by @samin-z [#1104](https://github.com/nextcloud/whiteboard/pull/1104)
+- fix: add missing translation wrap by @grnd-alt [#1085](https://github.com/nextcloud/whiteboard/pull/1085)
+
+### Other
+- chore: fix ci failures by @hweihwang [#1116](https://github.com/nextcloud/whiteboard/pull/1116)
+- Update dependencies and translations
+
 ## 1.5.7
 
 ### Fixed
