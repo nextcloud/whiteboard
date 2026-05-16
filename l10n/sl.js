@@ -48,6 +48,7 @@ OC.L10N.register(
     "Open" : "Odpri",
     "Closed" : "Zaprto",
     "Vote" : "Glas",
+    "Assistant" : "Pomočnik",
     "Add comment" : "Dodaj opombo",
     "Smart picker" : "Pametni izbirnik",
     "Version restored" : "Različica je obnovljena",

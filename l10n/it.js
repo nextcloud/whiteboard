@@ -59,6 +59,7 @@ OC.L10N.register(
     "Running" : "Corsa",
     "Paused" : "Sospesi",
     "Finished" : "Finito",
+    "Hours" : "Ore",
     "Minutes" : "Minuti",
     "min" : "min",
     "Start" : "Avvia",
