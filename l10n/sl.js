@@ -51,6 +51,7 @@ OC.L10N.register(
     "Assistant" : "Pomočnik",
     "Add comment" : "Dodaj opombo",
     "Smart picker" : "Pametni izbirnik",
+    "Version {version}" : "Različica {version}",
     "Version restored" : "Različica je obnovljena",
     "Just now" : "Ravnokar"
 },
