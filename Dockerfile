@@ -41,6 +41,18 @@ RUN apk add --no-cache \
 COPY --from=build --chown=nobody:nobody /app /app
 USER nobody
 EXPOSE 3002
+ARG VERSION
+ARG REVISION
+ARG CREATED
+LABEL org.opencontainers.image.title="Nextcloud Whiteboard" \
+      org.opencontainers.image.description="Official whiteboard app for Nextcloud with real-time collaboration" \
+      org.opencontainers.image.url="https://github.com/nextcloud/whiteboard" \
+      org.opencontainers.image.source="https://github.com/nextcloud/whiteboard" \
+      org.opencontainers.image.vendor="Nextcloud GmbH" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"
 ENTRYPOINT ["npm", "run", "server:start"]
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3002', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
