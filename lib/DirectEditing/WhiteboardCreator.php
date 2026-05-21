@@ -28,7 +28,7 @@ class WhiteboardCreator extends ACreateEmpty {
 
 	#[\Override]
 	public function getName(): string {
-		return $this->l10n->t('whiteboard');
+		return $this->l10n->t('Whiteboard');
 	}
 
 	#[\Override]
