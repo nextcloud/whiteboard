@@ -5,6 +5,7 @@ declare(strict_types=1);
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+
 namespace OCA\Whiteboard\Listener;
 
 use OCA\Whiteboard\AppInfo\Application;
@@ -30,7 +31,6 @@ final class RegisterTemplateCreatorListener implements IEventListener {
 		if (!($event instanceof RegisterTemplateCreatorEvent)) {
 			return;
 		}
-
 
 		$event->getTemplateManager()->registerTemplateFileCreator(function () {
 			return self::getTemplateFileCreator($this->l10n);

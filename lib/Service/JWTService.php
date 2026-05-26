@@ -44,8 +44,6 @@ final class JWTService {
 			'exp' => $expirationTime
 		];
 
-
-
 		return $this->generateJWTFromPayload($payload);
 	}
 
