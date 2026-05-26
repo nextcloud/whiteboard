@@ -92,11 +92,9 @@ final class WhiteboardController extends ApiController {
 			$this->contentService->updateContent($file, $data);
 
 			return new DataResponse(['status' => 'success']);
-
 		} catch (Exception $e) {
 			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());
 			return $this->exceptionService->handleException($e);
-
 		} finally {
 			if ($this->cache->get($lockKey) === $lockValue) {
 				$this->cache->remove($lockKey);

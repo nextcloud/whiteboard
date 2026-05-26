@@ -97,7 +97,6 @@ final class WhiteboardContentService {
 			try {
 				$file->putContent($encodedPayload);
 				return;
-
 			} catch (LockedException $e) {
 				if ($attempt === $maxRetries - 1) {
 					$this->logger->error('Whiteboard file write failed after retries', [
