@@ -39,6 +39,7 @@ OC.L10N.register(
     "Vote" : "Гласај",
     "Assistant" : "Асистент",
     "Add comment" : "Додади коментар",
+    "Smart picker" : "Паметен избирач",
     "Version {version}" : "Верзија {version}",
     "Version restored" : "Верзијата е вратена"
 },
