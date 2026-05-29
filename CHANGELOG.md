@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.9
+
+### Added
+- Add DirectEditing for mobile app support by @benjaminfrueh [#1178](https://github.com/nextcloud/whiteboard/pull/1178)
+
 ## 1.5.8
 
 ### Added
