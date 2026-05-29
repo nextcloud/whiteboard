@@ -17,6 +17,7 @@ import {
 	renderWhiteboardView,
 } from './utils/renderWhiteboardView'
 import type { WhiteboardRootHandle } from './utils/renderWhiteboardView'
+import { callMobileMessage } from './utils/mobileInterface'
 
 declare global {
 	interface Window {
@@ -38,6 +39,12 @@ type PublicShareContext = {
 	sharingToken: string | null
 }
 
+type DirectEditingContext = {
+	fileId: number
+	collabBackendUrl: string
+	jwt: string
+}
+
 type ViewerContext = {
 	collabBackendUrl: string
 	resolveSharingToken: () => string | null
@@ -46,6 +53,7 @@ type ViewerContext = {
 type RuntimeDescriptor =
 	| { type: 'recording'; context: RecordingContext }
 	| { type: 'public-share'; context: PublicShareContext }
+	| { type: 'direct-editing'; context: DirectEditingContext }
 	| { type: 'viewer'; context: ViewerContext }
 
 const VIEWER_REGISTRATION_ATTEMPTS = 3
@@ -60,6 +68,9 @@ const bootstrapWhiteboardRuntime = (): void => {
 		return
 	case 'public-share':
 		runPublicShareRuntime(runtime.context)
+		return
+	case 'direct-editing':
+		runDirectEditingRuntime(runtime.context)
 		return
 	case 'viewer':
 	default:
@@ -76,6 +87,17 @@ const detectRuntime = (): RuntimeDescriptor => {
 	if (loadState('whiteboard', 'isRecording', false)) {
 		return {
 			type: 'recording',
+			context: {
+				fileId,
+				collabBackendUrl,
+				jwt: loadState('whiteboard', 'jwt', ''),
+			},
+		}
+	}
+
+	if (loadState('whiteboard', 'directEditing', false)) {
+		return {
+			type: 'direct-editing',
 			context: {
 				fileId,
 				collabBackendUrl,
@@ -113,6 +135,30 @@ function runRecordingRuntime(context: RecordingContext): void {
 		const whiteboardElement = createWhiteboardElement()
 		whiteboardElement.classList.add('recording')
 		document.body.appendChild(whiteboardElement)
+
+		renderWhiteboardView(whiteboardElement, {
+			fileId: context.fileId,
+			isEmbedded: false,
+			fileName: '',
+			publicSharingToken: null,
+			collabBackendUrl: context.collabBackendUrl,
+			versionSource: null,
+			fileVersion: null,
+		})
+	})
+}
+
+function runDirectEditingRuntime(context: DirectEditingContext): void {
+	runWhenDomReady(async () => {
+		await primeRecordingJwt(context.fileId, context.jwt)
+
+		const whiteboardElement = document.getElementById('whiteboard-app')
+		if (!whiteboardElement) {
+			logger.error('Direct editing mount element not found')
+			return
+		}
+
+		callMobileMessage('loading')
 
 		renderWhiteboardView(whiteboardElement, {
 			fileId: context.fileId,
