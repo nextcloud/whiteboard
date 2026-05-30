@@ -1,7 +1,7 @@
 { "translations": {
+    "Whiteboard" : "Lavagna",
     "New whiteboard" : "Nuova lavagna",
     "Create new whiteboard" : "Crea nuova lavagna",
-    "Whiteboard" : "Lavagna",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "L'URL del server WebSocket non è configurato. La collaborazione in tempo reale richiede un server WebSocket separato. Le funzionalità di base della lavagna funzionano anche senza.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Il segreto condiviso del server WebSocket non è configurato. Questo è necessario per l'autenticazione sicura tra Nextcloud e il server WebSocket per la collaborazione in tempo reale.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "La configurazione del server WebSocket è valida. Il test di connessione basato sul browser verificherà l'effettiva connettività per la collaborazione in tempo reale.",

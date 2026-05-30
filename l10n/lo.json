@@ -1,7 +1,7 @@
 { "translations": {
+    "Whiteboard" : "ກະດານຂາວ",
     "New whiteboard" : "ກະດານຂາວໃໝ່",
     "Create new whiteboard" : "ສ້າງກະດານຂາວໃໝ່",
-    "Whiteboard" : "ກະດານຂາວ",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "ບໍ່ໄດ້ຕັ້ງຄ່າ URL ຂອງເຊີເວີ WebSocket. ການຮ່ວມມືແບບສົດໆຕ້ອງມີເຊີເວີ WebSocket ແຍກຕ່າງຫາກ. ການໃຊ້ງານກະດານຂາວພື້ນຖານຍັງສາມາດເຮັດວຽກໄດ້ໂດຍບໍ່ຕ້ອງມີມັນ.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "ບໍ່ໄດ້ຕັ້ງຄ່າລະຫັດລັບຮ່ວມກັນ (shared secret) ຂອງເຊີເວີ WebSocket. ນີ້ແມ່ນສິ່ງຈຳເປັນສຳລັບການຢືນຢັນຕົວຕົນທີ່ປອດໄພລະຫວ່າງ Nextcloud ແລະ ເຊີເວີ WebSocket ເພື່ອການຮ່ວມມືແບບສົດໆ.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "ການຕັ້ງຄ່າເຊີເວີ WebSocket ຖືກຕ້ອງ. ການທົດສອບການເຊື່ອມຕໍ່ຜ່ານບຣາວເຊີຈະກວດສອບການເຊື່ອມຕໍ່ຕົວຈິງສຳລັບການຮ່ວມມືແບບສົດໆ.",

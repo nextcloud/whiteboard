@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Λευκός πίνακας",
     "New whiteboard" : "Νέος λευκός πίνακας",
     "Create new whiteboard" : "Δημιουργία νέου λευκού πίνακα",
-    "Whiteboard" : "Λευκός πίνακας",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "Η διεύθυνση URL του διακομιστή WebSocket δεν έχει ρυθμιστεί. Η συνεργασία σε πραγματικό χρόνο απαιτεί έναν ξεχωριστό διακομιστή WebSocket. Η βασική λειτουργικότητα του whiteboard λειτουργεί χωρίς αυτόν.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Το κοινό μυστικό του διακομιστή WebSocket δεν έχει ρυθμιστεί. Αυτό απαιτείται για ασφαλή πιστοποίηση μεταξύ του Nextcloud και του διακομιστή WebSocket για συνεργασία σε πραγματικό χρόνο.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "Η διαμόρφωση του διακομιστή WebSocket είναι έγκυρη. Η δοκιμή σύνδεσης μέσω προγράμματος περιήγησης θα επαληθεύσει την πραγματική συνδεσιμότητα για συνεργασία σε πραγματικό χρόνο.",

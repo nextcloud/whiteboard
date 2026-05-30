@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Самбар",
     "New whiteboard" : "Шинэ самбар",
     "Create new whiteboard" : "Шинэ самбар үүсгэх",
-    "Whiteboard" : "Самбар",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "WebSocket серверийн URL тохируулагдаагүй байна. Бодит цагийн хамтран ажиллахад тусдаа WebSocket сервер шаардлагатай. Цагаан самбарын үндсэн функц үүнгүйгээр ажиллана.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "WebSocket серверийн хуваалцсан нууц тохируулагдаагүй байна. Энэ нь Nextcloud болон WebSocket серверийн хооронд бодит цагийн хамтран ажиллахад найдвартай баталгаажуулалт хийхэд шаардлагатай.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "WebSocket серверийн тохиргоо зөв байна. Хөтөч дээрх холболтын тест нь бодит цагийн хамтран ажиллах бодит холболтыг шалгах болно.",

@@ -1,7 +1,7 @@
 { "translations": {
+    "Whiteboard" : "Ploča za pisanje",
     "New whiteboard" : "Nova ploča za pisanje",
     "Create new whiteboard" : "Stvori novu ploču za pisanje",
-    "Whiteboard" : "Ploča za pisanje",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "URL WebSocket poslužitelja nije konfiguriran. Suradnja u stvarnom vremenu zahtijeva zaseban WebSocket poslužitelj. Osnovne funkcije ploče za pisanje rade i bez njega.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Dijeljena tajna za WebSocket poslužitelj nije konfigurirana. To je potrebno za sigurnu autentikaciju između Nextclouda i WebSocket poslužitelja za suradnju u stvarnom vremenu.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "Konfiguracija WebSocket poslužitelja je valjana. Test povezivanja u pregledniku provjerit će stvarnu povezivost za suradnju u stvarnom vremenu.",

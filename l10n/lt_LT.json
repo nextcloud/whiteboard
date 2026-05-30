@@ -1,7 +1,7 @@
 { "translations": {
+    "Whiteboard" : "Rašymo lenta",
     "New whiteboard" : "Nauja rašymo lenta",
     "Create new whiteboard" : "Sukurti naują rašymo lentą",
-    "Whiteboard" : "Rašymo lenta",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "WebSocket serverio URL adresas nėra nustatytas. Bendradarbiavimui realiuoju laiku reikalingas atskiras WebSocket serveris. Be jo veikia pagrindinės rašymo lentos funkcijos.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "WebSocket serverio bendrasis raktas nėra nustatytas. Jis reikalingas saugiam autentifikavimui tarp „Nextcloud“ ir WebSocket serverio, siekiant užtikrinti bendradarbiavimą realiuoju laiku.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "WebSocket serverio konfigūracija yra teisinga. Ryšio patikrinimas naršyklėje patvirtins, ar ryšys tikrai veikia, kad būtų galima bendradarbiauti realiuoju laiku.",

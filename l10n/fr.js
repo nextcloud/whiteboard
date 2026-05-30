@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Tableau blanc",
     "New whiteboard" : "Nouveau tableau blanc",
     "Create new whiteboard" : "Créer un nouveau tableau blanc",
-    "Whiteboard" : "Tableau blanc",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "L'URL du serveur WebSocket n'est pas configurée. La collaboration en temps réel nécessite un serveur WebSocket dédié. Les fonctionnalités de base du tableau blanc restent disponibles sans.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Pour garantir la collaboration en temps réel, vous devez configurer le secret partagé du serveur WebSocket. Ce paramètre est indispensable pour sécuriser l'authentification entre Nextcloud et le serveur WebSocket",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "La configuration du serveur WebSocket est valide. Nous allons maintenant procéder à un test de connexion dans le navigateur afin de vérifier la connectivité réelle pour la collaboration en temps réel.",

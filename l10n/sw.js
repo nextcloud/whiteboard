@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Ubao mweupe",
     "New whiteboard" : "Ubao mpya",
     "Create new whiteboard" : "Unda ubao mweupe mpya",
-    "Whiteboard" : "Ubao mweupe",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "URL ya seva ya WebSocket haijasanidiwa. Ushirikiano wa wakati halisi unahitaji seva tofauti ya WebSocket. Utendaji wa msingi wa ubao mweupe hufanya kazi bila hiyo.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Siri iliyoshirikiwa ya seva ya WebSocket haijasanidiwa. Hii inahitajika kwa uthibitishaji salama kati ya Nextcloud na seva ya WebSocket kwa ushirikiano wa wakati halisi.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "Usanidi wa seva ya WebSocket ni halali. Jaribio la muunganisho linalotegemea kivinjari litathibitisha muunganisho halisi kwa ushirikiano wa wakati halisi.",

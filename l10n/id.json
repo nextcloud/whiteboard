@@ -1,7 +1,7 @@
 { "translations": {
+    "Whiteboard" : "Papan tulis",
     "New whiteboard" : "Papan tulis baru",
     "Create new whiteboard" : "Buat papan tulis baru",
-    "Whiteboard" : "Papan tulis",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "URL server WebSocket belum dikonfigurasi. Kolaborasi waktu nyata memerlukan server WebSocket terpisah. Fungsionalitas dasar papan tulis dapat digunakan tanpanya.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Rahasia bersama server WebSocket belum dikonfigurasi. Ini diperlukan untuk autentikasi aman antara Nextcloud dan server WebSocket untuk kolaborasi waktu nyata.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "Konfigurasi server WebSocket valid. Uji koneksi berbasis browser akan memverifikasi konektivitas sebenarnya untuk kolaborasi waktu nyata.",

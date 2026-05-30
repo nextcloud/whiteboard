@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Valkotaulu",
     "New whiteboard" : "Uusi valkotaulu",
     "Create new whiteboard" : "Luo uusi valkotaulu",
-    "Whiteboard" : "Valkotaulu",
     "Whiteboard app" : "Valkotaulusovellus",
     "Max image size must be a positive number." : "Kuvan enimmäiskoko tulee olla positiivinen luku.",
     "Failed to verify the connection:" : "Yhteyden vahvistaminen epäonnistui:",

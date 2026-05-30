@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "ئاق دوسكا",
     "New whiteboard" : "يېڭى ئاق دوسكا",
     "Create new whiteboard" : "يېڭى ئاق دوسكا ياساڭ",
-    "Whiteboard" : "ئاق دوسكا",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "WebSocket سېرۋېرىنىڭ URL ئادرېسى تەڭشىلىنمىگەن. ھەقىقىي ۋاقىتلىق ھەمكارلىق ئۈچۈن ئايرىم WebSocket سېرۋېرى تەلەپ قىلىنىدۇ. ئاساسىي ئاق تاختا ئىقتىدارى ئۇنىڭسىز ئىشلەيدۇ.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "WebSocket سېرۋېرىنىڭ ئورتاق مەخپىيىتى تەڭشىلمىگەن. بۇ، Nextcloud بىلەن WebSocket سېرۋېرى ئوتتۇرىسىدا ھەقىقىي ۋاقىتلىق ھەمكارلىق ئۈچۈن بىخەتەر دەلىللەش ئۈچۈن تەلەپ قىلىنىدۇ.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "WebSocket سېرۋېر سەپلىمىسى توغرا. تور كۆرگۈچ ئاساسلىق ئۇلىنىش سىنىقى ھەقىقىي ۋاقىتلىق ھەمكارلىق ئۈچۈن ئەمەلىي ئۇلىنىشنى تەكشۈرىدۇ.",

@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Clár bán",
     "New whiteboard" : "Clár bán nua",
     "Create new whiteboard" : "Cruthaigh clár bán nua",
-    "Whiteboard" : "Clár bán",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "Níl URL freastalaí WebSocket cumraithe. Éilíonn comhoibriú fíor-ama freastalaí WebSocket ar leithligh. Oibríonn feidhmiúlacht bhunúsach cláir bháin gan é.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "Níl rún comhroinnte freastalaí WebSocket cumraithe. Tá sé seo riachtanach le haghaidh fíordheimhniú slán idir Nextcloud agus freastalaí WebSocket le haghaidh comhoibriú fíor-ama.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "Tá cumraíocht fhreastalaí WebSocket bailí. Déanfaidh tástáil nasc bunaithe ar bhrabhsálaí fíorú ar an nascacht iarbhír le haghaidh comhoibriú fíor-ama.",

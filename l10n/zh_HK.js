@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "白板",
     "New whiteboard" : "新白板",
     "Create new whiteboard" : "建立新白板",
-    "Whiteboard" : "白板",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "尚未設定 WebSocket 伺服器 URL。即時協作需要獨立的 WebSocket 伺服器。基本的白板功能不需要它也能運作。",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "未設定 WebSocket 伺服器共用祕密。這是 Nextcloud 與 WebSocket 伺服器之間進行安全驗證所必需的，以便進行即時協作。",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "WebSocket 伺服器組態有效。以瀏覽器為基礎的連線測試將驗證即時協作的實際連線。",

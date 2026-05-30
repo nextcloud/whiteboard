@@ -1,7 +1,7 @@
 { "translations": {
+    "Whiteboard" : "Valgetahvel",
     "New whiteboard" : "Uus tahvel",
     "Create new whiteboard" : "Loo uus tahvel",
-    "Whiteboard" : "Valgetahvel",
     "WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it." : "WebSocketi serveri võrguaadress pole seadistatud. Reaalajas ühistöö vajab sellise eraldi serveri kasutamist. Tahvli funktsionaalsus oma lihtsamas variandis toimib ka ilma WebSocketi serverita.",
     "WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration." : "WebSocketi serveri jagatud saladus on seadistamata. See on vajalik Nextcloudi ja WebSocketii serverite omavaheliseks autentimiseks reaalajas toimiva ühistööserveri kontekstis.",
     "WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration." : "WebSocketi serveri seadistus on korrektne. Brauseripõhise testiga saad kontrollida tegelikku ühenduse toimimist reaalajas ühistöö kontekstis.",

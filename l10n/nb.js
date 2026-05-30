@@ -1,9 +1,9 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Tavle",
     "New whiteboard" : "Ny tavle",
     "Create new whiteboard" : "Opprett ny tavle",
-    "Whiteboard" : "Tavle",
     "Whiteboard app" : "Whiteboard-app",
     "Failed to verify the connection:" : "Verifisering av forbindelsen feilet:",
     "Verifying connection…" : "Verifiserer forbindelse...",
