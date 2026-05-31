@@ -55,6 +55,7 @@ OC.L10N.register(
     "Add a comment" : "コメントを追加",
     "Send" : "送る",
     "No comments yet" : "コメントはまだありません",
+    "replies" : "返信",
     "Show element creators" : "図形作成者を表示",
     "Display Mode" : "表示モード",
     "On Selection" : "クリック時",
@@ -124,6 +125,8 @@ OC.L10N.register(
     "Stored in file history" : "ファイル履歴に保存",
     "Could not restore this version" : "このバージョンを復元できませんでした",
     "Version restored" : "指定のバージョンを復旧しました",
-    "Just now" : "今"
+    "Just now" : "今",
+    "minute ago" : "分前",
+    "minutes ago" : "分前"
 },
 "nplurals=1; plural=0;");

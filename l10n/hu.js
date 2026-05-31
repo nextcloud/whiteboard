@@ -12,6 +12,7 @@ OC.L10N.register(
     "Cancel" : "Cancel",
     "Update" : "Frissítés",
     "Insert" : "Beillesztés",
+    "Single choice" : "Egyetlen választási lehetőség",
     "Multiple choice" : "Több választás",
     "Question" : "Kérdés",
     "Option" : "Option",
