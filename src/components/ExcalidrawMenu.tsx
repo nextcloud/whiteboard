@@ -17,6 +17,7 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import type { RecordingHookState } from '../types/recording'
 import type { PresentationState } from '../types/presentation'
+import { loadState } from '@nextcloud/initial-state'
 
 interface ExcalidrawMenuProps {
 	fileNameWithoutExtension: string
@@ -30,6 +31,7 @@ interface ExcalidrawMenuProps {
 
 export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState, isTimerVisible, onToggleTimer, gridModeEnabled, onToggleGrid }: ExcalidrawMenuProps) {
 	const isMacPlatform = typeof navigator !== 'undefined' && (navigator.userAgentData?.platform === 'macOS' || /Mac|iPhone|iPad/.test(navigator.platform ?? ''))
+	const isDirectEditing = loadState('whiteboard', 'directEditing', false)
 	const { excalidrawAPI } = useExcalidrawStore(useShallow(state => ({
 		excalidrawAPI: state.excalidrawAPI,
 	})))
@@ -179,18 +181,20 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 		<MainMenu>
 			<MainMenu.DefaultItems.ToggleTheme />
 			<MainMenu.DefaultItems.ChangeCanvasBackground />
-			<MainMenu.Item
-				icon={<Icon path={mdiImageMultiple} size={0.75} />}
-				onSelect={openExportDialog}
-				shortcut={isMacPlatform ? '⌘+⇧+E' : t('whiteboard', 'Ctrl+Shift+E')}>
-				{t('whiteboard', 'Export image…')}
-			</MainMenu.Item>
-			<MainMenu.Item
-				icon={<Icon path={mdiMonitorScreenshot} size={0.75} />}
-				onSelect={takeScreenshot}
-				shortcut={isMacPlatform ? '⌘+⌥+S' : t('whiteboard', 'Ctrl+Alt+S')}>
-				{t('whiteboard', 'Download screenshot')}
-			</MainMenu.Item>
+			{!isDirectEditing && <>
+				<MainMenu.Item
+					icon={<Icon path={mdiImageMultiple} size={0.75} />}
+					onSelect={openExportDialog}
+					shortcut={isMacPlatform ? '⌘+⇧+E' : t('whiteboard', 'Ctrl+Shift+E')}>
+					{t('whiteboard', 'Export image…')}
+				</MainMenu.Item>
+				<MainMenu.Item
+					icon={<Icon path={mdiMonitorScreenshot} size={0.75} />}
+					onSelect={takeScreenshot}
+					shortcut={isMacPlatform ? '⌘+⌥+S' : t('whiteboard', 'Ctrl+Alt+S')}>
+					{t('whiteboard', 'Download screenshot')}
+				</MainMenu.Item>
+			</>}
 			<MainMenu.Item
 				icon={<Icon path={mdiVote} size="16px" />}
 				onSelect={() => showVotings()}>
