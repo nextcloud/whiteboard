@@ -6,6 +6,7 @@ OC.L10N.register(
     "Advanced settings" : "تنظیمات پیشرفته",
     "Close" : "بستن",
     "Generating…" : "در حال ساخت",
+    "Generate" : "تولید",
     "Recording" : "ضبط جلسه",
     "Insert Table" : "وارد کرن جدول",
     "Cancel" : "انصراف",
