@@ -40,6 +40,8 @@ jobs:
             echo "version_channel=daily" >> $GITHUB_OUTPUT
           fi
           echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "version_ref=${{ github.event_name == 'release' && github.ref_name || github.sha }}" >> $GITHUB_OUTPUT
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
           echo "platform=$(echo -n ${{ matrix.platform }} | sed 's/\//-/g')" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -62,6 +64,10 @@ jobs:
           push: true
           platforms: ${{ matrix.platform }}
           provenance: false
+          build-args: |
+            VERSION=${{ steps.vars.outputs.version_ref }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ steps.vars.outputs.created }}
           tags: |
             ${{ env.GHCR_REPO}}:${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.platform }}
 
