@@ -3,6 +3,8 @@ OC.L10N.register(
     {
     "Whiteboard" : "Табла",
     "Save settings" : "Зачувај параметри",
+    "Uploading…" : "Прикачување…",
+    "Delete" : "Избриши",
     "Advanced settings" : "Напредни параметри",
     "Close" : "Затвори",
     "Generating…" : "Се генерира…",
@@ -24,6 +26,7 @@ OC.L10N.register(
     "Unknown" : "Непознат",
     "Unknown user" : "Непознат корисник",
     "File" : "Датотека",
+    "Saving…" : "Зачувува ...",
     "Running" : "Трчање",
     "Paused" : "Пузирано",
     "Finished" : "Завршено",

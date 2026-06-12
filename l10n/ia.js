@@ -15,6 +15,7 @@ OC.L10N.register(
     "Connecting" : "Connectente",
     "Unknown" : "Incognite",
     "Unknown user" : "Usator incognite",
+    "Saving…" : "Salveguardante...",
     "Finished" : "Finite",
     "Hours" : "Horas",
     "Minutes" : "Minutas",

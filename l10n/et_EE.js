@@ -27,6 +27,7 @@ OC.L10N.register(
     "Shared secret" : "Jagatud saladus",
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "JWT salavõti mida turvalise autentimise nimel jagavad omavahel Nextcloudi ja WebSocketi server.",
     "Save settings" : "Salvesta seadistused",
+    "Uploading…" : "Üleslaadimisel…",
     "Advanced settings" : "Lisavalikud",
     "Max image size (MB)" : "Pildi mahu ülempiir (MB)",
     "An error occurred while creating the diagram" : "Skeemi või diagrammi koostamisel tekkis viga",

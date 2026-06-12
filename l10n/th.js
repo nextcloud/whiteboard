@@ -1,6 +1,8 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Uploading…" : "กำลังอัปโหลด…",
+    "Delete" : "ลบ",
     "Advanced settings" : "การตั้งค่าขั้นสูง",
     "Close" : "ปิด",
     "Generate" : "สร้าง",

@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Shared secret" : "Secret partejat",
     "Save settings" : "Salvar paramètres",
+    "Delete" : "Suprimir",
     "Advanced settings" : "Paramètres avançats",
     "Close" : "Plegar",
     "Recording" : "Enregistrament",
@@ -26,6 +27,7 @@ OC.L10N.register(
     "Duration" : "Durada",
     "Stop recording" : "Arrestar l'enregistrament",
     "File" : "Fichier",
+    "Saving…" : "Enregistrament…",
     "Paused" : "En pausa",
     "Hours" : "Oras",
     "Minutes" : "Minutas",

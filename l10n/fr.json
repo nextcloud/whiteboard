@@ -18,6 +18,7 @@
     "Shared secret" : "Secret partagé",
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Clé secrète JWT commune à Nextcloud et au serveur WebSocket pour une authentification sécurisée.",
     "Save settings" : "Enregistrer les paramètres",
+    "Uploading…" : "Téléversement en cours…",
     "Advanced settings" : "Paramètres avancés",
     "Close" : "Fermer",
     "Generating…" : "Génération en cours...",

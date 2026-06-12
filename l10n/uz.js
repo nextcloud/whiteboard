@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Oq doska",
+    "Uploading…" : "Yuklanmoqda...",
+    "Delete" : "Oʻchirish",
     "Close" : "Yopish",
     "Cancel" : "Bekor qilish",
     "Update" : "Yangilash",
@@ -22,6 +24,7 @@ OC.L10N.register(
     "Duration" : "Davomiyligi",
     "Unknown user" : "Unknown user",
     "File" : "Fayl",
+    "Saving…" : "Saqlanmoqda...",
     "Hours" : "Hours",
     "Reset" : "Qayta tiklash",
     "Status" : "Holat",

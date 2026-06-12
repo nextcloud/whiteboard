@@ -1,5 +1,7 @@
 { "translations": {
     "Save settings" : "Ruaj konfigurimet",
+    "Uploading…" : "Po ngarkohet…",
+    "Delete" : "Fshi",
     "Advanced settings" : "Rregullime të mëtejshme",
     "Close" : "Mbylleni",
     "Insert Table" : "Fut tabelë",
@@ -16,6 +18,7 @@
     "Duration" : "Kohëzgjatja",
     "Unknown user" : "Përdorues i panjohur",
     "File" : "Skedar ",
+    "Saving…" : "Duke u ruajtur...",
     "Paused" : "Pushuar",
     "Finished" : "Përfunduar",
     "Hours" : "Orët",

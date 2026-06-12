@@ -3,6 +3,8 @@ OC.L10N.register(
     {
     "Whiteboard" : "Tablă de scris",
     "Save settings" : "Salvează setări",
+    "Uploading…" : "Încărcare…",
+    "Delete" : "Șterge",
     "Advanced settings" : "Setări avansate",
     "Close" : "Închide",
     "Cancel" : "Cancel",
@@ -25,6 +27,7 @@ OC.L10N.register(
     "Duration" : "Durată",
     "Unknown user" : "Utilizator necunoscut",
     "File" : "Fișier",
+    "Saving…" : "Se salvează...",
     "Running" : "Alergat",
     "Paused" : "oprit",
     "Finished" : "Finalizat",

@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Save settings" : "Ruaj konfigurimet",
+    "Uploading…" : "Po ngarkohet…",
+    "Delete" : "Fshi",
     "Advanced settings" : "Rregullime të mëtejshme",
     "Close" : "Mbylleni",
     "Insert Table" : "Fut tabelë",
@@ -18,6 +20,7 @@ OC.L10N.register(
     "Duration" : "Kohëzgjatja",
     "Unknown user" : "Përdorues i panjohur",
     "File" : "Skedar ",
+    "Saving…" : "Duke u ruajtur...",
     "Paused" : "Pushuar",
     "Finished" : "Përfunduar",
     "Hours" : "Orët",

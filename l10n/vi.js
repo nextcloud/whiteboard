@@ -3,6 +3,8 @@ OC.L10N.register(
     {
     "Whiteboard" : "Bảng viết",
     "Shared secret" : "Chia sẽ mật khẩu",
+    "Uploading…" : "Đang tải lên…",
+    "Delete" : "Xóa",
     "Advanced settings" : "Cài đặt nâng cao",
     "Close" : "Đóng",
     "Cancel" : "Cancel",
@@ -21,6 +23,7 @@ OC.L10N.register(
     "Duration" : "Khoảng thời gian",
     "Unknown user" : "Người dùng không tồn tại",
     "File" : "Tệp Tin",
+    "Saving…" : "Đang lưu...",
     "Running" : "Chạy bộ",
     "Finished" : "Hoàn thành",
     "Hours" : "Giờ",

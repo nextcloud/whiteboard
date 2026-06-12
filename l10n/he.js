@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Shared secret" : "סוד משותף",
+    "Uploading…" : "מתבצעת העלאה…",
     "Advanced settings" : "הגדרות מתקדמות",
     "Close" : "סגירה",
     "Add reaction" : "הוספת תגובון",

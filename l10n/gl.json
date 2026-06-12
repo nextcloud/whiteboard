@@ -25,6 +25,7 @@
     "Shared secret" : "Segredo compartido",
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Chave secreta JWT compartida entre Nextcloud e o servidor WebSocket para unha autenticación segura.",
     "Save settings" : "Gardar os axustes",
+    "Uploading…" : "Enviando…",
     "Advanced settings" : "Axustes avanzados",
     "Max image size (MB)" : "Tamaño máximo de imaxe (MB):",
     "An error occurred while creating the diagram" : "Produciuse un erro ao crear o diagrama",

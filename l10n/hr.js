@@ -27,6 +27,7 @@ OC.L10N.register(
     "Shared secret" : "Dijeljen tajni ključ",
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "JWT tajni ključ koji dijele Nextcloud i WebSocket poslužitelj za sigurnu autentikaciju.",
     "Save settings" : "Spremi postavke",
+    "Uploading…" : "Otpremanje...",
     "Advanced settings" : "Napredne postavke",
     "Max image size (MB)" : "Maksimalna veličina slike (MB)",
     "An error occurred while creating the diagram" : "Došlo je do pogreške pri stvaranju dijagrama",

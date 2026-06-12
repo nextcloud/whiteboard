@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Shared secret" : "Segretu cumpartzidu",
+    "Uploading…" : "Carrighende...",
+    "Delete" : "Cantzella",
     "Advanced settings" : "Cunfiguratzione avantzada",
     "Close" : "Serra",
     "Recording" : "Registratzione",
@@ -23,6 +25,7 @@ OC.L10N.register(
     "Duration" : "Durata",
     "Unknown user" : "Utèntzia disconnota",
     "File" : "Archìviu",
+    "Saving…" : "Sarvende...",
     "Running" : "Cursa",
     "Paused" : "Suspèndidos",
     "Finished" : "Agabbadu",

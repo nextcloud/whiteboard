@@ -4,6 +4,7 @@ OC.L10N.register(
     "Whiteboard" : "Arbel zuria",
     "Shared secret" : "Partekatutako sekretua",
     "Save settings" : "Gorde ezarpenak",
+    "Uploading…" : "Igotzen...",
     "Advanced settings" : "Ezarpen aurreratuak",
     "Close" : "Itxi",
     "Generating…" : "Sortzen...",

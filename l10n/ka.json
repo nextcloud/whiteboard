@@ -1,6 +1,8 @@
 { "translations": {
     "Whiteboard" : "Whiteboard",
     "Shared secret" : "Shared secret",
+    "Uploading…" : "Uploading…",
+    "Delete" : "წაშლა",
     "Advanced settings" : "Advanced settings",
     "Close" : "Close",
     "Recording" : "Recording",
@@ -24,6 +26,7 @@
     "Stop recording" : "Stop recording",
     "Unknown user" : "Unknown user",
     "File" : "ფაილი",
+    "Saving…" : "Saving…",
     "Running" : "Running",
     "Finished" : "Finished",
     "min" : "min",

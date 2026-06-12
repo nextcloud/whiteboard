@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Shared secret" : "Segredo partilhado",
+    "Uploading…" : "A enviar…",
+    "Delete" : "Eliminar",
     "Advanced settings" : "Definições avançadas",
     "Close" : "Fechar",
     "Cancel" : "Cancelar",
@@ -24,6 +26,7 @@ OC.L10N.register(
     "Duration" : "Duração",
     "Unknown user" : "Utilizador desconhecido",
     "File" : "Ficheiro",
+    "Saving…" : "A guardar...",
     "Running" : "Correr",
     "Paused" : "Em pausa",
     "Finished" : "Terminado",

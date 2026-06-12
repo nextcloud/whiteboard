@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Save settings" : "සැකසුම් සුරකින්න",
+    "Uploading…" : "උඩුගත වෙමින්…",
     "Close" : "වසන්න",
     "Cancel" : "Cancel",
     "Update" : "යාවත්කාල",

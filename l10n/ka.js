@@ -3,6 +3,8 @@ OC.L10N.register(
     {
     "Whiteboard" : "Whiteboard",
     "Shared secret" : "Shared secret",
+    "Uploading…" : "Uploading…",
+    "Delete" : "წაშლა",
     "Advanced settings" : "Advanced settings",
     "Close" : "Close",
     "Recording" : "Recording",
@@ -26,6 +28,7 @@ OC.L10N.register(
     "Stop recording" : "Stop recording",
     "Unknown user" : "Unknown user",
     "File" : "ფაილი",
+    "Saving…" : "Saving…",
     "Running" : "Running",
     "Finished" : "Finished",
     "min" : "min",

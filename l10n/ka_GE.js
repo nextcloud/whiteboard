@@ -3,6 +3,8 @@ OC.L10N.register(
     {
     "Shared secret" : "გაზიარებული საიდუმლო",
     "Save settings" : "პარამეტრების შენახვა",
+    "Uploading…" : "იტვირთება...",
+    "Delete" : "წაშლა",
     "Advanced settings" : "დამატებითი პარამეტრები",
     "Close" : "დახურვა",
     "Cancel" : "Cancel",
@@ -17,6 +19,7 @@ OC.L10N.register(
     "Unknown" : "უცნობია",
     "Unknown user" : "ამოუცნობი მომხმარებელი",
     "File" : "ფაილი",
+    "Saving…" : "მიმდინარეობს დამახსოვრება...",
     "Paused" : "დაპაუზებულია",
     "Finished" : "დასრულდა",
     "Hours" : "საათი",

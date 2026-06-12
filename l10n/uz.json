@@ -1,5 +1,7 @@
 { "translations": {
     "Whiteboard" : "Oq doska",
+    "Uploading…" : "Yuklanmoqda...",
+    "Delete" : "Oʻchirish",
     "Close" : "Yopish",
     "Cancel" : "Bekor qilish",
     "Update" : "Yangilash",
@@ -20,6 +22,7 @@
     "Duration" : "Davomiyligi",
     "Unknown user" : "Unknown user",
     "File" : "Fayl",
+    "Saving…" : "Saqlanmoqda...",
     "Hours" : "Hours",
     "Reset" : "Qayta tiklash",
     "Status" : "Holat",
