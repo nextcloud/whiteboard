@@ -1,6 +1,8 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Uploading…" : "Subiendo…",
+    "Delete" : "Eliminar",
     "Advanced settings" : "Configuraciones avanzadas",
     "Close" : "Cerrar",
     "Cancel" : "Cancel",
@@ -19,6 +21,7 @@ OC.L10N.register(
     "Follow" : "Seguir",
     "Unknown user" : "Ususario desconocido",
     "File" : "Archivo",
+    "Saving…" : "Guardando...",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
     "Hours" : "Horas",

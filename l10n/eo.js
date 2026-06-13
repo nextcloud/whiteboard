@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Save settings" : "Konservi agordojn",
+    "Uploading…" : "Alŝutado…",
+    "Delete" : "Forigi",
     "Advanced settings" : "Altanivela agordo",
     "Close" : "Malfermi",
     "Cancel" : "Cancel",
@@ -17,6 +19,7 @@ OC.L10N.register(
     "Unknown" : "Nekonata",
     "Unknown user" : "Nekonata uzanto",
     "File" : "Dosiero",
+    "Saving…" : "Konservado...",
     "Running" : "Kuras",
     "Finished" : "Finita",
     "Hours" : "Horoj",

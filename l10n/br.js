@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Shared secret" : "Secret rannet",
+    "Uploading…" : "O pellkas",
+    "Delete" : "Dilemel",
     "Close" : "Serriñ",
     "Cancel" : "Cancel",
     "Update" : "Hizivaat",

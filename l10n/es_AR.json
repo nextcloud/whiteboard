@@ -1,4 +1,6 @@
 { "translations": {
+    "Uploading…" : "Subiendo…",
+    "Delete" : "Eliminar",
     "Advanced settings" : "Configuraciones avanzadas",
     "Close" : "Cerrar",
     "Cancel" : "Cancel",
@@ -17,6 +19,7 @@
     "Follow" : "Seguir",
     "Unknown user" : "Ususario desconocido",
     "File" : "Archivo",
+    "Saving…" : "Guardando...",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
     "Hours" : "Horas",

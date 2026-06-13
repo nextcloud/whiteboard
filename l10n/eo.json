@@ -1,5 +1,7 @@
 { "translations": {
     "Save settings" : "Konservi agordojn",
+    "Uploading…" : "Alŝutado…",
+    "Delete" : "Forigi",
     "Advanced settings" : "Altanivela agordo",
     "Close" : "Malfermi",
     "Cancel" : "Cancel",
@@ -15,6 +17,7 @@
     "Unknown" : "Nekonata",
     "Unknown user" : "Nekonata uzanto",
     "File" : "Dosiero",
+    "Saving…" : "Konservado...",
     "Running" : "Kuras",
     "Finished" : "Finita",
     "Hours" : "Horoj",

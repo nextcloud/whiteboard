@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Shared secret" : "סוד משותף",
     "Uploading…" : "מתבצעת העלאה…",
+    "Delete" : "מחיקה",
     "Advanced settings" : "הגדרות מתקדמות",
     "Close" : "סגירה",
     "Add reaction" : "הוספת תגובון",
@@ -29,6 +30,7 @@ OC.L10N.register(
     "Duration" : "משך",
     "Unknown user" : "משתמש לא ידוע",
     "File" : "קובץ",
+    "Saving…" : "מתבצעת שמירה…",
     "Running" : "ריצה",
     "Paused" : "מושהה",
     "Finished" : "הסתיים",

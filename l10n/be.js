@@ -1,6 +1,8 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Uploading…" : "Запампоўванне…",
+    "Delete" : "Выдаліць",
     "Advanced settings" : "Пашыраныя налады",
     "Close" : "Закрыць",
     "Add reaction" : "Дадаць рэакцыю",

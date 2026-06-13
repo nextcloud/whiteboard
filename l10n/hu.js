@@ -5,6 +5,7 @@ OC.L10N.register(
     "Shared secret" : "Megosztott titok",
     "Save settings" : "Beállítások mentése",
     "Uploading…" : "Feltöltés…",
+    "Delete" : "Törlés",
     "Advanced settings" : "Speciális beállítások",
     "Close" : "Bezárás",
     "Generate" : "Generálás",

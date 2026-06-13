@@ -2,6 +2,8 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Pizarra",
+    "Uploading…" : "Xubiendo…",
+    "Delete" : "Desaniciar",
     "Advanced settings" : "Configuración avanzada",
     "Close" : "Zarrar",
     "Generate" : "Xenerar",
@@ -30,6 +32,7 @@ OC.L10N.register(
     "Stop recording" : "Parar la grabación",
     "Unknown user" : "Usuariu desconocíu",
     "File" : "Ficheru",
+    "Saving…" : "Guardando…",
     "Paused" : "En posa",
     "Finished" : "Finó",
     "Hours" : "Hores",

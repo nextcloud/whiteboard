@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Bwrdd gwyn",
+    "Delete" : "Dileu",
     "Close" : "Cau",
     "Cancel" : "Cancel",
     "Update" : "Diweddaru",

@@ -3,6 +3,8 @@ OC.L10N.register(
     {
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuraciones",
+    "Uploading…" : "Cargando",
+    "Delete" : "Eliminar",
     "Advanced settings" : "Configuraciones avanzados",
     "Cancel" : "Cancel",
     "Comments" : "Comentarios",
@@ -15,6 +17,7 @@ OC.L10N.register(
     "Unknown" : "Desconocido",
     "Unknown user" : "Ususario desconocido",
     "File" : "Archivo",
+    "Saving…" : "Guardando...",
     "Paused" : "Pausado",
     "Finished" : "Terminado",
     "Hours" : "Horas",
