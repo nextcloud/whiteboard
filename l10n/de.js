@@ -111,7 +111,7 @@ OC.L10N.register(
     "Library saved." : "Bibliothek gespeichert.",
     "A canvas template with this name already exists. Choose a different name." : "Eine Leihnwand-Vorlage mit diesem Namen existiert bereits. Einen anderen Namen wählen.",
     "Could not save library." : "Bibliothek konnte nicht gespeichert werden.",
-    "Enter a canvas name." : "Geben Sie einen Leinwand-Namen ein.",
+    "Enter a canvas name." : "Gebe einen Leinwand-Namen ein.",
     "This whiteboard has no content to save as a canvas." : "Dieses Whiteboard enthält keine Inhalte, die als Leinwand gespeichert werden könnten.",
     "Canvas is too large (max 15 MB)." : "Die Leinwand ist zu groß (max. 15 MB).",
     "Organization canvas published." : "Organisations-Leihnwand veröffentlicht.",
