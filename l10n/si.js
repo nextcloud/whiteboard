@@ -1,0 +1,22 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Save settings" : "සැකසුම් සුරකින්න",
+    "Uploading…" : "උඩුගත වෙමින්…",
+    "Delete" : "Delete",
+    "Close" : "වසන්න",
+    "Cancel" : "Cancel",
+    "Update" : "යාවත්කාල",
+    "Comments" : "අදහස්",
+    "Dismiss" : "Dismiss",
+    "Edit" : "සංස්කරණය",
+    "Save" : "Save",
+    "Reply" : "පිළිතුර",
+    "Send" : "යවන්න",
+    "Duration" : "කාල සීමාව",
+    "Unknown user" : "නොදන්නා පරිශීලකයෙකි",
+    "File" : "ගොනුව",
+    "Open" : "විවෘත",
+    "Closed" : "වසා ඇත"
+},
+"nplurals=2; plural=(n != 1);");

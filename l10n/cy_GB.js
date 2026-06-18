@@ -7,6 +7,7 @@ OC.L10N.register(
     "Cancel" : "Cancel",
     "Update" : "Diweddaru",
     "Voting" : "Pleidleisio",
+    "Dismiss" : "Dismiss",
     "Edit" : "Golygu",
     "Save" : "Cadw",
     "Send" : "Anfon",

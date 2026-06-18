@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Delete" : "Skrap",
     "Advanced settings" : "Gevorderde instellings",
+    "Close" : "Close",
     "Cancel" : "Cancel",
     "Update" : "Werk by",
     "Comments" : "Kommentare",

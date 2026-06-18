@@ -6,6 +6,7 @@ OC.L10N.register(
     "Uploading…" : "Cargando...",
     "Delete" : "Borrar",
     "Advanced settings" : "Configuraciones avanzados",
+    "Close" : "Close",
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
     "Comments" : "Comentarios",
