@@ -7,8 +7,6 @@ import { defineConfig, normalizePath } from 'vite'
 import { join, resolve } from 'path'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 
-const EXCALIDRAW_FONTS_DIR = normalizePath(resolve('node_modules/@nextcloud/excalidraw/dist/prod/fonts'))
-
 const AppConfig = createAppConfig({
 	main: resolve(join('src', 'main.ts')),
 	settings: resolve(join('src', 'admin.ts')),
@@ -70,8 +68,9 @@ const AppConfig = createAppConfig({
 			viteStaticCopy({
 				targets: [
 					{
-						src: EXCALIDRAW_FONTS_DIR,
+						src: normalizePath(resolve('node_modules/@nextcloud/excalidraw/dist/prod/fonts')),
 						dest: 'dist',
+						rename: {'stripBase': 5},
 					},
 				],
 			}),
