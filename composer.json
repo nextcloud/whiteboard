@@ -13,7 +13,7 @@
 		},
 		"sort-packages": true
 	},
-	"license": "AGPL",
+	"license": "AGPL-3.0-or-later",
 	"require": {
 		"php": "^8.0",
 		"firebase/php-jwt": "^6.10"
