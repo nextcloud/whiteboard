@@ -38,6 +38,7 @@ OC.L10N.register(
     "Pause" : "Pausar",
     "Open" : "Abrir",
     "Closed" : "Fechado",
+    "Vote" : "Votar",
     "Assistant" : "Assistente",
     "Just now" : "Agora mesmo"
 },
