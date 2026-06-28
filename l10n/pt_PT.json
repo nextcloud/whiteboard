@@ -4,9 +4,11 @@
     "Delete" : "Eliminar",
     "Advanced settings" : "Definições avançadas",
     "Close" : "Fechar",
+    "Recording" : "Gravação",
     "Cancel" : "Cancelar",
     "Update" : "Atualizar",
     "Multiple choice" : "Escolha múltipla",
+    "Option" : "Opção",
     "Comments" : "Comentários",
     "Dismiss" : "Dispensar",
     "Guest" : "Convidado",
@@ -15,6 +17,7 @@
     "Reply" : "Responder",
     "Add a comment" : "Adicionar um comentário",
     "Send" : "Enviar",
+    "No comments yet" : "Nenhum comentário ainda",
     "Connecting" : "A ligar",
     "Online" : "On-line",
     "Unknown" : "Desconhecido",
@@ -30,6 +33,7 @@
     "Finished" : "Terminado",
     "Hours" : "Horas",
     "Minutes" : "Minutos",
+    "Seconds" : "Segundos",
     "min" : "min",
     "Start" : "Início",
     "Reset" : "Reiniciar",
@@ -38,6 +42,7 @@
     "Closed" : "Fechado",
     "Vote" : "Votar",
     "Assistant" : "Assistente",
+    "Version {version}" : "Versão {version}",
     "Just now" : "Agora mesmo"
 },"pluralForm" :"nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;"
 }
