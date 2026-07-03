@@ -298,10 +298,6 @@
     "Could not restore this version" : "Níorbh fhéidir an leagan seo a athchóiriú",
     "Version restored" : "Leagan athchóirithe",
     "This table is currently being edited by {user}" : "Tá an tábla seo á chur in eagar faoi láthair ag {user}",
-    "Just now" : "Anois féin",
-    "minute ago" : "nóiméad ó shin",
-    "minutes ago" : "nóiméad ó shin",
-    "hour ago" : "uair an chloig ó shin",
-    "hours ago" : "uaireanta ó shin"
+    "Just now" : "Anois féin"
 },"pluralForm" :"nplurals=5; plural=(n==1 ? 0 : n==2 ? 1 : n<7 ? 2 : n<11 ? 3 : 4);"
 }

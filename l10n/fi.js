@@ -142,10 +142,6 @@ OC.L10N.register(
     "Could not restore this version" : "Tätä versiota ei voitu palauttaa",
     "Version restored" : "Versio palautettu",
     "This table is currently being edited by {user}" : "Tätä taulukkoa muokkaa parhaillaan käyttäjä {user}",
-    "Just now" : "Juuri nyt",
-    "minute ago" : "minuutti sitten",
-    "minutes ago" : "minuuttia sitten",
-    "hour ago" : "tunti sitten",
-    "hours ago" : "tuntia sitten"
+    "Just now" : "Juuri nyt"
 },
 "nplurals=2; plural=(n != 1);");

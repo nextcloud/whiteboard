@@ -239,10 +239,6 @@ OC.L10N.register(
     "Could not restore this version" : "Non foi posíbel restaurar esta versión",
     "Version restored" : "A versión foi restaurada",
     "This table is currently being edited by {user}" : "Esta táboa está a ser editada actualmente por {user}",
-    "Just now" : "Agora mesmo",
-    "minute ago" : "hai un minuto",
-    "minutes ago" : "hai minutos",
-    "hour ago" : "hai unha hora",
-    "hours ago" : "hai horas"
+    "Just now" : "Agora mesmo"
 },
 "nplurals=2; plural=(n != 1);");

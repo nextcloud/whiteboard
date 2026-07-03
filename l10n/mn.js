@@ -211,10 +211,6 @@ OC.L10N.register(
     "Could not restore this version" : "Энэ хувилбарыг сэргээж чадсангүй",
     "Version restored" : "Хувилбар сэргээгдлээ",
     "This table is currently being edited by {user}" : "Энэ хүснэгтийг одоогоор {user} засаж байна",
-    "Just now" : "—è–≥ –æ–¥–æ–æ",
-    "minute ago" : "минутын өмнө",
-    "minutes ago" : "минутын өмнө",
-    "hour ago" : "цагийн өмнө",
-    "hours ago" : "цагийн өмнө"
+    "Just now" : "—è–≥ –æ–¥–æ–æ"
 },
 "nplurals=2; plural=(n != 1);");

@@ -300,10 +300,6 @@ OC.L10N.register(
     "Could not restore this version" : "Selle versiooni taastamine ei õnnestunud",
     "Version restored" : "Versioon on taastatud",
     "This table is currently being edited by {user}" : "Seda tabelit muudab hetkel {user}",
-    "Just now" : "Äsja",
-    "minute ago" : "minut tagasi",
-    "minutes ago" : "minutit tagasi",
-    "hour ago" : "tund tagasi",
-    "hours ago" : "tundi tagasi"
+    "Just now" : "Äsja"
 },
 "nplurals=2; plural=(n != 1);");

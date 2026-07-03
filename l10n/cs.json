@@ -242,10 +242,6 @@
     "Could not restore this version" : "Tuto verzi nebylo možné obnovit",
     "Version restored" : "Verze obnovena",
     "This table is currently being edited by {user}" : "Tato tabulka je v tuto chvíli upravována uživatelem {user}",
-    "Just now" : "Právě teď",
-    "minute ago" : "před minutou",
-    "minutes ago" : "před minutami",
-    "hour ago" : "před hodinou",
-    "hours ago" : "před hodinami"
+    "Just now" : "Právě teď"
 },"pluralForm" :"nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n >= 2 && n <= 4 && n % 1 == 0) ? 1: (n % 1 != 0 ) ? 2 : 3;"
 }

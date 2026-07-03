@@ -300,10 +300,6 @@ OC.L10N.register(
     "Could not restore this version" : "無法還原此版本",
     "Version restored" : "版本已還原",
     "This table is currently being edited by {user}" : "此表格目前已被 {user} 編輯",
-    "Just now" : "剛剛",
-    "minute ago" : "分鐘前",
-    "minutes ago" : "分鐘前",
-    "hour ago" : "小時前",
-    "hours ago" : "小時前"
+    "Just now" : "剛剛"
 },
 "nplurals=1; plural=0;");

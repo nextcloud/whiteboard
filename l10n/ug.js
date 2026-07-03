@@ -178,10 +178,6 @@ OC.L10N.register(
     "Stored in file history" : "ھۆججەت تارىخىدا ساقلىنىدۇ",
     "Could not restore this version" : "بۇ نەشرىنى ئەسلىگە كەلتۈرەلمىدى",
     "Version restored" : "نەشرى ئەسلىگە كەلتۈرۈلدى",
-    "Just now" : "ھازىر",
-    "minute ago" : "مىنۇت ئىلگىرى",
-    "minutes ago" : "مىنۇت ئىلگىرى",
-    "hour ago" : "سائەت ئىلگىرى",
-    "hours ago" : "سائەت ئىلگىرى"
+    "Just now" : "ھازىر"
 },
 "nplurals=2; plural=(n != 1);");

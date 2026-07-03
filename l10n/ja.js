@@ -129,8 +129,6 @@ OC.L10N.register(
     "Stored in file history" : "ファイル履歴に保存",
     "Could not restore this version" : "このバージョンを復元できませんでした",
     "Version restored" : "指定のバージョンを復旧しました",
-    "Just now" : "今",
-    "minute ago" : "分前",
-    "minutes ago" : "分前"
+    "Just now" : "今"
 },
 "nplurals=1; plural=0;");

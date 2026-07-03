@@ -5,6 +5,7 @@ OC.L10N.register(
     "Shared secret" : "Sameiginlegur leynilykill",
     "Save settings" : "Vista stillingar",
     "Uploading…" : "Sendi inn…",
+    "Delete" : "Eyða",
     "Advanced settings" : "Ítarlegri valkostir",
     "Close" : "Loka",
     "Generating…" : "Útbý…",

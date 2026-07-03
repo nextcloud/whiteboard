@@ -243,10 +243,6 @@ OC.L10N.register(
     "Could not restore this version" : "ບໍ່ສາມາດຄືນຄ່າເວີຊັນນີ້ໄດ້",
     "Version restored" : "ຄືນຄ່າເວີຊັນແລ້ວ",
     "This table is currently being edited by {user}" : "ຕາຕະລາງນີ້ກຳລັງຖືກແກ້ໄຂໂດຍ {user}",
-    "Just now" : "ມື້ກີ້ນີ້",
-    "minute ago" : "ນາທີກ່ອນ",
-    "minutes ago" : "ນາທີກ່ອນ",
-    "hour ago" : "ຊົ່ວໂມງກ່ອນ",
-    "hours ago" : "ຊົ່ວໂມງກ່ອນ"
+    "Just now" : "ມື້ກີ້ນີ້"
 },
 "nplurals=1; plural=0;");

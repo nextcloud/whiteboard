@@ -245,10 +245,6 @@ OC.L10N.register(
     "Could not restore this version" : "Kunde inte återställa denna version",
     "Version restored" : "Version återställd",
     "This table is currently being edited by {user}" : "Den här tabellen redigeras för närvarande av {user}",
-    "Just now" : "Just nu",
-    "minute ago" : "minut sedan",
-    "minutes ago" : "minuter sedan",
-    "hour ago" : "timme sedan",
-    "hours ago" : "timmar sedan"
+    "Just now" : "Just nu"
 },
 "nplurals=2; plural=(n != 1);");

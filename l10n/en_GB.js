@@ -243,10 +243,6 @@ OC.L10N.register(
     "Could not restore this version" : "Could not restore this version",
     "Version restored" : "Version restored",
     "This table is currently being edited by {user}" : "This table is currently being edited by {user}",
-    "Just now" : "Just now",
-    "minute ago" : "minute ago",
-    "minutes ago" : "minutes ago",
-    "hour ago" : "hour ago",
-    "hours ago" : "hours ago"
+    "Just now" : "Just now"
 },
 "nplurals=2; plural=(n != 1);");

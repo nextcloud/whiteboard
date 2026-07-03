@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Delete" : "Deler",
     "Advanced settings" : "Configurationes avantiate",
     "Close" : "Clauder",
     "Cancel" : "Cancel",

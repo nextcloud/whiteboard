@@ -300,10 +300,6 @@ OC.L10N.register(
     "Could not restore this version" : "بازگردانی این نسخه ممکن نیست",
     "Version restored" : "نسخه بازگردانی شد",
     "This table is currently being edited by {user}" : "این جدول در حال حاضر توسط {user} ویرایش می‌شود",
-    "Just now" : "هم‌اکنون",
-    "minute ago" : "دقیقه پیش",
-    "minutes ago" : "دقیقه پیش",
-    "hour ago" : "ساعت پیش",
-    "hours ago" : "ساعت پیش"
+    "Just now" : "هم‌اکنون"
 },
 "nplurals=2; plural=(n > 1);");

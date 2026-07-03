@@ -21,6 +21,7 @@ OC.L10N.register(
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Chiave segreta JWT condivisa tra Nextcloud e il server WebSocket per l'autenticazione sicura.",
     "Save settings" : "Salva impostazioni",
     "Uploading…" : "Caricamento in corso…",
+    "Delete" : "Elimina",
     "Advanced settings" : "Impostazioni avanzate",
     "Close" : "Chiudi",
     "Generating…" : "Generazione in corso…",

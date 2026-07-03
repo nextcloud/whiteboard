@@ -300,10 +300,6 @@ OC.L10N.register(
     "Could not restore this version" : "Bu sürüm geri yüklenemedi",
     "Version restored" : "Sürüm geri yüklendi",
     "This table is currently being edited by {user}" : "Bu tablo şu anda {user} tarafından düzenleniyor",
-    "Just now" : "Şimdi",
-    "minute ago" : "dakika önce",
-    "minutes ago" : "dakika önce",
-    "hour ago" : "saat önce",
-    "hours ago" : "saat önce"
+    "Just now" : "Şimdi"
 },
 "nplurals=2; plural=(n > 1);");

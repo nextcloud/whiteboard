@@ -65,10 +65,6 @@ OC.L10N.register(
     "Smart picker" : "Smart Picker",
     "Version {version}" : "Versie {version}",
     "Version restored" : "Versie hersteld",
-    "Just now" : "Zojuist",
-    "minute ago" : "minuut geleden",
-    "minutes ago" : "minuten geleden",
-    "hour ago" : "uur geleden",
-    "hours ago" : "uren geleden"
+    "Just now" : "Zojuist"
 },
 "nplurals=2; plural=(n != 1);");

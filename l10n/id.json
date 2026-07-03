@@ -26,6 +26,7 @@
     "JWT secret key shared between Nextcloud and the WebSocket server for secure authentication." : "Kunci rahasia JWT yang dibagikan antara Nextcloud dan server WebSocket untuk autentikasi aman.",
     "Save settings" : "Simpan pengaturan",
     "Uploading…" : "Menunggah…",
+    "Delete" : "Hapus",
     "Advanced settings" : "Pengaturan Lanjutan",
     "Max image size (MB)" : "Ukuran gambar maks (MB)",
     "An error occurred while creating the diagram" : "Terjadi kesalahan saat membuat diagram",
@@ -220,10 +221,6 @@
     "Could not restore this version" : "Tidak dapat memulihkan versi ini",
     "Version restored" : "Versi dipulihkan",
     "This table is currently being edited by {user}" : "Tabel ini sedang diedit oleh {user}",
-    "Just now" : "Baru saja",
-    "minute ago" : "1 menit yang lalu",
-    "minutes ago" : "{count} menit yang lalu",
-    "hour ago" : "1 jam yang lalu",
-    "hours ago" : "{count} jam yang lalu"
+    "Just now" : "Baru saja"
 },"pluralForm" :"nplurals=1; plural=0;"
 }

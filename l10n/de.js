@@ -300,10 +300,6 @@ OC.L10N.register(
     "Could not restore this version" : "Diese Version konnte nicht wiederhergestellt werden",
     "Version restored" : "Version wiederhergestellt",
     "This table is currently being edited by {user}" : "Diese Tabelle wird aktuell von {user} bearbeitet",
-    "Just now" : "Gerade eben",
-    "minute ago" : "vor einer Minute",
-    "minutes ago" : "vor Minuten",
-    "hour ago" : "vor einer Stunde",
-    "hours ago" : "vor Stunden"
+    "Just now" : "Gerade eben"
 },
 "nplurals=2; plural=(n != 1);");

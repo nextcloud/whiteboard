@@ -300,10 +300,6 @@ OC.L10N.register(
     "Could not restore this version" : "Nepavyko atkurti šios versijos",
     "Version restored" : "Versija atkurta",
     "This table is currently being edited by {user}" : "Šią lentelę šiuo metu redaguoja {user}",
-    "Just now" : "Ką tik",
-    "minute ago" : "prieš minutę",
-    "minutes ago" : "prieš keletą minučių",
-    "hour ago" : "prieš valandą",
-    "hours ago" : "prieš keletą valandų"
+    "Just now" : "Ką tik"
 },
 "nplurals=4; plural=(n % 10 == 1 && (n % 100 > 19 || n % 100 < 11) ? 0 : (n % 10 >= 2 && n % 10 <=9) && (n % 100 > 19 || n % 100 < 11) ? 1 : n % 1 != 0 ? 2: 3);");

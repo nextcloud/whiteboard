@@ -241,10 +241,6 @@
     "Could not restore this version" : "Nije moguće vratiti ovu verziju",
     "Version restored" : "Verzija vraćena",
     "This table is currently being edited by {user}" : "Ovu tablicu trenutačno uređuje {user}",
-    "Just now" : "Upravo sada",
-    "minute ago" : "prije minute",
-    "minutes ago" : "prije nekoliko minuta",
-    "hour ago" : "prije jednog sata",
-    "hours ago" : "prije nekoliko sati"
+    "Just now" : "Upravo sada"
 },"pluralForm" :"nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;"
 }

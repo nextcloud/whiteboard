@@ -300,10 +300,6 @@ OC.L10N.register(
     "Could not restore this version" : "Não foi possível restaurar esta versão",
     "Version restored" : "Versão restaurada",
     "This table is currently being edited by {user}" : "Esta tabela está sendo editada por {user}",
-    "Just now" : "Agora mesmo",
-    "minute ago" : "minuto atrás",
-    "minutes ago" : "minutos atrás",
-    "hour ago" : "hora atrás",
-    "hours ago" : "horas atrás"
+    "Just now" : "Agora mesmo"
 },
 "nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
