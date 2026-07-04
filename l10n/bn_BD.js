@@ -1,0 +1,20 @@
+OC.L10N.register(
+    "whiteboard",
+    {
+    "Delete" : "মুছে",
+    "Close" : "বন্ধ",
+    "Cancel" : "Cancel",
+    "Update" : "পরিবর্ধন",
+    "Dismiss" : "Dismiss",
+    "Edit" : "সম্পাদনা",
+    "Save" : "সংরক্ষণ",
+    "Add a comment" : "মন্তব্য দিন",
+    "Send" : "পাঠাও",
+    "Unknown" : "অজানা",
+    "Unknown user" : "অপরিচিত ব্যবহারকারী",
+    "Hours" : "ঘন্টা",
+    "Minutes" : "মিনিট",
+    "Reset" : "পূণঃনির্ধানণ",
+    "Pause" : "বিরতি"
+},
+"nplurals=2; plural=(n != 1);");
