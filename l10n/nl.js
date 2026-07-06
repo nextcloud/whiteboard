@@ -11,6 +11,7 @@ OC.L10N.register(
     "Close" : "Sluit",
     "Generating…" : "Genereren…",
     "Generate" : "Genereer",
+    "Add reaction" : "Reactie toevoegen",
     "Recording" : "Opnemen",
     "Insert Table" : "Invoegen tabel",
     "Cancel" : "Annuleren",
@@ -63,6 +64,7 @@ OC.L10N.register(
     "Assistant" : "Assistent",
     "Add comment" : "Reactie toevoegen",
     "Smart picker" : "Smart Picker",
+    "Insert table" : "Tabel invoegen",
     "Version {version}" : "Versie {version}",
     "Version restored" : "Versie hersteld",
     "Just now" : "Zojuist"
