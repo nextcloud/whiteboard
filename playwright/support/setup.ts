@@ -12,6 +12,20 @@ type AppList = {
 	disabled: Record<string, string>
 }
 
+type OccOutput = string | { stdout?: string }
+
+const getOccOutput = (result: OccOutput): string => {
+	if (typeof result === 'string') {
+		return result
+	}
+
+	if (typeof result.stdout === 'string') {
+		return result.stdout
+	}
+
+	throw new Error('Could not read occ command output')
+}
+
 const getServerBranch = () => {
 	if (process.env.SERVER_VERSION) {
 		return process.env.SERVER_VERSION
@@ -29,7 +43,7 @@ const getServerBranch = () => {
 }
 
 const readAppList = async (): Promise<AppList> => {
-	const raw = await runOcc(['app:list', '--output', 'json'])
+	const raw = getOccOutput(await runOcc(['app:list', '--output', 'json']))
 	const jsonStart = raw.indexOf('{')
 	if (jsonStart === -1) {
 		throw new Error('Could not read app list from occ output')
