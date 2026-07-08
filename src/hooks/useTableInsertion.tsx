@@ -2,34 +2,33 @@
  * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { useCallback, useEffect, useRef } from 'react'
-import Vue from 'vue'
-import { mdiTable } from '@mdi/js'
-import { t } from '@nextcloud/l10n'
-import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
-import { useShallow } from 'zustand/react/shallow'
-// @ts-expect-error - Vue component import
-import TableEditorDialog from '../components/TableEditorDialog.vue'
-import { renderToolbarButton } from '../components/ToolbarButton'
-import { convertHtmlTableToImage } from '../utils/tableToImage'
-import { tryAcquireLock, releaseLock } from '../utils/tableLocking'
-import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
-import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+
 import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+
+import { mdiTable } from '@mdi/js'
+import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
+import { t } from '@nextcloud/l10n'
+import { useCallback, useEffect, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import TableEditorDialog from '../components/TableEditorDialog.vue'
+import { renderToolbarButton } from '../components/ToolbarButton.tsx'
+import { useExcalidrawStore } from '../stores/useExcalidrawStore.ts'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
+import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport.ts'
+import { releaseLock, tryAcquireLock } from '../utils/tableLocking.ts'
+import { convertHtmlTableToImage } from '../utils/tableToImage.ts'
+import { mountVueComponent } from '../utils/vue.ts'
 
 const DOUBLE_CLICK_THRESHOLD_MS = 500
 
 export function useTableInsertion() {
-	const { excalidrawAPI } = useExcalidrawStore(
-		useShallow((state) => ({
-			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
-		})),
-	)
+	const { excalidrawAPI } = useExcalidrawStore(useShallow((state) => ({
+		excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
+	})))
 
 	// Track last click for double-click detection
-	const lastClickRef = useRef<{ elementId: string; timestamp: number } | null>(null)
+	const lastClickRef = useRef<{ elementId: string, timestamp: number } | null>(null)
 
 	/**
 	 * Resolves Promise with HTML content after dialog is submitted
@@ -39,22 +38,17 @@ export function useTableInsertion() {
 			const element = document.createElement('div')
 			document.body.appendChild(element)
 
-			// Instantiate the Vue component with initial data
-			const View = Vue.extend(TableEditorDialog)
-			const view = new View({
-				propsData: {
-					initialHtml,
+			const view = mountVueComponent(TableEditorDialog, element, { initialHtml }, {
+				cancel: () => {
+					view.unmount()
+					reject(new Error('Table editor was cancelled'))
 				},
-			}).$mount(element)
-
-			view.$on('cancel', () => {
-				view.$destroy()
-				reject(new Error('Table editor was cancelled'))
-			})
-
-			view.$on('submit', (tableData: { html: string }) => {
-				view.$destroy()
-				resolve(tableData)
+				submit: (tableData: { html: string }) => {
+					view.unmount()
+					resolve(tableData)
+				},
+			}, {
+				removeTargetOnUnmount: true,
 			})
 		})
 	}, [])
@@ -104,7 +98,7 @@ export function useTableInsertion() {
 
 			// Replace the existing element with the updated one while preserving position
 			const elements = currentAPI.getSceneElementsIncludingDeleted().slice()
-			const elementIndex = elements.findIndex(el => el.id === tableElement.id)
+			const elementIndex = elements.findIndex((el) => el.id === tableElement.id)
 			if (elementIndex !== -1) {
 				const currentElement = elements[elementIndex]
 
@@ -122,6 +116,7 @@ export function useTableInsertion() {
 					x: tableElement.x,
 					y: tableElement.y,
 					angle: tableElement.angle,
+					index: currentElement.index,
 
 					// Apply scale factor to new natural dimensions
 					width: newImageElement.width * scaleFactor,
@@ -190,7 +185,9 @@ export function useTableInsertion() {
 
 	// Set up pointer down handler to detect double-clicks on table elements for editing
 	useEffect(() => {
-		if (!excalidrawAPI) return
+		if (!excalidrawAPI) {
+			return
+		}
 
 		// Register a handler for pointer down events on the canvas
 		// activeTool: current tool (selection, rectangle, etc.) - unused but required by API signature
@@ -224,7 +221,10 @@ export function useTableInsertion() {
 		}
 
 		// Register the handler with Excalidraw's pointer down event system
-		excalidrawAPI.onPointerDown(pointerDownHandler)
+		const unsubscribePointerDown = excalidrawAPI.onPointerDown(pointerDownHandler)
+		return () => {
+			unsubscribePointerDown()
+		}
 	}, [excalidrawAPI, editTable])
 
 	/**
@@ -238,7 +238,6 @@ export function useTableInsertion() {
 	let isTextAppCompatible: boolean | null = null
 
 	const checkTextAppCompatibility = async (): Promise<boolean> => {
-
 		if (isTextAppCompatible !== null) {
 			return isTextAppCompatible
 		}
@@ -273,7 +272,7 @@ export function useTableInsertion() {
 			return true
 		} catch (error) {
 			console.error('Table button not shown: Error checking Text app compatibility:', error)
-			textAppCompatibility = false
+			isTextAppCompatible = false
 			return false
 		}
 	}
@@ -297,7 +296,9 @@ export function useTableInsertion() {
 	}, [insertTable])
 
 	useEffect(() => {
-		if (excalidrawAPI) renderTable()
+		if (excalidrawAPI) {
+			renderTable()
+		}
 	}, [excalidrawAPI, renderTable])
 
 	return { insertTable, renderTable }

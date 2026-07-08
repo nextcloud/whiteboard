@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-/* eslint-disable no-console */
-
 import { useCallback, useEffect, useRef } from 'react'
 import {
 	convertToExcalidrawElements,
@@ -13,8 +11,9 @@ import {
 import type {
 	BinaryFileData,
 	DataURL,
-} from '@excalidraw/excalidraw/types/types'
-import type { FileId } from '@excalidraw/excalidraw/types/element/types'
+	ExcalidrawImperativeAPI,
+} from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { FileId } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
@@ -114,7 +113,7 @@ export function useFiles(
 	)
 
 	const handleFileInsert = useCallback(
-		(file: File, ev: Event) => {
+		(file: File, ev: DragEvent) => {
 			if (!excalidrawAPI) return
 
 			const maxFileSize = loadState('whiteboard', 'maxFileSize', 10)
@@ -140,7 +139,7 @@ export function useFiles(
 				if (typeof fr.result !== 'string') return
 
 				const constructedFile: BinaryFileData = {
-					mimeType: file.type,
+					mimeType: 'application/octet-stream',
 					created: Date.now(),
 					id: (Math.random() + 1).toString(36).substring(7) as FileId,
 					dataURL: fr.result as DataURL,
@@ -279,7 +278,6 @@ export function useFiles(
 							: meta.name,
 					textAlign: 'left',
 					verticalAlign: 'top',
-					baseline: 20,
 				},
 			])
 			elements.push(...newElements)
@@ -294,13 +292,13 @@ export function useFiles(
 		// Set up drag event listener
 		const containerRef = document.getElementsByClassName(
 			'excalidraw-container',
-		)[0]
+		)[0] as HTMLElement | undefined
 		if (containerRef) {
 			containerRef.addEventListener('drop', handleFilesDragEvent)
 		}
 
 		// Set up pointer down handler for file download
-		const pointerDownHandler = async (_activeTool, state) => {
+		const pointerDownHandler: Parameters<ExcalidrawImperativeAPI['onPointerDown']>[0] = (_activeTool, state) => {
 			// Always hide any existing download button first
 			hideDownloadButton()
 
@@ -313,9 +311,11 @@ export function useFiles(
 			showDownloadButton(clickedElement.customData.meta)
 		}
 
-		excalidrawAPI.onPointerDown(pointerDownHandler)
+		const unsubscribePointerDown = excalidrawAPI.onPointerDown(pointerDownHandler)
 
 		return () => {
+			unsubscribePointerDown()
+
 			// Clean up event listeners
 			if (containerRef) {
 				containerRef.removeEventListener('drop', handleFilesDragEvent)

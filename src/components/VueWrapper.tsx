@@ -2,52 +2,46 @@
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import Vue from 'vue'
-import { t } from '@nextcloud/l10n'
-import { Icon } from '@mdi/react'
+
+import type { Component } from 'vue'
+import type { MountedVueComponent } from '../utils/vue.ts'
+
 import { mdiAccountPlusOutline } from '@mdi/js'
+import { Icon } from '@mdi/react'
+import { t } from '@nextcloud/l10n'
+import { useEffect, useRef } from 'react'
+import { mountVueComponent } from '../utils/vue.ts'
 
-const VueWrapper = function(
-	{ componentProps, component }) {
-	const vueRef = React.useRef(null)
-	const [vueInstance, setVueInstance] = React.useState(undefined)
+type VueWrapperProps = {
+	component: Component
+	componentProps: Record<string, unknown> & { text?: string }
+}
 
-	React.useEffect(() => {
-		/**
-		 *
-		 */
-		async function createVueInstance() {
+function VueWrapper({ componentProps, component }: VueWrapperProps) {
+	const vueRef = useRef<HTMLDivElement | null>(null)
+	const vueInstance = useRef<MountedVueComponent | null>(null)
+
+	useEffect(() => {
+		if (!vueRef.current) {
+			return
 		}
 
-		createVueInstance()
-
-		setVueInstance(new Vue({
-			el: vueRef.current,
-			data() {
-				return {
-					props: componentProps,
-				}
-			},
-			render(h) {
-				return h(component, {
-					props: this.props,
-				})
-			},
-		}))
+		vueInstance.current = mountVueComponent(component, vueRef.current, componentProps)
 
 		return () => {
-			vueInstance?.$destroy()
+			vueInstance.current?.unmount()
+			vueInstance.current = null
 		}
 	}, [])
 
-	React.useEffect(() => {
-		if (vueInstance) {
+	useEffect(() => {
+		if (vueInstance.current) {
 			const keys = Object.keys(componentProps)
-			keys.forEach(key => { vueInstance.props[key] = componentProps[key] })
+			keys.forEach((key) => { vueInstance.current!.props[key] = componentProps[key] })
 		}
 	}, [Object.values(componentProps)])
 
-	const url = componentProps.text
+	const url = componentProps.text ?? ''
 
 	// Generate a link to open the details tab for sharing settings
 	let linkToOpenSharingDetails = ''
@@ -78,9 +72,10 @@ const VueWrapper = function(
 					padding: '0.5rem',
 					fontStyle: 'italic',
 					color: '#666',
-				}}>
+				}}
+			>
 				{visibleWarning}
-				<a href={linkToOpenSharingDetails} target={'_blank'} style={{ marginLeft: '0.5rem' }}>
+				<a href={linkToOpenSharingDetails} target="_blank" style={{ marginLeft: '0.5rem' }}>
 					<Icon path={mdiAccountPlusOutline} size={1} style={{ marginBottom: '-4px' }} />
 				</a>
 			</div>

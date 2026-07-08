@@ -3,21 +3,21 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type Vue from 'vue'
-import type { ComponentOptions, CreateElement, VNode } from 'vue'
+import type { WhiteboardRootHandle } from './utils/renderWhiteboardView'
 
 import { loadState } from '@nextcloud/initial-state'
 import { linkTo } from '@nextcloud/router'
 import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
-
-import './styles/index.scss'
+import { h } from 'vue'
 import logger from './utils/logger'
+import { callMobileMessage } from './utils/mobileInterface'
 import {
 	matchesComparisonRequest,
 	renderWhiteboardView,
 } from './utils/renderWhiteboardView'
-import type { WhiteboardRootHandle } from './utils/renderWhiteboardView'
-import { callMobileMessage } from './utils/mobileInterface'
+
+import './styles/index.scss'
+import '@nextcloud/dialogs/style.css'
 
 declare global {
 	interface Window {
@@ -50,38 +50,36 @@ type ViewerContext = {
 	resolveSharingToken: () => string | null
 }
 
-type RuntimeDescriptor =
-	| { type: 'recording'; context: RecordingContext }
-	| { type: 'public-share'; context: PublicShareContext }
-	| { type: 'direct-editing'; context: DirectEditingContext }
-	| { type: 'viewer'; context: ViewerContext }
+type RuntimeDescriptor
+	= | { type: 'recording', context: RecordingContext }
+		| { type: 'public-share', context: PublicShareContext }
+		| { type: 'direct-editing', context: DirectEditingContext }
+		| { type: 'viewer', context: ViewerContext }
 
 const VIEWER_REGISTRATION_ATTEMPTS = 3
 const VIEWER_REGISTRATION_DELAY_MS = 250
 
-const bootstrapWhiteboardRuntime = (): void => {
+function bootstrapWhiteboardRuntime(): void {
 	const runtime = detectRuntime()
 
 	switch (runtime.type) {
-	case 'recording':
-		runRecordingRuntime(runtime.context)
-		return
-	case 'public-share':
-		runPublicShareRuntime(runtime.context)
-		return
-	case 'direct-editing':
-		runDirectEditingRuntime(runtime.context)
-		return
-	case 'viewer':
-	default:
-		runDefaultViewerRuntime(runtime.context)
+		case 'recording':
+			runRecordingRuntime(runtime.context)
+			return
+		case 'public-share':
+			runPublicShareRuntime(runtime.context)
+			return
+		case 'direct-editing':
+			runDirectEditingRuntime(runtime.context)
+			return
+		case 'viewer':
+		default:
+			runDefaultViewerRuntime(runtime.context)
 	}
 }
 
-const detectRuntime = (): RuntimeDescriptor => {
-	const fileId = normalizeNumericState(
-		loadState('whiteboard', 'file_id', '0'),
-	)
+function detectRuntime(): RuntimeDescriptor {
+	const fileId = normalizeNumericState(loadState('whiteboard', 'file_id', '0'))
 	const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
 
 	if (loadState('whiteboard', 'isRecording', false)) {
@@ -295,27 +293,43 @@ type ViewerComponentOptions = {
 	resolveSharingToken: () => string | null
 }
 
-type WhiteboardComponentData = { root: WhiteboardRootHandle | null }
+type WhiteboardComponentData = {
+	containerId: string
+	root: WhiteboardRootHandle | null
+}
 
-type WhiteboardComponentInstance = Vue &
-	WhiteboardComponentData & {
-		fileid?: number | null
-		fileId?: number | null
-		fileVersion?: string | null
-		source?: string | null
-		isEmbedded?: boolean
-		isComparisonView?: boolean
-		basename?: string
-	}
+type LegacyCreateElement = (
+	tag: string,
+	data?: Record<string, unknown>,
+	children?: string,
+) => unknown
 
-type VueComponentDefinition = ComponentOptions<WhiteboardComponentInstance> & {
+type WhiteboardComponentInstance = WhiteboardComponentData & {
+	$el?: Element
+	$emit: (event: string, ...args: unknown[]) => void
+	fileid?: number | null
+	fileId?: number | null
+	fileVersion?: string | null
+	source?: string | null
+	isEmbedded?: boolean
+	isComparisonView?: boolean
+	basename?: string
+}
+
+type ViewerComponentDefinition = {
+	name: string
+	render(this: WhiteboardComponentInstance, createElement?: LegacyCreateElement): unknown
+	mounted(this: WhiteboardComponentInstance): void
+	beforeDestroy(this: WhiteboardComponentInstance): void
+	beforeUnmount(this: WhiteboardComponentInstance): void
+	props: Record<string, unknown>
 	data: () => WhiteboardComponentData
 }
 
 type ViewerHandlerRegistration = {
 	id: string
 	mimes: string[]
-	component: VueComponentDefinition
+	component: ViewerComponentDefinition
 	group: string | null
 	theme: string
 	canCompare: boolean
@@ -355,19 +369,42 @@ type WindowWithViewer = Window & {
 	}
 }
 
-const createWhiteboardComponent = (
-	options: ViewerComponentOptions,
-): VueComponentDefinition => ({
-	name: 'Whiteboard',
-	render(
-		this: WhiteboardComponentInstance,
-		createElement: CreateElement,
-	): VNode {
-		this.$emit('update:loaded', true)
-		const containerId = generateWhiteboardElementId()
+function unmountWhiteboardRoot(component: WhiteboardComponentInstance): void {
+	component.root?.unmount()
+	component.root = null
+}
 
-		this.$nextTick(() => {
-			const rootElement = document.getElementById(containerId)
+function createWhiteboardComponent(options: ViewerComponentOptions): ViewerComponentDefinition {
+	return {
+		name: 'Whiteboard',
+		render(
+			this: WhiteboardComponentInstance,
+			createElement?: LegacyCreateElement,
+		): unknown {
+			const isVue2Render = typeof createElement === 'function'
+			const renderElement = isVue2Render ? createElement : h
+			const attrs = isVue2Render
+				? { attrs: { id: this.containerId } }
+				: { id: this.containerId }
+
+			return renderElement(
+				'div',
+				{
+					...attrs,
+					class: [
+						'whiteboard',
+						{
+							'whiteboard-viewer__embedding': Boolean(this.isEmbedded),
+						},
+					],
+				},
+				'',
+			)
+		},
+		mounted(this: WhiteboardComponentInstance) {
+			this.$emit('update:loaded', true)
+
+			const rootElement = (this.$el ?? document.getElementById(this.containerId)) as HTMLElement | null
 			if (!rootElement) {
 				return
 			}
@@ -386,15 +423,15 @@ const createWhiteboardComponent = (
 			const rawFileVersion = this.fileVersion ?? null
 			const isVersionsDavSource
 				= rawVersionSource?.includes('/dav/versions/')
-				|| rawVersionSource?.includes('/dav/trashbin/')
-				|| false
+					|| rawVersionSource?.includes('/dav/trashbin/')
+					|| false
 			const shouldUseVersionPreview
 				= isComparisonView
-				|| (rawFileVersion !== null && isVersionsDavSource)
-				|| matchesComparisonRequest(
-					rawVersionSource,
-					rawFileVersion ?? null,
-				)
+					|| (rawFileVersion !== null && isVersionsDavSource)
+					|| matchesComparisonRequest(
+						rawVersionSource,
+						rawFileVersion ?? null,
+					)
 			const versionSource = isEmbedded
 				? rawVersionSource
 				: shouldUseVersionPreview
@@ -418,44 +455,30 @@ const createWhiteboardComponent = (
 				fileVersion,
 				isComparisonView,
 			})
-		})
+		},
+		beforeDestroy(this: WhiteboardComponentInstance) {
+			unmountWhiteboardRoot(this)
+		},
+		beforeUnmount(this: WhiteboardComponentInstance) {
+			unmountWhiteboardRoot(this)
+		},
+		props: {
+			filename: { type: String, default: null },
+			fileid: { type: Number, default: null },
+			fileId: { type: Number, default: null },
+			fileVersion: { type: String, default: null },
+			source: { type: String, default: null },
+			isEmbedded: { type: Boolean, default: false },
+			isComparisonView: { type: Boolean, default: false },
+		},
+		data: (): WhiteboardComponentData => ({
+			containerId: generateWhiteboardElementId(),
+			root: null,
+		}),
+	}
+}
 
-		return createElement(
-			'div',
-			{
-				attrs: { id: containerId },
-				class: [
-					'whiteboard',
-					{
-						'whiteboard-viewer__embedding': Boolean(
-							this.isEmbedded,
-						),
-					},
-				],
-			},
-			'',
-		)
-	},
-	beforeDestroy(this: WhiteboardComponentInstance) {
-		this.root?.unmount()
-	},
-	props: {
-		filename: { type: String, default: null },
-		fileid: { type: Number, default: null },
-		fileId: { type: Number, default: null },
-		fileVersion: { type: String, default: null },
-		source: { type: String, default: null },
-		isEmbedded: { type: Boolean, default: false },
-		isComparisonView: { type: Boolean, default: false },
-	},
-	data: (): WhiteboardComponentData => ({ root: null }),
-})
-
-const registerViewerHandler = (
-	component: VueComponentDefinition,
-	attempt = 0,
-	afterRegister?: () => void,
-): void => {
+function registerViewerHandler(component: ViewerComponentDefinition, attempt = 0, afterRegister?: () => void): void {
 	const viewerApi = getViewerApi()
 
 	if (viewerApi?.registerHandler) {
@@ -482,10 +505,11 @@ const registerViewerHandler = (
 	)
 }
 
-const getViewerApi = (): ViewerApi | undefined =>
-	(window as WindowWithViewer).OCA?.Viewer
+function getViewerApi(): ViewerApi | undefined {
+	return (window as WindowWithViewer).OCA?.Viewer
+}
 
-const runWhenDomReady = (callback: () => void | Promise<void>): void => {
+function runWhenDomReady(callback: () => void | Promise<void>): void {
 	if (document.readyState === 'loading') {
 		const handler = () => {
 			document.removeEventListener('DOMContentLoaded', handler)
@@ -498,10 +522,7 @@ const runWhenDomReady = (callback: () => void | Promise<void>): void => {
 	callback()
 }
 
-const primeRecordingJwt = async (
-	fileId: number,
-	jwt: string,
-): Promise<void> => {
+async function primeRecordingJwt(fileId: number, jwt: string): Promise<void> {
 	if (!jwt) {
 		return
 	}
@@ -526,18 +547,19 @@ const primeRecordingJwt = async (
 	}))
 }
 
-const normalizeNumericState = (value: unknown): number => {
+function normalizeNumericState(value: unknown): number {
 	const normalized = Number(value)
 	return Number.isFinite(normalized) ? normalized : 0
 }
 
-const generateWhiteboardElementId = () =>
-	`whiteboard-${Math.random()
+function generateWhiteboardElementId() {
+	return `whiteboard-${Math.random()
 		.toString(36)
 		.replace(/[^a-z]+/g, '')
 		.substr(2, 10)}`
+}
 
-const createWhiteboardElement = (id = generateWhiteboardElementId()) => {
+function createWhiteboardElement(id = generateWhiteboardElementId()) {
 	const element = document.createElement('div')
 	element.id = id
 	element.className = 'whiteboard'

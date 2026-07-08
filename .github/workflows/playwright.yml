@@ -9,7 +9,7 @@ jobs:
   test:
     strategy:
       matrix:
-        server_version: [stable29, stable30, stable31, stable32, master]
+        server_version: [stable31, stable32, master]
         shard: [1, 2, 3]
       fail-fast: false
     timeout-minutes: 60

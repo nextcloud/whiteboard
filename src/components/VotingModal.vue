@@ -3,7 +3,7 @@
  - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
-	<NcDialog :name="t('whiteboard', 'Start new voting')" @close="$emit('close')">
+	<NcDialog :name="t('whiteboard', 'Start new voting')" @update:open="onOpenUpdate">
 		<NcTextField v-model="question" :label="t('whiteboard', 'Question')" />
 		<div class="voting-type">
 			<label>{{ t('whiteboard', 'Voting type') }}</label>
@@ -11,7 +11,7 @@
 		</div>
 		<div v-for="(option, index) in options" :key="index" class="option">
 			<NcTextField v-model="options[index]" :label="t('whiteboard', 'Option') + ' ' + (index + 1)" />
-			<NcButton type="tertiary" :aria-label="t('whiteboard', 'Remove option')" @click="removeOption(index)">
+			<NcButton variant="tertiary" :aria-label="t('whiteboard', 'Remove option')" @click="removeOption(index)">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiDelete" />
 				</template>
@@ -38,11 +38,14 @@
 </template>
 
 <script>
-import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
-import { NcDialog, NcTextField, NcButton, NcSelect } from '@nextcloud/vue'
-import { translate as t } from '@nextcloud/l10n'
+import { mdiCheck, mdiDelete, mdiPlus } from '@mdi/js'
 import { showError } from '@nextcloud/dialogs'
-import { mdiPlus, mdiDelete, mdiCheck } from '@mdi/js'
+import { translate as t } from '@nextcloud/l10n'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 
 export default {
 	name: 'VotingModal',
@@ -53,12 +56,15 @@ export default {
 		NcSelect,
 		NcIconSvgWrapper,
 	},
+
 	props: {
 		onStartVoting: {
 			type: Function,
 			required: true,
 		},
 	},
+
+	emits: ['close'],
 	data() {
 		return {
 			mdiPlus,
@@ -70,13 +76,16 @@ export default {
 				{ id: 'single-choice', label: t('whiteboard', 'Single choice') },
 				{ id: 'multiple-choice', label: t('whiteboard', 'Multiple choice') },
 			],
+
 			selectedType: { id: 'single-choice', label: t('whiteboard', 'Single choice') },
 		}
 	},
+
 	methods: {
 		addOption() {
 			this.options.push('')
 		},
+
 		removeOption(index) {
 			// Prevent removing if only 2 options left
 			if (this.options.length <= 2) {
@@ -84,13 +93,14 @@ export default {
 			}
 			this.options.splice(index, 1)
 		},
+
 		startVoting() {
 			const question = this.question.trim()
 			if (!question) {
 				showError(t('whiteboard', 'Please enter a question'))
 				return
 			}
-			const validOptions = this.options.filter(opt => opt?.trim()).map(opt => opt.trim())
+			const validOptions = this.options.filter((opt) => opt?.trim()).map((opt) => opt.trim())
 			if (validOptions.length < 2) {
 				showError(t('whiteboard', 'Please enter at least 2 options'))
 				return
@@ -98,6 +108,13 @@ export default {
 			this.onStartVoting(question, this.selectedType.id, validOptions)
 			this.$emit('close')
 		},
+
+		onOpenUpdate(open) {
+			if (!open) {
+				this.$emit('close')
+			}
+		},
+
 		t,
 	},
 }
@@ -107,16 +124,19 @@ export default {
 .voting-type {
 	margin-bottom: 12px;
 }
+
 .voting-type label {
 	display: block;
 	margin-bottom: 4px;
 	font-weight: bold;
 }
+
 .option {
 	display: flex;
 	align-items: center;
 	margin-top: 4px;
 }
+
 .option-add {
 	margin-top: 4px;
 }
