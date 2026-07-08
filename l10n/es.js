@@ -170,6 +170,7 @@ OC.L10N.register(
     "Assistant" : "Asistente",
     "Add comment" : "Agregar comentario",
     "Smart picker" : "Selector inteligente",
+    "Insert table" : "Insertar tabla",
     "Version {version}" : "Versión {version}",
     "Version restored" : "Versión restaurada",
     "Just now" : "Justo ahora"
