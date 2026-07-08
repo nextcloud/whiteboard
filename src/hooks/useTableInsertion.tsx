@@ -3,13 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { useCallback, useEffect, useRef } from 'react'
-import Vue from 'vue'
 import { mdiTable } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
-// @ts-expect-error - Vue component import
 import TableEditorDialog from '../components/TableEditorDialog.vue'
 import { renderToolbarButton } from '../components/ToolbarButton'
 import { convertHtmlTableToImage } from '../utils/tableToImage'
@@ -18,6 +16,7 @@ import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import { mountVueComponent } from '../utils/vue'
 
 const DOUBLE_CLICK_THRESHOLD_MS = 500
 
@@ -39,22 +38,17 @@ export function useTableInsertion() {
 			const element = document.createElement('div')
 			document.body.appendChild(element)
 
-			// Instantiate the Vue component with initial data
-			const View = Vue.extend(TableEditorDialog)
-			const view = new View({
-				propsData: {
-					initialHtml,
+			const view = mountVueComponent(TableEditorDialog, element, { initialHtml }, {
+				cancel: () => {
+					view.unmount()
+					reject(new Error('Table editor was cancelled'))
 				},
-			}).$mount(element)
-
-			view.$on('cancel', () => {
-				view.$destroy()
-				reject(new Error('Table editor was cancelled'))
-			})
-
-			view.$on('submit', (tableData: { html: string }) => {
-				view.$destroy()
-				resolve(tableData)
+				submit: (tableData: { html: string }) => {
+					view.unmount()
+					resolve(tableData)
+				},
+			}, {
+				removeTargetOnUnmount: true,
 			})
 		})
 	}, [])
@@ -122,6 +116,7 @@ export function useTableInsertion() {
 					x: tableElement.x,
 					y: tableElement.y,
 					angle: tableElement.angle,
+					index: currentElement.index,
 
 					// Apply scale factor to new natural dimensions
 					width: newImageElement.width * scaleFactor,
@@ -224,7 +219,10 @@ export function useTableInsertion() {
 		}
 
 		// Register the handler with Excalidraw's pointer down event system
-		excalidrawAPI.onPointerDown(pointerDownHandler)
+		const unsubscribePointerDown = excalidrawAPI.onPointerDown(pointerDownHandler)
+		return () => {
+			unsubscribePointerDown()
+		}
 	}, [excalidrawAPI, editTable])
 
 	/**
@@ -273,7 +271,7 @@ export function useTableInsertion() {
 			return true
 		} catch (error) {
 			console.error('Table button not shown: Error checking Text app compatibility:', error)
-			textAppCompatibility = false
+			isTextAppCompatible = false
 			return false
 		}
 	}

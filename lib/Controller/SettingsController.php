@@ -18,6 +18,7 @@ use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCA\Whiteboard\Settings\SetupCheck;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -72,6 +73,7 @@ final class SettingsController extends Controller {
 		}
 	}
 
+	#[NoAdminRequired]
 	public function updatePersonal(): DataResponse {
 		try {
 			$user = $this->userSession->getUser();

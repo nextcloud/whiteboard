@@ -9,8 +9,34 @@ declare module '@nextcloud/router' {
 	export function imagePath(app:string, file: string): string
 }
 
-declare module '@nextcloud/vue/dist/Components/NcRichText.js' {
-	export function getLinkWithPicker(initialValue?: string | null, isLink?: boolean): Promise<string>
+declare module '@nextcloud/dialogs' {
+	export function showError(text: string, options?: Record<string, unknown>): void
+	export function showSuccess(text: string, options?: Record<string, unknown>): void
+}
+
+declare module '@nextcloud/sharing/public' {
+	export function getSharingToken(): string | null
+	export function isPublicShare(): boolean
+}
+
+declare module '*.vue' {
+	import type { Component } from 'vue'
+
+	const component: Component
+	export default component
+}
+
+declare module '@nextcloud/vue/components/NcRichText' {
+	import type { Component } from 'vue'
+
+	export const NcReferenceList: Component
+	export function getLinkWithPicker(providerId?: string, isInsideViewer?: boolean): Promise<string>
+}
+
+declare module '@nextcloud/vue/functions/dialog' {
+	import type { Component } from 'vue'
+
+	export function spawnDialog(component: Component, props?: Record<string, unknown>): Promise<unknown>
 }
 
 // Extend window.OCA type to include Text app API

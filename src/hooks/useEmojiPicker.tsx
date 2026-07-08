@@ -5,17 +5,17 @@
 
 import { useCallback, useRef } from 'react'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import type { BinaryFileData, DataURL, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
-import type { FileId } from '@excalidraw/excalidraw/types/element/types'
+import type { BinaryFileData, DataURL, ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { FileId } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import { useShallow } from 'zustand/react/shallow'
 import { convertToExcalidrawElements, viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
 import EmojiPickerButton from '../components/EmojiPickerButton.vue'
-import Vue from 'vue'
 import { Notomoji } from '@svgmoji/noto'
 import EmojiData from 'svgmoji/emoji.json'
 import { imagePath } from '@nextcloud/router'
 import { renderToolbarButton, resetActiveTool } from '../components/ToolbarButton'
+import { mountVueComponent } from '../utils/vue'
 
 type EmojiObj = {
 	native: string
@@ -44,6 +44,11 @@ export function useEmojiPicker() {
 			emojiObj = notomoji.find(emoji.unified?.toUpperCase() || '')
 		}
 
+		if (!emojiObj) {
+			console.error('Selected emoji could not be loaded')
+			return
+		}
+
 		// Fetch the SVG data for the selected emoji
 		const url = imagePath('whiteboard', 'svgmoji/' + emojiObj.hexcode + '.svg')
 		const emojiSvg = await (await fetch(url)).text()
@@ -52,7 +57,7 @@ export function useEmojiPicker() {
 		fr.readAsDataURL(emojiBlob)
 		const emojiDataURL: DataURL = await new Promise((resolve) => {
 			fr.onload = () => {
-				resolve(fr.result as string)
+				resolve(fr.result as DataURL)
 			}
 		})
 
@@ -76,7 +81,6 @@ export function useEmojiPicker() {
 				y: sceneCoords.y,
 				width: 40,
 				height: 40,
-				fontSize: 20,
 			},
 		])
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
@@ -130,11 +134,9 @@ export function useEmojiPicker() {
 			customContainer: (container) => {
 				const div = document.createElement('div')
 				container.appendChild(div)
-				const View = Vue.extend(EmojiPickerButton)
-				const vueComponent = new View({}).$mount(div)
-				vueComponent.$on('open', () => resetActiveTool())
-				vueComponent.$on('selected', (emoji: string) => {
-					loadToExcalidraw(emoji)
+				mountVueComponent(EmojiPickerButton, div, {}, {
+					open: () => resetActiveTool(),
+					selected: (emoji: EmojiObj) => loadToExcalidraw(emoji),
 				})
 			},
 		})

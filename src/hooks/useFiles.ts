@@ -13,8 +13,8 @@ import {
 import type {
 	BinaryFileData,
 	DataURL,
-} from '@excalidraw/excalidraw/types/types'
-import type { FileId } from '@excalidraw/excalidraw/types/element/types'
+} from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { FileId } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
@@ -114,7 +114,7 @@ export function useFiles(
 	)
 
 	const handleFileInsert = useCallback(
-		(file: File, ev: Event) => {
+		(file: File, ev: DragEvent) => {
 			if (!excalidrawAPI) return
 
 			const maxFileSize = loadState('whiteboard', 'maxFileSize', 10)
@@ -313,9 +313,11 @@ export function useFiles(
 			showDownloadButton(clickedElement.customData.meta)
 		}
 
-		excalidrawAPI.onPointerDown(pointerDownHandler)
+		const unsubscribePointerDown = excalidrawAPI.onPointerDown(pointerDownHandler)
 
 		return () => {
+			unsubscribePointerDown()
+
 			// Clean up event listeners
 			if (containerRef) {
 				containerRef.removeEventListener('drop', handleFilesDragEvent)

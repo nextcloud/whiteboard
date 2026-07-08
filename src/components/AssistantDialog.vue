@@ -3,7 +3,9 @@
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <script>
-import { NcTextField, NcButton, NcModal } from '@nextcloud/vue'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcModal from '@nextcloud/vue/components/NcModal'
 import { t } from '@nextcloud/l10n'
 import { ScheduleTask } from '../services/assistant/api'
 import { parseMermaidToExcalidraw } from '@excalidraw/mermaid-to-excalidraw'
@@ -243,7 +245,6 @@ export default defineComponent({
 
 <template>
 	<NcModal v-if="show"
-		:can-close="true"
 		size="normal"
 		@close="onCancel">
 		<div class="assistant-dialog">

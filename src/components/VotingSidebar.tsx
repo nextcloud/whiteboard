@@ -6,12 +6,17 @@
 import type { Voting, VotingOption } from '../types'
 import './VotingSidebar.css'
 import { getCurrentUser } from '@nextcloud/auth'
-import { spawnDialog, showError } from '@nextcloud/dialogs'
+import { showError } from '@nextcloud/dialogs'
+import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import VotingModal from './VotingModal.vue'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawTextElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawElementSkeleton } from '@nextcloud/excalidraw/dist/types/excalidraw/data/transform'
 import { v4 as uuidv4 } from 'uuid'
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
+
+const lineHeight = (value: number): ExcalidrawTextElement['lineHeight'] => value as ExcalidrawTextElement['lineHeight']
 
 interface VotingSidebarProps {
 	votings: Array<Voting>
@@ -137,7 +142,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 			const frameY = centerY - frameHeight / 2
 
 			// Create elements
-			const skeletonElements = []
+			const skeletonElements: ExcalidrawElementSkeleton[] = []
 			const questionY = frameY + LAYOUT.framePadding.top
 
 			// Add question element
@@ -150,7 +155,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 				fontSize: TYPOGRAPHY.question.fontSize,
 				fontFamily: 3,
 				textAlign: 'left',
-				lineHeight: TYPOGRAPHY.question.lineHeight,
+				lineHeight: lineHeight(TYPOGRAPHY.question.lineHeight),
 				frameId,
 			})
 
@@ -181,7 +186,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 					fontSize: TYPOGRAPHY.option.fontSize,
 					fontFamily: 3,
 					textAlign: 'left',
-					lineHeight: TYPOGRAPHY.option.lineHeight,
+					lineHeight: lineHeight(TYPOGRAPHY.option.lineHeight),
 					frameId,
 				})
 
@@ -207,7 +212,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 					fontSize: TYPOGRAPHY.option.fontSize,
 					fontFamily: 3,
 					textAlign: 'left',
-					lineHeight: TYPOGRAPHY.option.lineHeight,
+					lineHeight: lineHeight(TYPOGRAPHY.option.lineHeight),
 					frameId,
 				})
 
@@ -215,13 +220,15 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 			})
 
 			// Assign IDs to elements
-			const ids = skeletonElements.map((el) => {
-				el.id = `voting-${uuidv4()}`
-				return el.id
+			const ids: string[] = []
+			const elementsWithIds: ExcalidrawElementSkeleton[] = skeletonElements.map((el) => {
+				const id = `voting-${uuidv4()}`
+				ids.push(id)
+				return { ...el, id } as ExcalidrawElementSkeleton
 			})
 
 			// Add frame element
-			skeletonElements.push({
+			elementsWithIds.push({
 				type: 'frame',
 				x: frameX,
 				y: frameY,
@@ -233,7 +240,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 			})
 
 			// Update scene
-			const elements = convertToExcalidrawElements(skeletonElements)
+			const elements = convertToExcalidrawElements(elementsWithIds)
 			const existingElements = excalidrawAPI.getSceneElements()
 
 			if (!existingElements) {
@@ -250,9 +257,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	}
 
 	const handleStartVoting = () => {
-		spawnDialog(VotingModal, {
-			onStartVoting,
-		}, () => {})
+		spawnDialog(VotingModal, { onStartVoting }).catch(() => {})
 	}
 
 	const sortedVotings = [...votings].sort((a, b) => b.startedAt - a.startedAt)

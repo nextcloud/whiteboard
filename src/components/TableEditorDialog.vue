@@ -3,8 +3,10 @@
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <script>
-import { NcButton, NcModal, NcNoteCard } from '@nextcloud/vue'
-import { defineComponent } from 'vue'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcModal from '@nextcloud/vue/components/NcModal'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import { defineComponent, markRaw } from 'vue'
 import { t } from '@nextcloud/l10n'
 
 export default defineComponent({
@@ -72,10 +74,10 @@ export default defineComponent({
 				}
 				await this.ensureTextEditorStyles()
 				// Use the dedicated createTable function for table-only editing
-				this.editor = await window.OCA.Text.createTable({
+				this.editor = markRaw(await window.OCA.Text.createTable({
 					el: editorContainer,
 					content: contentForEditor,
-				})
+				}))
 
 				this.isLoading = false
 				// Focus the editor after a short delay
@@ -255,7 +257,6 @@ export default defineComponent({
 
 <template>
 	<NcModal v-if="show"
-		:can-close="true"
 		class="table-editor-modal"
 		@close="onCancel">
 		<div class="table-editor-dialog">
@@ -281,7 +282,7 @@ export default defineComponent({
 				<NcButton @click="onCancel">
 					{{ t('whiteboard', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary" :disabled="isLoading || error" @click="onInsert">
+				<NcButton variant="primary" :disabled="isLoading || error" @click="onInsert">
 					{{ isEditing ? t('whiteboard', 'Update') : t('whiteboard', 'Insert') }}
 				</NcButton>
 			</div>

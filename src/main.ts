@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type Vue from 'vue'
-import type { ComponentOptions, CreateElement, VNode } from 'vue'
+import { h } from 'vue'
 
 import { loadState } from '@nextcloud/initial-state'
 import { linkTo } from '@nextcloud/router'
 import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 
 import './styles/index.scss'
+import '@nextcloud/dialogs/style.css'
 import logger from './utils/logger'
 import {
 	matchesComparisonRequest,
@@ -295,27 +295,43 @@ type ViewerComponentOptions = {
 	resolveSharingToken: () => string | null
 }
 
-type WhiteboardComponentData = { root: WhiteboardRootHandle | null }
+type WhiteboardComponentData = {
+	containerId: string
+	root: WhiteboardRootHandle | null
+}
 
-type WhiteboardComponentInstance = Vue &
-	WhiteboardComponentData & {
-		fileid?: number | null
-		fileId?: number | null
-		fileVersion?: string | null
-		source?: string | null
-		isEmbedded?: boolean
-		isComparisonView?: boolean
-		basename?: string
-	}
+type LegacyCreateElement = (
+	tag: string,
+	data?: Record<string, unknown>,
+	children?: string,
+) => unknown
 
-type VueComponentDefinition = ComponentOptions<WhiteboardComponentInstance> & {
+type WhiteboardComponentInstance = WhiteboardComponentData & {
+	$el?: Element
+	$emit: (event: string, ...args: unknown[]) => void
+	fileid?: number | null
+	fileId?: number | null
+	fileVersion?: string | null
+	source?: string | null
+	isEmbedded?: boolean
+	isComparisonView?: boolean
+	basename?: string
+}
+
+type ViewerComponentDefinition = {
+	name: string
+	render(this: WhiteboardComponentInstance, createElement?: LegacyCreateElement): unknown
+	mounted(this: WhiteboardComponentInstance): void
+	beforeDestroy(this: WhiteboardComponentInstance): void
+	beforeUnmount(this: WhiteboardComponentInstance): void
+	props: Record<string, unknown>
 	data: () => WhiteboardComponentData
 }
 
 type ViewerHandlerRegistration = {
 	id: string
 	mimes: string[]
-	component: VueComponentDefinition
+	component: ViewerComponentDefinition
 	group: string | null
 	theme: string
 	canCompare: boolean
@@ -355,75 +371,29 @@ type WindowWithViewer = Window & {
 	}
 }
 
+const unmountWhiteboardRoot = (component: WhiteboardComponentInstance): void => {
+	component.root?.unmount()
+	component.root = null
+}
+
 const createWhiteboardComponent = (
 	options: ViewerComponentOptions,
-): VueComponentDefinition => ({
+): ViewerComponentDefinition => ({
 	name: 'Whiteboard',
 	render(
 		this: WhiteboardComponentInstance,
-		createElement: CreateElement,
-	): VNode {
-		this.$emit('update:loaded', true)
-		const containerId = generateWhiteboardElementId()
+		createElement?: LegacyCreateElement,
+	): unknown {
+		const isVue2Render = typeof createElement === 'function'
+		const renderElement = isVue2Render ? createElement : h
+		const attrs = isVue2Render
+			? { attrs: { id: this.containerId } }
+			: { id: this.containerId }
 
-		this.$nextTick(() => {
-			const rootElement = document.getElementById(containerId)
-			if (!rootElement) {
-				return
-			}
-
-			rootElement.addEventListener('keydown', (event) => {
-				if (event.key === 'Escape') {
-					event.stopPropagation()
-				}
-			})
-
-			const normalizedFileId
-				= Number(this.fileid ?? this.fileId ?? 0) || 0
-			const isComparisonView = Boolean(this.isComparisonView)
-			const isEmbedded = Boolean(this.isEmbedded)
-			const rawVersionSource = this.source ?? null
-			const rawFileVersion = this.fileVersion ?? null
-			const isVersionsDavSource
-				= rawVersionSource?.includes('/dav/versions/')
-				|| rawVersionSource?.includes('/dav/trashbin/')
-				|| false
-			const shouldUseVersionPreview
-				= isComparisonView
-				|| (rawFileVersion !== null && isVersionsDavSource)
-				|| matchesComparisonRequest(
-					rawVersionSource,
-					rawFileVersion ?? null,
-				)
-			const versionSource = isEmbedded
-				? rawVersionSource
-				: shouldUseVersionPreview
-					? rawVersionSource
-					: null
-			const fileVersion = isEmbedded
-				? rawFileVersion
-				: shouldUseVersionPreview
-					? rawFileVersion
-					: null
-			const fileName
-				= typeof this.basename === 'string' ? this.basename : ''
-
-			this.root = renderWhiteboardView(rootElement, {
-				fileId: normalizedFileId,
-				isEmbedded,
-				fileName,
-				publicSharingToken: options.resolveSharingToken(),
-				collabBackendUrl: options.collabBackendUrl,
-				versionSource,
-				fileVersion,
-				isComparisonView,
-			})
-		})
-
-		return createElement(
+		return renderElement(
 			'div',
 			{
-				attrs: { id: containerId },
+				...attrs,
 				class: [
 					'whiteboard',
 					{
@@ -436,8 +406,66 @@ const createWhiteboardComponent = (
 			'',
 		)
 	},
+	mounted(this: WhiteboardComponentInstance) {
+		this.$emit('update:loaded', true)
+
+		const rootElement = (this.$el ?? document.getElementById(this.containerId)) as HTMLElement | null
+		if (!rootElement) {
+			return
+		}
+
+		rootElement.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape') {
+				event.stopPropagation()
+			}
+		})
+
+		const normalizedFileId
+			= Number(this.fileid ?? this.fileId ?? 0) || 0
+		const isComparisonView = Boolean(this.isComparisonView)
+		const isEmbedded = Boolean(this.isEmbedded)
+		const rawVersionSource = this.source ?? null
+		const rawFileVersion = this.fileVersion ?? null
+		const isVersionsDavSource
+			= rawVersionSource?.includes('/dav/versions/')
+			|| rawVersionSource?.includes('/dav/trashbin/')
+			|| false
+		const shouldUseVersionPreview
+			= isComparisonView
+			|| (rawFileVersion !== null && isVersionsDavSource)
+			|| matchesComparisonRequest(
+				rawVersionSource,
+				rawFileVersion ?? null,
+			)
+		const versionSource = isEmbedded
+			? rawVersionSource
+			: shouldUseVersionPreview
+				? rawVersionSource
+				: null
+		const fileVersion = isEmbedded
+			? rawFileVersion
+			: shouldUseVersionPreview
+				? rawFileVersion
+				: null
+		const fileName
+			= typeof this.basename === 'string' ? this.basename : ''
+
+		this.root = renderWhiteboardView(rootElement, {
+			fileId: normalizedFileId,
+			isEmbedded,
+			fileName,
+			publicSharingToken: options.resolveSharingToken(),
+			collabBackendUrl: options.collabBackendUrl,
+			versionSource,
+			fileVersion,
+			isComparisonView,
+		})
+	},
 	beforeDestroy(this: WhiteboardComponentInstance) {
-		this.root?.unmount()
+		unmountWhiteboardRoot(this)
+	},
+	beforeUnmount(this: WhiteboardComponentInstance) {
+		unmountWhiteboardRoot(this)
 	},
 	props: {
 		filename: { type: String, default: null },
@@ -448,11 +476,14 @@ const createWhiteboardComponent = (
 		isEmbedded: { type: Boolean, default: false },
 		isComparisonView: { type: Boolean, default: false },
 	},
-	data: (): WhiteboardComponentData => ({ root: null }),
+	data: (): WhiteboardComponentData => ({
+		containerId: generateWhiteboardElementId(),
+		root: null,
+	}),
 })
 
 const registerViewerHandler = (
-	component: VueComponentDefinition,
+	component: ViewerComponentDefinition,
 	attempt = 0,
 	afterRegister?: () => void,
 ): void => {

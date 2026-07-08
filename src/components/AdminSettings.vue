@@ -31,13 +31,13 @@
 			</p>
 			<form @submit.prevent="submit">
 				<p>
-					<NcTextField :label="t('whiteboard', 'WebSocket server URL')"
-						:value.sync="serverUrl"
+					<NcTextField v-model="serverUrl"
+						:label="t('whiteboard', 'WebSocket server URL')"
 						:helper-text="t('whiteboard', 'URL where the WebSocket server for real-time collaboration is running. Must be accessible from users\' browsers.')" />
 				</p>
 				<p>
-					<NcPasswordField :label="t('whiteboard', 'Shared secret')"
-						:value.sync="secret"
+					<NcPasswordField v-model="secret"
+						:label="t('whiteboard', 'Shared secret')"
 						:helper-text="t('whiteboard', 'JWT secret key shared between Nextcloud and the WebSocket server for secure authentication.')" />
 				</p>
 				<p>
@@ -88,7 +88,7 @@
 							<strong>{{ library.name }}</strong>
 							<span>{{ formatItemCount(library) }}</span>
 						</div>
-						<NcButton type="tertiary"
+						<NcButton variant="tertiary"
 							:aria-label="t('whiteboard', 'Delete library {name}', { name: library.name })"
 							:disabled="deletingOrgLibrary === library.name"
 							@click="deleteOrgLibrary(library.name)">
@@ -131,7 +131,7 @@
 							<strong>{{ template.name }}</strong>
 							<span>{{ formatElementCount(template) }}</span>
 						</div>
-						<NcButton type="tertiary"
+						<NcButton variant="tertiary"
 							:aria-label="t('whiteboard', 'Delete canvas {name}', { name: template.name })"
 							:disabled="deletingOrgCanvasTemplate === template.name"
 							@click="deleteOrgCanvasTemplate(template.name)">
@@ -143,8 +143,8 @@
 		</NcSettingsSection>
 		<NcSettingsSection :name="t('whiteboard', 'Advanced settings')">
 			<p>
-				<NcTextField :label="t('whiteboard', 'Max image size (MB)')"
-					:value.sync="maxFileSize"
+				<NcTextField v-model="maxFileSize"
+					:label="t('whiteboard', 'Max image size (MB)')"
 					:helper-text="maxFileSizeHelperText"
 					@blur="saveMaxFileSize" />
 			</p>
@@ -160,12 +160,12 @@
 <script>
 import axios from '@nextcloud/axios'
 import { io } from 'socket.io-client'
-import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
-import NcPasswordField from '@nextcloud/vue/dist/Components/NcPasswordField.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
-import NcSettingsSection from '@nextcloud/vue/dist/Components/NcSettingsSection.js'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcSettingsSection from '@nextcloud/vue/components/NcSettingsSection'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 import { t, n } from '@nextcloud/l10n'

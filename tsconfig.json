@@ -16,6 +16,7 @@
     "moduleResolution": "node",
     "strict": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "skipLibCheck": true
   },
   "exclude": [
@@ -25,6 +26,6 @@
     "vendor"
   ],
   "vueCompilerOptions": {
-    "target": 2.7
+    "target": 3.5
   }
 }

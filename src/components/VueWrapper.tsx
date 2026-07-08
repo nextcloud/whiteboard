@@ -2,52 +2,44 @@
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import Vue from 'vue'
 import { t } from '@nextcloud/l10n'
 import { Icon } from '@mdi/react'
 import { mdiAccountPlusOutline } from '@mdi/js'
+import { useEffect, useRef } from 'react'
+import type { Component } from 'vue'
+import { mountVueComponent, type MountedVueComponent } from '../utils/vue'
+
+type VueWrapperProps = {
+	component: Component
+	componentProps: Record<string, unknown> & { text?: string }
+}
 
 const VueWrapper = function(
-	{ componentProps, component }) {
-	const vueRef = React.useRef(null)
-	const [vueInstance, setVueInstance] = React.useState(undefined)
+	{ componentProps, component }: VueWrapperProps) {
+	const vueRef = useRef<HTMLDivElement | null>(null)
+	const vueInstance = useRef<MountedVueComponent | null>(null)
 
-	React.useEffect(() => {
-		/**
-		 *
-		 */
-		async function createVueInstance() {
+	useEffect(() => {
+		if (!vueRef.current) {
+			return
 		}
 
-		createVueInstance()
-
-		setVueInstance(new Vue({
-			el: vueRef.current,
-			data() {
-				return {
-					props: componentProps,
-				}
-			},
-			render(h) {
-				return h(component, {
-					props: this.props,
-				})
-			},
-		}))
+		vueInstance.current = mountVueComponent(component, vueRef.current, componentProps)
 
 		return () => {
-			vueInstance?.$destroy()
+			vueInstance.current?.unmount()
+			vueInstance.current = null
 		}
 	}, [])
 
-	React.useEffect(() => {
-		if (vueInstance) {
+	useEffect(() => {
+		if (vueInstance.current) {
 			const keys = Object.keys(componentProps)
-			keys.forEach(key => { vueInstance.props[key] = componentProps[key] })
+			keys.forEach(key => { vueInstance.current!.props[key] = componentProps[key] })
 		}
 	}, [Object.values(componentProps)])
 
-	const url = componentProps.text
+	const url = componentProps.text ?? ''
 
 	// Generate a link to open the details tab for sharing settings
 	let linkToOpenSharingDetails = ''

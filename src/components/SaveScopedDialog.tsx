@@ -25,18 +25,21 @@ interface SaveScopedDialogProps {
 
 /**
  * Name + scope form shared by "Save as library" and "Save as canvas template".
+ *
+ * @param props Dialog props.
  */
-export function SaveScopedDialog({
-	title,
-	hint,
-	nameLabel,
-	isAdmin,
-	isSaving,
-	error,
-	onClose,
-	onSubmit,
-	onErrorClear,
-}: SaveScopedDialogProps) {
+export function SaveScopedDialog(props: SaveScopedDialogProps) {
+	const {
+		title,
+		hint,
+		nameLabel,
+		isAdmin,
+		isSaving,
+		error,
+		onClose,
+		onSubmit,
+		onErrorClear,
+	} = props
 	const [scope, setScope] = useState<SaveScope>('personal')
 	const [name, setName] = useState('')
 
