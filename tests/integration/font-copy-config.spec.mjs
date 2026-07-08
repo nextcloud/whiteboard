@@ -7,9 +7,8 @@ import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
 import { build } from 'vite'
-
+import { describe, expect, it } from 'vitest'
 import createConfig from '../../vite.config.ts'
 
 describe('Excalidraw font assets', () => {

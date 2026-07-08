@@ -8,10 +8,10 @@
 			<p class="settings-help">
 				{{ t('whiteboard', 'Choose what happens to your recording if you leave a board.') }}
 			</p>
-			<NcCheckboxRadioSwitch :checked="autoUploadOnDisconnect"
+			<NcCheckboxRadioSwitch v-model="autoUploadOnDisconnect"
 				:loading="saving"
 				type="switch"
-				@update:checked="onToggle">
+				@update:model-value="onToggle">
 				{{ t('whiteboard', 'Save recordings automatically when I leave a board') }}
 				<template #description>
 					{{ t('whiteboard', 'When enabled, the server will save your recording if you close the tab or lose connection.') }}
@@ -29,9 +29,9 @@ import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 import { t } from '@nextcloud/l10n'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
-import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
-import NcSettingsSection from '@nextcloud/vue/dist/Components/NcSettingsSection.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcSettingsSection from '@nextcloud/vue/components/NcSettingsSection'
 import { showError } from '@nextcloud/dialogs'
 
 export default {
@@ -50,6 +50,7 @@ export default {
 	},
 	methods: {
 		async onToggle(value) {
+			const previousValue = !value
 			this.saving = true
 			this.notice = null
 			try {
@@ -62,6 +63,7 @@ export default {
 					message: t('whiteboard', 'Recording preference saved.'),
 				}
 			} catch (error) {
+				this.autoUploadOnDisconnect = previousValue
 				showError(t('whiteboard', 'Failed to save recording preference.'))
 			} finally {
 				this.saving = false

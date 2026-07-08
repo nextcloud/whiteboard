@@ -31,29 +31,12 @@
       "count": 2
     }
   },
-  "src/admin.ts": {
-    "@stylistic/arrow-parens": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 2
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
-    }
-  },
   "src/components/AdminSettings.vue": {
-    "@nextcloud/no-deprecated-library-exports": {
-      "count": 6
-    },
-    "@nextcloud/no-deprecated-library-props": {
-      "count": 5
-    },
     "no-unused-vars": {
       "count": 2
     },
     "perfectionist/sort-imports": {
-      "count": 6
+      "count": 5
     },
     "perfectionist/sort-named-imports": {
       "count": 1
@@ -66,28 +49,10 @@
     }
   },
   "src/components/AssistantDialog.vue": {
-    "@nextcloud/no-deprecated-library-props": {
-      "count": 1
-    },
-    "@stylistic/function-paren-newline": {
-      "count": 2
-    },
     "import-extensions/extensions": {
       "count": 1
     },
     "no-console": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 2
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
-    },
-    "vue/new-line-between-multi-line-property": {
-      "count": 15
-    },
-    "vue/padding-line-between-blocks": {
       "count": 1
     }
   },
@@ -196,25 +161,6 @@
       "count": 6
     }
   },
-  "src/components/Embeddable.tsx": {
-    "@nextcloud/no-deprecated-library-exports": {
-      "count": 1
-    },
-    "import-extensions/extensions": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
-    }
-  },
-  "src/components/EmojiPickerButton.vue": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
-    "vue/new-line-between-multi-line-property": {
-      "count": 4
-    }
-  },
   "src/components/ExcalidrawMenu.tsx": {
     "@stylistic/arrow-parens": {
       "count": 1
@@ -291,12 +237,6 @@
     }
   },
   "src/components/PersonalSettings.vue": {
-    "@nextcloud/no-deprecated-library-exports": {
-      "count": 3
-    },
-    "@nextcloud/no-deprecated-library-props": {
-      "count": 1
-    },
     "no-unused-vars": {
       "count": 1
     },
@@ -397,26 +337,11 @@
     }
   },
   "src/components/TableEditorDialog.vue": {
-    "@nextcloud/no-deprecated-library-props": {
-      "count": 2
-    },
-    "@stylistic/arrow-parens": {
-      "count": 4
-    },
-    "curly": {
-      "count": 2
-    },
     "no-console": {
       "count": 5
     },
     "no-unused-vars": {
       "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
-    "vue/new-line-between-multi-line-property": {
-      "count": 7
     }
   },
   "src/components/Timer.tsx": {
@@ -464,70 +389,17 @@
       "count": 1
     }
   },
-  "src/components/VotingModal.vue": {
-    "@nextcloud/no-deprecated-library-props": {
-      "count": 1
-    },
-    "@stylistic/arrow-parens": {
-      "count": 2
-    },
-    "perfectionist/sort-imports": {
-      "count": 4
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 3
-    },
-    "vue/new-line-between-multi-line-property": {
-      "count": 7
-    }
-  },
   "src/components/VotingSidebar.tsx": {
-    "@stylistic/jsx-closing-bracket-location": {
-      "count": 4
-    },
-    "@stylistic/jsx-one-expression-per-line": {
-      "count": 6
-    },
-    "curly": {
-      "count": 4
-    },
     "import-extensions/extensions": {
       "count": 1
     },
     "no-console": {
       "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 5
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 2
     }
   },
   "src/components/VueWrapper.tsx": {
-    "@stylistic/arrow-parens": {
-      "count": 1
-    },
-    "@stylistic/exp-list-style": {
-      "count": 1
-    },
-    "@stylistic/function-paren-newline": {
-      "count": 1
-    },
-    "@stylistic/jsx-closing-bracket-location": {
-      "count": 1
-    },
-    "@stylistic/jsx-curly-brace-presence": {
-      "count": 1
-    },
     "@stylistic/max-statements-per-line": {
       "count": 1
-    },
-    "antfu/top-level-function": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 3
     }
   },
   "src/database/db.ts": {
@@ -542,31 +414,13 @@
     }
   },
   "src/files.ts": {
-    "@stylistic/function-paren-newline": {
-      "count": 2
-    },
-    "@stylistic/member-delimiter-style": {
-      "count": 1
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 2
     }
   },
   "src/hooks/useAssistant.tsx": {
-    "@stylistic/exp-list-style": {
-      "count": 6
-    },
-    "@stylistic/function-paren-newline": {
-      "count": 2
-    },
-    "import-extensions/extensions": {
-      "count": 5
-    },
     "no-console": {
       "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 7
     }
   },
   "src/hooks/useBoardDataManager.ts": {
@@ -719,26 +573,8 @@
     }
   },
   "src/hooks/useEmojiPicker.tsx": {
-    "@stylistic/function-paren-newline": {
-      "count": 2
-    },
-    "@stylistic/member-delimiter-style": {
-      "count": 1
-    },
-    "@stylistic/padded-blocks": {
-      "count": 1
-    },
     "@typescript-eslint/no-use-before-define": {
       "count": 1
-    },
-    "import-extensions/extensions": {
-      "count": 3
-    },
-    "no-console": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 8
     }
   },
   "src/hooks/useFiles.ts": {
@@ -863,9 +699,6 @@
     }
   },
   "src/hooks/useSmartPicker.tsx": {
-    "@nextcloud/no-deprecated-library-exports": {
-      "count": 1
-    },
     "@stylistic/arrow-parens": {
       "count": 1
     },
@@ -921,32 +754,8 @@
     }
   },
   "src/hooks/useTableInsertion.tsx": {
-    "@stylistic/arrow-parens": {
-      "count": 1
-    },
-    "@stylistic/function-paren-newline": {
-      "count": 2
-    },
-    "@stylistic/member-delimiter-style": {
-      "count": 1
-    },
-    "@stylistic/padded-blocks": {
-      "count": 1
-    },
-    "curly": {
-      "count": 2
-    },
-    "import-extensions/extensions": {
-      "count": 6
-    },
     "no-console": {
       "count": 11
-    },
-    "perfectionist/sort-imports": {
-      "count": 6
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
     }
   },
   "src/hooks/useThemeHandling.ts": {
@@ -1012,46 +821,8 @@
     }
   },
   "src/main.ts": {
-    "@stylistic/function-paren-newline": {
-      "count": 6
-    },
-    "@stylistic/implicit-arrow-linebreak": {
-      "count": 2
-    },
-    "@stylistic/indent": {
-      "count": 12
-    },
-    "@stylistic/indent-binary-ops": {
-      "count": 2
-    },
-    "@stylistic/member-delimiter-style": {
-      "count": 4
-    },
-    "@stylistic/operator-linebreak": {
-      "count": 2
-    },
-    "@typescript-eslint/no-use-before-define": {
-      "count": 17
-    },
-    "antfu/top-level-function": {
-      "count": 10
-    },
     "import-extensions/extensions": {
       "count": 5
-    },
-    "perfectionist/sort-imports": {
-      "count": 3
-    }
-  },
-  "src/personal.ts": {
-    "@stylistic/arrow-parens": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 2
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
     }
   },
   "src/services/ai.ts": {
@@ -1348,26 +1119,6 @@
   "tests/integration/metrics.spec.mjs": {
     "perfectionist/sort-imports": {
       "count": 2
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 2
-    }
-  },
-  "tests/integration/multinode-redis.spec.mjs": {
-    "@stylistic/arrow-parens": {
-      "count": 1
-    },
-    "@stylistic/function-paren-newline": {
-      "count": 2
-    },
-    "@stylistic/padded-blocks": {
-      "count": 3
-    },
-    "antfu/top-level-function": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 3
     },
     "perfectionist/sort-named-imports": {
       "count": 2

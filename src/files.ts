@@ -11,7 +11,7 @@
  * scope} map; the blank tile (fileid -1) needs no lookup.
  *
  * Intentionally dependency-free: this script is injected standalone into the
- * Files app, so importing @nextcloud/* (which drags in heavy shared chunks)
+ * Files app, so importing `@nextcloud/*` (which drags in heavy shared chunks)
  * risks a module-load failure. Uses fetch + NC globals only.
  */
 
@@ -19,7 +19,7 @@ const WHITEBOARD_APP = 'whiteboard'
 
 type Scope = 'personal' | 'org'
 type Kind = 'canvas-template' | 'library'
-type Entry = { kind: Kind; scope: Scope }
+type Entry = { kind: Kind, scope: Scope }
 
 const ORDER: Scope[] = ['personal', 'org']
 
@@ -53,7 +53,8 @@ async function loadEntries(): Promise<Map<string, Entry>> {
 	const map = new Map<string, Entry>()
 	try {
 		const OC = oc()
-		const url = `${OC?.webroot ?? ''}/index.php/apps/whiteboard/picker`
+		// eslint-disable-next-line @nextcloud/no-deprecated-globals -- Standalone Files script avoids @nextcloud/router imports.
+		const url = OC?.generateUrl?.('/apps/whiteboard/picker') ?? '/index.php/apps/whiteboard/picker'
 		const response = await globalThis.fetch(url, {
 			headers: {
 				Accept: 'application/json',
@@ -190,9 +191,7 @@ function enhance(list: HTMLElement): void {
 }
 
 async function tick(): Promise<void> {
-	const list = document.querySelector(
-		'.templates-picker__list:not([data-whiteboard-enhanced])',
-	) as HTMLElement | null
+	const list = document.querySelector('.templates-picker__list:not([data-whiteboard-enhanced])') as HTMLElement | null
 	if (!list || list.querySelectorAll('.template-picker__item').length === 0) {
 		return
 	}

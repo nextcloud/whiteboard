@@ -2,32 +2,32 @@
  * SPDX-FileCopyrightText: 2020 Excalidraw, 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: MIT
  */
-import { useCallback } from 'react'
-import { t } from '@nextcloud/l10n'
-import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
-import { useShallow } from 'zustand/react/shallow'
+
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+
 import { mdiCreation } from '@mdi/js'
-import AssistantDialog from '../components/AssistantDialog.vue'
-import Vue from 'vue'
-import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
-import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
 import { getCapabilities } from '@nextcloud/capabilities'
-import { renderToolbarButton } from '../components/ToolbarButton'
-import { markFileAsAiGenerated } from '../services/ai'
+import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
+import { t } from '@nextcloud/l10n'
+import { useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import AssistantDialog from '../components/AssistantDialog.vue'
+import { renderToolbarButton } from '../components/ToolbarButton.tsx'
+import { markFileAsAiGenerated } from '../services/ai.ts'
+import { useExcalidrawStore } from '../stores/useExcalidrawStore.ts'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
+import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport.ts'
+import { mountVueComponent } from '../utils/vue.ts'
 
 export function useAssistant() {
 	const capabilities = getCapabilities() as { assistant?: { version: string, enabled: boolean } }
 	if (!capabilities.assistant?.enabled) {
 		return { renderAssistant: () => {} }
 	}
-	const { excalidrawAPI } = useExcalidrawStore(
-		useShallow((state) => ({
-			excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
-		})),
-	)
+	const { excalidrawAPI } = useExcalidrawStore(useShallow((state) => ({
+		excalidrawAPI: state.excalidrawAPI as (ExcalidrawImperativeAPI | null),
+	})))
 
 	const fileId = useWhiteboardConfigStore((state) => state.fileId)
 
@@ -36,32 +36,28 @@ export function useAssistant() {
 	 * resolves Promise with generated Elements after dialog finished
 	 */
 	const getMermaidFromAssistant = useCallback(() => {
-		return new Promise<{elements: ExcalidrawElement[], files: File[]}>((resolve, reject) => {
+		return new Promise<{ elements: ExcalidrawElement[], files: File[] }>((resolve, reject) => {
 			const element = document.createElement('div')
 			document.body.appendChild(element)
-			const View = Vue.extend(AssistantDialog)
-			const view = new View({
-				propsData: {
-					excalidrawAPI,
+			const view = mountVueComponent(AssistantDialog, element, {}, {
+				cancel: () => {
+					view.unmount()
+					reject(new Error('Assistant dialog was cancelled'))
 				},
-			}).$mount(element)
-
-			view.$on('cancel', () => {
-				view.$destroy()
-				reject(new Error('Assistant dialog was cancelled'))
-			})
-
-			view.$on('submit', (generatedElements: {elements: ExcalidrawElement[], files: File[]}) => {
-				view.$destroy()
-				resolve(generatedElements)
+				submit: (generatedElements: { elements: ExcalidrawElement[], files: File[] }) => {
+					view.unmount()
+					resolve(generatedElements)
+				},
+			}, {
+				removeTargetOnUnmount: true,
 			})
 		})
-	}, [excalidrawAPI])
+	}, [])
 
 	/**
 	 * adds generatedElements to canvas and selects them
 	 */
-	const loadToExcalidraw = useCallback((generatedElements: {elements: ExcalidrawElement[], files: File[]}) => {
+	const loadToExcalidraw = useCallback((generatedElements: { elements: ExcalidrawElement[], files: File[] }) => {
 		if (!excalidrawAPI) {
 			console.error('Excalidraw API is not available')
 			return

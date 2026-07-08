@@ -1,8 +1,7 @@
-import { beforeAll, afterAll, afterEach, describe, it, expect, vi } from 'vitest'
-import { io } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
 import { RedisMemoryServer } from 'redis-memory-server'
-
+import { io } from 'socket.io-client'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import ServerManagerModule from '../../websocket_server/Services/ServerService.js'
 import ConfigModule from '../../websocket_server/Utilities/ConfigUtility.js'
 
@@ -29,7 +28,6 @@ const configState = vi.hoisted(() => ({
 }))
 
 vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => {
-
 	const proxy = {}
 	Object.keys(configState).forEach((key) => {
 		Object.defineProperty(proxy, key, {
@@ -47,7 +45,6 @@ vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => {
 
 vi.mock('../../websocket_server/Services/RecordingService.js', () => {
 	class FakeRecordingService {
-
 		async init() { return true }
 		async startRecording() { return true }
 		async stopRecording() {
@@ -58,7 +55,6 @@ vi.mock('../../websocket_server/Services/RecordingService.js', () => {
 		}
 
 		async cleanup() { return true }
-
 	}
 	return { default: FakeRecordingService }
 })
@@ -67,7 +63,7 @@ const Config = ConfigModule
 
 vi.setConfig({ testTimeout: 30000 })
 
-const waitFor = (socket, event, timeoutMs = 10000) => {
+function waitFor(socket, event, timeoutMs = 10000) {
 	return new Promise((resolve, reject) => {
 		const timer = setTimeout(() => {
 			const lastError = event === 'connect' && socket?.lastConnectError
@@ -147,12 +143,11 @@ describe('Multi node websocket cluster with redis streams', () => {
 		await serverB.start()
 	})
 
-	afterEach(() => {
+	afterEach(async () => {
 		activeSockets.splice(0).forEach((socket) => {
-			if (socket.connected) {
-				socket.disconnect()
-			}
+			socket.disconnect()
 		})
+		await new Promise((resolve) => setTimeout(resolve, 100))
 	})
 
 	afterAll(async () => {
@@ -284,7 +279,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 			})
 
 			recorderSocket.disconnect()
-			await new Promise(resolve => setTimeout(resolve, 100))
+			await new Promise((resolve) => setTimeout(resolve, 100))
 
 			const reconnectSocket = createSocket(serverAUrl, recorderToken)
 			await waitFor(reconnectSocket, 'connect')
@@ -550,9 +545,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 		await serverA.socketService.sessionStore.clearSocketMeta(viewerSocket.id)
 
 		const roomChangeNotice = waitFor(presenterSocket, 'room-user-change')
-		await expect(
-			serverA.socketService.roomLifecycleController.onDisconnecting(serverSideViewer, [roomID]),
-		).resolves.toBeUndefined()
+		await expect(serverA.socketService.roomLifecycleController.onDisconnecting(serverSideViewer, [roomID])).resolves.toBeUndefined()
 
 		const roomUsers = await roomChangeNotice
 		expect(roomUsers).toHaveLength(1)

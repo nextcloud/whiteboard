@@ -3,15 +3,22 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { Voting, VotingOption } from '../types'
-import './VotingSidebar.css'
-import { getCurrentUser } from '@nextcloud/auth'
-import { spawnDialog, showError } from '@nextcloud/dialogs'
-import { translate as t, translatePlural as n } from '@nextcloud/l10n'
-import VotingModal from './VotingModal.vue'
+import type { ExcalidrawElementSkeleton } from '@nextcloud/excalidraw/dist/types/excalidraw/data/transform'
+import type { ExcalidrawTextElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
-import { v4 as uuidv4 } from 'uuid'
+import type { Voting, VotingOption } from '../types'
+
+import { getCurrentUser } from '@nextcloud/auth'
+import { showError } from '@nextcloud/dialogs'
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
+import { translatePlural as n, translate as t } from '@nextcloud/l10n'
+import { spawnDialog } from '@nextcloud/vue/functions/dialog'
+import { v4 as uuidv4 } from 'uuid'
+import VotingModal from './VotingModal.vue'
+
+import './VotingSidebar.css'
+
+const lineHeight = (value: number): ExcalidrawTextElement['lineHeight'] => value as ExcalidrawTextElement['lineHeight']
 
 interface VotingSidebarProps {
 	votings: Array<Voting>
@@ -30,9 +37,13 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	const isOpen = (voting: Voting) => voting.state === 'open'
 	const hasVotedInVoting = (voting: Voting) => voting.options.some(hasVoted)
 	const canVote = (voting: Voting) => {
-		if (!currentUserId || !isOpen(voting)) return false
+		if (!currentUserId || !isOpen(voting)) {
+			return false
+		}
 		// For single-choice, can't vote if already voted
-		if (voting.type === 'single-choice' && hasVotedInVoting(voting)) return false
+		if (voting.type === 'single-choice' && hasVotedInVoting(voting)) {
+			return false
+		}
 		// For multiple-choice, can always vote (on options not yet voted for)
 		return true
 	}
@@ -44,11 +55,15 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	}
 
 	const handleVote = (voting: Voting, option: VotingOption) => {
-		if (isOpen(voting)) onVote(voting.uuid, option.uuid)
+		if (isOpen(voting)) {
+			onVote(voting.uuid, option.uuid)
+		}
 	}
 
 	const handleEndVoting = (voting: Voting) => {
-		if (isOpen(voting)) onEndVoting(voting.uuid)
+		if (isOpen(voting)) {
+			onEndVoting(voting.uuid)
+		}
 	}
 
 	const splitIntoLines = (text: string, maxCharsPerLine: number) => {
@@ -137,7 +152,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 			const frameY = centerY - frameHeight / 2
 
 			// Create elements
-			const skeletonElements = []
+			const skeletonElements: ExcalidrawElementSkeleton[] = []
 			const questionY = frameY + LAYOUT.framePadding.top
 
 			// Add question element
@@ -150,7 +165,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 				fontSize: TYPOGRAPHY.question.fontSize,
 				fontFamily: 3,
 				textAlign: 'left',
-				lineHeight: TYPOGRAPHY.question.lineHeight,
+				lineHeight: lineHeight(TYPOGRAPHY.question.lineHeight),
 				frameId,
 			})
 
@@ -181,7 +196,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 					fontSize: TYPOGRAPHY.option.fontSize,
 					fontFamily: 3,
 					textAlign: 'left',
-					lineHeight: TYPOGRAPHY.option.lineHeight,
+					lineHeight: lineHeight(TYPOGRAPHY.option.lineHeight),
 					frameId,
 				})
 
@@ -207,7 +222,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 					fontSize: TYPOGRAPHY.option.fontSize,
 					fontFamily: 3,
 					textAlign: 'left',
-					lineHeight: TYPOGRAPHY.option.lineHeight,
+					lineHeight: lineHeight(TYPOGRAPHY.option.lineHeight),
 					frameId,
 				})
 
@@ -215,13 +230,15 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 			})
 
 			// Assign IDs to elements
-			const ids = skeletonElements.map((el) => {
-				el.id = `voting-${uuidv4()}`
-				return el.id
+			const ids: string[] = []
+			const elementsWithIds: ExcalidrawElementSkeleton[] = skeletonElements.map((el) => {
+				const id = `voting-${uuidv4()}`
+				ids.push(id)
+				return { ...el, id } as ExcalidrawElementSkeleton
 			})
 
 			// Add frame element
-			skeletonElements.push({
+			elementsWithIds.push({
 				type: 'frame',
 				x: frameX,
 				y: frameY,
@@ -233,7 +250,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 			})
 
 			// Update scene
-			const elements = convertToExcalidrawElements(skeletonElements)
+			const elements = convertToExcalidrawElements(elementsWithIds)
 			const existingElements = excalidrawAPI.getSceneElements()
 
 			if (!existingElements) {
@@ -250,9 +267,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 	}
 
 	const handleStartVoting = () => {
-		spawnDialog(VotingModal, {
-			onStartVoting,
-		}, () => {})
+		spawnDialog(VotingModal, { onStartVoting }).catch(() => {})
 	}
 
 	const sortedVotings = [...votings].sort((a, b) => b.startedAt - a.startedAt)
@@ -263,7 +278,8 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 				{!isReadOnly && (
 					<button
 						onClick={handleStartVoting}
-						className="start-voting-button">
+						className="start-voting-button"
+					>
 						{t('whiteboard', 'Start new voting')}
 					</button>
 				)}
@@ -275,20 +291,24 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 						{isAuthor(voting) && isOpen(voting) && (
 							<button
 								onClick={() => handleEndVoting(voting)}
-								className="end-voting-button">
+								className="end-voting-button"
+							>
 								{t('whiteboard', 'End voting')}
 							</button>
 						)}
 						{!isOpen(voting) && (
 							<button
 								onClick={() => addResultAsElements(voting)}
-								className="add-result-button">
+								className="add-result-button"
+							>
 								{t('whiteboard', 'Add as drawing')}
 							</button>
 						)}
 					</div>
 					<div className="voting-status">
-						{t('whiteboard', 'Status')}: {voting.state === 'open' ? t('whiteboard', 'Open') : t('whiteboard', 'Closed')}
+						{t('whiteboard', 'Status')}
+						:
+						{voting.state === 'open' ? t('whiteboard', 'Open') : t('whiteboard', 'Closed')}
 					</div>
 					<ul className="voting-answers">
 						{voting.options.map((option: VotingOption) => (
@@ -299,12 +319,16 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 										{canVote(voting) && (
 											<button
 												onClick={() => handleVote(voting, option)}
-												className="vote-button">
+												className="vote-button"
+											>
 												{t('whiteboard', 'Vote')}
 											</button>
 										)}
 										{hasVoted(option) && (
-											<span className="voted-indicator">✓ {t('whiteboard', 'Voted')}</span>
+											<span className="voted-indicator">
+												✓
+												{t('whiteboard', 'Voted')}
+											</span>
 										)}
 									</div>
 									<div className="option-stats">
@@ -315,7 +339,9 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 											/>
 										</div>
 										<span className="vote-count">
-											({n('whiteboard', '%n vote', '%n votes', option.votes.length)})
+											(
+											{n('whiteboard', '%n vote', '%n votes', option.votes.length)}
+											)
 										</span>
 									</div>
 								</div>

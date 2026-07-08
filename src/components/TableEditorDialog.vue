@@ -3,9 +3,11 @@
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <script>
-import { NcButton, NcModal, NcNoteCard } from '@nextcloud/vue'
-import { defineComponent } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { defineComponent, markRaw } from 'vue'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcModal from '@nextcloud/vue/components/NcModal'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 
 export default defineComponent({
 	name: 'TableEditorDialog',
@@ -14,12 +16,14 @@ export default defineComponent({
 		NcModal,
 		NcNoteCard,
 	},
+
 	props: {
 		initialHtml: {
 			type: String,
 			default: '',
 		},
 	},
+
 	emits: ['cancel', 'submit'],
 	data() {
 		return {
@@ -30,18 +34,22 @@ export default defineComponent({
 			hasEnsuredTextStyles: false,
 		}
 	},
+
 	computed: {
 		isEditing() {
 			return Boolean(this.initialHtml)
 		},
 	},
+
 	async mounted() {
 		await this.$nextTick()
 		await this.initializeEditor()
 	},
+
 	beforeUnmount() {
 		this.destroyEditor()
 	},
+
 	methods: {
 		t,
 		async initializeEditor() {
@@ -72,10 +80,10 @@ export default defineComponent({
 				}
 				await this.ensureTextEditorStyles()
 				// Use the dedicated createTable function for table-only editing
-				this.editor = await window.OCA.Text.createTable({
+				this.editor = markRaw(await window.OCA.Text.createTable({
 					el: editorContainer,
 					content: contentForEditor,
-				})
+				}))
 
 				this.isLoading = false
 				// Focus the editor after a short delay
@@ -90,6 +98,7 @@ export default defineComponent({
 				this.isLoading = false
 			}
 		},
+
 		async ensureTextEditorStyles() {
 			if (this.hasEnsuredTextStyles) {
 				return
@@ -179,7 +188,8 @@ export default defineComponent({
 		/**
 		 * Generate simple markdown from HTML table
 		 * This is a basic conversion - not perfect but sufficient for Text editor input
-		 * @param html - The HTML table content to convert
+		 *
+		 * @param {string} html - The HTML table content to convert
 		 */
 		generateMarkdownFromHtml(html) {
 			try {
@@ -202,7 +212,7 @@ export default defineComponent({
 				const getCellContent = (cell) => {
 					const clone = cell.cloneNode(true)
 					const brs = clone.querySelectorAll('br')
-					brs.forEach(br => {
+					brs.forEach((br) => {
 						br.replaceWith(document.createTextNode('<br>'))
 					})
 					return clone.textContent.trim().replace(/\|/g, '\\|')
@@ -211,15 +221,19 @@ export default defineComponent({
 				// Process first row as header
 				const firstRow = rows[0]
 				const headerCells = Array.from(firstRow.querySelectorAll('th, td'))
-				const headers = headerCells.map(cell => getCellContent(cell))
+				const headers = headerCells.map((cell) => getCellContent(cell))
 				markdown += '| ' + headers.join(' | ') + ' |\n'
 
 				// Add separator with alignment markers
 				// Read text-align from header cells (style) to preserve alignment
-				const separators = headerCells.map(cell => {
+				const separators = headerCells.map((cell) => {
 					const align = cell.style.textAlign
-					if (align === 'center') return ':---:'
-					if (align === 'right') return '---:'
+					if (align === 'center') {
+						return ':---:'
+					}
+					if (align === 'right') {
+						return '---:'
+					}
 					return '---' // left or default
 				})
 				markdown += '| ' + separators.join(' | ') + ' |\n'
@@ -227,7 +241,7 @@ export default defineComponent({
 				// Process remaining rows as body
 				for (let i = 1; i < rows.length; i++) {
 					const cells = Array.from(rows[i].querySelectorAll('td, th'))
-					const values = cells.map(cell => getCellContent(cell))
+					const values = cells.map((cell) => getCellContent(cell))
 					markdown += '| ' + values.join(' | ') + ' |\n'
 				}
 
@@ -254,8 +268,8 @@ export default defineComponent({
 </script>
 
 <template>
-	<NcModal v-if="show"
-		:can-close="true"
+	<NcModal
+		v-if="show"
 		class="table-editor-modal"
 		@close="onCancel">
 		<div class="table-editor-dialog">
@@ -281,7 +295,7 @@ export default defineComponent({
 				<NcButton @click="onCancel">
 					{{ t('whiteboard', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary" :disabled="isLoading || error" @click="onInsert">
+				<NcButton variant="primary" :disabled="isLoading || error" @click="onInsert">
 					{{ isEditing ? t('whiteboard', 'Update') : t('whiteboard', 'Insert') }}
 				</NcButton>
 			</div>
@@ -392,14 +406,13 @@ export default defineComponent({
 	:deep(.ProseMirror table td),
 	:deep(.ProseMirror table th) {
 		border: 1px solid var(--color-border);
-		border-left: 0;
+		border-inline-start: 0;
 		vertical-align: top;
 		min-width: 100px;
 		max-width: 100%;
 		white-space: normal;
 		word-wrap: break-word;
 		overflow-wrap: break-word;
-		word-break: break-word;
 	}
 
 	// Force word-breaking on inner content divs that may have pre-wrap
@@ -407,12 +420,11 @@ export default defineComponent({
 	:deep(.ProseMirror table th div) {
 		word-wrap: break-word !important;
 		overflow-wrap: break-word !important;
-		word-break: break-word !important;
 	}
 
 	:deep(.ProseMirror table td:first-child),
 	:deep(.ProseMirror table th:first-child) {
-		border-left: 1px solid var(--color-border);
+		border-inline-start: 1px solid var(--color-border);
 	}
 
 	:deep(.ProseMirror table td) {

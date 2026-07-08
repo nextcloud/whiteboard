@@ -3,15 +3,12 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import Vue from 'vue'
-import { t, n } from '@nextcloud/l10n'
-
 import AdminSettings from './components/AdminSettings.vue'
+import { mountVueComponent } from './utils/vue.ts'
 
-Vue.prototype.t = t
-Vue.prototype.n = n
+import '@nextcloud/dialogs/style.css'
 
-/* eslint-disable-next-line no-new */
-new Vue({
-	render: h => h(AdminSettings, {}),
-}).$mount('#admin-vue')
+const element = document.getElementById('admin-vue')
+if (element) {
+	mountVueComponent(AdminSettings, element)
+}
