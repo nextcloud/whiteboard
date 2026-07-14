@@ -28,12 +28,13 @@ test('embed whiteboard in another whiteboard', async ({ page }) => {
 	await page.keyboard.type('Files')
 	await page.keyboard.press('Enter')
 
-	await expect(page.locator('.file-picker')).toBeVisible({ timeout: 5000 })
-	const fileEntry = page.getByTitle(firstBoardName).first()
+	const filePicker = page.locator('.file-picker')
+	await expect(filePicker).toBeVisible({ timeout: 5000 })
+	const fileEntry = filePicker.getByTitle(firstBoardName)
 	await expect(fileEntry).toBeVisible({ timeout: 20000 })
 	await fileEntry.click()
 
-	const chooseButton = page.getByLabel(`Choose ${firstBoardName}`).first()
+	const chooseButton = filePicker.getByLabel(`Choose ${firstBoardName}`)
 	await expect(chooseButton).toBeVisible({ timeout: 10000 })
 	await chooseButton.click()
 
