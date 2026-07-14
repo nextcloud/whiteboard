@@ -80,7 +80,9 @@ export default class ServerService {
 		return serverType.createServer(serverOptions, app)
 	}
 
-	start() {
+	async start() {
+		await this.socketService.ready
+
 		return new Promise((resolve, reject) => {
 			this.server.listen(Config.PORT, Config.HOST, () => {
 				console.log(`Listening on interface ${Config.HOST} port: ${Config.PORT}`)

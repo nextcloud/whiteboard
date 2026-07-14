@@ -134,7 +134,7 @@ export default class SocketService {
 			votingService: this.votingService,
 		})
 		this.clusterService.setSweepHandler(this.handleSweepResults.bind(this))
-		this.init()
+		this.ready = this.init()
 	}
 
 	createSocketServer(server) {
