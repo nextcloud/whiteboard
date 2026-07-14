@@ -437,9 +437,11 @@ describe('Multi node websocket cluster with redis streams', () => {
 		viewerSocket.emit('join-room', roomID)
 		await waitFor(viewerSocket, 'sync-designate')
 
+		const presentationStarted = waitFor(presenterSocket, 'presentation-started')
+		const presentationNotice = waitFor(viewerSocket, 'user-started-presenting')
 		presenterSocket.emit('presentation-start', { fileId: roomID, userId: 'shutdown-presenter' })
-		await waitFor(presenterSocket, 'presentation-started')
-		await waitFor(viewerSocket, 'user-started-presenting')
+		await presentationStarted
+		await presentationNotice
 
 		const stoppedNotice = waitFor(viewerSocket, 'user-stopped-presenting')
 		await serverA.gracefulShutdown()
