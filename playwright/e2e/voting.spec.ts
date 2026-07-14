@@ -16,7 +16,7 @@ test('Create a voting and add it to the whiteboard', async ({ page }) => {
 
 	// Open the main menu and navigate to voting
 	await page.getByTestId('main-menu-trigger').click()
-	await page.getByRole('button', { name: /voting/i }).click()
+	await page.getByRole('button', { name: 'Votings', exact: true }).click()
 
 	// Start a new voting
 	await page.getByRole('button', { name: /start new voting/i }).click()
