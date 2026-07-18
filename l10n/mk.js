@@ -40,6 +40,7 @@ OC.L10N.register(
     "Open" : "Отвори",
     "Closed" : "Затворено",
     "Vote" : "Гласај",
+    "_%n vote_::_%n votes_" : ["%n глас","%n гласови"],
     "Assistant" : "Асистент",
     "Add comment" : "Додади коментар",
     "Smart picker" : "Паметен избирач",
