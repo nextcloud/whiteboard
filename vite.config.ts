@@ -72,6 +72,7 @@ const AppConfig = createAppConfig({
 					{
 						src: EXCALIDRAW_FONTS_DIR,
 						dest: 'dist',
+						rename: { stripBase: 5 },
 					},
 				],
 			}),
