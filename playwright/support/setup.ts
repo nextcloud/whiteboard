@@ -99,6 +99,21 @@ const ensureAssistantInstalled = async () => {
 	throw new Error('Assistant app could not be installed or enabled')
 }
 
+const ensureTextInstalled = async () => {
+	if (await isAppEnabled('text')) {
+		return
+	}
+
+	if (await enableAppIfPresent('text')) {
+		return
+	}
+
+	const serverBranch = getServerBranch()
+	const branch = serverBranch === 'master' ? 'main' : serverBranch
+	await runExec(['git', 'clone', '--depth=1', `--branch=${branch}`, 'https://github.com/nextcloud/text.git', 'apps/text'])
+	await runOcc(['app:enable', '--force', 'text'])
+}
+
 /**
  * We use this to ensure Nextcloud is configured correctly before running our tests
  *
@@ -117,6 +132,7 @@ setup('Configure Nextcloud', async () => {
 	await configureNextcloud(appsToInstall, getServerBranch())
 	await runExec(['git', '-C', 'apps/viewer', 'log', '-1'], { verbose: true })
 	await ensureAssistantInstalled()
+	await ensureTextInstalled()
 	await runOcc(['app:disable', 'firstrunwizard'])
 	await runOcc(['config:app:set', 'whiteboard', 'collabBackendUrl', '--value', 'http://localhost:3002'])
 	await runOcc(['config:app:set', 'whiteboard', 'jwt_secret_key', '--value', 'secret'])

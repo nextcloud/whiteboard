@@ -12,23 +12,41 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('Create a voting and add it to the whiteboard', async ({ page }) => {
+	test.setTimeout(120000)
 	await createWhiteboard(page, { name: `Voting ${Date.now()}` })
 
-	// Open the main menu and navigate to voting
-	await page.getByTestId('main-menu-trigger').click()
-	await page.getByRole('button', { name: 'Votings', exact: true }).click()
+	// Reopen the Vue dialog repeatedly to catch mount/unmount leaks.
+	const startNewVoting = page.getByRole('button', { name: /start new voting/i })
+	const openVotingSidebar = async () => {
+		if (await startNewVoting.isVisible().catch(() => false)) {
+			return
+		}
+		await page.getByTestId('main-menu-trigger').click()
+		await page.getByRole('button', { name: 'Votings', exact: true }).click()
+		await expect(startNewVoting).toBeVisible()
+	}
 
-	// Start a new voting
-	await page.getByRole('button', { name: /start new voting/i }).click()
+	for (let i = 0; i < 5; i++) {
+		await openVotingSidebar()
+		await startNewVoting.click()
+		const dialog = page.getByRole('dialog', { name: /start new voting/i }).last()
+		await expect(dialog).toBeVisible()
+		await dialog.getByRole('button', { name: /close/i }).click()
+		await expect(dialog).toBeHidden()
+	}
 
-	await page.getByLabel(/question/i).fill('What is your favorite color?')
+	await openVotingSidebar()
+	await startNewVoting.click()
+	const votingDialog = page.getByRole('dialog', { name: /start new voting/i }).last()
 
-	await page.getByLabel(/option 1/i).fill('Red')
-	await page.getByLabel(/option 2/i).fill('Blue')
-	await page.getByRole('button', { name: /add option/i }).click()
-	await page.getByLabel(/option 3/i).fill('Green')
+	await votingDialog.getByLabel(/question/i).fill('What is your favorite color?')
 
-	await page.getByRole('button', { name: /Start voting/i }).click()
+	await votingDialog.getByLabel(/option 1/i).fill('Red')
+	await votingDialog.getByLabel(/option 2/i).fill('Blue')
+	await votingDialog.getByRole('button', { name: /add option/i }).click()
+	await votingDialog.getByLabel(/option 3/i).fill('Green')
+
+	await votingDialog.getByRole('button', { name: /Start voting/i }).click()
 
 	await expect(page.getByText('What is your favorite color?')).toBeVisible()
 

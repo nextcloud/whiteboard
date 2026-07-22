@@ -9,14 +9,14 @@ import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useShallow } from 'zustand/react/shallow'
 import { mdiCreation } from '@mdi/js'
 import AssistantDialog from '../components/AssistantDialog.vue'
-import Vue from 'vue'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { getCapabilities } from '@nextcloud/capabilities'
 import { renderToolbarButton } from '../components/ToolbarButton'
 import { markFileAsAiGenerated } from '../services/ai'
+import { mountVueComponent } from '../utils/vue'
 
 export function useAssistant() {
 	const capabilities = getCapabilities() as { assistant?: { version: string, enabled: boolean } }
@@ -39,21 +39,17 @@ export function useAssistant() {
 		return new Promise<{elements: ExcalidrawElement[], files: File[]}>((resolve, reject) => {
 			const element = document.createElement('div')
 			document.body.appendChild(element)
-			const View = Vue.extend(AssistantDialog)
-			const view = new View({
-				propsData: {
-					excalidrawAPI,
+			const view = mountVueComponent(AssistantDialog, element, { excalidrawAPI }, {
+				cancel: () => {
+					view.unmount()
+					reject(new Error('Assistant dialog was cancelled'))
 				},
-			}).$mount(element)
-
-			view.$on('cancel', () => {
-				view.$destroy()
-				reject(new Error('Assistant dialog was cancelled'))
-			})
-
-			view.$on('submit', (generatedElements: {elements: ExcalidrawElement[], files: File[]}) => {
-				view.$destroy()
-				resolve(generatedElements)
+				submit: (generatedElements: {elements: ExcalidrawElement[], files: File[]}) => {
+					view.unmount()
+					resolve(generatedElements)
+				},
+			}, {
+				removeTargetOnUnmount: true,
 			})
 		})
 	}, [excalidrawAPI])

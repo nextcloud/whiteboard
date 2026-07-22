@@ -3,7 +3,7 @@
  - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
-	<NcDialog :name="t('whiteboard', 'Start new voting')" @close="$emit('close')">
+	<NcDialog :name="t('whiteboard', 'Start new voting')" @update:open="onOpenUpdate">
 		<NcTextField v-model="question" :label="t('whiteboard', 'Question')" />
 		<div class="voting-type">
 			<label>{{ t('whiteboard', 'Voting type') }}</label>
@@ -11,7 +11,7 @@
 		</div>
 		<div v-for="(option, index) in options" :key="index" class="option">
 			<NcTextField v-model="options[index]" :label="t('whiteboard', 'Option') + ' ' + (index + 1)" />
-			<NcButton type="tertiary" :aria-label="t('whiteboard', 'Remove option')" @click="removeOption(index)">
+			<NcButton variant="tertiary" :aria-label="t('whiteboard', 'Remove option')" @click="removeOption(index)">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiDelete" />
 				</template>
@@ -39,7 +39,10 @@
 
 <script>
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
-import { NcDialog, NcTextField, NcButton, NcSelect } from '@nextcloud/vue'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import { translate as t } from '@nextcloud/l10n'
 import { showError } from '@nextcloud/dialogs'
 import { mdiPlus, mdiDelete, mdiCheck } from '@mdi/js'
@@ -59,6 +62,7 @@ export default {
 			required: true,
 		},
 	},
+	emits: ['close'],
 	data() {
 		return {
 			mdiPlus,
@@ -97,6 +101,11 @@ export default {
 			}
 			this.onStartVoting(question, this.selectedType.id, validOptions)
 			this.$emit('close')
+		},
+		onOpenUpdate(open) {
+			if (!open) {
+				this.$emit('close')
+			}
 		},
 		t,
 	},

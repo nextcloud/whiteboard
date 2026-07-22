@@ -53,7 +53,8 @@ async function loadEntries(): Promise<Map<string, Entry>> {
 	const map = new Map<string, Entry>()
 	try {
 		const OC = oc()
-		const url = `${OC?.webroot ?? ''}/index.php/apps/whiteboard/picker`
+		// eslint-disable-next-line @nextcloud/no-deprecations -- Standalone Files script avoids @nextcloud/router imports.
+		const url = OC?.generateUrl?.('/apps/whiteboard/picker') ?? '/index.php/apps/whiteboard/picker'
 		const response = await globalThis.fetch(url, {
 			headers: {
 				Accept: 'application/json',

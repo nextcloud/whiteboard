@@ -147,12 +147,11 @@ describe('Multi node websocket cluster with redis streams', () => {
 		await serverB.start()
 	})
 
-	afterEach(() => {
+	afterEach(async () => {
 		activeSockets.splice(0).forEach((socket) => {
-			if (socket.connected) {
-				socket.disconnect()
-			}
+			socket.disconnect()
 		})
+		await new Promise(resolve => setTimeout(resolve, 100))
 	})
 
 	afterAll(async () => {

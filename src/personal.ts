@@ -3,15 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import Vue from 'vue'
-import { t, n } from '@nextcloud/l10n'
-
 import PersonalSettings from './components/PersonalSettings.vue'
+import { mountVueComponent } from './utils/vue'
+import '@nextcloud/dialogs/style.css'
 
-Vue.prototype.t = t
-Vue.prototype.n = n
-
-/* eslint-disable-next-line no-new */
-new Vue({
-	render: h => h(PersonalSettings, {}),
-}).$mount('#personal-vue')
+const element = document.getElementById('personal-vue')
+if (element) {
+	mountVueComponent(PersonalSettings, element)
+}

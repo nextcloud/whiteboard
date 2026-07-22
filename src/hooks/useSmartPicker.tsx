@@ -7,7 +7,7 @@ import { useCallback } from 'react'
 import { mdiSlashForwardBox } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
-import { getLinkWithPicker } from '@nextcloud/vue/dist/Components/NcRichText.js'
+import { getLinkWithPicker } from '@nextcloud/vue/components/NcRichText'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
 import { renderToolbarButton } from '../components/ToolbarButton'
@@ -62,7 +62,7 @@ export function useSmartPicker() {
 	}, [excalidrawAPI])
 
 	const pickFile = useCallback(() => {
-		getLinkWithPicker(null, true)
+		getLinkWithPicker(undefined, true)
 			.then((link: string) => addWebEmbed(link))
 			.catch((error: unknown) => {
 				const message = typeof error === 'string' ? error : (error as { message?: string } | null)?.message
