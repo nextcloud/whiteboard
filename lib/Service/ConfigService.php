@@ -83,7 +83,11 @@ final class ConfigService {
 			return [];
 		}
 
-		$host = $parts['host'];
+		$host = strtolower($parts['host']);
+		if (!$this->isValidCspHost($host)) {
+			return [];
+		}
+
 		$port = isset($parts['port']) ? ':' . $parts['port'] : '';
 		$origin = $scheme . '://' . $host . $port;
 
@@ -99,6 +103,27 @@ final class ConfigService {
 		}
 
 		return array_values(array_unique($domains));
+	}
+
+	private function isValidCspHost(string $host): bool {
+		if ($host === '' || strlen($host) > 255) {
+			return false;
+		}
+
+		if (str_starts_with($host, '[') || str_ends_with($host, ']')) {
+			if (!str_starts_with($host, '[') || !str_ends_with($host, ']')) {
+				return false;
+			}
+
+			return filter_var(substr($host, 1, -1), FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+		}
+
+		if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+			return true;
+		}
+
+		return preg_match('/^[a-z0-9._-]+$/', $host) === 1
+			&& !str_contains($host, '..');
 	}
 
 	private function trimUrl(string $url): string {
