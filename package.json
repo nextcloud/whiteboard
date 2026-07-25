@@ -9,8 +9,8 @@
     "build": "NODE_OPTIONS='--max-old-space-size=8192' vite --mode production build",
     "dev": "NODE_OPTIONS='--max-old-space-size=8192' vite --mode development build",
     "watch": "nodemon --watch src --ext js,jsx,ts,tsx,vue,scss,css --exec 'npm run dev'",
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --config .eslintrc.cjs --ext .js,.mjs,.ts,.tsx,.vue src websocket_server tests/integration",
-    "lint:fix": "ESLINT_USE_FLAT_CONFIG=false eslint --config .eslintrc.cjs --ext .js,.mjs,.ts,.tsx,.vue src websocket_server tests/integration --fix",
+    "lint": "eslint src websocket_server tests/integration",
+    "lint:fix": "eslint src websocket_server tests/integration --fix",
     "stylelint": "stylelint 'src/**/*.{css,scss,sass}'",
     "stylelint:fix": "stylelint 'src/**/*.{css,scss,sass}' --fix",
     "server:start": "node websocket_server/main.js",
@@ -64,7 +64,7 @@
   "devDependencies": {
     "@nextcloud/browserslist-config": "^3.1.2",
     "@nextcloud/e2e-test-server": "^0.5.0",
-    "@nextcloud/eslint-config": "^8.4.2",
+    "@nextcloud/eslint-config": "^9.0.1",
     "@nextcloud/stylelint-config": "^3.1.1",
     "@nextcloud/vite-config": "^1.6.0",
     "@playwright/test": "^1.62.0",
@@ -93,32 +93,6 @@
   "browserslist": [
     "extends @nextcloud/browserslist-config"
   ],
-  "eslintConfig": {
-    "extends": [
-      "@nextcloud/eslint-config/typescript"
-    ],
-    "rules": {
-      "jsdoc/require-jsdoc": "off",
-      "import/no-unresolved": [
-        "error",
-        {
-          "ignore": [
-            "\\.css$"
-          ]
-        }
-      ]
-    },
-    "overrides": [
-      {
-        "files": [
-          "src/components/CreatorMenuItem.tsx"
-        ],
-        "rules": {
-          "indent": "off"
-        }
-      }
-    ]
-  },
   "redisMemoryServer": {
     "disablePostinstall": "1"
   },

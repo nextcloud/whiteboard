@@ -1,0 +1,1678 @@
+{
+  "src/App.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 8
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 1
+    },
+    "@stylistic/jsx-first-prop-new-line": {
+      "count": 1
+    },
+    "@stylistic/jsx-max-props-per-line": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    },
+    "curly": {
+      "count": 3
+    },
+    "import-extensions/extensions": {
+      "count": 44
+    },
+    "perfectionist/sort-imports": {
+      "count": 32
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/admin.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/components/AdminSettings.vue": {
+    "@nextcloud/no-deprecated-library-exports": {
+      "count": 6
+    },
+    "@nextcloud/no-deprecated-library-props": {
+      "count": 5
+    },
+    "no-unused-vars": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 6
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    },
+    "vue/new-line-between-multi-line-property": {
+      "count": 24
+    },
+    "vue/padding-line-between-blocks": {
+      "count": 2
+    }
+  },
+  "src/components/AssistantDialog.vue": {
+    "@nextcloud/no-deprecated-library-props": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    },
+    "vue/new-line-between-multi-line-property": {
+      "count": 15
+    },
+    "vue/padding-line-between-blocks": {
+      "count": 1
+    }
+  },
+  "src/components/AuthErrorNotification.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/indent": {
+      "count": 28
+    },
+    "antfu/top-level-function": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/components/Avatar.tsx": {
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/components/CommentPopover.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "curly": {
+      "count": 6
+    },
+    "import-extensions/extensions": {
+      "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 6
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/components/CommentSidebar.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/jsx-one-expression-per-line": {
+      "count": 1
+    },
+    "curly": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 6
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/components/CreatorDisplay.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 1
+    },
+    "antfu/top-level-function": {
+      "count": 1
+    },
+    "curly": {
+      "count": 5
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/components/DraggableDialog.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "curly": {
+      "count": 5
+    },
+    "import-extensions/ban-inline-type-imports": {
+      "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 6
+    }
+  },
+  "src/components/Embeddable.tsx": {
+    "@nextcloud/no-deprecated-library-exports": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/components/EmojiPickerButton.vue": {
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "vue/new-line-between-multi-line-property": {
+      "count": 4
+    }
+  },
+  "src/components/ExcalidrawMenu.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 6
+    },
+    "@stylistic/jsx-closing-tag-location": {
+      "count": 1
+    },
+    "@stylistic/jsx-wrap-multilines": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 6
+    },
+    "perfectionist/sort-imports": {
+      "count": 11
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 4
+    }
+  },
+  "src/components/FileDownloadButton.tsx": {
+    "@stylistic/indent": {
+      "count": 3
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 3
+    },
+    "@typescript-eslint/consistent-type-imports": {
+      "count": 1
+    },
+    "curly": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    }
+  },
+  "src/components/NetworkStatusIndicator.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/indent": {
+      "count": 36
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 4
+    },
+    "antfu/top-level-function": {
+      "count": 2
+    },
+    "curly": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "no-console": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 3
+    }
+  },
+  "src/components/PersonalSettings.vue": {
+    "@nextcloud/no-deprecated-library-exports": {
+      "count": 3
+    },
+    "@nextcloud/no-deprecated-library-props": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "vue/new-line-between-multi-line-property": {
+      "count": 3
+    }
+  },
+  "src/components/Presentation.tsx": {
+    "@stylistic/indent": {
+      "count": 2
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 12
+    },
+    "curly": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/components/ReadOnlyViewer.tsx": {
+    "@nextcloud/l10n-enforce-ellipsis": {
+      "count": 1
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 1
+    },
+    "@stylistic/jsx-first-prop-new-line": {
+      "count": 1
+    },
+    "@stylistic/jsx-max-props-per-line": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "antfu/top-level-function": {
+      "count": 4
+    },
+    "import-extensions/extensions": {
+      "count": 5
+    },
+    "perfectionist/sort-imports": {
+      "count": 6
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "src/components/Recording.tsx": {
+    "@stylistic/indent": {
+      "count": 3
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 4
+    },
+    "@stylistic/jsx-first-prop-new-line": {
+      "count": 1
+    },
+    "@stylistic/jsx-indent-props": {
+      "count": 3
+    },
+    "@stylistic/jsx-one-expression-per-line": {
+      "count": 12
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 3
+    },
+    "no-console": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 3
+    }
+  },
+  "src/components/SaveScopedDialog.tsx": {
+    "@stylistic/max-statements-per-line": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/components/TableEditorDialog.vue": {
+    "@nextcloud/no-deprecated-library-props": {
+      "count": 2
+    },
+    "@stylistic/arrow-parens": {
+      "count": 4
+    },
+    "curly": {
+      "count": 2
+    },
+    "no-console": {
+      "count": 5
+    },
+    "no-unused-vars": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "vue/new-line-between-multi-line-property": {
+      "count": 7
+    }
+  },
+  "src/components/Timer.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/indent": {
+      "count": 46
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 8
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 5
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/components/ToolbarButton.tsx": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 1
+    },
+    "import-extensions/ban-inline-type-imports": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/components/VersionPreviewBanner.tsx": {
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/components/VotingModal.vue": {
+    "@nextcloud/no-deprecated-library-props": {
+      "count": 1
+    },
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 3
+    },
+    "vue/new-line-between-multi-line-property": {
+      "count": 7
+    }
+  },
+  "src/components/VotingSidebar.tsx": {
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 4
+    },
+    "@stylistic/jsx-one-expression-per-line": {
+      "count": 6
+    },
+    "curly": {
+      "count": 4
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 5
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/components/VueWrapper.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/exp-list-style": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 1
+    },
+    "@stylistic/jsx-closing-bracket-location": {
+      "count": 1
+    },
+    "@stylistic/jsx-curly-brace-presence": {
+      "count": 1
+    },
+    "@stylistic/max-statements-per-line": {
+      "count": 1
+    },
+    "antfu/top-level-function": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    }
+  },
+  "src/database/db.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/files.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/hooks/useAssistant.tsx": {
+    "@stylistic/exp-list-style": {
+      "count": 6
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 5
+    },
+    "no-console": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 7
+    }
+  },
+  "src/hooks/useBoardDataManager.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 9
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useCanvasTemplate.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/hooks/useCollaboration.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 8
+    },
+    "@stylistic/comma-style": {
+      "count": 1
+    },
+    "@stylistic/exp-list-style": {
+      "count": 12
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 14
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 2
+    },
+    "@stylistic/indent": {
+      "count": 111
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 1
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 9
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "@typescript-eslint/no-use-before-define": {
+      "count": 1
+    },
+    "curly": {
+      "count": 7
+    },
+    "import-extensions/extensions": {
+      "count": 9
+    },
+    "perfectionist/sort-imports": {
+      "count": 7
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useComment.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/exp-list-style": {
+      "count": 3
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 7
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 3
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "curly": {
+      "count": 29
+    },
+    "import-extensions/extensions": {
+      "count": 4
+    },
+    "no-console": {
+      "count": 8
+    },
+    "perfectionist/sort-imports": {
+      "count": 6
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 3
+    }
+  },
+  "src/hooks/useContextMenuFilter.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 5
+    },
+    "antfu/top-level-function": {
+      "count": 2
+    },
+    "curly": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useDisableExternalLibraries.ts": {
+    "curly": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useElementCreatorTracking.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "curly": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useEmojiPicker.tsx": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "@typescript-eslint/no-use-before-define": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 3
+    },
+    "no-console": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 8
+    }
+  },
+  "src/hooks/useFiles.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 4
+    },
+    "@typescript-eslint/no-use-before-define": {
+      "count": 2
+    },
+    "curly": {
+      "count": 7
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    }
+  },
+  "src/hooks/useFollowedUser.ts": {
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/hooks/useLibrary.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    }
+  },
+  "src/hooks/useLibraryCatalog.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 2
+    },
+    "antfu/top-level-function": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    }
+  },
+  "src/hooks/usePresentation.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 4
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    }
+  },
+  "src/hooks/useReadOnlyState.ts": {
+    "import-extensions/extensions": {
+      "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useRecording.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 6
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 3
+    },
+    "curly": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 5
+    },
+    "perfectionist/sort-imports": {
+      "count": 6
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useSidebarDownload.ts": {
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useSmartPicker.tsx": {
+    "@nextcloud/no-deprecated-library-exports": {
+      "count": 1
+    },
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "no-console": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    }
+  },
+  "src/hooks/useSync.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 5
+    },
+    "@stylistic/comma-style": {
+      "count": 6
+    },
+    "@stylistic/exp-list-style": {
+      "count": 10
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 22
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 6
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 10
+    },
+    "@typescript-eslint/no-use-before-define": {
+      "count": 1
+    },
+    "curly": {
+      "count": 3
+    },
+    "import-extensions/extensions": {
+      "count": 11
+    },
+    "no-console": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 8
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useTableInsertion.tsx": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "curly": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 6
+    },
+    "no-console": {
+      "count": 11
+    },
+    "perfectionist/sort-imports": {
+      "count": 6
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useThemeHandling.ts": {
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 1
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useTimer.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 3
+    },
+    "curly": {
+      "count": 5
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/hooks/useVersionPreview.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 7
+    },
+    "perfectionist/sort-imports": {
+      "count": 8
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "src/hooks/useVoting.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 3
+    },
+    "curly": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 5
+    },
+    "perfectionist/sort-imports": {
+      "count": 5
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/main.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 6
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 2
+    },
+    "@stylistic/indent": {
+      "count": 12
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 4
+    },
+    "@stylistic/operator-linebreak": {
+      "count": 2
+    },
+    "@typescript-eslint/no-use-before-define": {
+      "count": 17
+    },
+    "antfu/top-level-function": {
+      "count": 10
+    },
+    "import-extensions/extensions": {
+      "count": 5
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    }
+  },
+  "src/personal.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/services/ai.ts": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "src/services/assistant/api.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "import-extensions/ban-inline-type-imports": {
+      "count": 1
+    }
+  },
+  "src/stores/useCollaborationStore.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 1
+    },
+    "antfu/top-level-function": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/stores/useCreatorDisplayStore.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/stores/useExcalidrawStore.ts": {
+    "curly": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/stores/useJwtStore.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 18
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 1
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 3
+    }
+  },
+  "src/stores/useLangStore.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/stores/useSyncStore.ts": {
+    "@stylistic/indent": {
+      "count": 35
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    }
+  },
+  "src/stores/useWhiteboardConfigStore.ts": {
+    "@stylistic/exp-list-style": {
+      "count": 2
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 1
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 8
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "antfu/top-level-function": {
+      "count": 1
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/types/collaboration.ts": {
+    "@stylistic/member-delimiter-style": {
+      "count": 15
+    },
+    "import-extensions/extensions": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/types/index.ts": {
+    "import-extensions/extensions": {
+      "count": 1
+    }
+  },
+  "src/types/nextcloud.d.ts": {
+    "@stylistic/type-annotation-spacing": {
+      "count": 1
+    }
+  },
+  "src/types/protocol.ts": {
+    "@stylistic/member-delimiter-style": {
+      "count": 10
+    },
+    "@stylistic/operator-linebreak": {
+      "count": 2
+    }
+  },
+  "src/types/whiteboard.d.ts": {
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "@stylistic/space-infix-ops": {
+      "count": 1
+    }
+  },
+  "src/utils/createResolvablePromise.ts": {
+    "antfu/top-level-function": {
+      "count": 1
+    }
+  },
+  "src/utils/logger.ts": {
+    "jsdoc/no-types": {
+      "count": 4
+    }
+  },
+  "src/utils/mergeElementsWithMetadata.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 3
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/mobileInterface.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/utils/positionElementsAtViewport.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/renderWhiteboardView.tsx": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/indent": {
+      "count": 12
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 1
+    },
+    "antfu/top-level-function": {
+      "count": 4
+    },
+    "import-extensions/extensions": {
+      "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/syncSceneData.ts": {
+    "@stylistic/function-paren-newline": {
+      "count": 6
+    },
+    "@stylistic/indent-binary-ops": {
+      "count": 3
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "@stylistic/type-annotation-spacing": {
+      "count": 1
+    },
+    "@stylistic/type-generic-spacing": {
+      "count": 1
+    },
+    "antfu/top-level-function": {
+      "count": 5
+    },
+    "curly": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/tableLocking.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "curly": {
+      "count": 2
+    },
+    "import-extensions/extensions": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/tableToImage.ts": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/member-delimiter-style": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "src/workers/syncWorker.ts": {
+    "@stylistic/indent": {
+      "count": 10
+    },
+    "antfu/top-level-function": {
+      "count": 7
+    },
+    "import-extensions/extensions": {
+      "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "tests/integration/metrics.spec.mjs": {
+    "perfectionist/sort-imports": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "tests/integration/multinode-redis.spec.mjs": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/padded-blocks": {
+      "count": 3
+    },
+    "antfu/top-level-function": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "tests/integration/socket.spec.mjs": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/exp-list-style": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 1
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 3
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 2
+    }
+  },
+  "tests/integration/tableLocking.spec.mjs": {
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 3
+    }
+  },
+  "websocket_server/Adapters/LruAdapter.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    }
+  },
+  "websocket_server/Adapters/MemoryAdapter.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    }
+  },
+  "websocket_server/Adapters/RedisAdapter.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "websocket_server/Adapters/StorageAdapter.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "websocket_server/Services/AppService.js": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    }
+  },
+  "websocket_server/Services/ClusterService.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 16
+    }
+  },
+  "websocket_server/Services/PresentationService.js": {
+    "@stylistic/padded-blocks": {
+      "count": 4
+    },
+    "curly": {
+      "count": 2
+    }
+  },
+  "websocket_server/Services/PrometheusDataService.js": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    }
+  },
+  "websocket_server/Services/RecordingControlService.js": {
+    "@stylistic/padded-blocks": {
+      "count": 5
+    },
+    "curly": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    }
+  },
+  "websocket_server/Services/RecordingService.js": {
+    "@stylistic/arrow-parens": {
+      "count": 5
+    },
+    "@stylistic/exp-list-style": {
+      "count": 2
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 2
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 4
+    },
+    "preserve-caught-error": {
+      "count": 2
+    }
+  },
+  "websocket_server/Services/RoomLifecycleService.js": {
+    "@stylistic/function-paren-newline": {
+      "count": 4
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "websocket_server/Services/ServerService.js": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 3
+    },
+    "n/no-process-exit": {
+      "count": 1
+    },
+    "perfectionist/sort-imports": {
+      "count": 5
+    }
+  },
+  "websocket_server/Services/SocketService.js": {
+    "@stylistic/exp-list-style": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 5
+    },
+    "@stylistic/implicit-arrow-linebreak": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 2
+    },
+    "no-unused-vars": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 8
+    }
+  },
+  "websocket_server/Services/StorageService.js": {
+    "@stylistic/indent": {
+      "count": 11
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 2
+    }
+  },
+  "websocket_server/Services/SystemMonitorService.js": {
+    "@stylistic/arrow-parens": {
+      "count": 2
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 4
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "websocket_server/Services/TimerService.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "websocket_server/Services/ViewportService.js": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/exp-list-style": {
+      "count": 1
+    },
+    "@stylistic/function-paren-newline": {
+      "count": 6
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 6
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "websocket_server/Services/VotingService.js": {
+    "@stylistic/arrow-parens": {
+      "count": 5
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 4
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    }
+  },
+  "websocket_server/Stores/RoomStateStore.js": {
+    "@stylistic/arrow-parens": {
+      "count": 1
+    },
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "curly": {
+      "count": 4
+    },
+    "no-console": {
+      "count": 4
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "websocket_server/Stores/SessionStore.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    }
+  },
+  "websocket_server/Utilities/ConfigUtility.js": {
+    "@stylistic/function-paren-newline": {
+      "count": 2
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 3
+    }
+  },
+  "websocket_server/Utilities/GeneralUtility.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "websocket_server/Utilities/SharedTokenUtility.js": {
+    "@stylistic/padded-blocks": {
+      "count": 2
+    }
+  }
+}
