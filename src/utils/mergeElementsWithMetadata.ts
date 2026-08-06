@@ -8,6 +8,15 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/typ
 import type { AppState } from '@excalidraw/excalidraw/types/types'
 import type { WhiteboardElement } from '../types/whiteboard'
 
+export function prepareDuplicatedElements(
+	nextElements: readonly ExcalidrawElement[],
+	previousElements: readonly ExcalidrawElement[],
+	prepareElement: (element: ExcalidrawElement) => ExcalidrawElement,
+): ExcalidrawElement[] {
+	const previousElementIds = new Set(previousElements.map((element) => element.id))
+	return nextElements.map((element) => previousElementIds.has(element.id) ? element : prepareElement(element))
+}
+
 /**
  * Reconciles elements while preserving creator metadata coming from the server.
  * @param localElements - The local elements from the client
@@ -44,12 +53,24 @@ export function mergeElementsWithMetadata(
 		const remoteElement = remoteElementsMap.get(element.id)
 		const localElement = localElementsMap.get(element.id)
 
-		// If remote element has creator info, preserve it
-		if (remoteElement?.customData?.creator) {
+		// Existing elements keep their locally trusted creator. New elements use
+		// the creator attested by the collaboration server.
+		const creatorSource = localElement
+			?? (remoteElement?.customData?.creator ? remoteElement : undefined)
+		const creator = creatorSource?.customData?.creator
+		if (creator) {
 			if (!whiteboardElement.customData) {
 				whiteboardElement.customData = {}
 			}
-			whiteboardElement.customData.creator = remoteElement.customData.creator
+			whiteboardElement.customData.creator = creator
+			if (typeof creatorSource?.customData?.creatorProof === 'string') {
+				whiteboardElement.customData.creatorProof = creatorSource.customData.creatorProof
+			} else {
+				delete whiteboardElement.customData.creatorProof
+			}
+		} else if (localElement && whiteboardElement.customData) {
+			delete whiteboardElement.customData.creator
+			delete whiteboardElement.customData.creatorProof
 		}
 
 		// If remote element has lastModifiedBy info, check if it's newer
@@ -63,14 +84,6 @@ export function mergeElementsWithMetadata(
 				}
 				whiteboardElement.customData.lastModifiedBy = remoteElement.customData.lastModifiedBy
 			}
-		}
-
-		// If local element had creator info but remote doesn't, preserve local
-		if (localElement?.customData?.creator && !whiteboardElement.customData?.creator) {
-			if (!whiteboardElement.customData) {
-				whiteboardElement.customData = {}
-			}
-			whiteboardElement.customData.creator = localElement.customData.creator
 		}
 
 		const aiGenerated = remoteElement?.customData?.aiGenerated

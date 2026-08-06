@@ -544,10 +544,11 @@ export default class SocketService {
 
 	async joinRoomHandler(socket, roomID) {
 		const socketData = await this.sessionStore.getSocketData(socket.id)
-		if (socketData?.user?.id && socketData.clientType !== 'recording') {
+		const joined = await this.roomLifecycleController.joinRoom(socket, roomID)
+		if (joined && socketData?.user?.id && socketData.clientType !== 'recording') {
 			this.cancelPendingRecordingStop(roomID, socketData.user.id)
 		}
-		return this.roomLifecycleController.joinRoom(socket, roomID)
+		return joined
 	}
 
 	async serverBroadcastHandler(socket, roomID, encryptedData, iv) {

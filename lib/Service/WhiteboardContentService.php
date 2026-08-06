@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Service;
 
 use JsonException;
+use OCA\Whiteboard\Model\PublicSharingUser;
+use OCA\Whiteboard\Model\User;
 use OCP\Files\File;
 use OCP\Files\GenericFileException;
 use OCP\Files\NotPermittedException;
@@ -17,9 +19,16 @@ use OCP\Lock\LockedException;
 use Psr\Log\LoggerInterface;
 
 final class WhiteboardContentService {
+	private const CREATOR_PROOF_DOMAIN = 'whiteboard.creator.v1';
+	private const CREATOR_PROOF_PREFIX = 'v1:';
+
+	private string $creatorSecret;
+
 	public function __construct(
 		private LoggerInterface $logger,
+		ConfigService $configService,
 	) {
+		$this->creatorSecret = $configService->getJwtSecretKey();
 	}
 
 	/**
@@ -43,7 +52,7 @@ final class WhiteboardContentService {
 	 * @throws LockedException
 	 * @throws JsonException
 	 */
-	public function updateContent(File $file, array $data): void {
+	public function updateContent(File $file, array $data, User $actor): void {
 		$fileId = $file->getId();
 		$incoming = $this->normalizeIncomingData($data);
 
@@ -66,7 +75,8 @@ final class WhiteboardContentService {
 			$current = $this->getEmptyState();
 		}
 
-		$merged = $this->mergeData($current, $incoming);
+		$actorInfo = $this->buildActorInfo($actor, $this->getCurrentTimeInMilliseconds());
+		$merged = $this->mergeData($current, $incoming, $actorInfo, $fileId);
 
 		$canonicalCurrent = $this->canonicalize($current);
 		$canonicalMerged = $this->canonicalize($merged);
@@ -290,14 +300,20 @@ final class WhiteboardContentService {
 	/**
 	 * @param array<string,mixed> $current
 	 * @param array<string,mixed> $incoming
+	 * @param array{uid:string,displayName:string,createdAt:int} $actorInfo
 	 *
 	 * @return array<string,mixed>
 	 */
-	private function mergeData(array $current, array $incoming): array {
+	private function mergeData(array $current, array $incoming, array $actorInfo, int $fileId): array {
 		$merged = $current;
 
 		if (array_key_exists('elements', $incoming)) {
-			$merged['elements'] = $incoming['elements'];
+			$merged['elements'] = $this->mergeElements(
+				$current['elements'] ?? [],
+				$incoming['elements'],
+				$actorInfo,
+				$fileId,
+			);
 		}
 
 		if (array_key_exists('files', $incoming)) {
@@ -332,6 +348,214 @@ final class WhiteboardContentService {
 		}
 
 		return $merged;
+	}
+
+	/**
+	 * @param array<int,mixed> $currentElements
+	 * @param array<int,mixed> $incomingElements
+	 * @param array{uid:string,displayName:string,createdAt:int} $actorInfo
+	 *
+	 * @return array<int,mixed>
+	 */
+	private function mergeElements(array $currentElements, array $incomingElements, array $actorInfo, int $fileId): array {
+		$currentElementsById = $this->indexElementsById($currentElements);
+		$mergedElements = [];
+		$seenElementIds = [];
+
+		foreach ($incomingElements as $incomingElement) {
+			if (!is_array($incomingElement)) {
+				continue;
+			}
+
+			$elementId = $this->getElementId($incomingElement);
+			if ($elementId !== null && isset($seenElementIds[$elementId])) {
+				$this->logger->warning('Skipping duplicate whiteboard element ID', [
+					'app' => 'whiteboard',
+					'fileId' => $fileId,
+					'elementId' => $elementId,
+				]);
+				continue;
+			}
+			if ($elementId !== null) {
+				$seenElementIds[$elementId] = true;
+			}
+
+			$storedElement = $elementId !== null ? ($currentElementsById[$elementId] ?? null) : null;
+			$incomingCreator = $this->getCreator($incomingElement);
+			$mergedElement = $this->stripCreatorMetadata($incomingElement);
+
+			if ($storedElement !== null && $elementId !== null) {
+				$storedCreator = $this->getCreator($storedElement);
+				if ($storedCreator !== null) {
+					$storedProof = $this->getValidCreatorProof($fileId, $elementId, $storedElement, $storedCreator);
+					$mergedElement = $this->setCreator($mergedElement, $storedCreator, $storedProof);
+				}
+				$mergedElements[] = $mergedElement;
+				continue;
+			}
+
+			$validProof = $incomingCreator !== null && $elementId !== null
+				? $this->getValidCreatorProof($fileId, $elementId, $incomingElement, $incomingCreator)
+				: null;
+			if ($validProof !== null && $incomingCreator !== null) {
+				$creator = $incomingCreator;
+				$proof = $validProof;
+			} else {
+				$creator = $actorInfo;
+				$proof = $elementId !== null ? $this->createCreatorProof($fileId, $elementId, $creator) : null;
+			}
+			$mergedElements[] = $this->setCreator($mergedElement, $creator, $proof);
+		}
+
+		return $mergedElements;
+	}
+
+	/**
+	 * @param array<int,mixed> $elements
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	private function indexElementsById(array $elements): array {
+		$indexed = [];
+		foreach ($elements as $element) {
+			if (!is_array($element)) {
+				continue;
+			}
+			$elementId = $this->getElementId($element);
+			if ($elementId !== null && !isset($indexed[$elementId])) {
+				$indexed[$elementId] = $element;
+			}
+		}
+		return $indexed;
+	}
+
+	/**
+	 * @param array<string,mixed> $element
+	 */
+	private function getElementId(array $element): ?string {
+		return isset($element['id']) && is_string($element['id']) && $element['id'] !== ''
+			? $element['id']
+			: null;
+	}
+
+	/**
+	 * @param array<string,mixed> $element
+	 *
+	 * @return array{uid:string,displayName:string,createdAt:int}|null
+	 */
+	private function getCreator(array $element): ?array {
+		if (!isset($element['customData']) || !is_array($element['customData'])) {
+			return null;
+		}
+
+		$creator = $element['customData']['creator'] ?? null;
+		if (!is_array($creator)
+			|| !isset($creator['uid'], $creator['displayName'], $creator['createdAt'])
+			|| !is_string($creator['uid'])
+			|| $creator['uid'] === ''
+			|| !is_string($creator['displayName'])
+			|| !is_int($creator['createdAt'])
+			|| $creator['createdAt'] <= 0) {
+			return null;
+		}
+
+		return [
+			'uid' => $creator['uid'],
+			'displayName' => $creator['displayName'],
+			'createdAt' => $creator['createdAt'],
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $element
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function stripCreatorMetadata(array $element): array {
+		if (!isset($element['customData']) || !is_array($element['customData'])) {
+			return $element;
+		}
+
+		unset($element['customData']['creator'], $element['customData']['creatorProof']);
+		if ($element['customData'] === []) {
+			unset($element['customData']);
+		}
+		return $element;
+	}
+
+	/**
+	 * @param array<string,mixed> $element
+	 * @param array{uid:string,displayName:string,createdAt:int} $creator
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function setCreator(array $element, array $creator, ?string $proof): array {
+		if (!isset($element['customData']) || !is_array($element['customData'])) {
+			$element['customData'] = [];
+		}
+		$element['customData']['creator'] = $creator;
+		if ($proof !== null) {
+			$element['customData']['creatorProof'] = $proof;
+		}
+		return $element;
+	}
+
+	/**
+	 * @param array<string,mixed> $element
+	 * @param array{uid:string,displayName:string,createdAt:int} $creator
+	 */
+	private function getValidCreatorProof(int $fileId, string $elementId, array $element, array $creator): ?string {
+		$proof = $element['customData']['creatorProof'] ?? null;
+		if (!is_string($proof)
+			|| preg_match('/^v1:[a-f0-9]{64}$/D', $proof) !== 1
+			|| !hash_equals($this->createCreatorProof($fileId, $elementId, $creator), $proof)) {
+			return null;
+		}
+		return $proof;
+	}
+
+	/**
+	 * @param array{uid:string,displayName:string,createdAt:int} $creator
+	 */
+	private function createCreatorProof(int $fileId, string $elementId, array $creator): string {
+		$payload = implode('.', [
+			self::CREATOR_PROOF_DOMAIN,
+			$this->base64UrlEncode((string)$fileId),
+			$this->base64UrlEncode($elementId),
+			$this->base64UrlEncode($creator['uid']),
+			$this->base64UrlEncode($creator['displayName']),
+			(string)$creator['createdAt'],
+		]);
+		return self::CREATOR_PROOF_PREFIX . hash_hmac('sha256', $payload, $this->creatorSecret);
+	}
+
+	private function base64UrlEncode(string $value): string {
+		return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+	}
+
+	/**
+	 * @return array{uid:string,displayName:string,createdAt:int}
+	 */
+	private function buildActorInfo(User $actor, int $createdAt): array {
+		if ($actor instanceof PublicSharingUser) {
+			return [
+				'uid' => 'public-link:' . substr(hash('sha256', $actor->getPublicSharingToken()), 0, 16),
+				'displayName' => 'Public link',
+				'createdAt' => $createdAt,
+			];
+		}
+
+		$uid = $actor->getUID();
+		$displayName = $actor->getDisplayName();
+		return [
+			'uid' => $uid,
+			'displayName' => $displayName !== '' ? $displayName : $uid,
+			'createdAt' => $createdAt,
+		];
+	}
+
+	private function getCurrentTimeInMilliseconds(): int {
+		return (int)floor((float)microtime(true) * 1000.0);
 	}
 
 	/**

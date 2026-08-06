@@ -26,6 +26,7 @@ import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
 import { db } from '../database/db'
+import { fetchWhiteboardSnapshot } from '../utils/fetchWhiteboardSnapshot.ts'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } from '../types/collaboration'
 
@@ -536,14 +537,17 @@ export function useCollaboration() {
 
 				switch (decoded.type) {
 				case BroadcastType.SceneRestore: {
-					const payload = decoded.payload || {}
-
-					if (!Array.isArray(payload.elements)) {
-						console.warn('[Collaboration] Invalid SceneRestore payload:', payload)
+					if (decoded.payload?.reloadFromServer !== true || !fileId) {
+						console.warn('[Collaboration] Invalid SceneRestore payload:', decoded.payload)
 						break
 					}
 
 					try {
+						const jwt = await getJWT()
+						if (!jwt) {
+							throw new Error('Missing JWT')
+						}
+						const payload = await fetchWhiteboardSnapshot(fileId, jwt)
 						const restoredElements = restoreElements(payload.elements, null) as ExcalidrawElement[]
 						const files = (payload.files || {}) as BinaryFiles
 						const appStatePatch: Partial<AppState> = sanitizeAppStateForSync(payload.appState)
@@ -661,7 +665,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error processing client broadcast:', error)
 			}
 		},
-		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId, applySceneReplacement],
+		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId, applySceneReplacement, getJWT],
 	)
 
 	const handleSyncDesignate = useCallback((data: { isSyncer: boolean }) => {

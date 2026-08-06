@@ -27,6 +27,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\Files\NotPermittedException;
 use OCP\ICacheFactory;
 use OCP\IGroupManager;
 use OCP\IMemcache;
@@ -93,9 +94,13 @@ final class WhiteboardController extends ApiController {
 			$jwt = $this->getJwtFromRequest();
 			$userId = $this->jwtService->getUserIdFromJWT($jwt);
 			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
-			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
+			$fileService = $this->getFileServiceFactory->create($user, $fileId);
+			$file = $fileService->getFile();
+			if ($fileService->isFileReadOnly()) {
+				throw new NotPermittedException('Permission denied');
+			}
 
-			$this->contentService->updateContent($file, $data);
+			$this->contentService->updateContent($file, $data, $user);
 
 			return new DataResponse(['status' => 'success']);
 		} catch (Exception $e) {

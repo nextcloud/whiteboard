@@ -265,17 +265,10 @@ export function useVersionPreview({
 
 		try {
 			const encoder = new TextEncoder()
-			const sanitizedAppState = {
-				...sanitizeAppStateForSync(snapshot.appState),
-				viewModeEnabled: false,
-			}
 			const scenePayload = {
 				type: 'SCENE_RESTORE',
 				payload: {
-					elements: snapshot.elements,
-					files: snapshot.files || {},
-					appState: sanitizedAppState,
-					scrollToContent: snapshot.scrollToContent,
+					reloadFromServer: true,
 				},
 			}
 			currentSocket.emit('server-broadcast', `${fileId}`, encoder.encode(JSON.stringify(scenePayload)), [])

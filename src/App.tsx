@@ -36,6 +36,7 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { useAssistant } from './hooks/useAssistant'
 import logger from './utils/logger'
+import { prepareDuplicatedElements } from './utils/mergeElementsWithMetadata.ts'
 import { useRecording } from './hooks/useRecording'
 import { RecordingOverlay } from './components/Recording'
 import { usePresentation } from './hooks/usePresentation'
@@ -664,6 +665,10 @@ export default function App({
 	const beforeElementCreated = (el: ExcalidrawElement) => {
 		const user = getCurrentUser()
 		if (!user) {
+			if (el.customData) {
+				delete el.customData.creator
+				delete el.customData.creatorProof
+			}
 			return el
 		}
 		const creatorInfo: ElementCreatorInfo = {
@@ -678,10 +683,16 @@ export default function App({
 			}
 		} else {
 			el.customData.creator = creatorInfo
+			delete el.customData.creatorProof
 			el.customData.lastmodifiedAt = Date.now()
 		}
 		return el
 	}
+
+	const handleDuplicate = (
+		nextElements: readonly ExcalidrawElement[],
+		previousElements: readonly ExcalidrawElement[],
+	) => prepareDuplicatedElements(nextElements, previousElements, beforeElementCreated)
 
 	return (
 		<div className={appClassName} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -701,6 +712,7 @@ export default function App({
 					validateEmbeddable={() => true}
 					renderEmbeddable={Embeddable}
 					beforeElementCreated={beforeElementCreated}
+					onDuplicate={handleDuplicate}
 					excalidrawAPI={onExcalidrawAPI}
 					initialData={initialDataPromise}
 					generateIdForFile={generateIdForFile}
