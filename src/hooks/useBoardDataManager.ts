@@ -16,6 +16,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { initialDataState } from '../constants/excalidraw'
 import logger from '../utils/logger'
 import { computeElementVersionHash, mergeSceneElements } from '../utils/syncSceneData'
+import { getLocalBoardDataPolicy } from '../utils/localBoardData.ts'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 export function useBoardDataManager() {
@@ -183,6 +184,15 @@ export function useBoardDataManager() {
 
 			// ALWAYS fetch from server to get latest data
 			const serverData = await fetchDataFromServer(fileId)
+			const isReadOnly = useWhiteboardConfigStore.getState().isReadOnly
+			const hasServerData = Boolean(serverData && Array.isArray(serverData.elements))
+			const hasLocalData = Boolean(localData && Array.isArray(localData.elements))
+			const localBoardDataPolicy = getLocalBoardDataPolicy(
+				hasServerData,
+				hasLocalData,
+				hasPendingLocalChanges,
+				isReadOnly,
+			)
 
 			// Validate that we're still loading the same file
 			if (currentFileIdRef.current !== fileId) {
@@ -204,7 +214,7 @@ export function useBoardDataManager() {
 				const sanitizedServerAppState = sanitizeAppStateForSync(serverData.appState)
 				const sanitizedLocalAppState = sanitizeAppStateForSync(localData?.appState)
 
-				if (localData && localData.elements && Array.isArray(localData.elements) && hasPendingLocalChanges) {
+				if (localData && localData.elements && Array.isArray(localData.elements) && localBoardDataPolicy === 'reconcile') {
 					// Local has pending changes – reconcile to avoid losing unsynced work
 					const restoredLocalElements = restoreElements(localData.elements, null)
 					const reconciledElements = mergeSceneElements(restoredLocalElements, restoredServerElements, {})
@@ -252,8 +262,8 @@ export function useBoardDataManager() {
 						},
 					)
 				}
-			} else if (localData && localData.elements) {
-				// Only local has data
+			} else if (localData && localData.elements && localBoardDataPolicy === 'fallback') {
+				// Only writable local data is available
 				dataToUse = localData
 			} else {
 				// No data from either source

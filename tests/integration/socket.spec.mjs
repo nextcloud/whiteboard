@@ -41,7 +41,7 @@ describe('Socket handling', () => {
 		socket = io(Config.NEXTCLOUD_URL, {
 			auth: {
 				token: jwt.sign(
-					{ roomID: 123, user: { name: 'Admin' } },
+					{ fileId: 123, user: { id: 'admin', name: 'Admin' } },
 					Config.JWT_SECRET_KEY,
 				),
 			},
@@ -97,6 +97,26 @@ describe('Socket handling', () => {
 				resolve()
 			})
 		})
+	})
+
+	it('rejects joining a room outside the signed JWT claim', async () => {
+		const wrongRoomSocket = io(Config.NEXTCLOUD_URL, {
+			auth: {
+				token: jwt.sign(
+					{ fileId: 123, user: { id: 'wrong-room-user', name: 'WrongRoomUser' } },
+					Config.JWT_SECRET_KEY,
+				),
+			},
+		})
+		await waitFor(wrongRoomSocket, 'connect')
+
+		wrongRoomSocket.emit('join-room', 456)
+		await new Promise((resolve) => setTimeout(resolve, 50))
+
+		const serverSocket = serverManager.socketService.io.sockets.sockets.get(wrongRoomSocket.id)
+		const joinedWrongRoom = serverSocket?.rooms.has('456')
+		wrongRoomSocket.disconnect()
+		expect(joinedWrongRoom).toBe(false)
 	})
 
 	it('join room and receive sync designation', async () => {

@@ -5,6 +5,8 @@
 
 /* eslint-disable no-console */
 
+import Config from '../Utilities/ConfigUtility.js'
+import CreatorMetadataUtility from '../Utilities/CreatorMetadataUtility.js'
 import GeneralUtility from '../Utilities/GeneralUtility.js'
 
 export default class ViewportService {
@@ -21,7 +23,41 @@ export default class ViewportService {
 		const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
 		if (!socket.rooms.has(roomID) || isReadOnly) return
 
-		socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
+		let payload
+		try {
+			payload = JSON.parse(GeneralUtility.convertArrayBufferToString(encryptedData))
+		} catch {
+			// Non-JSON messages cannot contain a scene payload.
+			socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
+			return
+		}
+
+		if (!CreatorMetadataUtility.isSceneBroadcastPayload(payload)) {
+			if (payload?.type === 'SCENE_RESTORE') {
+				if (!CreatorMetadataUtility.isSceneRestoreReloadPayload(payload)) {
+					console.warn(`[${roomID}] Rejected untrusted scene restore from socket ${socket.id}`)
+					return
+				}
+			}
+			socket.broadcast.to(roomID).emit('client-broadcast', encryptedData, iv)
+			return
+		}
+
+		const socketData = await this.sessionStore.getSocketData(socket.id)
+		const actor = CreatorMetadataUtility.getActor(socketData?.user)
+		if (!actor) {
+			console.warn(`[${roomID}] Cannot attest scene creator for socket ${socket.id}`)
+			return
+		}
+
+		const canonicalPayload = CreatorMetadataUtility.canonicalizeBroadcastPayload(
+			payload,
+			roomID,
+			actor,
+			Config.JWT_SECRET_KEY,
+		)
+		const broadcastData = GeneralUtility.convertStringToArrayBuffer(JSON.stringify(canonicalPayload))
+		socket.broadcast.to(roomID).emit('client-broadcast', broadcastData, iv)
 	}
 
 	async serverVolatileBroadcast(socket, roomID, encryptedData) {

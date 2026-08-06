@@ -31,13 +31,22 @@ export default class RoomLifecycleService {
 		const validatedRoomId = GeneralUtility.validateRoomId(roomID)
 		if (!validatedRoomId) {
 			console.warn(`[SECURITY] Invalid room ID format rejected: ${String(roomID).substring(0, 100)}`)
-			return
+			return false
 		}
 
 		const socketData = await this.sessionStore.getSocketData(socket.id)
 		if (!socketData || !socketData.user) {
 			console.warn(`[${validatedRoomId}] Invalid socket data for socket ${socket.id}, rejecting join`)
-			return
+			return false
+		}
+
+		const roomClaims = [socketData.fileId, socketData.roomID]
+			.filter((claim) => claim !== null && claim !== undefined)
+		const isAuthorizedRoom = roomClaims.length > 0
+			&& roomClaims.every((claim) => GeneralUtility.validateRoomId(claim) === validatedRoomId)
+		if (!isAuthorizedRoom) {
+			console.warn(`[SECURITY] Socket ${socket.id} rejected from unauthorized room ${validatedRoomId}`)
+			return false
 		}
 
 		const userId = socketData.user.id
@@ -45,7 +54,7 @@ export default class RoomLifecycleService {
 
 		if (socket.rooms.has(validatedRoomId)) {
 			console.log(`[${validatedRoomId}] ${userName} already in room, skipping join`)
-			return
+			return true
 		}
 
 		console.log(`[${validatedRoomId}] ${userName} joined room`)
@@ -159,6 +168,8 @@ export default class RoomLifecycleService {
 		if (this.votingService) {
 			await this.votingService.hydrateForSocket(validatedRoomId, socket)
 		}
+
+		return true
 	}
 
 	async onDisconnecting(socket, rooms, { shuttingDown = false } = {}) {

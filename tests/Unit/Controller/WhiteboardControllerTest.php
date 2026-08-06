@@ -22,6 +22,7 @@ use OCA\Whiteboard\Service\WhiteboardFolderService;
 use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Services\IAppConfig;
+use OCP\Constants;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -31,6 +32,7 @@ use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IMemcache;
 use OCP\IRequest;
+use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
 use OCP\Share\IManager as ShareManager;
@@ -38,13 +40,17 @@ use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class WhiteboardControllerTest extends TestCase {
-	private const SECRET = 'test-secret';
+	private const SECRET = 'test-secret-at-least-32-bytes-long';
 	private const UID = 'bob';
 
 	/** Captured writes into the user's Templates folder, name => File mock. */
 	private array $templatesChildren = [];
 
-	private function makeController(bool $isAdmin, array $params): WhiteboardController {
+	private function makeController(
+		bool $isAdmin,
+		array $params,
+		int $whiteboardFilePermissions = Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE,
+	): WhiteboardController {
 		$request = $this->createMock(IRequest::class);
 		$jwt = JWT::encode(['userid' => self::UID, 'exp' => time() + 300], self::SECRET, JWTConsts::JWT_ALGORITHM);
 		$request->method('getHeader')->willReturnCallback(static fn (string $name): string => $name === 'Authorization' ? 'Bearer ' . $jwt : '');
@@ -81,6 +87,12 @@ class WhiteboardControllerTest extends TestCase {
 
 		$userFolder = $this->createMock(Folder::class);
 		$userFolder->method('get')->with('Templates/')->willReturn($templatesFolder);
+		$whiteboardFile = $this->createMock(File::class);
+		$whiteboardFile->method('getId')->willReturn(123);
+		$whiteboardFile->method('getPermissions')->willReturn($whiteboardFilePermissions);
+		$whiteboardFile->method('getContent')->willReturn('{"elements":[],"files":[]}');
+		$userFolder->method('getFirstNodeById')->willReturn($whiteboardFile);
+		$userFolder->method('getById')->willReturn([$whiteboardFile]);
 
 		$rootFolder = $this->createMock(IRootFolder::class);
 		$rootFolder->method('getUserFolder')->with(self::UID)->willReturn($userFolder);
@@ -92,23 +104,30 @@ class WhiteboardControllerTest extends TestCase {
 		$folders = new WhiteboardFolderService($templateManager, $rootFolder, $config, $logger, static fn (): bool => true);
 
 		$cache = $this->createMock(IMemcache::class);
+		$cache->method('add')->willReturn(true);
 		$cacheFactory = $this->createMock(ICacheFactory::class);
 		$cacheFactory->method('createLocking')->willReturn($cache);
 
 		$groupManager = $this->createMock(IGroupManager::class);
 		$groupManager->method('isAdmin')->with(self::UID)->willReturn($isAdmin);
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn(self::UID);
+		$user->method('getDisplayName')->willReturn('Bob');
+		$userManager = $this->createMock(IUserManager::class);
+		$userManager->method('get')->with(self::UID)->willReturn($user);
+		$userSession = $this->createMock(IUserSession::class);
 
 		return new WhiteboardController(
 			'whiteboard',
 			$request,
 			new GetUserFromIdServiceFactory(
 				$this->createMock(ShareManager::class),
-				$this->createMock(IUserManager::class),
-				$this->createMock(IUserSession::class),
+				$userManager,
+				$userSession,
 			),
 			new GetFileServiceFactory($rootFolder, $this->createMock(ShareManager::class), $logger),
 			new JWTService($configService),
-			new WhiteboardContentService($logger),
+			new WhiteboardContentService($logger, $configService),
 			new WhiteboardLibraryService($folders, $config, $logger),
 			new CanvasTemplateService($folders, $logger),
 			new ExceptionService($logger),
@@ -117,6 +136,38 @@ class WhiteboardControllerTest extends TestCase {
 			$cacheFactory,
 			$groupManager,
 		);
+	}
+
+	public function testUpdateRejectsReadOnlyFile(): void {
+		$controller = $this->makeController(false, [], Constants::PERMISSION_READ);
+
+		$response = $controller->update(123, [
+			'data' => [
+				'elements' => [['id' => 'el', 'type' => 'rectangle']],
+			],
+		]);
+
+		$this->assertSame(Http::STATUS_FORBIDDEN, $response->getStatus());
+		$this->assertSame('Permission denied', $response->getData()['message']);
+	}
+
+	public function testUpdateCanonicalizesForgedCreator(): void {
+		$controller = $this->makeController(false, []);
+
+		$response = $controller->update(123, [
+			'data' => [
+				'elements' => [[
+					'id' => 'forged-element',
+					'type' => 'text',
+					'customData' => [
+						'creator' => ['uid' => 'alice', 'displayName' => 'Alice', 'createdAt' => 1],
+					],
+				]],
+			],
+		]);
+
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
+		$this->assertSame('success', $response->getData()['status']);
 	}
 
 	public function testSaveLibraryOrgScopeForbiddenForNonAdmin(): void {
