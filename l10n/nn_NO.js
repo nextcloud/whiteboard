@@ -16,6 +16,7 @@ OC.L10N.register(
     "Unknown" : "Ukjend",
     "Unknown user" : "Ukjend brukar",
     "File" : "Fil",
-    "Pause" : "Pause"
+    "Pause" : "Pause",
+    "Status" : "Status"
 },
 "nplurals=2; plural=(n != 1);");

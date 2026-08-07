@@ -14,6 +14,7 @@
     "Unknown" : "Ukjend",
     "Unknown user" : "Ukjend brukar",
     "File" : "Fil",
-    "Pause" : "Pause"
+    "Pause" : "Pause",
+    "Status" : "Status"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }
