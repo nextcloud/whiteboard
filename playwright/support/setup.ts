@@ -128,7 +128,7 @@ setup('Configure Nextcloud', async () => {
 		'testing',
 	]
 	await configureNextcloud(appsToInstall, getServerBranch())
-	await runExec(['git', '-C', 'apps/viewer', 'log', '-1'], { verbose: true })
+	await runExec(['git', '-C', 'apps-writable/viewer', 'log', '-1'], { verbose: true })
 	await ensureAssistantInstalled()
 	await ensureTextInstalled()
 	await runOcc(['app:disable', 'firstrunwizard'])
