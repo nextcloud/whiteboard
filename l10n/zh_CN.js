@@ -32,6 +32,7 @@ OC.L10N.register(
     "Delete thread" : "删除线程",
     "Edit" : "编辑",
     "Save" : "保存",
+    "Reply" : "回复",
     "Add a comment" : "添加评论",
     "Send" : "发送",
     "No comments yet" : "还没有评论",
