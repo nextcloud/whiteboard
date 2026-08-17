@@ -23,7 +23,7 @@ The official whiteboard app for Nextcloud. It allows users to create and share w
 
 ]]>
 	</description>
-	<version>2.0.0-dev.0</version>
+	<version>2.0.0-beta.1</version>
 	<licence>agpl</licence>
 	<author>Julius Härtl</author>
 	<namespace>Whiteboard</namespace>
