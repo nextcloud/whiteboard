@@ -59,7 +59,7 @@
     "svgmoji": "^3.2.0",
     "uuid": "^14.0.1",
     "vue": "^3.5.39",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@nextcloud/browserslist-config": "^3.1.2",
