@@ -81,7 +81,7 @@
     "typescript-plugin-css-modules": "^5.2.0",
     "vite": "^7.3.6",
     "vite-plugin-static-copy": "^4.1.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "prettier": {
     "useTabs": true,
