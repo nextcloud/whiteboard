@@ -141,7 +141,7 @@ OC.L10N.register(
     "Authentication issue detected. Retrying…" : "Problema de autenticação detectado. Tentando novamente…",
     "Local changes are automatically saved to your device. Collaboration features will be unavailable until this issue is resolved." : "As alterações locais são salvas automaticamente no seu dispositivo. Os recursos de colaboração não estarão disponíveis até que este problema seja resolvido.",
     "Dismiss" : "Descartar",
-    "Guest" : "Convidado",
+    "Guest" : "Visitante",
     "Delete thread" : "Excluir fio",
     "Edit" : "Editar",
     "Save" : "Salvar",
