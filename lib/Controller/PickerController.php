@@ -70,7 +70,7 @@ final class PickerController extends Controller {
 
 		try {
 			$uid = $this->userSession->getUser()?->getUID();
-			if ($uid !== null && $uid !== '') {
+			if ($uid !== null) {
 				foreach ($this->folders->getUserTemplateFolder($uid)->getDirectoryListing() as $node) {
 					if (!$node instanceof File || !str_ends_with(strtolower($node->getName()), '.whiteboard')) {
 						continue;
