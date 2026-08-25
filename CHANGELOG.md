@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0-beta.2
+
+### Changed
+- Support Nextcloud 35 by @hweihwang [#1314](https://github.com/nextcloud/whiteboard/pull/1314)
+
+### Other
+- Update dependencies and translations
+
 ## 2.0.0-beta.1
 
 ### Added
