@@ -6,8 +6,9 @@
  */
 
 import StorageAdapter from './StorageAdapter.js'
-import { createClient } from 'redis'
+import { createClient, createCluster } from 'redis'
 import Config from '../Utilities/ConfigUtility.js'
+import { deleteKeys, scanKeys } from '../Utilities/RedisUtility.js'
 
 // node-redis 6 changed two defaults that this server relies on, so keep the
 // ones redis 4 had. RESP3 opens every connection with HELLO, which Redis only
@@ -115,6 +116,12 @@ export default class RedisAdapter extends StorageAdapter {
 	static createRedisClient() {
 		console.log(`Creating Redis client with URL: ${RedisAdapter.redactRedisUrl(Config.REDIS_URL)}`)
 
+		const nodeUrls = RedisAdapter.splitRedisUrls(Config.REDIS_URL)
+
+		if (nodeUrls.length > 1) {
+			return RedisAdapter.createRedisClusterClient(nodeUrls)
+		}
+
 		const redisUrl = RedisAdapter.parseRedisUrl(Config.REDIS_URL)
 
 		if (redisUrl.protocol === 'unix:') {
@@ -127,6 +134,41 @@ export default class RedisAdapter extends StorageAdapter {
 		} else {
 			return createClient({ url: Config.REDIS_URL, ...CLIENT_OPTIONS })
 		}
+	}
+
+	/**
+	 * Build a cluster client from a list of seed node URLs.
+	 *
+	 * Redis Cluster discovers the remaining nodes itself and reports them
+	 * without credentials, and the scheme of a seed only governs the connection
+	 * to that seed. Everything the discovered nodes need therefore has to be
+	 * repeated in the defaults: the credentials given on the first seed, and
+	 * TLS when the first seed asks for it, or those connections fall back to
+	 * plain TCP and a TLS only cluster cannot be reached.
+	 *
+	 * @param {string[]} nodeUrls the seed node URLs
+	 * @return {object} a connected-on-demand cluster client
+	 */
+	static createRedisClusterClient(nodeUrls) {
+		const rootNodes = nodeUrls.map((url) => ({ url }))
+		const firstNode = RedisAdapter.parseRedisUrl(nodeUrls[0])
+
+		const defaults = {}
+		if (firstNode.username) {
+			defaults.username = decodeURIComponent(firstNode.username)
+		}
+		if (firstNode.password) {
+			defaults.password = decodeURIComponent(firstNode.password)
+		}
+		if (firstNode.protocol === 'rediss:') {
+			defaults.socket = { tls: true }
+		}
+
+		return createCluster({
+			rootNodes,
+			...CLIENT_OPTIONS,
+			...(Object.keys(defaults).length > 0 ? { defaults } : {}),
+		})
 	}
 
 	constructor(redisClient, options = {}) {
@@ -184,10 +226,8 @@ export default class RedisAdapter extends StorageAdapter {
 
 	async clear() {
 		try {
-			for await (const keys of this.client.scanIterator({ MATCH: `${this.prefix}*`, COUNT: 100 })) {
-				if (keys.length > 0) {
-					await this.client.del(keys)
-				}
+			for await (const keys of scanKeys(this.client, { MATCH: `${this.prefix}*`, COUNT: 100 })) {
+				await deleteKeys(this.client, keys)
 			}
 		} catch (error) {
 			if (RedisAdapter.isClientClosedError(error)) {
