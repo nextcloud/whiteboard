@@ -1,6 +1,8 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Whiteboard" : "Whiteboard",
+    "Uploading…" : "Lued erop …",
     "Delete" : "Läschen",
     "Advanced settings" : "Erweidert Astellungen",
     "Close" : "Zoumaachen",
@@ -12,13 +14,21 @@ OC.L10N.register(
     "Save" : "Späicheren",
     "Add a comment" : "Setz e Kommentar derbäi",
     "Send" : "Schécken",
+    "Offline" : "Offline",
+    "Online" : "Online",
     "Unknown" : "Onbekannt",
+    "Starting…" : "Starten …",
+    "Duration" : "Dauer",
+    "File" : "Fichier",
+    "Saving…" : "Späichert …",
     "Paused" : "Gepaust",
     "Hours" : "Stonnen",
     "Minutes" : "Minutten",
     "min" : "Minutt",
     "Reset" : "Zeréck setzen",
     "Pause" : "Paus",
+    "Status" : "Status",
+    "Open" : "Op",
     "Assistant" : "Assistent"
 },
 "nplurals=2; plural=(n != 1);");
