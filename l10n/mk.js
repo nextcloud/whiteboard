@@ -24,6 +24,7 @@ OC.L10N.register(
     "Connecting" : "Поврзување",
     "Online" : "Присутен",
     "Unknown" : "Непознат",
+    "Duration" : "Времетраење",
     "Unknown user" : "Непознат корисник",
     "File" : "Датотека",
     "Saving…" : "Зачувува ...",
