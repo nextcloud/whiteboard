@@ -47,6 +47,7 @@ OC.L10N.register(
     "Duration" : "Trvanie",
     "Stop recording" : "Zastaviť nahrávanie",
     "Unknown user" : "Neznámy používateľ",
+    "{count} users" : "{count} používatelia",
     "File" : "Súbor",
     "Saving…" : "Ukladanie...",
     "Running" : "Beh",

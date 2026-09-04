@@ -13,6 +13,7 @@ OC.L10N.register(
     "Update" : "Uppfæra",
     "Insert" : "Setja inn",
     "Multiple choice" : "Margir valmöguleikar",
+    "Question" : "Spurning",
     "Option" : "Valkostur",
     "Add option" : "Bæta við valkosti",
     "Comments" : "Athugasemdir",
