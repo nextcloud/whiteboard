@@ -6,7 +6,7 @@
  */
 
 import StorageAdapter from './StorageAdapter.js'
-import { createClient } from 'redis'
+import { createClient, createCluster } from 'redis'
 import Config from '../Utilities/ConfigUtility.js'
 
 export default class RedisAdapter extends StorageAdapter {
@@ -17,6 +17,10 @@ export default class RedisAdapter extends StorageAdapter {
 
 	static createRedisClient() {
 		console.log(`Creating Redis client with URL: ${Config.REDIS_URL}`)
+
+		if (Config.REDIS_URL.includes(',')) {
+			return RedisAdapter.createRedisClusterClient(Config.REDIS_URL)
+		}
 
 		const redisUrl = new URL(Config.REDIS_URL)
 
@@ -29,6 +33,34 @@ export default class RedisAdapter extends StorageAdapter {
 		} else {
 			return createClient({ url: Config.REDIS_URL })
 		}
+	}
+
+	/**
+	 * Build a cluster client from a comma separated list of seed node URLs.
+	 *
+	 * Redis Cluster discovers the remaining nodes itself, and it reports them
+	 * without credentials, so any auth given on the first seed is applied to
+	 * every discovered node as well.
+	 *
+	 * @param {string} urls comma separated Redis URLs
+	 * @return {object} a connected-on-demand cluster client
+	 */
+	static createRedisClusterClient(urls) {
+		const rootNodes = urls
+			.split(',')
+			.map((url) => url.trim())
+			.filter((url) => url.length > 0)
+			.map((url) => ({ url }))
+
+		const { username, password } = new URL(rootNodes[0].url)
+		const defaults = {}
+		if (username) defaults.username = decodeURIComponent(username)
+		if (password) defaults.password = decodeURIComponent(password)
+
+		return createCluster({
+			rootNodes,
+			...(Object.keys(defaults).length > 0 ? { defaults } : {}),
+		})
 	}
 
 	constructor(redisClient, options = {}) {
