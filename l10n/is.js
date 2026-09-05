@@ -34,6 +34,7 @@ OC.L10N.register(
     "Follow" : "Fylgja",
     "Duration" : "Tímalengd",
     "Unknown user" : "Óþekktur notandi",
+    "{count} users" : "{count} notendur",
     "File" : "Skrá",
     "Saving…" : "Vista…",
     "Running" : "Hlaup",
