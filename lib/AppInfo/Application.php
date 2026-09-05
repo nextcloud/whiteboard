@@ -12,6 +12,7 @@ namespace OCA\Whiteboard\AppInfo;
 use OCA\Files\Event\LoadAdditionalScriptsEvent;
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
 use OCA\Viewer\Event\LoadViewer;
+use OCA\Whiteboard\ConfigLexicon;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
 use OCA\Whiteboard\Listener\FilesLoadAdditionalScriptsListener;
@@ -53,6 +54,7 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerEventListener(RegisterDirectEditorEvent::class, RegisterDirectEditorListener::class);
+		$context->registerConfigLexicon(ConfigLexicon::class);
 
 		[$major] = Util::getVersion();
 		if ($major >= 30) {
