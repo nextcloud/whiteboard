@@ -36,6 +36,7 @@ OC.L10N.register(
     "LIVE" : "DIRECTE",
     "Following" : "S'està seguint",
     "Follow" : "Segueix",
+    "Duration" : "Duració",
     "Stop recording" : "Aturar l'enregistrament",
     "Unknown user" : "Usuari desconegut",
     "File" : "Fitxer",
