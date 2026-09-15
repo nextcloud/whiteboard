@@ -15,8 +15,26 @@ export default class RedisAdapter extends StorageAdapter {
 		return error?.name === 'ClientClosedError' || error?.message?.includes('The client is closed')
 	}
 
+	/**
+	 * Strip credentials from a Redis URL so it can be logged safely.
+	 *
+	 * @param {string} url the configured Redis URL
+	 * @return {string} the same URL with any password replaced
+	 */
+	static redactRedisUrl(url) {
+		try {
+			const parsed = new URL(url)
+			if (parsed.password) parsed.password = '***'
+			if (parsed.username) parsed.username = '***'
+			return parsed.toString()
+		} catch {
+			// not a parsable URL: log nothing rather than risk leaking a secret
+			return '<unparsable REDIS_URL>'
+		}
+	}
+
 	static createRedisClient() {
-		console.log(`Creating Redis client with URL: ${Config.REDIS_URL}`)
+		console.log(`Creating Redis client with URL: ${RedisAdapter.redactRedisUrl(Config.REDIS_URL)}`)
 
 		const redisUrl = new URL(Config.REDIS_URL)
 
