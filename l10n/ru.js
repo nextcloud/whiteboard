@@ -43,6 +43,7 @@ OC.L10N.register(
     "Duration" : "Продолжительность",
     "Stop recording" : "Остановить запись",
     "Unknown user" : "Неизвестный пользователь",
+    "{count} users" : "{count} пользователей",
     "File" : "Файл",
     "Saving…" : "Сохраняется…",
     "Running" : "Бег",
