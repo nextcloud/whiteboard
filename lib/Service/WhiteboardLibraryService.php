@@ -11,6 +11,7 @@ namespace OCA\Whiteboard\Service;
 
 use InvalidArgumentException;
 use JsonException;
+use OCA\Whiteboard\ConfigLexicon;
 use OCP\AppFramework\Http;
 use OCP\Files\File;
 use OCP\Files\Folder;
@@ -50,7 +51,6 @@ final class WhiteboardLibraryService {
 	private const ORG_LIBRARY_DIR = 'libraries';
 	private const ORG_LIBRARY_POINTER_DIR = 'library-pointers';
 	private const SCOPE_ORG = WhiteboardFolderService::SCOPE_ORG;
-	private const LEGACY_MIGRATED_FLAG = 'legacy_libraries_migrated';
 
 	public function __construct(
 		private WhiteboardFolderService $folders,
@@ -342,7 +342,7 @@ final class WhiteboardLibraryService {
 	 * the migrated flag stops them from being merged again.
 	 */
 	private function migrateLegacyLibraries(string $uid, Folder $templatesFolder): void {
-		if ($this->config->getUserValue($uid, 'whiteboard', self::LEGACY_MIGRATED_FLAG, '') === '1') {
+		if ($this->config->getUserValue($uid, 'whiteboard', ConfigLexicon::USER_LEGACY_LIBRARIES_MIGRATED, '') === '1') {
 			return;
 		}
 
@@ -401,7 +401,7 @@ final class WhiteboardLibraryService {
 			]);
 		}
 
-		$this->config->setUserValue($uid, 'whiteboard', self::LEGACY_MIGRATED_FLAG, '1');
+		$this->config->setUserValue($uid, 'whiteboard', ConfigLexicon::USER_LEGACY_LIBRARIES_MIGRATED, '1');
 	}
 
 	private function decodeLibrary(File $file): ?array {
