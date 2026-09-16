@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Service;
 
-use OCA\Whiteboard\ConfigLexicon;
+use OCA\Whiteboard\ConfigKeys;
 use OCP\AppFramework\Services\IAppConfig;
 use OCP\IConfig;
 
@@ -24,44 +24,44 @@ final class ConfigService {
 
 	public function getJwtSecretKey(): string {
 		if (!method_exists($this->appConfig, 'getAppValueString')) {
-			return $this->appConfig->getAppValue(ConfigLexicon::JWT_SECRET_KEY);
+			return $this->appConfig->getAppValue(ConfigKeys::JWT_SECRET_KEY);
 		}
 
-		return $this->appConfig->getAppValueString(ConfigLexicon::JWT_SECRET_KEY);
+		return $this->appConfig->getAppValueString(ConfigKeys::JWT_SECRET_KEY);
 	}
 
 	public function getMaxFileSize(): int {
 		if (!method_exists($this->appConfig, 'getAppValueInt')) {
-			return (int)$this->appConfig->getAppValue(ConfigLexicon::MAX_FILE_SIZE, '10');
+			return (int)$this->appConfig->getAppValue(ConfigKeys::MAX_FILE_SIZE, '10');
 		}
 
-		return $this->appConfig->getAppValueInt(ConfigLexicon::MAX_FILE_SIZE, 10);
+		return $this->appConfig->getAppValueInt(ConfigKeys::MAX_FILE_SIZE, 10);
 	}
 
 	public function setMaxFileSize(int $maxFileSize): void {
 		if (!method_exists($this->appConfig, 'setAppValueInt')) {
-			$this->appConfig->setAppValue(ConfigLexicon::MAX_FILE_SIZE, (string)$maxFileSize);
+			$this->appConfig->setAppValue(ConfigKeys::MAX_FILE_SIZE, (string)$maxFileSize);
 			return;
 		}
 
-		$this->appConfig->setAppValueInt(ConfigLexicon::MAX_FILE_SIZE, $maxFileSize);
+		$this->appConfig->setAppValueInt(ConfigKeys::MAX_FILE_SIZE, $maxFileSize);
 	}
 
 	public function getCollabBackendUrl(): string {
 		if (!method_exists($this->appConfig, 'getAppValueString')) {
-			return $this->trimUrl($this->appConfig->getAppValue(ConfigLexicon::COLLAB_BACKEND_URL));
+			return $this->trimUrl($this->appConfig->getAppValue(ConfigKeys::COLLAB_BACKEND_URL));
 		}
 
-		return $this->trimUrl($this->appConfig->getAppValueString(ConfigLexicon::COLLAB_BACKEND_URL));
+		return $this->trimUrl($this->appConfig->getAppValueString(ConfigKeys::COLLAB_BACKEND_URL));
 	}
 
 	public function setCollabBackendUrl(string $collabBackendUrl): void {
 		if (!method_exists($this->appConfig, 'setAppValueString')) {
-			$this->appConfig->setAppValue(ConfigLexicon::COLLAB_BACKEND_URL, $collabBackendUrl);
+			$this->appConfig->setAppValue(ConfigKeys::COLLAB_BACKEND_URL, $collabBackendUrl);
 			return;
 		}
 
-		$this->appConfig->setAppValueString(ConfigLexicon::COLLAB_BACKEND_URL, $collabBackendUrl);
+		$this->appConfig->setAppValueString(ConfigKeys::COLLAB_BACKEND_URL, $collabBackendUrl);
 	}
 
 	/**
@@ -132,33 +132,33 @@ final class ConfigService {
 
 	public function getWhiteboardSharedSecret(): string {
 		if (!method_exists($this->appConfig, 'getAppValueString')) {
-			return $this->appConfig->getAppValue(ConfigLexicon::JWT_SECRET_KEY);
+			return $this->appConfig->getAppValue(ConfigKeys::JWT_SECRET_KEY);
 		}
 
-		return $this->appConfig->getAppValueString(ConfigLexicon::JWT_SECRET_KEY);
+		return $this->appConfig->getAppValueString(ConfigKeys::JWT_SECRET_KEY);
 	}
 
 	public function setWhiteboardSharedSecret(string $jwtSecretKey): void {
 		if (!method_exists($this->appConfig, 'setAppValueString')) {
-			$this->appConfig->setAppValue(ConfigLexicon::JWT_SECRET_KEY, $jwtSecretKey);
+			$this->appConfig->setAppValue(ConfigKeys::JWT_SECRET_KEY, $jwtSecretKey);
 			return;
 		}
 
-		$this->appConfig->setAppValueString(ConfigLexicon::JWT_SECRET_KEY, $jwtSecretKey);
+		$this->appConfig->setAppValueString(ConfigKeys::JWT_SECRET_KEY, $jwtSecretKey);
 	}
 
 	public function getDisableExternalLibraries(): bool {
-		return $this->appConfig->getAppValueBool(ConfigLexicon::DISABLE_EXTERNAL_LIBRARIES);
+		return $this->appConfig->getAppValueBool(ConfigKeys::DISABLE_EXTERNAL_LIBRARIES);
 	}
 
 	public function getUserAutoUploadOnDisconnect(?string $userId): bool {
 		if (!$userId) {
 			return false;
 		}
-		return $this->config->getUserValue($userId, 'whiteboard', ConfigLexicon::USER_RECORDING_AUTO_UPLOAD_ON_DISCONNECT, 'false') === 'true';
+		return $this->config->getUserValue($userId, 'whiteboard', ConfigKeys::USER_RECORDING_AUTO_UPLOAD_ON_DISCONNECT, 'false') === 'true';
 	}
 
 	public function setUserAutoUploadOnDisconnect(string $userId, bool $enabled): void {
-		$this->config->setUserValue($userId, 'whiteboard', ConfigLexicon::USER_RECORDING_AUTO_UPLOAD_ON_DISCONNECT, $enabled ? 'true' : 'false');
+		$this->config->setUserValue($userId, 'whiteboard', ConfigKeys::USER_RECORDING_AUTO_UPLOAD_ON_DISCONNECT, $enabled ? 'true' : 'false');
 	}
 }

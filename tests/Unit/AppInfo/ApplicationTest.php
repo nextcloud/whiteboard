@@ -9,15 +9,19 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\AppInfo;
 
+use OCA\Whiteboard\ConfigLexicon;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Config\Lexicon\ILexicon;
 
 class ApplicationTest extends \Test\TestCase {
 
-	public function testApp(): void {
+	public function testRegistersConfigLexiconWhenSupported(): void {
 		$registrationContext = $this->createMock(IRegistrationContext::class);
+		$registrationContext->expects(interface_exists(ILexicon::class) ? $this->once() : $this->never())
+			->method('registerConfigLexicon')
+			->with(ConfigLexicon::class);
 
 		$app = new Application();
 		$app->register($registrationContext);
-		self::assertTrue(true);
 	}
 }

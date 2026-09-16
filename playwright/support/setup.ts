@@ -4,7 +4,7 @@
  */
 
 import { configureNextcloud, runExec, runOcc } from '@nextcloud/e2e-test-server'
-import { test as setup } from '@playwright/test'
+import { expect, test as setup } from '@playwright/test'
 import { readFileSync } from 'fs'
 
 type AppList = {
@@ -133,5 +133,7 @@ setup('Configure Nextcloud', async () => {
 	await ensureTextInstalled()
 	await runOcc(['app:disable', 'firstrunwizard'])
 	await runOcc(['config:app:set', 'whiteboard', 'collabBackendUrl', '--value', 'http://localhost:3002'])
-	await runOcc(['config:app:set', 'whiteboard', 'jwt_secret_key', '--value', 'secret'])
+	await runOcc(['config:app:set', 'whiteboard', 'jwt_secret_key', '--type=string', '--value', 'secret', '--no-interaction'])
+	const jwtSecret = getOccOutput(await runOcc(['config:app:get', 'whiteboard', 'jwt_secret_key']))
+	expect(jwtSecret.trim()).toBe('secret')
 })

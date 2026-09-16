@@ -46,7 +46,7 @@ Configure Nextcloud with the websocket server details: (Can be configured in the
 
 ```bash
 occ config:app:set whiteboard collabBackendUrl --value="https://nextcloud.local:3002"
-occ config:app:set whiteboard jwt_secret_key --value="some-random-secret"
+occ config:app:set whiteboard jwt_secret_key --type=string --value="some-random-secret"
 ```
 
 ### Running the WebSocket Server
