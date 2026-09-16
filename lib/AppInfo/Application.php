@@ -26,6 +26,7 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Config\Lexicon\ILexicon;
 use OCP\DirectEditing\RegisterDirectEditorEvent;
 use OCP\Files\Template\ITemplateManager;
 use OCP\Files\Template\RegisterTemplateCreatorEvent;
@@ -54,7 +55,9 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerEventListener(RegisterDirectEditorEvent::class, RegisterDirectEditorListener::class);
-		$context->registerConfigLexicon(ConfigLexicon::class);
+		if (interface_exists(ILexicon::class)) {
+			$context->registerConfigLexicon(ConfigLexicon::class);
+		}
 
 		[$major] = Util::getVersion();
 		if ($major >= 30) {
