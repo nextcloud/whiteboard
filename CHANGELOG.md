@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.0.0
+
+### Added
+- Add whiteboard library templates by @hweihwang [#1176](https://github.com/nextcloud/whiteboard/pull/1176)
+
+### Changed
+- Support Nextcloud 35 by @hweihwang [#1314](https://github.com/nextcloud/whiteboard/pull/1314)
+- Migrate to Vue 3 and require Nextcloud 31 or later by @hweihwang [#1265](https://github.com/nextcloud/whiteboard/pull/1265)
+- Mark the JWT secret as sensitive on Nextcloud 32 and later by @CarlSchwan and @hweihwang [#1322](https://github.com/nextcloud/whiteboard/pull/1322) [#1340](https://github.com/nextcloud/whiteboard/pull/1340)
+- Use localized relative timestamps by @benjaminfrueh [#1252](https://github.com/nextcloud/whiteboard/pull/1252)
+- Add OCI standard labels to the Docker image by @Erwan-loot [#1205](https://github.com/nextcloud/whiteboard/pull/1205)
+
+### Fixed
+- Hide image export and screenshot downloads during DirectEditing by @benjaminfrueh [#1224](https://github.com/nextcloud/whiteboard/pull/1224)
+- Tighten whiteboard collaboration CSP by @hweihwang [#1263](https://github.com/nextcloud/whiteboard/pull/1263)
+- Wait for WebSocket initialization by @hweihwang [#1275](https://github.com/nextcloud/whiteboard/pull/1275)
+- Protect creator attribution by @hweihwang [#1289](https://github.com/nextcloud/whiteboard/pull/1289)
+
+### Other
+- Update dependencies and translations
+
 ## 2.0.0-beta.2
 
 ### Changed
