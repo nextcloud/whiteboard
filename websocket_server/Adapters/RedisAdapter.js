@@ -15,10 +15,96 @@ export default class RedisAdapter extends StorageAdapter {
 		return error?.name === 'ClientClosedError' || error?.message?.includes('The client is closed')
 	}
 
-	static createRedisClient() {
-		console.log(`Creating Redis client with URL: ${Config.REDIS_URL}`)
+	/**
+	 * Split a configured Redis URL into the node URLs it holds.
+	 *
+	 * A comma is legal inside a password, so the value only counts as a list of
+	 * nodes when it has more than one part and every part on its own is a URL
+	 * with a scheme and a host.
+	 *
+	 * @param {string} url the configured Redis URL
+	 * @return {string[]} the node URLs, or the value unchanged as a single entry
+	 */
+	static splitRedisUrls(url) {
+		const parts = url
+			.split(',')
+			.map((part) => part.trim())
+			.filter((part) => part.length > 0)
 
-		const redisUrl = new URL(Config.REDIS_URL)
+		if (parts.length < 2) {
+			return [url]
+		}
+
+		const everyPartIsAUrl = parts.every((part) => {
+			try {
+				const parsed = new URL(part)
+				return parsed.protocol !== '' && parsed.host !== ''
+			} catch {
+				return false
+			}
+		})
+
+		return everyPartIsAUrl ? parts : [url]
+	}
+
+	/**
+	 * Strip the credentials from one Redis URL.
+	 *
+	 * @param {string} url one Redis URL
+	 * @return {string} the same URL with its credentials replaced
+	 */
+	static redactOneRedisUrl(url) {
+		try {
+			const parsed = new URL(url)
+			if (parsed.password) {
+				parsed.password = '***'
+			}
+			if (parsed.username) {
+				parsed.username = '***'
+			}
+			return parsed.toString()
+		} catch {
+			// not a parsable URL: log nothing rather than risk leaking a secret
+			return '<unparsable REDIS_URL>'
+		}
+	}
+
+	/**
+	 * Strip credentials from a configured Redis URL so it can be logged safely.
+	 *
+	 * @param {string} url the configured Redis URL, one node or a list of them
+	 * @return {string} the same value with every credential replaced
+	 */
+	static redactRedisUrl(url) {
+		return RedisAdapter.splitRedisUrls(url)
+			.map((part) => RedisAdapter.redactOneRedisUrl(part))
+			.join(',')
+	}
+
+	/**
+	 * Parse the configured Redis URL.
+	 *
+	 * `new URL()` puts the value it was given on the error it throws, and that
+	 * error is logged when the server fails to start, so a malformed URL would
+	 * print the password it holds. Raise a message that carries nothing from
+	 * the configured value instead.
+	 *
+	 * @param {string} url the configured Redis URL
+	 * @return {URL} the parsed URL
+	 * @throws {Error} if the value is not a valid URL
+	 */
+	static parseRedisUrl(url) {
+		try {
+			return new URL(url)
+		} catch {
+			throw new Error('REDIS_URL is not a valid URL')
+		}
+	}
+
+	static createRedisClient() {
+		console.log(`Creating Redis client with URL: ${RedisAdapter.redactRedisUrl(Config.REDIS_URL)}`)
+
+		const redisUrl = RedisAdapter.parseRedisUrl(Config.REDIS_URL)
 
 		if (redisUrl.protocol === 'unix:') {
 			const db = redisUrl.searchParams.get('db')
