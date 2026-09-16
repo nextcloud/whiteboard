@@ -8,6 +8,7 @@ OC.L10N.register(
     "Delete" : "Törlés",
     "Advanced settings" : "Speciális beállítások",
     "Close" : "Bezárás",
+    "Generating…" : "Előállítás…",
     "Generate" : "Generálás",
     "Recording" : "Felvétel",
     "Choose what happens to your recording if you leave a board." : "Válaszd ki, mi történjen a felvételével, ha kilép a tábláról.",
