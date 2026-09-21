@@ -44,6 +44,7 @@ OC.L10N.register(
     "Duration" : "Duur",
     "Stop recording" : "Beëindig opname",
     "Unknown user" : "Onbekende gebruiker",
+    "{count} users" : "{count} gebruikers",
     "File" : "Bestand",
     "Saving…" : "Opslaan...",
     "Running" : "Hardlopen",
