@@ -7,6 +7,7 @@ OC.L10N.register(
     "Advanced settings" : "הגדרות מתקדמות",
     "Close" : "סגירה",
     "Add reaction" : "הוספת תגובון",
+    "Loading editor…" : "טוען עורך",
     "Cancel" : "ביטול",
     "Update" : "עדכון",
     "Insert" : "הכנסה",
