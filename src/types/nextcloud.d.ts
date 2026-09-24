@@ -12,6 +12,7 @@ declare module '@nextcloud/router' {
 declare module '@nextcloud/dialogs' {
 	export function showError(text: string, options?: Record<string, unknown>): void
 	export function showSuccess(text: string, options?: Record<string, unknown>): void
+	export function showLoading(text: string, options?: Record<string, unknown>): { hideToast: () => void }
 }
 
 declare module '@nextcloud/sharing/public' {
