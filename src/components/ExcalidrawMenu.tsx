@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, memo } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Icon } from '@mdi/react'
-import { mdiMonitorScreenshot, mdiImageMultiple, mdiTimerOutline, mdiVote, mdiGrid, mdiMagnify } from '@mdi/js'
+import { mdiFilePdfBox, mdiGrid, mdiImageMultiple, mdiMagnify, mdiMonitorScreenshot, mdiTimerOutline, mdiVote } from '@mdi/js'
 import { MainMenu, CaptureUpdateAction } from '@nextcloud/excalidraw'
 import { RecordingMenuItem } from './Recording'
 import { PresentationMenuItem } from './Presentation'
@@ -27,9 +27,10 @@ interface ExcalidrawMenuProps {
 	onToggleTimer: () => void
 	gridModeEnabled: boolean
 	onToggleGrid: () => void
+	onImportPdf?: () => void
 }
 
-export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState, isTimerVisible, onToggleTimer, gridModeEnabled, onToggleGrid }: ExcalidrawMenuProps) {
+export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExtension, recordingState, presentationState, isTimerVisible, onToggleTimer, gridModeEnabled, onToggleGrid, onImportPdf }: ExcalidrawMenuProps) {
 	const isMacPlatform = typeof navigator !== 'undefined' && (navigator.userAgentData?.platform === 'macOS' || /Mac|iPhone|iPad/.test(navigator.platform ?? ''))
 	const isDirectEditing = loadState('whiteboard', 'directEditing', false)
 	const { excalidrawAPI } = useExcalidrawStore(useShallow(state => ({
@@ -195,6 +196,14 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 					{t('whiteboard', 'Download screenshot')}
 				</MainMenu.Item>
 			</>}
+			{onImportPdf && (
+				<MainMenu.Item
+					icon={<Icon path={mdiFilePdfBox} size={0.75} />}
+					onSelect={onImportPdf}
+				>
+					{t('whiteboard', 'Import PDF…')}
+				</MainMenu.Item>
+			)}
 			<MainMenu.Item
 				icon={<Icon path={mdiVote} size="16px" />}
 				onSelect={() => showVotings()}>
