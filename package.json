@@ -40,7 +40,7 @@
     "@svgmoji/noto": "^3.2.0",
     "axios": "^1.20.0",
     "dexie": "^4.4.6",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.3",
     "express": "^5.2.1",
     "form-data": "^4.0.6",
     "jsonwebtoken": "^9.0.3",
