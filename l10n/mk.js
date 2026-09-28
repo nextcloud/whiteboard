@@ -16,6 +16,7 @@ OC.L10N.register(
     "Comments" : "Коментари",
     "Voting" : "Гласање",
     "Dismiss" : "Отфрли",
+    "Guest" : "Гостин",
     "Edit" : "Уреди",
     "Save" : "Сними",
     "Add a comment" : "Додади коментар",
