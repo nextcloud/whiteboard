@@ -46,6 +46,7 @@ OC.L10N.register(
     "Unknown" : "Ukendt",
     "LIVE" : "LIVE",
     "Starting…" : "Start...",
+    "{fileName} – Version {version}" : "{fileName} – Version {version}",
     "Duration" : "Varighed",
     "Stop recording" : "Stop optagelse",
     "Unknown user" : "Ukendt bruger",
