@@ -1271,9 +1271,6 @@
     }
   },
   "websocket_server/Services/ServerService.js": {
-    "@stylistic/arrow-parens": {
-      "count": 1
-    },
     "@stylistic/padded-blocks": {
       "count": 3
     },
