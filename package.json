@@ -72,7 +72,7 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^5.1.4",
     "@vue/tsconfig": "^0.9.1",
-    "browserslist": "^4.29.0",
+    "browserslist": "^4.29.3",
     "nodemon": "^3.1.14",
     "prettier": "^3.9.8",
     "redis-memory-server": "^0.17.1",
