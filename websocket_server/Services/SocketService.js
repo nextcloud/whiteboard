@@ -63,10 +63,11 @@ export default class SocketService {
 		return sessions
 	}
 
-	constructor(server, socketDataStorage, cachedTokenStorage, redisClient) {
+	constructor(server, socketDataStorage, cachedTokenStorage, redisClient, redisReady = Promise.resolve()) {
 		this.socketDataStorage = socketDataStorage
 		this.cachedTokenStorage = cachedTokenStorage
 		this.redisClient = redisClient
+		this.redisReady = redisReady
 		this.sessionStore = new SessionStore(this.socketDataStorage)
 		this.recordingServices = new Map()
 		this.pendingRecordingStops = new Map()
@@ -215,6 +216,10 @@ export default class SocketService {
 	}
 
 	async init() {
+		// Nothing here may talk to Redis before the connection is up: with a
+		// cluster client the slots are still unknown and the first command fails
+		// rather than waiting for them.
+		await this.redisReady
 		await this.setupAdapter()
 		await this.clusterService.start()
 		this.setupServerSideEvents()
