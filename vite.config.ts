@@ -14,6 +14,7 @@ const AppConfig = createAppConfig({
 	settings: resolve(join('src', 'admin.ts')),
 	personal: resolve(join('src', 'personal.ts')),
 	files: resolve(join('src', 'files.ts')),
+	viewer: resolve(join('src', 'viewer.ts')),
 }, {
 	config: defineConfig({
 		resolve: {
