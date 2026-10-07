@@ -121,14 +121,19 @@ async function ensureTextInstalled() {
 setup('Configure Nextcloud', async () => {
 	setup.slow()
 	setup.setTimeout(5 * 60 * 1000)
+	const serverBranch = getServerBranch()
+	// From Nextcloud 36 the viewer is part of the server, there is no app to install
+	const viewerApp = Number(serverBranch.match(/^stable(\d+)$/)?.[1] ?? Infinity) < 36
 	const appsToInstall = [
 		'whiteboard',
-		'viewer',
+		...(viewerApp ? ['viewer'] : []),
 		'assistant',
 		'testing',
 	]
-	await configureNextcloud(appsToInstall, getServerBranch())
-	await runExec(['git', '-C', 'apps-writable/viewer', 'log', '-1'], { verbose: true })
+	await configureNextcloud(appsToInstall, serverBranch)
+	if (viewerApp) {
+		await runExec(['git', '-C', 'apps-writable/viewer', 'log', '-1'], { verbose: true })
+	}
 	await ensureAssistantInstalled()
 	await ensureTextInstalled()
 	await runOcc(['app:disable', 'firstrunwizard'])
