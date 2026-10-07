@@ -26,6 +26,7 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent as HttpBeforeTemplateRenderedEvent;
 use OCP\Config\Lexicon\ILexicon;
 use OCP\DirectEditing\RegisterDirectEditorEvent;
 use OCP\Files\Template\ITemplateManager;
@@ -50,8 +51,6 @@ class Application extends App implements IBootstrap {
 		include_once __DIR__ . '/../../vendor/autoload.php';
 
 		$context->registerEventListener(AddContentSecurityPolicyEvent::class, AddContentSecurityPolicyListener::class);
-		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
-		$context->registerEventListener(LoadViewer::class, LoadTextEditorListener::class);
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerEventListener(RegisterDirectEditorEvent::class, RegisterDirectEditorListener::class);
@@ -60,6 +59,14 @@ class Application extends App implements IBootstrap {
 		}
 
 		[$major] = Util::getVersion();
+		if ($major >= 36) {
+			// The viewer is part of the server, which no longer dispatches LoadViewer
+			$context->registerEventListener(HttpBeforeTemplateRenderedEvent::class, LoadViewerListener::class);
+			$context->registerEventListener(HttpBeforeTemplateRenderedEvent::class, LoadTextEditorListener::class);
+		} else {
+			$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
+			$context->registerEventListener(LoadViewer::class, LoadTextEditorListener::class);
+		}
 		if ($major >= 30) {
 			$context->registerTemplateProvider(GlobalTemplateProvider::class);
 			// The picker enhancer only targets the template picker markup that
