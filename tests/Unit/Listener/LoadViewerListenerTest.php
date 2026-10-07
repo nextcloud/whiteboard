@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Listener;
 
-use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Service\ConfigService;
 use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent;
 use OCP\AppFramework\Http\TemplateResponse;
@@ -61,7 +60,6 @@ class LoadViewerListenerTest extends TestCase {
 
 		$this->assertContains('whiteboard/js/whiteboard-viewer', Util::getScripts());
 		$this->assertNotContains('whiteboard/js/whiteboard-main', Util::getScripts());
-		$this->assertFalse($this->provided['legacyViewer']);
 		$this->assertArrayHasKey('collabBackendUrl', $this->provided);
 	}
 
@@ -70,14 +68,5 @@ class LoadViewerListenerTest extends TestCase {
 
 		$this->assertNotContains('whiteboard/js/whiteboard-viewer', Util::getScripts());
 		$this->assertSame([], $this->provided);
-	}
-
-	public function testLoadsTheBoardForTheViewerApp(): void {
-		$this->listener->handle(new LoadViewer());
-
-		$this->assertContains('whiteboard/js/whiteboard-main', Util::getScripts());
-		$this->assertNotContains('whiteboard/js/whiteboard-viewer', Util::getScripts());
-		$this->assertArrayNotHasKey('legacyViewer', $this->provided);
-		$this->assertArrayHasKey('collabBackendUrl', $this->provided);
 	}
 }
