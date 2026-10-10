@@ -159,6 +159,17 @@ const openWhiteboardInViewer = async (
 	page: Page,
 	options: { fileId: number, fileName: string, source?: string | null, fileVersion?: string | null },
 ) => {
+	// Nextcloud 36 and up: the viewer is part of the server, a version opens
+	// from the Versions tab of the file
+	const legacyViewer = await page.evaluate(() => Boolean((window as any).OCA?.Viewer?.availableHandlers))
+	if (!legacyViewer) {
+		await page.locator(`[data-cy-files-list-row-name="${options.fileName}"]`).click({ button: 'right' })
+		await page.getByRole('menuitem', { name: /details/i }).first().click()
+		await page.getByRole('tab', { name: 'Versions' }).click()
+		await page.locator(`.version[data-files-versions-version="${options.fileVersion}"] a`).click()
+		return
+	}
+
 	const filePath = options.fileName.startsWith('/') ? options.fileName : `/${options.fileName}`
 	await page.waitForFunction(() => Boolean((window as any).OCA?.Viewer?.openWith), { timeout: 10000 })
 	await page.evaluate(({ fileId, filePathValue, fileName, source, fileVersion }) => {
@@ -271,6 +282,7 @@ test('version preview params still load board content', async ({
 	page,
 	user,
 }) => {
+	test.skip(process.env.SERVER_VERSION === 'master', 'Nextcloud 36 has no viewer API to open a file with version parameters')
 	test.setTimeout(90000)
 	const boardName = `Version preview ${Date.now()}`
 
