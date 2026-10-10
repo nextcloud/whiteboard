@@ -123,12 +123,10 @@ setup('Configure Nextcloud', async () => {
 	setup.setTimeout(5 * 60 * 1000)
 	const appsToInstall = [
 		'whiteboard',
-		'viewer',
 		'assistant',
 		'testing',
 	]
 	await configureNextcloud(appsToInstall, getServerBranch())
-	await runExec(['git', '-C', 'apps-writable/viewer', 'log', '-1'], { verbose: true })
 	await ensureAssistantInstalled()
 	await ensureTextInstalled()
 	await runOcc(['app:disable', 'firstrunwizard'])

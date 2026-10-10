@@ -3,18 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { WhiteboardRootHandle } from './utils/renderWhiteboardView'
-
 import { loadState } from '@nextcloud/initial-state'
 import { linkTo } from '@nextcloud/router'
-import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
-import { h } from 'vue'
 import logger from './utils/logger'
 import { callMobileMessage } from './utils/mobileInterface'
-import {
-	matchesComparisonRequest,
-	renderWhiteboardView,
-} from './utils/renderWhiteboardView'
+import { renderWhiteboardView } from './utils/renderWhiteboardView'
 
 import './styles/index.scss'
 import '@nextcloud/dialogs/style.css'
@@ -33,94 +26,27 @@ type RecordingContext = {
 	jwt: string
 }
 
-type PublicShareContext = {
-	fileId: number
-	collabBackendUrl: string
-	sharingToken: string | null
-}
-
 type DirectEditingContext = {
 	fileId: number
 	collabBackendUrl: string
 	jwt: string
 }
 
-type ViewerContext = {
-	collabBackendUrl: string
-	resolveSharingToken: () => string | null
-}
-
-type RuntimeDescriptor
-	= | { type: 'recording', context: RecordingContext }
-		| { type: 'public-share', context: PublicShareContext }
-		| { type: 'direct-editing', context: DirectEditingContext }
-		| { type: 'viewer', context: ViewerContext }
-
-const VIEWER_REGISTRATION_ATTEMPTS = 3
-const VIEWER_REGISTRATION_DELAY_MS = 250
-
+/**
+ * The pages whiteboard renders itself. In the viewer, the board is shown by
+ * the element registered in viewer.ts.
+ */
 function bootstrapWhiteboardRuntime(): void {
-	const runtime = detectRuntime()
-
-	switch (runtime.type) {
-		case 'recording':
-			runRecordingRuntime(runtime.context)
-			return
-		case 'public-share':
-			runPublicShareRuntime(runtime.context)
-			return
-		case 'direct-editing':
-			runDirectEditingRuntime(runtime.context)
-			return
-		case 'viewer':
-		default:
-			runDefaultViewerRuntime(runtime.context)
-	}
-}
-
-function detectRuntime(): RuntimeDescriptor {
 	const fileId = normalizeNumericState(loadState('whiteboard', 'file_id', '0'))
 	const collabBackendUrl = loadState('whiteboard', 'collabBackendUrl', '')
 
 	if (loadState('whiteboard', 'isRecording', false)) {
-		return {
-			type: 'recording',
-			context: {
-				fileId,
-				collabBackendUrl,
-				jwt: loadState('whiteboard', 'jwt', ''),
-			},
-		}
+		runRecordingRuntime({ fileId, collabBackendUrl, jwt: loadState('whiteboard', 'jwt', '') })
+		return
 	}
 
 	if (loadState('whiteboard', 'directEditing', false)) {
-		return {
-			type: 'direct-editing',
-			context: {
-				fileId,
-				collabBackendUrl,
-				jwt: loadState('whiteboard', 'jwt', ''),
-			},
-		}
-	}
-
-	if (isPublicShare()) {
-		return {
-			type: 'public-share',
-			context: {
-				fileId,
-				collabBackendUrl,
-				sharingToken: getSharingToken(),
-			},
-		}
-	}
-
-	return {
-		type: 'viewer',
-		context: {
-			collabBackendUrl,
-			resolveSharingToken: () => getSharingToken(),
-		},
+		runDirectEditingRuntime({ fileId, collabBackendUrl, jwt: loadState('whiteboard', 'jwt', '') })
 	}
 }
 
@@ -168,345 +94,6 @@ function runDirectEditingRuntime(context: DirectEditingContext): void {
 			fileVersion: null,
 		})
 	})
-}
-
-function runPublicShareRuntime(context: PublicShareContext): void {
-	const viewerContext: ViewerContext = {
-		collabBackendUrl: context.collabBackendUrl,
-		resolveSharingToken: () => context.sharingToken,
-	}
-
-	let hasOpenedInViewer = false
-	const isWhiteboardPublicShare = (): boolean => {
-		// LoadViewer triggers whiteboard-main on all public shares; only continue if
-		// this share was explicitly marked as a whiteboard file by the backend.
-		if (!context.fileId) {
-			return false
-		}
-
-		// On NC29/30, there's a hidden input with id="mimetype" that we can check.
-		// On NC31+, this element doesn't exist, so we rely on the backend-provided
-		// whiteboard file id check above.
-		const mimetypeElmt = document.getElementById('mimetype') as HTMLInputElement | null
-		if (mimetypeElmt && mimetypeElmt.value !== 'application/vnd.excalidraw+json') {
-			return false
-		}
-
-		return true
-	}
-
-	const ensurePublicShareLayout = (): void => {
-		document.body.classList.add('whiteboard-public-share')
-	}
-
-	const openInViewer = (): void => {
-		if (!isWhiteboardPublicShare()) {
-			hasOpenedInViewer = true
-			return
-		}
-
-		if (hasOpenedInViewer) {
-			return
-		}
-
-		ensurePublicShareLayout()
-
-		const viewerApi = getViewerApi()
-		if (!viewerApi) {
-			return
-		}
-
-		if (typeof viewerApi.openWith !== 'function' && typeof viewerApi.open !== 'function') {
-			return
-		}
-
-		hasOpenedInViewer = true
-
-		try {
-			viewerApi.setRootElement?.(null)
-		} catch {
-			// ignore
-		}
-
-		try {
-			if (typeof viewerApi.openWith === 'function') {
-				viewerApi.openWith('whiteboard', { path: '/', enableSidebar: false, canLoop: false })
-				return
-			}
-
-			viewerApi.open?.({ path: '/', enableSidebar: false, canLoop: false })
-		} catch (error) {
-			hasOpenedInViewer = false
-			logger.error('Could not open public share in viewer', { error })
-		}
-	}
-
-	const openEmbeddedFallback = (): void => {
-		if (hasOpenedInViewer) {
-			return
-		}
-
-		if (!isWhiteboardPublicShare()) {
-			return
-		}
-
-		const previewHost = document.getElementById('preview') || document.getElementById('imgframe')
-		if (!previewHost) {
-			return
-		}
-
-		ensurePublicShareLayout()
-
-		previewHost.innerHTML = ''
-
-		const whiteboardElement = createWhiteboardElement()
-		previewHost.appendChild(whiteboardElement)
-
-		renderWhiteboardView(whiteboardElement, {
-			fileId: context.fileId,
-			isEmbedded: false,
-			fileName: document.title,
-			publicSharingToken: context.sharingToken,
-			collabBackendUrl: context.collabBackendUrl,
-			versionSource: null,
-			fileVersion: null,
-		})
-	}
-
-	runWhenDomReady(() => {
-		registerViewerHandler(createWhiteboardComponent(viewerContext), 0, openInViewer)
-
-		window.setTimeout(() => {
-			openEmbeddedFallback()
-		}, 2500)
-	})
-}
-
-function runDefaultViewerRuntime(context: ViewerContext): void {
-	runWhenDomReady(() => {
-		registerViewerHandler(createWhiteboardComponent(context))
-	})
-}
-
-type ViewerComponentOptions = {
-	collabBackendUrl: string
-	resolveSharingToken: () => string | null
-}
-
-type WhiteboardComponentData = {
-	containerId: string
-	root: WhiteboardRootHandle | null
-}
-
-type LegacyCreateElement = (
-	tag: string,
-	data?: Record<string, unknown>,
-	children?: string,
-) => unknown
-
-type WhiteboardComponentInstance = WhiteboardComponentData & {
-	$el?: Element
-	$emit: (event: string, ...args: unknown[]) => void
-	fileid?: number | null
-	fileId?: number | null
-	fileVersion?: string | null
-	source?: string | null
-	isEmbedded?: boolean
-	isComparisonView?: boolean
-	basename?: string
-}
-
-type ViewerComponentDefinition = {
-	name: string
-	render(this: WhiteboardComponentInstance, createElement?: LegacyCreateElement): unknown
-	mounted(this: WhiteboardComponentInstance): void
-	beforeDestroy(this: WhiteboardComponentInstance): void
-	beforeUnmount(this: WhiteboardComponentInstance): void
-	props: Record<string, unknown>
-	data: () => WhiteboardComponentData
-}
-
-type ViewerHandlerRegistration = {
-	id: string
-	mimes: string[]
-	component: ViewerComponentDefinition
-	group: string | null
-	theme: string
-	canCompare: boolean
-}
-
-type ViewerApi = {
-	registerHandler?: (handler: ViewerHandlerRegistration) => void
-	open?: (options?: {
-		path?: string
-		fileInfo?: unknown
-		list?: unknown[]
-		enableSidebar?: boolean
-		loadMore?: () => unknown[]
-		canLoop?: boolean
-		onPrev?: () => void
-		onNext?: () => void
-		onClose?: () => void
-	}) => void
-	openWith?: (handlerId: string, options?: {
-		path?: string
-		fileInfo?: unknown
-		list?: unknown[]
-		enableSidebar?: boolean
-		loadMore?: () => unknown[]
-		canLoop?: boolean
-		onPrev?: () => void
-		onNext?: () => void
-		onClose?: () => void
-	}) => void
-	setRootElement?: (el?: string | null) => void
-	compareFileInfo?: unknown
-}
-
-type WindowWithViewer = Window & {
-	OCA?: {
-		Viewer?: ViewerApi
-	}
-}
-
-function unmountWhiteboardRoot(component: WhiteboardComponentInstance): void {
-	component.root?.unmount()
-	component.root = null
-}
-
-function createWhiteboardComponent(options: ViewerComponentOptions): ViewerComponentDefinition {
-	return {
-		name: 'Whiteboard',
-		render(
-			this: WhiteboardComponentInstance,
-			createElement?: LegacyCreateElement,
-		): unknown {
-			const isVue2Render = typeof createElement === 'function'
-			const renderElement = isVue2Render ? createElement : h
-			const attrs = isVue2Render
-				? { attrs: { id: this.containerId } }
-				: { id: this.containerId }
-
-			return renderElement(
-				'div',
-				{
-					...attrs,
-					class: [
-						'whiteboard',
-						{
-							'whiteboard-viewer__embedding': Boolean(this.isEmbedded),
-						},
-					],
-				},
-				'',
-			)
-		},
-		mounted(this: WhiteboardComponentInstance) {
-			this.$emit('update:loaded', true)
-
-			const rootElement = (this.$el ?? document.getElementById(this.containerId)) as HTMLElement | null
-			if (!rootElement) {
-				return
-			}
-
-			rootElement.addEventListener('keydown', (event) => {
-				if (event.key === 'Escape') {
-					event.stopPropagation()
-				}
-			})
-
-			const normalizedFileId
-				= Number(this.fileid ?? this.fileId ?? 0) || 0
-			const isComparisonView = Boolean(this.isComparisonView)
-			const isEmbedded = Boolean(this.isEmbedded)
-			const rawVersionSource = this.source ?? null
-			const rawFileVersion = this.fileVersion ?? null
-			const isVersionsDavSource
-				= rawVersionSource?.includes('/dav/versions/')
-					|| rawVersionSource?.includes('/dav/trashbin/')
-					|| false
-			const shouldUseVersionPreview
-				= isComparisonView
-					|| (rawFileVersion !== null && isVersionsDavSource)
-					|| matchesComparisonRequest(
-						rawVersionSource,
-						rawFileVersion ?? null,
-					)
-			const versionSource = isEmbedded
-				? rawVersionSource
-				: shouldUseVersionPreview
-					? rawVersionSource
-					: null
-			const fileVersion = isEmbedded
-				? rawFileVersion
-				: shouldUseVersionPreview
-					? rawFileVersion
-					: null
-			const fileName
-				= typeof this.basename === 'string' ? this.basename : ''
-
-			this.root = renderWhiteboardView(rootElement, {
-				fileId: normalizedFileId,
-				isEmbedded,
-				fileName,
-				publicSharingToken: options.resolveSharingToken(),
-				collabBackendUrl: options.collabBackendUrl,
-				versionSource,
-				fileVersion,
-				isComparisonView,
-			})
-		},
-		beforeDestroy(this: WhiteboardComponentInstance) {
-			unmountWhiteboardRoot(this)
-		},
-		beforeUnmount(this: WhiteboardComponentInstance) {
-			unmountWhiteboardRoot(this)
-		},
-		props: {
-			filename: { type: String, default: null },
-			fileid: { type: Number, default: null },
-			fileId: { type: Number, default: null },
-			fileVersion: { type: String, default: null },
-			source: { type: String, default: null },
-			isEmbedded: { type: Boolean, default: false },
-			isComparisonView: { type: Boolean, default: false },
-		},
-		data: (): WhiteboardComponentData => ({
-			containerId: generateWhiteboardElementId(),
-			root: null,
-		}),
-	}
-}
-
-function registerViewerHandler(component: ViewerComponentDefinition, attempt = 0, afterRegister?: () => void): void {
-	const viewerApi = getViewerApi()
-
-	if (viewerApi?.registerHandler) {
-		viewerApi.registerHandler({
-			id: 'whiteboard',
-			mimes: ['application/vnd.excalidraw+json'],
-			component,
-			group: null,
-			theme: 'default',
-			canCompare: true,
-		})
-		afterRegister?.()
-		return
-	}
-
-	if (attempt >= VIEWER_REGISTRATION_ATTEMPTS) {
-		logger.error('Could not register whiteboard handler for viewer')
-		return
-	}
-
-	window.setTimeout(
-		() => registerViewerHandler(component, attempt + 1, afterRegister),
-		VIEWER_REGISTRATION_DELAY_MS,
-	)
-}
-
-function getViewerApi(): ViewerApi | undefined {
-	return (window as WindowWithViewer).OCA?.Viewer
 }
 
 function runWhenDomReady(callback: () => void | Promise<void>): void {

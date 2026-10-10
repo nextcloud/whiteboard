@@ -9,12 +9,13 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Listener;
 
-use OCA\Viewer\Event\LoadViewer;
+use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent;
+use OCP\AppFramework\Http\TemplateResponse;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\EventDispatcher\IEventListener;
 
-/** @template-implements IEventListener<LoadViewer|Event> */
+/** @template-implements IEventListener<BeforeTemplateRenderedEvent|Event> */
 class LoadTextEditorListener implements IEventListener {
 	/**
 	 * @psalm-suppress PossiblyUnusedMethod
@@ -26,7 +27,8 @@ class LoadTextEditorListener implements IEventListener {
 
 	#[\Override]
 	public function handle(Event $event): void {
-		if (!($event instanceof LoadViewer)) {
+		if (!($event instanceof BeforeTemplateRenderedEvent)
+			|| $event->getResponse()->getRenderAs() === TemplateResponse::RENDER_AS_ERROR) {
 			return;
 		}
 

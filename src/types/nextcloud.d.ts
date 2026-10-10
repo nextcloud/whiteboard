@@ -47,9 +47,6 @@ interface Window {
 		}
 	}
 	OCA?: {
-		Viewer?: {
-			compareFileInfo?: unknown
-		}
 		Text?: {
 			createTable: (options: {
 				el: HTMLElement

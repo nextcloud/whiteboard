@@ -10,11 +10,8 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\AppInfo;
 
 use OCA\Files\Event\LoadAdditionalScriptsEvent;
-use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
-use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\ConfigLexicon;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
-use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
 use OCA\Whiteboard\Listener\FilesLoadAdditionalScriptsListener;
 use OCA\Whiteboard\Listener\LoadTextEditorListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
@@ -26,6 +23,7 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent;
 use OCP\Config\Lexicon\ILexicon;
 use OCP\DirectEditing\RegisterDirectEditorEvent;
 use OCP\Files\Template\ITemplateManager;
@@ -50,10 +48,9 @@ class Application extends App implements IBootstrap {
 		include_once __DIR__ . '/../../vendor/autoload.php';
 
 		$context->registerEventListener(AddContentSecurityPolicyEvent::class, AddContentSecurityPolicyListener::class);
-		$context->registerEventListener(LoadViewer::class, LoadViewerListener::class);
-		$context->registerEventListener(LoadViewer::class, LoadTextEditorListener::class);
+		$context->registerEventListener(BeforeTemplateRenderedEvent::class, LoadViewerListener::class);
+		$context->registerEventListener(BeforeTemplateRenderedEvent::class, LoadTextEditorListener::class);
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
-		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerEventListener(RegisterDirectEditorEvent::class, RegisterDirectEditorListener::class);
 		if (interface_exists(ILexicon::class)) {
 			$context->registerConfigLexicon(ConfigLexicon::class);
