@@ -58,7 +58,7 @@
     "socket.io-prometheus": "^0.4.0",
     "svgmoji": "^3.2.0",
     "uuid": "^14.0.2",
-    "vue": "^3.5.39",
+    "vue": "^3.5.43",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
