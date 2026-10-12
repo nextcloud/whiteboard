@@ -68,7 +68,10 @@ class AddContentSecurityPolicyListener implements IEventListener {
 			return false;
 		}
 
+		// The admin settings page runs a browser-side connectivity check against
+		// the collaboration backend, so it needs the same connect-src entries.
 		return $this->pathMatches($pathInfo, '/apps/files')
+			|| $this->pathMatches($pathInfo, '/settings/admin/whiteboard')
 			|| $this->pathMatches($pathInfo, '/apps/whiteboard/recording')
 			|| $this->pathMatches($pathInfo, '/apps/spreed')
 			|| $this->pathMatches($pathInfo, '/call')
