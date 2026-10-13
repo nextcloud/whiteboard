@@ -641,6 +641,27 @@ test('a restored image keeps its file when the restoring session never loaded it
 	expect(hasImage(await fetchBoardContent(page, auth))).toBe(true)
 })
 
+test('a restore wins over the saved board that a reconnect loaded before it', async ({
+	page,
+	user,
+}) => {
+	skipWhenVersionContentUnavailable()
+	test.setTimeout(240000)
+	const { auth, versionEntry } = await prepareRestoreScenario(page, user.userId)
+
+	// the reconnect reads the saved board before the restore and gets the answer after it
+	await setConnected(page, false)
+	const reconnectLoad = await holdRequests(page, 'GET', `**/apps/whiteboard/${auth.fileId}`, { sendFirst: true })
+	await setConnected(page, true)
+	await expect.poll(reconnectLoad.held, { timeout: 20000 }).toBe(1)
+	await requestRestoreFromSidebar(page, auth.fileId, versionEntry)
+	await expect(page.getByText('Version restored').first()).toBeVisible({ timeout: 20000 })
+	reconnectLoad.release()
+	await expect.poll(() => page.evaluate(() => (window as any).__whiteboardTestHooks.collaborationStore.getState().pendingServerMerge), { timeout: 20000 }).toBe(false)
+
+	await expectRestoredAfterEdits([page], auth)
+})
+
 test('comparing a version shows both boards read-only', async ({
 	page,
 	user,
