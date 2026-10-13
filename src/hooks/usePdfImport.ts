@@ -5,16 +5,18 @@
 
 import type { FileId } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import type { BinaryFileData, DataURL } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ImportedPageSize, PageSizeTarget } from '../utils/pdfImportSize.ts'
 
-import { showError, showLoading, showSuccess } from '@nextcloud/dialogs'
+import { showError, showLoading, showSuccess, showWarning } from '@nextcloud/dialogs'
 import { convertToExcalidrawElements, viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { useCallback, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { useShallow } from 'zustand/react/shallow'
 import PdfPageSelectionDialog from '../components/PdfPageSelectionDialog.vue'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore.ts'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
+import { formatMegabytes, getImportSizeReport, getMaxImageSizeBytes, getPageSizeTarget, IMPORT_TOTAL_BUDGET_BYTES } from '../utils/pdfImportSize.ts'
 import { PREVIEW_MAX_DIMENSION_PX } from '../utils/pdfPageSelection.ts'
 import { closePdfDocument, openPdfDocument, renderPdfPages } from '../utils/pdfToImages.ts'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport.ts'
@@ -25,6 +27,49 @@ const PAGE_GAP_PX = 40
 
 /** Cancelling the page selection dialog is not an error, so it never shows a toast. */
 class PdfImportCancelled extends Error {}
+
+/**
+ * Warning for pages that stayed over their target size even at the lowest
+ * quality and size, naming the limit that set the target.
+ *
+ * @param pages - The pages over the target.
+ * @param target - The target from getPageSizeTarget.
+ */
+function getOversizedPagesMessage(pages: ImportedPageSize[], target: PageSizeTarget): string {
+	const count = pages.length
+	const variables = {
+		count,
+		max: formatMegabytes(target.bytes),
+		pages: pages.map((page) => t('whiteboard', '{page} ({size} MB)', { page: page.pageNumber, size: formatMegabytes(page.byteSize) })).join(', '),
+	}
+
+	switch (target.limit) {
+		case 'admin':
+			return n(
+				'whiteboard',
+				'Page {pages} is larger than the maximum image size of {max} MB set by your administrator, even at the lowest quality. It was imported anyway.',
+				'{count} pages are larger than the maximum image size of {max} MB set by your administrator, even at the lowest quality: {pages}. They were imported anyway.',
+				count,
+				variables,
+			)
+		case 'socket':
+			return n(
+				'whiteboard',
+				'Page {pages} is larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality. It was imported anyway, but others in this whiteboard may not see it.',
+				'{count} pages are larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality: {pages}. They were imported anyway, but others in this whiteboard may not see them.',
+				count,
+				variables,
+			)
+		case 'importBudget':
+			return n(
+				'whiteboard',
+				'Page {pages} is larger than {max} MB, its share of the {total} MB limit for one import, even at the lowest quality. It was imported anyway.',
+				'{count} pages are larger than {max} MB, their share of the {total} MB limit for one import, even at the lowest quality: {pages}. They were imported anyway.',
+				count,
+				{ ...variables, total: formatMegabytes(IMPORT_TOTAL_BUDGET_BYTES) },
+			)
+	}
+}
 
 export function usePdfImport() {
 	const { excalidrawAPI } = useExcalidrawStore(useShallow((state) => ({
@@ -100,7 +145,8 @@ export function usePdfImport() {
 			}
 			showProgress(0)
 
-			const { pages } = await renderPdfPages(handle, range, showProgress)
+			const sizeTarget = getPageSizeTarget(getMaxImageSizeBytes(), pagesToRender)
+			const { pages } = await renderPdfPages(handle, range, showProgress, undefined, sizeTarget.bytes)
 
 			toastState.current?.hideToast()
 
@@ -144,10 +190,16 @@ export function usePdfImport() {
 			// Pages are sized by paper format and can be much larger than the viewport.
 			excalidrawAPI.scrollToContent(centeredElements, { fitToViewport: true, animate: true })
 
-			showSuccess(t('whiteboard', 'Imported {count} PDF pages from "{name}".', {
+			showSuccess(n('whiteboard', 'Imported {count} PDF page from "{name}".', 'Imported {count} PDF pages from "{name}".', pages.length, {
 				count: pages.length,
 				name: fileName,
 			}))
+
+			// Pages are never dropped for their size, so tell the user afterwards.
+			const { oversizedPages } = getImportSizeReport(pages, sizeTarget.bytes)
+			if (oversizedPages.length > 0) {
+				showWarning(getOversizedPagesMessage(oversizedPages, sizeTarget), { timeout: -1 })
+			}
 		} catch (error) {
 			toastState.current?.hideToast()
 			if (!(error instanceof PdfImportCancelled)) {
