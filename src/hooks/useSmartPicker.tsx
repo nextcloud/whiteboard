@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+
 import { useCallback } from 'react'
 import { mdiSlashForwardBox } from '@mdi/js'
 import { t } from '@nextcloud/l10n'
@@ -25,7 +27,7 @@ export function useSmartPicker() {
 			excalidrawAPI!.getAppState(),
 		)
 
-		const elements = excalidrawAPI!
+		const elements: ExcalidrawElement[] = excalidrawAPI!
 			.getSceneElementsIncludingDeleted()
 			.slice()
 
@@ -44,7 +46,7 @@ export function useSmartPicker() {
 			opacity: 100,
 			width: 400,
 			height: 200,
-			angle: 0,
+			angle: 0 as ExcalidrawElement['angle'],
 			seed: 0,
 			version: 0,
 			versionNonce: 0,
@@ -53,9 +55,10 @@ export function useSmartPicker() {
 			frameId: null,
 			boundElements: null,
 			updated: 0,
+			created: Date.now(),
+			index: null,
 			locked: false,
 			type: 'embeddable',
-			validated: true,
 		})
 
 		excalidrawAPI!.updateScene({ elements })

@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { mdiCommentOutline, mdiAccount } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
-import { viewportCoordsToSceneCoords, convertToExcalidrawElements, newElementWith } from '@nextcloud/excalidraw'
+import { CaptureUpdateAction, viewportCoordsToSceneCoords, convertToExcalidrawElements, newElementWith } from '@nextcloud/excalidraw'
 import { generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { CommentPopover } from '../components/CommentPopover'
@@ -61,7 +61,7 @@ function generateId(): string {
 	return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
-function isCommentElement(element: unknown): element is CommentElementData {
+function isCommentElement<T>(element: T): element is T & CommentElementData {
 	if (typeof element !== 'object' || element === null) return false
 	const el = element as Record<string, unknown>
 
@@ -304,13 +304,13 @@ export function useComment(props?: UseCommentProps) {
 		if (!excalidrawAPI) return
 
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
-		const updatedElements = elements.map((el: unknown) =>
+		const updatedElements = elements.map((el) =>
 			isCommentElement(el) && el.customData?.commentThread?.id === threadId
-				? { ...el, isDeleted: true }
+				? newElementWith(el, { isDeleted: true })
 				: el,
 		)
 
-		excalidrawAPI.updateScene({ elements: updatedElements })
+		excalidrawAPI.updateScene({ elements: updatedElements, captureUpdate: CaptureUpdateAction.NEVER })
 	}, [excalidrawAPI])
 
 	const cleanupEmptyThreads = useCallback(() => {
@@ -337,7 +337,7 @@ export function useComment(props?: UseCommentProps) {
 			return el
 		})
 
-		excalidrawAPI.updateScene({ elements: updatedElements })
+		excalidrawAPI.updateScene({ elements: updatedElements, captureUpdate: CaptureUpdateAction.NEVER })
 	}, [excalidrawAPI])
 
 	const updateThreadPosition = useCallback((threadId: string, x: number, y: number) => {

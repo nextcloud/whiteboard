@@ -20,6 +20,11 @@ vi.mock('@nextcloud/dialogs', () => ({
 	showError: vi.fn(),
 }))
 
+vi.mock('@nextcloud/excalidraw', () => ({
+	CaptureUpdateAction: { NEVER: 'NEVER' },
+	newElementWith: (element, updates) => ({ ...element, ...updates, version: element.version + 1, versionNonce: element.versionNonce + 1 }),
+}))
+
 describe('tableLocking utilities', () => {
 	describe('isLockExpired', () => {
 		it('should return true for undefined lock', () => {
@@ -88,6 +93,8 @@ describe('tableLocking utilities', () => {
 			expect(mockAPI.updateScene).toHaveBeenCalledTimes(1)
 			const updateCall = mockAPI.updateScene.mock.calls[0][0]
 			expect(updateCall.elements[0].customData.tableLock).toEqual(lock)
+			// out of the undo history, so undo cannot bring back an old lock
+			expect(updateCall.captureUpdate).toBe('NEVER')
 		})
 
 		it('should clear lock on element when lock is undefined', () => {

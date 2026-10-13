@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.0-beta.1
+
+### Changed
+- Update Excalidraw to the current upstream version, with sticky notes, the reworked toolbar and viewport navigation, by @grnd-alt and @hweihwang [#1161](https://github.com/nextcloud/whiteboard/pull/1161)
+
+### Upgrade notes
+- Do not downgrade to Whiteboard 2.x once boards contain elements that only 3.0 knows, such as sticky notes. Whiteboard 2.x cannot read them and drops them when it saves.
+
 ## 2.1.1
 
 ### Fixed

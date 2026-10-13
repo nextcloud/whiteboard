@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { AppState } from '@excalidraw/excalidraw/types/types'
+import type { AppState } from '@nextcloud/excalidraw/types'
 
 const NON_TRANSFERRED_KEYS: Array<keyof AppState> = [
 	'collaborators',
@@ -13,6 +13,8 @@ const NON_TRANSFERRED_KEYS: Array<keyof AppState> = [
 	'height',
 	'offsetTop',
 	'offsetLeft',
+	// transient search results, stored by older versions in a format the editor cannot render
+	'searchMatches',
 ]
 
 export function sanitizeAppStateForSync(state: Partial<AppState> | AppState | null | undefined): Partial<AppState> {

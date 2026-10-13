@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { LibraryItems } from '@nextcloud/excalidraw/types'
 import type { LibraryEntry } from '../hooks/useLibraryCatalog.ts'
 import type { LibraryRef } from '../stores/useWhiteboardConfigStore.ts'
 

@@ -11,7 +11,7 @@ import { translate as t } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
-import type { ExcalidrawImperativeAPI, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawImperativeAPI, LibraryItems, SocketId } from '@nextcloud/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
 import { useThemeHandling } from './hooks/useThemeHandling'
@@ -48,7 +48,7 @@ import { useElementCreatorTracking } from './hooks/useElementCreatorTracking'
 import { useFollowedUser } from './hooks/useFollowedUser'
 import { CreatorDisplay } from './components/CreatorDisplay'
 import { useCreatorDisplayStore } from './stores/useCreatorDisplayStore'
-import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 import type { ElementCreatorInfo } from './types/whiteboard'
 import { VersionPreviewBanner } from './components/VersionPreviewBanner'
 import { useVersionPreview } from './hooks/useVersionPreview'
@@ -230,6 +230,7 @@ export default function App({
 	// Voting
 	const { startVoting, vote, endVoting } = useVoting()
 	const votings = useCollaborationStore(state => state.votings)
+	const followedUserId = useCollaborationStore((state) => state.followedUserId)
 
 	useHandleLibrary({
 		excalidrawAPI,
@@ -574,7 +575,7 @@ export default function App({
 
 		if (isElementLink(link) && !isNewTab && !isNewWindow) {
 			event.preventDefault()
-			excalidrawAPI?.scrollToContent(link)
+			excalidrawAPI?.setViewport({ target: link })
 			return
 		}
 
@@ -675,6 +676,14 @@ export default function App({
 		return el
 	}
 
+	// The editor only highlights and toggles follow mode for the user the host reports
+	const userToFollow = followedUserId
+		? {
+				socketId: followedUserId as SocketId,
+				username: excalidrawAPI?.getAppState().collaborators.get(followedUserId as SocketId)?.username ?? '',
+			}
+		: null
+
 	const handleDuplicate = (
 		nextElements: readonly ExcalidrawElement[],
 		previousElements: readonly ExcalidrawElement[],
@@ -699,7 +708,8 @@ export default function App({
 					renderEmbeddable={Embeddable}
 					beforeElementCreated={beforeElementCreated}
 					onDuplicate={handleDuplicate}
-					excalidrawAPI={onExcalidrawAPI}
+					onExcalidrawAPI={onExcalidrawAPI}
+					userToFollow={userToFollow}
 					initialData={initialDataPromise}
 					generateIdForFile={generateIdForFile}
 					onPointerUpdate={onPointerUpdate}
