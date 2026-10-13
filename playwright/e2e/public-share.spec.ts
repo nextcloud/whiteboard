@@ -178,6 +178,7 @@ test('public share loads viewer in read only mode', async ({ page, browser }) =>
 		return null
 	})) ?? `${boardName}.whiteboard`
 
+	const fileId = Number(await fileRow.getAttribute('data-cy-files-list-row-fileid'))
 	const shareUrl = await createPublicShareLink(page, storedName)
 
 	// Open the share link in a clean context to mimic an external visitor
@@ -201,15 +202,12 @@ test('public share loads viewer in read only mode', async ({ page, browser }) =>
 	await sharePage.goto(shareUrl)
 	await waitForCanvas(sharePage)
 
-	const { fileId, jwt } = await sharePage.evaluate(() => {
+	const jwt = await sharePage.evaluate(() => {
 		try {
 			const load = (window as any).OCP?.InitialState?.loadState
-			return {
-				fileId: load ? Number(load('whiteboard', 'file_id')) : null,
-				jwt: load ? String(load('whiteboard', 'jwt') || '') : null,
-			}
+			return load ? String(load('whiteboard', 'jwt') || '') : null
 		} catch {
-			return { fileId: null, jwt: null }
+			return null
 		}
 	})
 

@@ -822,7 +822,7 @@
   },
   "src/main.ts": {
     "import-extensions/extensions": {
-      "count": 5
+      "count": 4
     }
   },
   "src/services/ai.ts": {

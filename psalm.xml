@@ -8,9 +8,6 @@
 		errorBaseline="tests/psalm-baseline.xml"
 		phpVersion="8.1"
 >
-	<stubs>
-		<file name="tests/stub.phpstub" preloadClasses="true"/>
-	</stubs>
 	<projectFiles>
 		<directory name="lib" />
 		<ignoreFiles>

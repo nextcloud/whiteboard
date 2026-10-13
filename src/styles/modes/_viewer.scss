@@ -10,6 +10,20 @@
 	top: 0;
 }
 
+// Nextcloud 36 and up: the viewer centres the element a handler renders and
+// leaves it to size itself, so the element takes the space it is given and
+// the board fills it, rather than reaching under the old viewer's header
+whiteboard-viewer {
+	display: block;
+	position: relative;
+	width: 100%;
+	height: 100%;
+
+	> .whiteboard {
+		height: 100%;
+	}
+}
+
 .whiteboard.whiteboard-viewer__embedding {
 	position: relative;
 	height: 100%;
@@ -37,17 +51,5 @@
 		top: 0;
 		bottom: 0;
 		inset-inline: 0;
-	}
-}
-
-.viewer--split {
-	.whiteboard.viewer__file--active {
-		width: 100%;
-		max-width: none;
-
-		.App,
-		.excalidraw-wrapper {
-			width: 100%;
-		}
 	}
 }

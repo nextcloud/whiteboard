@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { Buffer } from 'buffer'
 import { expect, type Page } from '@playwright/test'
 import { test } from '../support/fixtures/random-user'
 import {
@@ -11,7 +10,6 @@ import {
 	captureBoardAuthFromSave,
 	createWhiteboard,
 	fetchBoardContent,
-	getBoardAuth,
 	openFilesApp,
 	resolveStoredFileName,
 	waitForCanvas,
@@ -157,35 +155,12 @@ const prepareVersionScenario = async (
 
 const openWhiteboardInViewer = async (
 	page: Page,
-	options: { fileId: number, fileName: string, source?: string | null, fileVersion?: string | null },
+	options: { fileName: string, fileVersion: string },
 ) => {
-	const filePath = options.fileName.startsWith('/') ? options.fileName : `/${options.fileName}`
-	await page.waitForFunction(() => Boolean((window as any).OCA?.Viewer?.openWith), { timeout: 10000 })
-	await page.evaluate(({ fileId, filePathValue, fileName, source, fileVersion }) => {
-		const viewer = (window as any).OCA?.Viewer
-		if (!viewer?.openWith) {
-			throw new Error('Viewer openWith unavailable')
-		}
-		viewer.openWith('whiteboard', {
-			fileInfo: {
-				fileid: Number(fileId),
-				filename: filePathValue,
-				basename: fileName,
-				source: source ?? null,
-				fileVersion: fileVersion ?? null,
-				mime: 'application/vnd.excalidraw+json',
-				size: 0,
-				type: 'file',
-			},
-			enableSidebar: false,
-		})
-	}, {
-		fileId: options.fileId,
-		filePathValue: filePath,
-		fileName: options.fileName,
-		source: options.source ?? null,
-		fileVersion: options.fileVersion ?? null,
-	})
+	await page.locator(`[data-cy-files-list-row-name="${options.fileName}"]`).click({ button: 'right' })
+	await page.getByRole('menuitem', { name: /details/i }).first().click()
+	await page.getByRole('tab', { name: 'Versions' }).click()
+	await page.locator(`.version[data-files-versions-version="${options.fileVersion}"] a`).click()
 }
 
 test.beforeEach(async ({ page }) => {
@@ -208,9 +183,7 @@ test('version preview banner shows and exits to live board', async ({
 		updatedText,
 	})
 	await openWhiteboardInViewer(page, {
-		fileId: baseAuth.fileId,
 		fileName: storedName,
-		source: versionEntry.versionSource,
 		fileVersion: versionEntry.versionId,
 	})
 	await waitForCanvas(page)
@@ -243,9 +216,7 @@ test('restore version replaces current content', async ({
 		updatedText,
 	})
 	await openWhiteboardInViewer(page, {
-		fileId: baseAuth.fileId,
 		fileName: storedName,
-		source: versionEntry.versionSource,
 		fileVersion: versionEntry.versionId,
 	})
 	await waitForCanvas(page)
@@ -265,72 +236,4 @@ test('restore version replaces current content', async ({
 		timeout: 30000,
 		intervals: [500],
 	}).not.toContain(updatedText)
-})
-
-test('version preview params still load board content', async ({
-	page,
-	user,
-}) => {
-	test.setTimeout(90000)
-	const boardName = `Version preview ${Date.now()}`
-
-	await createWhiteboard(page, { name: boardName })
-	await addTextElement(page, 'Live content')
-
-	const resolveAuth = async () => {
-		try {
-			return await getBoardAuth(page)
-		} catch {
-			const { fileId, jwt } = await captureBoardAuthFromSave(page, {
-				containsText: 'Live content',
-			})
-			return { fileId, jwt }
-		}
-	}
-	const baseAuth = await resolveAuth()
-	await openFilesApp(page)
-	const storedName = await resolveStoredFileName(page, boardName)
-
-	const versionSource = `/remote.php/dav/files/${user.userId}/${storedName}`
-	const params = new URLSearchParams({
-		source: versionSource,
-		fileVersion: '1.0',
-	})
-	const origin = new URL(await page.url()).origin
-	const previewUrl = `${origin}/index.php/apps/files?${params.toString()}`
-
-	await page.goto(previewUrl)
-	const escapedName = storedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-	const row = page.getByRole('row', { name: new RegExp(escapedName, 'i') })
-	await expect(row).toBeVisible({ timeout: 30000 })
-	await openWhiteboardInViewer(page, {
-		fileId: baseAuth.fileId,
-		fileName: storedName,
-		source: versionSource,
-		fileVersion: '1.0',
-	})
-	await waitForCanvas(page)
-
-	const tokenResponse = await page.request.get(
-		`apps/whiteboard/${baseAuth.fileId}/token`,
-	)
-	expect(tokenResponse.ok()).toBeTruthy()
-	const token = (await tokenResponse.json()).token
-
-	const previewAuth = { fileId: baseAuth.fileId, jwt: token }
-	const payload = JSON.parse(
-		Buffer.from(token.split('.')[1], 'base64').toString(),
-	)
-	expect(payload?.isFileReadOnly).toBeFalsy()
-
-	await expect
-		.poll(
-			async () =>
-				JSON.stringify(await fetchBoardContent(page, previewAuth)),
-			{
-				timeout: 20000,
-				intervals: [500],
-			},
-		)
-		.toContain('Live content')
 })

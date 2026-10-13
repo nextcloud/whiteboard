@@ -9,8 +9,9 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Listener;
 
-use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\Service\ConfigService;
+use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent;
+use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
@@ -18,7 +19,7 @@ use OCP\IGroupManager;
 use OCP\IUserSession;
 use OCP\Util;
 
-/** @template-implements IEventListener<LoadViewer|Event> */
+/** @template-implements IEventListener<BeforeTemplateRenderedEvent|Event> */
 class LoadViewerListener implements IEventListener {
 	public function __construct(
 		private IInitialState $initialState,
@@ -30,12 +31,14 @@ class LoadViewerListener implements IEventListener {
 
 	#[\Override]
 	public function handle(Event $event): void {
-		if (!($event instanceof LoadViewer)) {
+		// The viewer is on every page, nothing on the error page opens a file.
+		// Only registers the handler: the board loads when a whiteboard opens.
+		if (!($event instanceof BeforeTemplateRenderedEvent)
+			|| $event->getResponse()->getRenderAs() === TemplateResponse::RENDER_AS_ERROR) {
 			return;
 		}
 
-		Util::addScript('whiteboard', 'whiteboard-main');
-		Util::addStyle('whiteboard', 'whiteboard-main');
+		Util::addInitScript('whiteboard', 'whiteboard-viewer');
 
 		$this->initialState->provideInitialState(
 			'collabBackendUrl',

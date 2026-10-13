@@ -25,11 +25,6 @@
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
   </file>
-  <file src="lib/Listener/BeforeTemplateRenderedListener.php">
-    <PossiblyUnusedMethod>
-      <code><![CDATA[__construct]]></code>
-    </PossiblyUnusedMethod>
-  </file>
   <file src="lib/Listener/LoadViewerListener.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>

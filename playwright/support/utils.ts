@@ -186,55 +186,6 @@ export async function openWhiteboardFromFiles(page: Page, name: string, options:
 			|| nested?.getAttribute('data-id')
 			|| null
 	})
-	const resolvedFileName = await entry.evaluate<string | null>((row) => {
-		const element = row as HTMLElement
-		const direct = element.getAttribute('data-cy-files-list-row-name')
-			|| element.getAttribute('data-entryname')
-			|| element.getAttribute('data-file')
-		if (direct) {
-			return direct
-		}
-		const ariaLabel = element.getAttribute('aria-label') || ''
-		const ariaMatch = ariaLabel.match(/file \"([^\"]+)\"/)
-		if (ariaMatch?.[1]) {
-			return ariaMatch[1]
-		}
-		const text = element.textContent || ''
-		const textMatch = text.match(/([\w\s.-]+\.(whiteboard|excalidraw))/i)
-		if (textMatch?.[1]) {
-			return textMatch[1]
-		}
-		return null
-	})
-
-	const openViaViewer = async () => {
-		const fileNameToOpen = resolvedFileName || name
-		if (!fileNameToOpen) {
-			return false
-		}
-		const normalizedDir = activeDir && activeDir !== '/' ? activeDir.replace(/\/$/, '') : ''
-		const filePath = normalizedDir ? `${normalizedDir}/${fileNameToOpen}` : `/${fileNameToOpen}`
-		await page.waitForFunction(() => Boolean((window as any).OCA?.Viewer), { timeout: 10000 }).catch(() => {})
-		const result = await page.evaluate(({ path }) => {
-			const viewer = (window as any).OCA?.Viewer
-			if (!viewer) {
-				return { ok: false, reason: 'viewer-missing' }
-			}
-			const handlers = viewer.availableHandlers || []
-			const hasWhiteboard = Array.isArray(handlers) && handlers.some((handler) => handler?.id === 'whiteboard')
-			if (viewer.openWith && hasWhiteboard) {
-				viewer.openWith('whiteboard', { path })
-				return { ok: true }
-			}
-			if (viewer.open) {
-				viewer.open({ path })
-				return { ok: true }
-			}
-			return { ok: false, reason: 'open-missing' }
-		}, { path: filePath })
-		return Boolean(result?.ok)
-	}
-
 	const nameLink = entry.locator('[data-cy-files-list-row-name-link]').first()
 	if (await nameLink.count()) {
 		await nameLink.click()
@@ -264,15 +215,6 @@ export async function openWhiteboardFromFiles(page: Page, name: string, options:
 		try {
 			await waitForCanvas(page)
 		} catch (retryError) {
-			const viewerOpened = await openViaViewer()
-			if (viewerOpened) {
-				try {
-					await waitForCanvas(page)
-					return
-				} catch {
-					// fallback below
-				}
-			}
 			const fallbackFileId = resolvedFileId || await resolveFileIdByDav(page, name)
 			if (!fallbackFileId) {
 				throw retryError
