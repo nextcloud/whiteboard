@@ -20,6 +20,7 @@ import logger from '../utils/logger'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 import { generateUrl } from '@nextcloud/router'
+import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
 
 type RestoredSnapshot = {
 	elements: ExcalidrawElement[]
@@ -332,6 +333,7 @@ export function useVersionPreview({
 							appState: sanitizedAppState,
 							scrollToContent,
 						},
+						schemaVersion: SCENE_SCHEMA_VERSION,
 					}),
 				})
 

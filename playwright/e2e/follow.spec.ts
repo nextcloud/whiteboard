@@ -152,9 +152,31 @@ test('following a collaborator requests viewport sync', async ({ page, browser }
 		;(window as any).__whiteboardTestHooks.collaborationStore.setState({ followedUserId: userId })
 	}, ownerUserId)
 	await openFilesApp(page)
-	await expect.poll(() => followerPage.evaluate(() => {
+	const followedUserId = () => followerPage.evaluate(() => {
 		return (window as any).__whiteboardTestHooks.collaborationStore.getState().followedUserId
-	}), { timeout: 20000, intervals: [500] }).toBeNull()
+	})
+	await expect.poll(followedUserId, { timeout: 20000, intervals: [500] }).toBeNull()
+
+	// also when the followed user leaves while the follower is disconnected
+	await openWhiteboardFromFiles(page, storedName)
+	await waitForCanvas(page, { timeout: 30000 })
+	await expect.poll(() => followerPage.evaluate((userId) => {
+		const api = (window as any).__whiteboardTestHooks?.excalidrawStore?.getState().excalidrawAPI
+		return Boolean(api?.getAppState().collaborators.has(userId))
+	}, ownerUserId), { timeout: 20000, intervals: [500] }).toBe(true)
+	await followerPage.evaluate((userId) => {
+		const store = (window as any).__whiteboardTestHooks.collaborationStore
+		store.setState({ followedUserId: userId })
+		store.getState().socket.io.reconnection(false)
+		store.getState().socket.io.engine.close()
+	}, ownerUserId)
+	await openFilesApp(page)
+	await followerPage.evaluate(() => {
+		const { socket } = (window as any).__whiteboardTestHooks.collaborationStore.getState()
+		socket.io.reconnection(true)
+		socket.connect()
+	})
+	await expect.poll(followedUserId, { timeout: 20000, intervals: [500] }).toBeNull()
 
 	await followerPage.close()
 	await followerContext.close()

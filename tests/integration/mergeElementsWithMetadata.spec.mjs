@@ -7,8 +7,12 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@nextcloud/excalidraw', () => ({
 	reconcileElements: (localElements, remoteElements) => {
+		const localById = new Map(localElements.map((element) => [element.id, element]))
 		const remoteIds = new Set(remoteElements.map((element) => element.id))
-		return [...remoteElements, ...localElements.filter((element) => !remoteIds.has(element.id))]
+		return [
+			...remoteElements.map((element) => (localById.get(element.id)?.version > element.version ? localById.get(element.id) : element)),
+			...localElements.filter((element) => !remoteIds.has(element.id)),
+		]
 	},
 }))
 
@@ -87,5 +91,24 @@ describe('creator metadata reconciliation', () => {
 		expect(merged.customData.creator.uid).toBe('alice')
 		expect(merged.customData.creatorProof).toBe('proof-alice')
 		expect(merged.customData.tableLock.uid).toBe('alice')
+	})
+})
+
+describe('table metadata reconciliation', () => {
+	const local = { id: 'table', version: 3, customData: { isTable: true, tableHtml: '<table>new</table>' } }
+	const remote = { id: 'table', version: 2, customData: { isTable: true, tableHtml: '<table>old</table>', tableLock: { uid: 'bob' } } }
+
+	it('keeps the table data of a newer local element', () => {
+		const [merged] = mergeElementsWithMetadata([local], [remote], {})
+
+		expect(merged.customData.tableHtml).toBe('<table>new</table>')
+		expect(merged.customData.tableLock).toBeUndefined()
+	})
+
+	it('takes the table data of a newer remote element', () => {
+		const [merged] = mergeElementsWithMetadata([{ ...local, version: 1 }], [remote], {})
+
+		expect(merged.customData.tableHtml).toBe('<table>old</table>')
+		expect(merged.customData.tableLock.uid).toBe('bob')
 	})
 })

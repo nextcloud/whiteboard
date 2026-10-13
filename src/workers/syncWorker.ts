@@ -7,6 +7,8 @@ import { db } from '../database/db'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import type { WorkerInboundMessage, WorkerOutboundMessage } from '../types/protocol'
 
+import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
+
 const ctx: Worker = self as unknown as Worker
 
 let performance: Performance
@@ -110,6 +112,7 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 			headers,
 			body: JSON.stringify({
 				data: { elements, files: files || {} },
+				schemaVersion: SCENE_SCHEMA_VERSION,
 			}),
 		})
 
