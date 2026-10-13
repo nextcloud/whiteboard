@@ -15,8 +15,8 @@ import { useShallow } from 'zustand/react/shallow'
 import logger from '../utils/logger'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { saveSceneOnUnload } from '../utils/saveSceneOnUnload.ts'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { AppState, BinaryFiles } from '@nextcloud/excalidraw/types'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { WorkerInboundMessage } from '../types/protocol'
 import {
@@ -161,8 +161,8 @@ export function useSync() {
 			return
 		}
 
-		const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-		const files = excalidrawAPI.getFiles() as BinaryFiles
+		const elements = excalidrawAPI!.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+		const files = excalidrawAPI!.getFiles() as BinaryFiles
 		const sceneKey = computeSceneKey(elements, files)
 		if (sceneKey === useSyncStore.getState().savedSceneKey) {
 			return

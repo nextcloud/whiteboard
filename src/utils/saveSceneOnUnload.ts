@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
-import type { BinaryFiles } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { BinaryFiles } from '@nextcloud/excalidraw/types'
 
 // Browsers reject keepalive requests above 64 KiB
 const KEEPALIVE_BODY_LIMIT = 64 * 1024

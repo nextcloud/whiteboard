@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElementSkeleton } from '@nextcloud/excalidraw/dist/types/excalidraw/data/transform'
-import type { ExcalidrawTextElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawElementSkeleton } from '@nextcloud/excalidraw/element/transform'
+import type { ExcalidrawTextElement } from '@nextcloud/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 import type { Voting, VotingOption } from '../types'
 
 import { getCurrentUser } from '@nextcloud/auth'

@@ -4,8 +4,8 @@
  */
 
 import { useCallback } from 'react'
-import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 import type { ElementCreatorInfo, WhiteboardElement } from '../types/whiteboard'
 
 interface UseElementCreatorTrackingProps {

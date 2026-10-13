@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { FileId } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
-import type { BinaryFileData, DataURL, ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { FileId } from '@nextcloud/excalidraw/element/types'
+import type { BinaryFileData, DataURL, ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
+import type { FlatEmoji } from 'svgmoji'
 
 import { convertToExcalidrawElements, newElementWith, viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { imagePath } from '@nextcloud/router'
@@ -37,7 +38,7 @@ export function useEmojiPicker() {
 			return
 		}
 
-		const notomoji = new Notomoji({ data: EmojiData, type: 'all' })
+		const notomoji = new Notomoji({ data: EmojiData as FlatEmoji[], type: 'all' })
 		let emojiObj = notomoji.find(emoji.native)
 
 		if (!emojiObj) {

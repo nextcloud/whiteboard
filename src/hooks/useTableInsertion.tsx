@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawElement, ExcalidrawImageElement } from '@nextcloud/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 
 import { mdiTable } from '@mdi/js'
 import { viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
@@ -97,7 +97,7 @@ export function useTableInsertion() {
 			const newImageElement = await convertHtmlTableToImage(currentAPI, tableData.html)
 
 			// Replace the existing element with the updated one while preserving position
-			const elements = currentAPI.getSceneElementsIncludingDeleted().slice()
+			const elements: ExcalidrawElement[] = currentAPI.getSceneElementsIncludingDeleted().slice()
 			const elementIndex = elements.findIndex((el) => el.id === tableElement.id)
 			if (elementIndex !== -1) {
 				const currentElement = elements[elementIndex]
@@ -167,7 +167,7 @@ export function useTableInsertion() {
 			const imageElement = await convertHtmlTableToImage(currentAPI, tableData.html)
 
 			// Add the image element to the scene at the viewport center
-			const elements = currentAPI.getSceneElementsIncludingDeleted().slice()
+			const elements: ExcalidrawElement[] = currentAPI.getSceneElementsIncludingDeleted().slice()
 			const movedElements = moveElementsToViewport(
 				[imageElement],
 				viewportCoordsToSceneCoords(getViewportCenterPoint(), currentAPI.getAppState()),

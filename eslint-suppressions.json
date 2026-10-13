@@ -984,9 +984,6 @@
     },
     "import-extensions/extensions": {
       "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
     }
   },
   "src/utils/mobileInterface.ts": {

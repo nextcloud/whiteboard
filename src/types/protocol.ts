@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { AppState, BinaryFiles } from '@nextcloud/excalidraw/types'
 
 export type WorkerInboundMessage
 	= { type: 'INIT' }

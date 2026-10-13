@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { useEffect } from 'react'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 
 const CONTEXT_MENU_FILTERS: Record<string, string[]> = {
 	text: ['flipHorizontal', 'flipVertical'],

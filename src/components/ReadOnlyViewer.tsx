@@ -6,12 +6,12 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { t } from '@nextcloud/l10n'
 import { Excalidraw as ExcalidrawComponent, restoreElements } from '@nextcloud/excalidraw'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 import type {
 	AppState,
 	BinaryFiles,
-	ExcalidrawElement,
 	ExcalidrawInitialDataState,
-} from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+} from '@nextcloud/excalidraw/types'
 
 import '@excalidraw/excalidraw/index.css'
 

@@ -6,7 +6,7 @@
 import { createRoot, type Root } from 'react-dom/client'
 import { Icon } from '@mdi/react'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 
 interface ToolbarButtonConfig {
 	class: string

@@ -13,7 +13,7 @@ import { PresentationMenuItem } from './Presentation'
 import { CreatorMenuItem } from './CreatorMenuItem'
 import { t } from '@nextcloud/l10n'
 import { useShallow } from 'zustand/react/shallow'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import type { RecordingHookState } from '../types/recording'
 import type { PresentationState } from '../types/presentation'
@@ -179,7 +179,7 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 
 	return (
 		<MainMenu>
-			<MainMenu.DefaultItems.ToggleTheme />
+			<MainMenu.DefaultItems.ToggleTheme allowSystemTheme={false} />
 			<MainMenu.DefaultItems.ChangeCanvasBackground />
 			{!isDirectEditing && <>
 				<MainMenu.Item

@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { createResolvablePromise } from '../utils/createResolvablePromise'
-import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawInitialDataState } from '@nextcloud/excalidraw/types'
 
 type InitialDataPromise = ReturnType<typeof createResolvablePromise>
 

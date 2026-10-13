@@ -62,6 +62,54 @@ class WhiteboardContentServiceTest extends TestCase {
 		], $this->actor());
 	}
 
+	public function testSaveWithUnchangedElementVersionsWritesNothing(): void {
+		$file = $this->mockFileWithContent([
+			'elements' => [[
+				'id' => 'arrow',
+				'type' => 'arrow',
+				'version' => 7,
+				'versionNonce' => 42,
+				'startBinding' => ['elementId' => 'box', 'focus' => 0.1, 'gap' => 4],
+			]],
+			'files' => [],
+			'scrollToContent' => true,
+		]);
+		$file->expects($this->never())->method('putContent');
+
+		$this->service()->updateContent($file, [
+			'data' => [
+				'elements' => [[
+					'id' => 'arrow',
+					'type' => 'arrow',
+					'version' => 7,
+					'versionNonce' => 42,
+					'startBinding' => ['elementId' => 'box', 'fixedPoint' => [0.5, 1], 'mode' => 'orbit'],
+				]],
+				'files' => [],
+				'scrollToContent' => true,
+			],
+		], $this->actor());
+	}
+
+	public function testSaveWithChangedElementVersionWrites(): void {
+		$file = $this->mockFileWithContent([
+			'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 7, 'versionNonce' => 42, 'width' => 10]],
+			'files' => [],
+			'scrollToContent' => true,
+		]);
+		$captured = $this->captureWrite($file);
+
+		$this->service()->updateContent($file, [
+			'data' => [
+				'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 8, 'versionNonce' => 43, 'width' => 20]],
+				'files' => [],
+				'scrollToContent' => true,
+			],
+		], $this->actor());
+
+		$this->assertSame(20, $captured->data['elements'][0]['width']);
+	}
+
 	public function testValidLibraryRefIsPersisted(): void {
 		$file = $this->mockEmptyFile();
 		$captured = $this->captureWrite($file);
