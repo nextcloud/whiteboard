@@ -48,6 +48,8 @@ class AddContentSecurityPolicyListenerTest extends TestCase {
 			'talk call route' => ['/call/abc123'],
 			'talk call route with index.php' => ['/index.php/call/abc123'],
 			'recording route' => ['/apps/whiteboard/recording/123/alice'],
+			'admin settings section' => ['/settings/admin/whiteboard'],
+			'admin settings section with index.php' => ['/index.php/settings/admin/whiteboard'],
 		];
 	}
 
@@ -72,6 +74,7 @@ class AddContentSecurityPolicyListenerTest extends TestCase {
 			'files post request' => ['/apps/files', 'POST'],
 			'talk post request' => ['/apps/spreed', 'POST'],
 			'files_external app is not files' => ['/apps/files_external'],
+			'other admin settings section' => ['/settings/admin/security'],
 		];
 	}
 
