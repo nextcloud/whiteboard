@@ -29,5 +29,10 @@ export default defineConfig({
 			: [
 				'**/multinode-redis.spec.mjs',
 			],
+		server: {
+			deps: {
+				inline: ['@nextcloud/excalidraw'],
+			},
+		},
 	},
 })

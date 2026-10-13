@@ -143,6 +143,19 @@ test('following a collaborator requests viewport sync', async ({ page, browser }
 		interval: 500,
 	}).toBeGreaterThan(0)
 
+	// following stops when the followed user leaves the board
+	await expect.poll(() => followerPage.evaluate((userId) => {
+		const api = (window as any).__whiteboardTestHooks?.excalidrawStore?.getState().excalidrawAPI
+		return Boolean(api?.getAppState().collaborators.has(userId))
+	}, ownerUserId), { timeout: 20000, intervals: [500] }).toBe(true)
+	await followerPage.evaluate((userId) => {
+		;(window as any).__whiteboardTestHooks.collaborationStore.setState({ followedUserId: userId })
+	}, ownerUserId)
+	await openFilesApp(page)
+	await expect.poll(() => followerPage.evaluate(() => {
+		return (window as any).__whiteboardTestHooks.collaborationStore.getState().followedUserId
+	}), { timeout: 20000, intervals: [500] }).toBeNull()
+
 	await followerPage.close()
 	await followerContext.close()
 })

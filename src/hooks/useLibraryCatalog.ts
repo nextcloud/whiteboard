@@ -6,7 +6,7 @@
 import { useCallback } from 'react'
 import { useJWTStore } from '../stores/useJwtStore'
 import { generateUrl } from '@nextcloud/router'
-import type { LibraryItems } from '@excalidraw/excalidraw/types/types'
+import type { LibraryItems } from '@nextcloud/excalidraw/types'
 import logger from '../utils/logger'
 
 export type LibraryScope = 'personal' | 'org'

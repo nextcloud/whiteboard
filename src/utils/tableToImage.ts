@@ -2,8 +2,8 @@
  * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import type { ExcalidrawImperativeAPI, BinaryFileData, DataURL } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
-import type { FileId, ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI, BinaryFileData, DataURL } from '@nextcloud/excalidraw/types'
+import type { FileId, ExcalidrawImageElement } from '@nextcloud/excalidraw/element/types'
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
 
 // Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)

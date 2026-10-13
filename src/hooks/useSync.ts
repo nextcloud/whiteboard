@@ -14,8 +14,8 @@ import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import logger from '../utils/logger'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { BinaryFiles } from '@nextcloud/excalidraw/types'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { WorkerInboundMessage } from '../types/protocol'
 import {
@@ -174,8 +174,8 @@ export function useSync() {
 				throw new Error('FileId changed during server sync preparation.')
 			}
 
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-			const files = excalidrawAPI.getFiles() as BinaryFiles
+			const elements = excalidrawAPI!.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+			const files = excalidrawAPI!.getFiles() as BinaryFiles
 
 			const message: WorkerInboundMessage = {
 				type: 'SYNC_TO_SERVER',

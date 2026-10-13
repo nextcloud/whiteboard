@@ -5,15 +5,17 @@
 
 /* eslint-disable no-console */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 import type {
 	AppState,
 	BinaryFileData,
 	BinaryFiles,
 	Collaborator,
-	ExcalidrawImageElement,
-} from '@excalidraw/excalidraw/types/types'
+	ExcalidrawImperativeAPI,
+	NormalizedZoomValue,
+	SocketId,
+} from '@nextcloud/excalidraw/types'
 import { restoreElements } from '@nextcloud/excalidraw'
 import { loadState } from '@nextcloud/initial-state'
 import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata'
@@ -53,11 +55,18 @@ export function useCollaboration() {
 		scrollToContent: boolean
 	} | null>(null)
 
-	const { excalidrawAPI } = useExcalidrawStore(
+	const { excalidrawAPI: editorAPI } = useExcalidrawStore(
 		useShallow(state => ({
 			excalidrawAPI: state.excalidrawAPI,
 		})),
 	)
+
+	// Loading the initial scene replaces all elements, so remote updates queue until it is done
+	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null)
+	useEffect(() => {
+		setExcalidrawAPI(null)
+		return editorAPI?.onEvent('editor:initialize', setExcalidrawAPI)
+	}, [editorAPI])
 
 	const { getJWT, clearTokens } = useJWTStore(
 		useShallow(state => ({
@@ -118,14 +127,11 @@ export function useCollaboration() {
 
 				if (currentSocket?.connected && fileId) {
 					// Find image elements with missing file data
-					const missingImages = restoredRemoteElements
-						.filter(el => el.type === 'image'
-							&& (el as ExcalidrawImageElement).fileId
-							&& !currentFiles[(el as ExcalidrawImageElement).fileId])
+					const missingImageIds = restoredRemoteElements
+						.flatMap(el => el.type === 'image' && el.fileId && !currentFiles[el.fileId] ? [el.fileId] : [])
 
 					// Request each missing image
-					missingImages.forEach(el => {
-						const imageId = (el as ExcalidrawImageElement).fileId
+					missingImageIds.forEach(imageId => {
 						console.log(`[Collaboration] Requesting missing image: ${imageId}`)
 						currentSocket.emit('image-get', `${fileId}`, imageId)
 					})
@@ -277,13 +283,13 @@ export function useCollaboration() {
 				console.error('[Collaboration] Failed to get current user ID:', error)
 			}
 
-			const newCollaborators = new Map<string, Collaborator>()
+			const newCollaborators = new Map<SocketId, Collaborator>()
 
 			usersPayload.forEach((payload) => {
 				// Filter out the current user from collaborators list
 				if (payload.user.id !== currentUserId) {
 					// Use persistent user ID as the key for the map
-					newCollaborators.set(payload.user.id, {
+					newCollaborators.set(payload.user.id as SocketId, {
 						id: payload.user.id,
 						username: payload.user.name,
 						pointer: payload.pointer,
@@ -292,6 +298,14 @@ export function useCollaboration() {
 					})
 				}
 			})
+
+			// The editor no longer stops following a collaborator who left the room
+			const { followedUserId } = useCollaborationStore.getState()
+			if (followedUserId
+				&& excalidrawAPI!.getAppState().collaborators.has(followedUserId as SocketId)
+				&& !newCollaborators.has(followedUserId as SocketId)) {
+				useCollaborationStore.setState({ followedUserId: null })
+			}
 
 			excalidrawAPI!.updateScene({ collaborators: newCollaborators })
 			console.log(`[Collaboration] Updated collaborators: ${newCollaborators.size} users online (filtered out current user)`)
@@ -328,13 +342,13 @@ export function useCollaboration() {
 				}
 
 				// Get current collaborators directly from Excalidraw
-				const currentCollaborators = excalidrawAPI.getAppState().collaborators || new Map<string, Collaborator>()
+				const currentCollaborators = excalidrawAPI.getAppState().collaborators || new Map<SocketId, Collaborator>()
 
 				// Create a new collaborators map
-				const updatedCollaborators = new Map<string, Collaborator>(currentCollaborators)
+				const updatedCollaborators = new Map<SocketId, Collaborator>(currentCollaborators)
 
 				// Update or add the collaborator
-				updatedCollaborators.set(payload.user.id, {
+				updatedCollaborators.set(payload.user.id as SocketId, {
 					id: payload.user.id,
 					username: payload.user.name,
 					pointer: payload.pointer,
@@ -432,7 +446,7 @@ export function useCollaboration() {
 						...currentAppState,
 						scrollX: payload.scrollX,
 						scrollY: payload.scrollY,
-						zoom: { value: payload.zoom },
+						zoom: { value: payload.zoom as NormalizedZoomValue },
 					},
 				})
 			} else if (followedUserId || (isPresentationMode && presenterId)) {
@@ -548,9 +562,9 @@ export function useCollaboration() {
 							throw new Error('Missing JWT')
 						}
 						const payload = await fetchWhiteboardSnapshot(fileId, jwt)
-						const restoredElements = restoreElements(payload.elements, null) as ExcalidrawElement[]
+						const restoredElements = restoreElements(payload.elements as ExcalidrawElement[], null) as ExcalidrawElement[]
 						const files = (payload.files || {}) as BinaryFiles
-						const appStatePatch: Partial<AppState> = sanitizeAppStateForSync(payload.appState)
+						const appStatePatch: Partial<AppState> = sanitizeAppStateForSync(payload.appState as Partial<AppState>)
 						const scrollToContent = payload.scrollToContent ?? true
 
 						// Clear pending queue state since we have an authoritative snapshot

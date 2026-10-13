@@ -81,7 +81,7 @@ final class WhiteboardContentService {
 		$canonicalCurrent = $this->canonicalize($current);
 		$canonicalMerged = $this->canonicalize($merged);
 
-		if ($canonicalCurrent === $canonicalMerged) {
+		if ($canonicalCurrent === $canonicalMerged || $this->hasSameElementVersions($canonicalCurrent, $canonicalMerged)) {
 			$this->logger->debug('Skipping whiteboard save because payload matches stored content', [
 				'app' => 'whiteboard',
 				'fileId' => $fileId,
@@ -662,6 +662,35 @@ final class WhiteboardContentService {
 	 *
 	 * @return mixed
 	 */
+	/**
+	 * Excalidraw changes the version and nonce of an element on every edit, so
+	 * equal versions mean an unchanged scene, also when a newer client
+	 * serializes old elements differently (for example upgraded arrow bindings).
+	 *
+	 * @param array<string,mixed> $current
+	 * @param array<string,mixed> $merged
+	 */
+	private function hasSameElementVersions(array $current, array $merged): bool {
+		$versions = static function (array $data): ?array {
+			$list = [];
+			foreach ($data['elements'] ?? [] as $element) {
+				if (!is_array($element) || !is_int($element['version'] ?? null) || !is_int($element['versionNonce'] ?? null)) {
+					return null;
+				}
+				$list[] = [$element['id'] ?? null, $element['version'], $element['versionNonce']];
+			}
+			return $list;
+		};
+
+		$currentVersions = $versions($current);
+		if ($currentVersions === null || $currentVersions !== $versions($merged)) {
+			return false;
+		}
+
+		unset($current['elements'], $merged['elements']);
+		return $current === $merged;
+	}
+
 	private function canonicalize($value) {
 		if (is_array($value)) {
 			if (!$this->isList($value)) {

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import type { Theme } from '@excalidraw/excalidraw/types/types'
+import type { Theme } from '@nextcloud/excalidraw/element/types'
 
 export function useThemeHandling() {
 	const [theme, setTheme] = useState<Theme>('light')

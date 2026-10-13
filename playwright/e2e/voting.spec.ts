@@ -22,7 +22,7 @@ test('Create a voting and add it to the whiteboard', async ({ page }) => {
 			return
 		}
 		await page.getByTestId('main-menu-trigger').click()
-		await page.getByRole('button', { name: 'Votings', exact: true }).click()
+		await page.getByRole('menuitem', { name: 'Votings', exact: true }).click()
 		await expect(startNewVoting).toBeVisible()
 	}
 
