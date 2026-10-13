@@ -15,6 +15,7 @@ use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
+use OCP\Files\IUserFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\Template\ITemplateManager;
 use OCP\IConfig;
@@ -67,7 +68,7 @@ class PickerControllerTest extends TestCase {
 		$templateManager->method('hasTemplateDirectory')->willReturn(true);
 		$templateManager->method('getTemplatePath')->willReturn('Templates/');
 
-		$userFolder = $this->createMock(Folder::class);
+		$userFolder = $this->createMock(interface_exists(IUserFolder::class) ? IUserFolder::class : Folder::class);
 		$userFolder->method('get')->with('Templates/')->willReturn($userTemplates);
 
 		$rootFolder = $this->createMock(IRootFolder::class);

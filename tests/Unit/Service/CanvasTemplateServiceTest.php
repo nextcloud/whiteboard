@@ -13,6 +13,7 @@ use InvalidArgumentException;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
+use OCP\Files\IUserFolder;
 use OCP\Files\Template\ITemplateManager;
 use OCP\IConfig;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -38,7 +39,7 @@ class CanvasTemplateServiceTest extends TestCase {
 		$templateManager->method('getTemplatePath')->willReturn('Templates/');
 
 		$templatesFolder = $this->mockFolder($this->templatesChildren);
-		$userFolder = $this->createMock(Folder::class);
+		$userFolder = $this->createMock(interface_exists(IUserFolder::class) ? IUserFolder::class : Folder::class);
 		$userFolder->method('get')->with('Templates/')->willReturn($templatesFolder);
 
 		$orgCanvasTemplatesFolder = $this->mockFolder($this->orgCanvasTemplates);

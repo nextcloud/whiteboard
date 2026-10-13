@@ -12,6 +12,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('embed whiteboard in another whiteboard', async ({ page }) => {
+	test.skip(process.env.SERVER_VERSION === 'master', 'The Files smart picker and file reference widget do not work with the Nextcloud 36 viewer yet')
 	test.setTimeout(90000)
 	const firstBoardName = `first whiteboard ${Date.now()}`
 	await createWhiteboard(page, { name: firstBoardName })
