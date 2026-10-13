@@ -44,13 +44,23 @@ export const DISPLAY_UNITS_PER_PT = 1440 / A4_LONG_EDGE_PT
  */
 const PAGE_DATAURL_BUDGET_BYTES = 2_500_000
 
-/** How many downscaled re-renders a page over the byte budget gets. */
-export const MAX_BUDGET_RETRIES = 2
+/** The largest page image, in bytes, whose data URL fits PAGE_DATAURL_BUDGET_BYTES. */
+export const MAX_SOCKET_PAGE_BYTES = PAGE_DATAURL_BUDGET_BYTES / 4 * 3
+
+/**
+ * JPEG qualities a page over its byte budget is re-encoded with, in order,
+ * before it is rendered smaller. The first is the default for every page.
+ */
+export const JPEG_QUALITY_STEPS = [0.85, 0.7, 0.55, 0.4]
+
+/** Longer edge, in pixels, below which a page over its byte budget isn't shrunk further. */
+export const MIN_RENDER_DIMENSION_PX = 720
+
+/** How many downscaled re-renders a page over its byte budget gets at most. */
+export const MAX_DOWNSCALE_STEPS = 4
 
 /** Margin on the computed downscale factor, since encoded size only roughly tracks pixel count. */
 export const BUDGET_RETRY_SAFETY_FACTOR = 0.9
-
-const JPEG_QUALITY = 0.85
 
 export interface RenderedPage {
 	dataURL: string
@@ -61,7 +71,14 @@ export interface RenderedPage {
 	height: number
 }
 
+/** A page rendered within a byte budget, and the step of JPEG_QUALITY_STEPS that got it there. */
+export interface BudgetedPage extends RenderedPage {
+	qualityStep: number
+}
+
 export interface PdfPageImage extends RenderedPage {
+	/** Size of the encoded image, in bytes. */
+	byteSize: number
 	/** Width on the board, in scene units. */
 	displayWidth: number
 	/** Height on the board, in scene units. */
@@ -152,6 +169,17 @@ export function getPageDisplaySize(widthPt: number, heightPt: number): { width: 
  */
 export function getBudgetRetryScale(actualBytes: number, budgetBytes: number): number {
 	return Math.sqrt(budgetBytes / actualBytes) * BUDGET_RETRY_SAFETY_FACTOR
+}
+
+/**
+ * Size, in bytes, of the image a base64 data URL encodes.
+ *
+ * @param dataURL - A base64 data URL.
+ */
+export function getDataUrlByteSize(dataURL: string): number {
+	const base64 = dataURL.slice(dataURL.indexOf(',') + 1)
+	const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+	return base64.length / 4 * 3 - padding
 }
 
 export interface PickedEncoding {
@@ -250,7 +278,7 @@ export async function openPdfDocument(pdfData: ArrayBuffer): Promise<PdfDocument
 	}
 }
 
-async function renderPageOnce(page: PDFPageProxy, longerEdgePx: number): Promise<RenderedPage> {
+async function renderPageToCanvas(page: PDFPageProxy, longerEdgePx: number): Promise<HTMLCanvasElement> {
 	const baseViewport = page.getViewport({ scale: 1 })
 	const viewport = page.getViewport({ scale: getPageRenderScale(baseViewport.width, baseViewport.height, longerEdgePx) })
 
@@ -265,49 +293,85 @@ async function renderPageOnce(page: PDFPageProxy, longerEdgePx: number): Promise
 		`Timed out rendering page ${page.pageNumber}.`,
 	)
 
-	const rendered = {
-		...pickSmallerEncoding(
-			canvas.toDataURL('image/png'),
-			canvas.toDataURL('image/jpeg', JPEG_QUALITY),
-		),
-		width: canvas.width,
-		height: canvas.height,
-	}
-
-	// Free the canvas memory right away; iOS Safari reclaims it late.
-	canvas.width = 0
-	canvas.height = 0
-
-	return rendered
+	return canvas
 }
 
 /**
- * Renders a page and, if even the smaller encoding is over budgetBytes,
- * re-renders it smaller up to MAX_BUDGET_RETRIES times. If it still doesn't
- * fit, the smallest version is used and a warning logged.
+ * Renders a page and, while it is over budgetBytes, first re-encodes it as
+ * JPEG with each of JPEG_QUALITY_STEPS from firstQualityStep on, then
+ * renders it smaller at the lowest quality, down to MIN_RENDER_DIMENSION_PX.
+ * If it still doesn't fit, the smallest version is used and a warning logged.
  *
  * @param page - The page to render.
  * @param longerEdgePx - Initial longer edge, in pixels.
  * @param budgetBytes - Maximum data URL length.
+ * @param firstQualityStep - Index into JPEG_QUALITY_STEPS to start at.
  */
-export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: number, budgetBytes: number = PAGE_DATAURL_BUDGET_BYTES): Promise<RenderedPage> {
-	let rendered = await renderPageOnce(page, longerEdgePx)
-	let smallest = rendered
+export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: number, budgetBytes: number = PAGE_DATAURL_BUDGET_BYTES, firstQualityStep = 0): Promise<BudgetedPage> {
+	const lowestQualityStep = JPEG_QUALITY_STEPS.length - 1
+	let edgePx = longerEdgePx
+	let smallest: BudgetedPage | undefined
 
-	for (let retry = 0; retry < MAX_BUDGET_RETRIES && rendered.dataURL.length > budgetBytes; retry++) {
-		const nextEdgePx = Math.max(rendered.width, rendered.height) * getBudgetRetryScale(rendered.dataURL.length, budgetBytes)
-		rendered = await renderPageOnce(page, nextEdgePx)
-		if (rendered.dataURL.length < smallest.dataURL.length) {
-			smallest = rendered
+	for (let downscaleStep = 0; downscaleStep <= MAX_DOWNSCALE_STEPS; downscaleStep++) {
+		const qualityStep = downscaleStep === 0 ? Math.min(firstQualityStep, lowestQualityStep) : lowestQualityStep
+		const atThisSize = await encodePageWithinBudget(page, edgePx, qualityStep, budgetBytes)
+		if (atThisSize.dataURL.length <= budgetBytes) {
+			return atThisSize
+		}
+		if (!smallest || atThisSize.dataURL.length < smallest.dataURL.length) {
+			smallest = atThisSize
+		}
+
+		const renderedEdgePx = Math.max(atThisSize.width, atThisSize.height)
+		edgePx = Math.max(renderedEdgePx * getBudgetRetryScale(atThisSize.dataURL.length, budgetBytes), MIN_RENDER_DIMENSION_PX)
+		if (edgePx >= renderedEdgePx) {
+			break
 		}
 	}
 
-	if (rendered.dataURL.length <= budgetBytes) {
-		return rendered
-	}
+	logger.warn(`[pdfToImages] Page ${page.pageNumber} is still ${smallest!.dataURL.length} bytes at its smallest size and quality (budget ${budgetBytes}); importing it anyway.`)
+	return smallest!
+}
 
-	logger.warn(`[pdfToImages] Page ${page.pageNumber} is still ${smallest.dataURL.length} bytes after ${MAX_BUDGET_RETRIES} downscaled re-renders (budget ${budgetBytes}); importing the smallest version.`)
-	return smallest
+/**
+ * Renders a page once and returns the first encoding, trying JPEG at each
+ * of JPEG_QUALITY_STEPS from firstQualityStep on, that fits budgetBytes, or
+ * else the smallest one.
+ *
+ * @param page - The page to render.
+ * @param longerEdgePx - Longer edge, in pixels.
+ * @param firstQualityStep - Index into JPEG_QUALITY_STEPS to start at.
+ * @param budgetBytes - Maximum data URL length.
+ */
+async function encodePageWithinBudget(page: PDFPageProxy, longerEdgePx: number, firstQualityStep: number, budgetBytes: number): Promise<BudgetedPage> {
+	const canvas = await renderPageToCanvas(page, longerEdgePx)
+
+	try {
+		// PNG doesn't depend on the quality, so it is encoded once per render.
+		const pngDataURL = canvas.toDataURL('image/png')
+		let smallest: BudgetedPage | undefined
+
+		for (let qualityStep = firstQualityStep; qualityStep < JPEG_QUALITY_STEPS.length; qualityStep++) {
+			const encoded: BudgetedPage = {
+				...pickSmallerEncoding(pngDataURL, canvas.toDataURL('image/jpeg', JPEG_QUALITY_STEPS[qualityStep])),
+				width: canvas.width,
+				height: canvas.height,
+				qualityStep,
+			}
+			if (encoded.dataURL.length <= budgetBytes) {
+				return encoded
+			}
+			if (!smallest || encoded.dataURL.length < smallest.dataURL.length) {
+				smallest = encoded
+			}
+		}
+
+		return smallest!
+	} finally {
+		// Free the canvas memory right away; iOS Safari reclaims it late.
+		canvas.width = 0
+		canvas.height = 0
+	}
 }
 
 /**
@@ -322,27 +386,39 @@ export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: n
  * @param maxDimensionPx - Longer edge to render at, in pixels, for previews.
  *   Omitted for the final import, where each page gets
  *   getPageRenderDimension for its paper format.
+ * @param maxPageBytes - Image size, in bytes, each page is compressed and
+ *   then shrunk to fit if possible, on top of the collab server's message
+ *   limit. Pages that still don't fit are returned anyway. Each page starts
+ *   at the JPEG quality that sufficed for the page before it.
  */
 export async function renderPdfPages(
 	handle: PdfDocumentHandle,
 	range: { start: number, end: number },
 	onProgress?: (renderedCount: number, pagesToRender: number, totalPages: number) => void,
 	maxDimensionPx?: number,
+	maxPageBytes: number = Infinity,
 ): Promise<PdfToImagesResult> {
 	const { pdf, totalPages } = handle
+	// Base64 takes 4 characters per 3 bytes.
+	const budgetBytes = Math.min(PAGE_DATAURL_BUDGET_BYTES, maxPageBytes * 4 / 3)
 	const pagesToRender = range.end - range.start + 1
 	const pages: PdfPageImage[] = []
+	// Pages of one document tend to need similar compression, so skip the
+	// qualities the previous page was already too big at.
+	let qualityStep = 0
 
 	for (let pageNumber = range.start; pageNumber <= range.end; pageNumber++) {
 		const page = await pdf.getPage(pageNumber)
 		try {
 			const baseViewport = page.getViewport({ scale: 1 })
 			const longerEdgePx = maxDimensionPx ?? getPageRenderDimension(baseViewport.width, baseViewport.height)
-			const rendered = await renderPageWithinBudget(page, longerEdgePx)
+			const { qualityStep: usedQualityStep, ...rendered } = await renderPageWithinBudget(page, longerEdgePx, budgetBytes, qualityStep)
+			qualityStep = usedQualityStep
 			const display = getPageDisplaySize(baseViewport.width, baseViewport.height)
 
 			pages.push({
 				...rendered,
+				byteSize: getDataUrlByteSize(rendered.dataURL),
 				displayWidth: display.width,
 				displayHeight: display.height,
 				pageNumber,

@@ -16,12 +16,14 @@ import {
 	BUDGET_RETRY_SAFETY_FACTOR,
 	DISPLAY_UNITS_PER_PT,
 	getBudgetRetryScale,
+	getDataUrlByteSize,
 	getPageDisplaySize,
 	getPageRenderDimension,
 	getPageRenderScale,
 	getPdfAssetOptions,
-	MAX_BUDGET_RETRIES,
+	JPEG_QUALITY_STEPS,
 	MAX_RENDER_AREA_PX,
+	MIN_RENDER_DIMENSION_PX,
 	pickSmallerEncoding,
 	RENDER_PX_PER_PT,
 	renderPageWithinBudget,
@@ -41,6 +43,9 @@ const paperSizesFixturePath = fileURLToPath(new URL('./fixtures/paper-sizes.pdf'
 const jpxFixturePath = fileURLToPath(new URL('./fixtures/jpx-image.pdf', import.meta.url))
 const jbig2FixturePath = fileURLToPath(new URL('./fixtures/jbig2-image.pdf', import.meta.url))
 const cjkFixturePath = fileURLToPath(new URL('./fixtures/cjk-no-embedded-font.pdf', import.meta.url))
+
+// One A4 page covered by a noise image, where JPEG beats PNG by far.
+const photoLikeFixturePath = fileURLToPath(new URL('./fixtures/photo-like.pdf', import.meta.url))
 
 // The directory the build copies to dist/pdfjs/.
 const pdfjsAssetBaseUrl = new URL('../../node_modules/pdfjs-dist/', import.meta.url).pathname
@@ -247,19 +252,80 @@ describe('renderPdfPages', () => {
 		}
 	})
 
-	it('re-renders a page that is over the byte budget at a smaller size', async () => {
-		const { handle, loadingTask } = await openFixture(paperSizesFixturePath)
-		const startEdgePx = getPageRenderDimension(A1_LONG_EDGE_PT, 1684)
+	// The canvas renderPageWithinBudget would encode, at its first size.
+	async function renderOnly(page, longerEdgePx) {
+		const viewport = page.getViewport({ scale: 1 })
+		const scaled = page.getViewport({ scale: getPageRenderScale(viewport.width, viewport.height, longerEdgePx) })
+		const canvas = createCanvas(Math.round(scaled.width), Math.round(scaled.height))
+		await page.render({ canvas, viewport: scaled, background: '#ffffff' }).promise
+		return canvas
+	}
+
+	it('compresses a page that is over the byte budget as JPEG before rendering it smaller', async () => {
+		const { handle, loadingTask } = await openFixture(photoLikeFixturePath)
+		const startEdgePx = BASE_RENDER_DIMENSION_PX
 
 		try {
-			const page = await handle.pdf.getPage(3)
+			const page = await handle.pdf.getPage(1)
 			const unconstrained = await renderPageWithinBudget(page, startEdgePx, Infinity)
-			const budget = Math.floor(unconstrained.dataURL.length * 0.6)
+			const createdBefore = document.createElement.mock.calls.length
+			const budget = Math.floor(unconstrained.dataURL.length * 0.9)
+
+			const constrained = await renderPageWithinBudget(page, startEdgePx, budget)
+
+			expect(document.createElement.mock.calls.length - createdBefore).toBe(1)
+			expect(constrained.mimeType).toBe('image/jpeg')
+			expect(constrained.width).toBe(unconstrained.width)
+			expect(constrained.dataURL.length).toBeLessThanOrEqual(budget)
+		} finally {
+			await loadingTask.destroy()
+		}
+	})
+
+	it('renders a page smaller once even the lowest JPEG quality is over the byte budget', async () => {
+		const { handle, loadingTask } = await openFixture(photoLikeFixturePath)
+		const startEdgePx = BASE_RENDER_DIMENSION_PX
+
+		try {
+			const page = await handle.pdf.getPage(1)
+			const canvas = await renderOnly(page, startEdgePx)
+			const budget = Math.floor(canvas.toDataURL('image/jpeg', JPEG_QUALITY_STEPS.at(-1)).length * 0.6)
 
 			const constrained = await renderPageWithinBudget(page, startEdgePx, budget)
 
 			expect(Math.max(constrained.width, constrained.height)).toBeLessThan(Math.round(startEdgePx))
+			expect(Math.max(constrained.width, constrained.height)).toBeGreaterThanOrEqual(MIN_RENDER_DIMENSION_PX)
 			expect(constrained.dataURL.length).toBeLessThanOrEqual(budget)
+		} finally {
+			await loadingTask.destroy()
+		}
+	})
+
+	it('stops at MIN_RENDER_DIMENSION_PX and returns the smallest version with a warning if nothing fits', async () => {
+		const { handle, loadingTask } = await openFixture(paperSizesFixturePath)
+		const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+		const startEdgePx = getPageRenderDimension(A1_LONG_EDGE_PT, 1684)
+
+		try {
+			const page = await handle.pdf.getPage(3)
+			const result = await renderPageWithinBudget(page, startEdgePx, 1)
+
+			expect(Math.max(result.width, result.height)).toBe(MIN_RENDER_DIMENSION_PX)
+			expect(warn).toHaveBeenCalledTimes(1)
+		} finally {
+			await loadingTask.destroy()
+		}
+	})
+
+	it('keeps each page within maxPageBytes and reports its byte size', async () => {
+		const { handle, loadingTask } = await openFixture(photoLikeFixturePath)
+		const maxPageBytes = 100_000
+
+		try {
+			const { pages } = await renderPdfPages(handle, { start: 1, end: 1 }, undefined, undefined, maxPageBytes)
+
+			expect(pages[0].byteSize).toBe(getDataUrlByteSize(pages[0].dataURL))
+			expect(pages[0].byteSize).toBeLessThanOrEqual(maxPageBytes)
 		} finally {
 			await loadingTask.destroy()
 		}
@@ -321,23 +387,6 @@ describe('renderPdfPages', () => {
 		expect(await textOf({})).toBe('')
 		expect(await textOf(getPdfAssetOptions(pdfjsAssetBaseUrl))).toBe('日本語')
 	})
-
-	it('gives up after MAX_BUDGET_RETRIES re-renders, importing the smallest version with a warning', async () => {
-		const { handle, loadingTask } = await openFixture(paperSizesFixturePath)
-		const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
-		const startEdgePx = getPageRenderDimension(A1_LONG_EDGE_PT, 1684)
-
-		try {
-			const page = await handle.pdf.getPage(3)
-			const result = await renderPageWithinBudget(page, startEdgePx, 1)
-
-			expect(document.createElement).toHaveBeenCalledTimes(1 + MAX_BUDGET_RETRIES)
-			expect(warn).toHaveBeenCalledTimes(1)
-			expect(Math.max(result.width, result.height)).toBeLessThan(Math.round(startEdgePx))
-		} finally {
-			await loadingTask.destroy()
-		}
-	})
 })
 
 describe('getPdfAssetOptions', () => {
@@ -348,6 +397,14 @@ describe('getPdfAssetOptions', () => {
 			standardFontDataUrl: 'https://cloud.example/apps/whiteboard/dist/pdfjs/standard_fonts/',
 			wasmUrl: 'https://cloud.example/apps/whiteboard/dist/pdfjs/wasm/',
 		})
+	})
+})
+
+describe('getDataUrlByteSize', () => {
+	it('returns the decoded size of a base64 data URL, minus padding', () => {
+		expect(getDataUrlByteSize('data:image/png;base64,' + Buffer.from('abc').toString('base64'))).toBe(3)
+		expect(getDataUrlByteSize('data:image/png;base64,' + Buffer.from('abcd').toString('base64'))).toBe(4)
+		expect(getDataUrlByteSize('data:image/png;base64,' + Buffer.from('abcde').toString('base64'))).toBe(5)
 	})
 })
 
