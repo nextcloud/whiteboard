@@ -4,7 +4,10 @@
 -->
 <template>
 	<NcDialog :name="t('whiteboard', 'Import pages from \'{fileName}\'', { fileName })" @update:open="onOpenUpdate">
-		<div class="pdf-page-selection" @keyup.enter="onSubmit">
+		<!-- NcModal ignores Escape from inputs, which hold the focus when the dialog
+			opens, so Escape anywhere in the content cancels here, like in the smart picker.
+			Stopping it keeps Excalidraw from reacting to it as well. -->
+		<div class="pdf-page-selection" @keydown.esc.stop.prevent="onCancel">
 			<div class="pdf-page-selection__preview-area">
 				<div class="pdf-page-selection__preview-wrapper">
 					<img
@@ -21,6 +24,7 @@
 
 				<div class="pdf-page-selection__nav">
 					<NcButton
+						type="button"
 						variant="tertiary"
 						:disabled="currentPreviewPage <= 1"
 						:aria-label="t('whiteboard', 'Previous page')"
@@ -45,6 +49,7 @@
 					</span>
 
 					<NcButton
+						type="button"
 						variant="tertiary"
 						:disabled="currentPreviewPage >= numPages"
 						:aria-label="t('whiteboard', 'Next page')"
@@ -106,7 +111,8 @@
 		</div>
 
 		<template #actions>
-			<NcButton :disabled="!isValid" @click="onSubmit">
+			<!-- The only way to submit: Enter on other controls must not import. -->
+			<NcButton type="button" :disabled="!isValid" @click="onSubmit">
 				{{ t('whiteboard', 'Import') }}
 			</NcButton>
 		</template>
@@ -174,6 +180,8 @@ export default {
 			previewLoading: false,
 			previewError: false,
 			previewRequestSeq: 0,
+			// Escape on a button reaches both NcModal and onCancel; answer only once.
+			isClosed: false,
 		}
 	},
 
@@ -276,15 +284,24 @@ export default {
 		},
 
 		onSubmit() {
-			if (!this.isValid) {
+			if (!this.isValid || this.isClosed) {
 				return
 			}
+			this.isClosed = true
 			this.$emit('submit', this.effectiveRange)
+		},
+
+		onCancel() {
+			if (this.isClosed) {
+				return
+			}
+			this.isClosed = true
+			this.$emit('cancel')
 		},
 
 		onOpenUpdate(open) {
 			if (!open) {
-				this.$emit('cancel')
+				this.onCancel()
 			}
 		},
 	},
