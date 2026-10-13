@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import logger from '../../src/utils/logger.ts'
+import { getPageSizeTarget, IMPORT_TOTAL_BUDGET_BYTES } from '../../src/utils/pdfImportSize.ts'
 import {
 	A3_LONG_EDGE_PT,
 	A4_LONG_EDGE_PT,
@@ -46,6 +47,10 @@ const cjkFixturePath = fileURLToPath(new URL('./fixtures/cjk-no-embedded-font.pd
 
 // One A4 page covered by a noise image, where JPEG beats PNG by far.
 const photoLikeFixturePath = fileURLToPath(new URL('./fixtures/photo-like.pdf', import.meta.url))
+
+// 50 A4 pages sharing one noise image: ~0.5 MB each as JPEG 0.85, the
+// reviewer's 25 MB scenario. Built by docs-dev/tools/make-measure-pdf.mjs.
+const fiftyPagesFixturePath = fileURLToPath(new URL('./fixtures/fifty-photo-pages.pdf', import.meta.url))
 
 // The directory the build copies to dist/pdfjs/.
 const pdfjsAssetBaseUrl = new URL('../../node_modules/pdfjs-dist/', import.meta.url).pathname
@@ -330,6 +335,68 @@ describe('renderPdfPages', () => {
 			await loadingTask.destroy()
 		}
 	})
+
+	it('starts at the given JPEG quality step and reports the step it ended at', async () => {
+		const { handle, loadingTask } = await openFixture(photoLikeFixturePath)
+
+		try {
+			const page = await handle.pdf.getPage(1)
+			const canvas = await renderOnly(page, BASE_RENDER_DIMENSION_PX)
+			const result = await renderPageWithinBudget(page, BASE_RENDER_DIMENSION_PX, Infinity, 2)
+
+			expect(result.qualityStep).toBe(2)
+			expect(result.dataURL).toBe(canvas.toDataURL('image/jpeg', JPEG_QUALITY_STEPS[2]))
+		} finally {
+			await loadingTask.destroy()
+		}
+	})
+
+	it('starts each page at the JPEG quality that sufficed for the page before it', async () => {
+		const { handle, loadingTask } = await openFixture(fiftyPagesFixturePath)
+		const jpegQualities = []
+		document.createElement.mockImplementation(() => {
+			const canvas = createCanvas(1, 1)
+			const toDataURL = canvas.toDataURL.bind(canvas)
+			canvas.toDataURL = (type, quality) => {
+				if (type === 'image/jpeg') {
+					jpegQualities.push(quality)
+				}
+				return toDataURL(type, quality)
+			}
+			return canvas
+		})
+
+		try {
+			await renderPdfPages(handle, { start: 1, end: 3 }, undefined, undefined, 0.4 * 1024 * 1024)
+
+			// Page 1 needs a second step; pages 2 and 3 start there.
+			expect(jpegQualities).toEqual([JPEG_QUALITY_STEPS[0], JPEG_QUALITY_STEPS[1], JPEG_QUALITY_STEPS[1], JPEG_QUALITY_STEPS[1]])
+		} finally {
+			await loadingTask.destroy()
+		}
+	})
+
+	it('fits 50 pages of ~0.5 MB into the import budget, without a warning', async () => {
+		const { handle, loadingTask } = await openFixture(fiftyPagesFixturePath)
+		const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+		const target = getPageSizeTarget(10 * 1024 * 1024, 50)
+
+		try {
+			const { pages: [unconstrained] } = await renderPdfPages(handle, { start: 1, end: 1 })
+			expect(unconstrained.byteSize).toBeGreaterThan(0.45 * 1024 * 1024)
+			expect(unconstrained.byteSize * 50).toBeGreaterThan(IMPORT_TOTAL_BUDGET_BYTES)
+
+			const { pages } = await renderPdfPages(handle, { start: 1, end: 50 }, undefined, undefined, target.bytes)
+
+			expect(target.limit).toBe('importBudget')
+			expect(pages).toHaveLength(50)
+			expect(pages.every((page) => page.byteSize <= target.bytes)).toBe(true)
+			expect(pages.reduce((sum, page) => sum + page.byteSize, 0)).toBeLessThanOrEqual(IMPORT_TOTAL_BUDGET_BYTES)
+			expect(warn).not.toHaveBeenCalled()
+		} finally {
+			await loadingTask.destroy()
+		}
+	}, 60_000)
 
 	async function countNonWhitePixels(dataURL) {
 		const image = await loadImage(dataURL)
