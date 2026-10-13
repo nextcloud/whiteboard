@@ -8,6 +8,7 @@ import { join, resolve } from 'path'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 const EXCALIDRAW_FONTS_DIR = normalizePath(resolve('node_modules/@nextcloud/excalidraw/dist/prod/fonts'))
+const PDFJS_DIR = normalizePath(resolve('node_modules/pdfjs-dist'))
 
 const AppConfig = createAppConfig({
 	main: resolve(join('src', 'main.ts')),
@@ -73,6 +74,23 @@ const AppConfig = createAppConfig({
 						src: EXCALIDRAW_FONTS_DIR,
 						dest: 'dist',
 						rename: { stripBase: 5 },
+					},
+					// Loaded by pdf.js at runtime: CMaps and standard fonts for fonts not
+					// embedded in a PDF, wasm decoders for JPEG 2000 and JBIG2 images.
+					{
+						src: [
+							`${PDFJS_DIR}/cmaps`,
+							`${PDFJS_DIR}/standard_fonts`,
+							`${PDFJS_DIR}/wasm/{openjpeg,jbig2,qcms}*`,
+							`${PDFJS_DIR}/wasm/LICENSE_*`,
+						],
+						dest: 'dist/pdfjs',
+						rename: { stripBase: 2 },
+					},
+					{
+						src: 'src/pdfjs-assets.htaccess',
+						dest: 'dist/pdfjs',
+						rename: { stripBase: true, name: '.htaccess' },
 					},
 				],
 			}),

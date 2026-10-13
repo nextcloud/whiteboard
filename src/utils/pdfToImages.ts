@@ -5,6 +5,7 @@
 
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 
+import { linkTo } from '@nextcloud/router'
 import logger from './logger.ts'
 import { applyPromiseTryPolyfill } from './promiseTryPolyfill.ts'
 
@@ -172,6 +173,22 @@ export function pickSmallerEncoding(pngDataURL: string, jpegDataURL: string): Pi
 }
 
 /**
+ * getDocument() options pointing pdf.js at its CMaps and standard fonts (for
+ * fonts a PDF doesn't embed) and its wasm decoders (JPEG 2000, JBIG2).
+ *
+ * @param baseUrl - Directory containing `cmaps/`, `standard_fonts/` and
+ *   `wasm/`, with a trailing slash.
+ */
+export function getPdfAssetOptions(baseUrl: string): { cMapUrl: string, cMapPacked: boolean, standardFontDataUrl: string, wasmUrl: string } {
+	return {
+		cMapUrl: `${baseUrl}cmaps/`,
+		cMapPacked: true,
+		standardFontDataUrl: `${baseUrl}standard_fonts/`,
+		wasmUrl: `${baseUrl}wasm/`,
+	}
+}
+
+/**
  * An open PDF document and its worker, reused for the dialog's previews and
  * the final render instead of starting a new worker for each.
  */
@@ -213,8 +230,11 @@ export async function openPdfDocument(pdfData: ArrayBuffer): Promise<PdfDocument
 
 	const pdfWorker = pdfjsLib.PDFWorker.create({ port: workerPort })
 
+	// Absolute, because pdf.js resolves these URLs inside the worker.
+	const assetBaseUrl = new URL(linkTo('whiteboard', 'dist/pdfjs/'), window.location.href).href
+
 	const data = new Uint8Array(pdfData)
-	const loadingTask = pdfjsLib.getDocument({ data, worker: pdfWorker })
+	const loadingTask = pdfjsLib.getDocument({ data, worker: pdfWorker, ...getPdfAssetOptions(assetBaseUrl) })
 
 	try {
 		const pdf = await withTimeout(

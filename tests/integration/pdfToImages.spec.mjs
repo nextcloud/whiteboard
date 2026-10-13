@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { createCanvas } from '@napi-rs/canvas'
+import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
@@ -19,6 +19,7 @@ import {
 	getPageDisplaySize,
 	getPageRenderDimension,
 	getPageRenderScale,
+	getPdfAssetOptions,
 	MAX_BUDGET_RETRIES,
 	MAX_RENDER_AREA_PX,
 	pickSmallerEncoding,
@@ -34,6 +35,15 @@ const fixturePath = fileURLToPath(new URL('./fixtures/two-page.pdf', import.meta
 // Pages: A4 (595x842pt), A3 (842x1191pt), A1 landscape (2384x1684pt), A0
 // (2384x3370pt), and 6000x1684pt, whose full-density area exceeds the cap.
 const paperSizesFixturePath = fileURLToPath(new URL('./fixtures/paper-sizes.pdf', import.meta.url))
+
+// One page each: a JPEG 2000 image, a JBIG2 image, and Japanese text in a
+// font the PDF doesn't embed (predefined CMap UniJIS-UCS2-H).
+const jpxFixturePath = fileURLToPath(new URL('./fixtures/jpx-image.pdf', import.meta.url))
+const jbig2FixturePath = fileURLToPath(new URL('./fixtures/jbig2-image.pdf', import.meta.url))
+const cjkFixturePath = fileURLToPath(new URL('./fixtures/cjk-no-embedded-font.pdf', import.meta.url))
+
+// The directory the build copies to dist/pdfjs/.
+const pdfjsAssetBaseUrl = new URL('../../node_modules/pdfjs-dist/', import.meta.url).pathname
 
 const A2_LONG_EDGE_PT = 1684
 const A1_LONG_EDGE_PT = 2384
@@ -164,9 +174,9 @@ describe('renderPdfPages', () => {
 		vi.restoreAllMocks()
 	})
 
-	async function openFixture(path = fixturePath) {
+	async function openFixture(path = fixturePath, options = {}) {
 		const data = new Uint8Array(readFileSync(path))
-		const loadingTask = pdfjsLib.getDocument({ data })
+		const loadingTask = pdfjsLib.getDocument({ data, verbosity: 0, ...options })
 		const pdf = await loadingTask.promise
 		return { handle: { pdf, loadingTask, workerPort: null, totalPages: pdf.numPages }, loadingTask }
 	}
@@ -255,6 +265,63 @@ describe('renderPdfPages', () => {
 		}
 	})
 
+	async function countNonWhitePixels(dataURL) {
+		const image = await loadImage(dataURL)
+		const canvas = createCanvas(image.width, image.height)
+		const context = canvas.getContext('2d')
+		// Transparent pixels would otherwise read as black.
+		context.fillStyle = '#ffffff'
+		context.fillRect(0, 0, image.width, image.height)
+		context.drawImage(image, 0, 0)
+		const { data } = context.getImageData(0, 0, image.width, image.height)
+		let count = 0
+		for (let i = 0; i < data.length; i += 4) {
+			if (data[i] < 200 || data[i + 1] < 200 || data[i + 2] < 200) {
+				count++
+			}
+		}
+		return count
+	}
+
+	it.each([
+		['JPEG 2000', jpxFixturePath],
+		['JBIG2', jbig2FixturePath],
+	])('renders a %s image only with the wasm decoders from getPdfAssetOptions', async (_format, path) => {
+		const renderFirstPage = async (options) => {
+			const { handle, loadingTask } = await openFixture(path, options)
+			try {
+				return (await renderPdfPages(handle, { start: 1, end: 1 })).pages[0]
+			} finally {
+				await loadingTask.destroy()
+			}
+		}
+
+		// In this order: Node runs pdf.js without a worker, and decoder options
+		// set by one document stay in effect for the next.
+		const blankPage = await renderFirstPage({})
+		const page = await renderFirstPage(getPdfAssetOptions(pdfjsAssetBaseUrl))
+
+		expect(await countNonWhitePixels(blankPage.dataURL)).toBe(0)
+		expect(await countNonWhitePixels(page.dataURL)).toBeGreaterThan(page.width * page.height * 0.05)
+	})
+
+	it('decodes text in a non-embedded CJK font only with the CMaps from getPdfAssetOptions', async () => {
+		// Node can't draw the glyphs without a system font, so this checks the CMap
+		// lookup via the text layer; the browser test covers the rendering.
+		const textOf = async (options) => {
+			const { handle, loadingTask } = await openFixture(cjkFixturePath, options)
+			try {
+				const page = await handle.pdf.getPage(1)
+				return (await page.getTextContent()).items.map((item) => item.str).join('')
+			} finally {
+				await loadingTask.destroy()
+			}
+		}
+
+		expect(await textOf({})).toBe('')
+		expect(await textOf(getPdfAssetOptions(pdfjsAssetBaseUrl))).toBe('日本語')
+	})
+
 	it('gives up after MAX_BUDGET_RETRIES re-renders, importing the smallest version with a warning', async () => {
 		const { handle, loadingTask } = await openFixture(paperSizesFixturePath)
 		const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
@@ -270,6 +337,17 @@ describe('renderPdfPages', () => {
 		} finally {
 			await loadingTask.destroy()
 		}
+	})
+})
+
+describe('getPdfAssetOptions', () => {
+	it('points every asset URL into the given directory, with the trailing slash pdf.js requires', () => {
+		expect(getPdfAssetOptions('https://cloud.example/apps/whiteboard/dist/pdfjs/')).toEqual({
+			cMapUrl: 'https://cloud.example/apps/whiteboard/dist/pdfjs/cmaps/',
+			cMapPacked: true,
+			standardFontDataUrl: 'https://cloud.example/apps/whiteboard/dist/pdfjs/standard_fonts/',
+			wasmUrl: 'https://cloud.example/apps/whiteboard/dist/pdfjs/wasm/',
+		})
 	})
 })
 
