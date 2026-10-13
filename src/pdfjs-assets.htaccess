@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Copied to dist/pdfjs/.htaccess. Nextcloud's root .htaccess routes files with
+# extensions outside its static list (such as .bcmap and .pfb) to index.php,
+# which answers 404, so pdf.js could not load these CMaps and fonts on Apache.
+RewriteEngine Off
