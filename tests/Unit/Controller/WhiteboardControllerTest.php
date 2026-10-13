@@ -26,6 +26,7 @@ use OCP\Constants;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
+use OCP\Files\IUserFolder;
 use OCP\Files\Template\ITemplateManager;
 use OCP\ICacheFactory;
 use OCP\IConfig;
@@ -85,7 +86,7 @@ class WhiteboardControllerTest extends TestCase {
 			return $folder;
 		});
 
-		$userFolder = $this->createMock(Folder::class);
+		$userFolder = $this->createMock(interface_exists(IUserFolder::class) ? IUserFolder::class : Folder::class);
 		$userFolder->method('get')->with('Templates/')->willReturn($templatesFolder);
 		$whiteboardFile = $this->createMock(File::class);
 		$whiteboardFile->method('getId')->willReturn(123);
