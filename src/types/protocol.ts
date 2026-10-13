@@ -26,6 +26,7 @@ export type WorkerInboundMessage
 			sceneKey: string
 		}
 		| { type: 'FLUSH', fileId: number, id: number, server: boolean }
+		| { type: 'DROP_WAITING_SERVER_SYNC', fileId: number }
 
 export type WorkerOutboundMessage
 	= { type: 'INIT_COMPLETE' }

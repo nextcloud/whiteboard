@@ -9,7 +9,7 @@ import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useSyncStore, logSyncResult } from '../stores/useSyncStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
-import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { selectSavesToServer, useCollaborationStore } from '../stores/useCollaborationStore'
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import logger from '../utils/logger'
@@ -28,6 +28,8 @@ import {
 } from '../utils/syncSceneData'
 import type { BroadcastedElementVersions } from '../utils/syncSceneData'
 
+import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
+
 enum SyncMessageType {
 	SceneInit = 'SCENE_INIT',
 	SceneUpdate = 'SCENE_UPDATE',
@@ -43,6 +45,12 @@ const SERVER_API_SYNC_DELAY = 10000
 const WEBSOCKET_SYNC_DELAY = 500
 const FULL_SCENE_HEALING_INTERVAL = 20000
 const CURSOR_SYNC_DELAY = 50
+
+// Until the merge after a reconnect, what this tab saved before may be gone from the server
+function hasUnsavedChanges(elements: readonly ExcalidrawElement[], files: BinaryFiles): boolean {
+	return useCollaborationStore.getState().pendingServerMerge
+		|| computeSceneKey(elements, files) !== useSyncStore.getState().savedSceneKey
+}
 
 export function useSync() {
 	const { fileId, isReadOnly } = useWhiteboardConfigStore(
@@ -76,9 +84,10 @@ export function useSync() {
 		})),
 	)
 
-	const { isDedicatedSyncer, status: collabStatus, socket, isInRoom } = useCollaborationStore(
+	const { savesToServer, pendingServerMerge, status: collabStatus, socket, isInRoom } = useCollaborationStore(
 		useShallow(state => ({
-			isDedicatedSyncer: state.isDedicatedSyncer,
+			savesToServer: selectSavesToServer(state),
+			pendingServerMerge: state.pendingServerMerge,
 			status: state.status,
 			socket: state.socket as CollaborationSocket | null,
 			isInRoom: state.isInRoom,
@@ -127,7 +136,7 @@ export function useSync() {
 			const files = excalidrawAPI.getFiles() as BinaryFiles
 			const filteredAppState = sanitizeAppStateForSync(appState)
 
-			const hasPendingLocalChanges = computeSceneKey(elements, files) !== useSyncStore.getState().savedSceneKey
+			const hasPendingLocalChanges = hasUnsavedChanges(elements, files)
 			const message: WorkerInboundMessage = { type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState, hasPendingLocalChanges }
 			worker.postMessage(message)
 			logSyncResult('local', { status: 'syncing' })
@@ -139,12 +148,12 @@ export function useSync() {
 
 	// Saves current state to the Nextcloud server API
 	const doSyncToServerAPI = useCallback(async (forceSync = false) => {
-		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, isDedicatedSyncer, collabStatus })
+		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, savesToServer, pendingServerMerge, collabStatus })
 
 		// Allow force sync for final save, otherwise check normal conditions
-		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online')) {
+		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !savesToServer || pendingServerMerge || isReadOnly || collabStatus !== 'online')) {
 			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus,
+				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, savesToServer, isReadOnly, collabStatus,
 			})
 			return
 		}
@@ -161,10 +170,7 @@ export function useSync() {
 			return
 		}
 
-		const elements = excalidrawAPI!.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-		const files = excalidrawAPI!.getFiles() as BinaryFiles
-		const sceneKey = computeSceneKey(elements, files)
-		if (sceneKey === useSyncStore.getState().savedSceneKey) {
+		if (computeSceneKey(excalidrawAPI!.getSceneElementsIncludingDeleted(), excalidrawAPI!.getFiles()) === useSyncStore.getState().savedSceneKey) {
 			return
 		}
 
@@ -177,10 +183,23 @@ export function useSync() {
 			if (useWhiteboardConfigStore.getState().fileId !== fileId) {
 				throw new Error('FileId changed during server sync preparation.')
 			}
+			// The board closed meanwhile; the editor's scene is already cleared and the final save covers it
+			if (useExcalidrawStore.getState().excalidrawAPI !== excalidrawAPI) {
+				return
+			}
 			// A restore started meanwhile, and this scene is older than the restored one
 			if (useSyncStore.getState().pausedFileId === fileId) {
 				return
 			}
+			if (useCollaborationStore.getState().pendingServerMerge) {
+				logger.debug('[Sync] Skipping server sync - the connection was lost meanwhile')
+				return
+			}
+
+			// Read only now: a merge after a reconnect may have changed the scene during the wait
+			const elements = excalidrawAPI!.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+			const files = excalidrawAPI!.getFiles() as BinaryFiles
+			const sceneKey = computeSceneKey(elements, files)
 
 			const message: WorkerInboundMessage = {
 				type: 'SYNC_TO_SERVER',
@@ -198,7 +217,7 @@ export function useSync() {
 			logger.error('[Sync] Server API sync failed:', error)
 			logSyncResult('server', { status: 'error API', error: error instanceof Error ? error.message : String(error) })
 		}
-	}, [isWorkerReady, worker, fileId, excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus, getJWT])
+	}, [isWorkerReady, worker, fileId, excalidrawAPI, savesToServer, pendingServerMerge, isReadOnly, collabStatus, getJWT])
 
 	// Simple hash function for file content
 	const hashFileContent = (content: string): string => {
@@ -222,7 +241,7 @@ export function useSync() {
 			let syncedElementsCount = 0
 
 			if (!hasBroadcastedSceneRef.current) {
-				const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
+				const sceneData = { type: SyncMessageType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
 				const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 				socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 				hasBroadcastedSceneRef.current = true
@@ -236,13 +255,13 @@ export function useSync() {
 				)
 
 				if (incrementalElements.length === 0) {
-					const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
+					const sceneData = { type: SyncMessageType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
 					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 					broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
 					syncedElementsCount = elements.length
 				} else {
-					const sceneData = { type: SyncMessageType.SceneUpdate, payload: { elements: incrementalElements } }
+					const sceneData = { type: SyncMessageType.SceneUpdate, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements: incrementalElements } }
 					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 					broadcastedElementVersionsRef.current = updateBroadcastedElementVersions(
@@ -290,7 +309,7 @@ export function useSync() {
 		try {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
 			const sceneHash = computeElementVersionHash(elements)
-			const sceneData = { type: SyncMessageType.SceneUpdate, payload: { elements } }
+			const sceneData = { type: SyncMessageType.SceneUpdate, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
 			const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 			socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 			lastBroadcastedSceneHashRef.current = sceneHash
@@ -459,10 +478,10 @@ export function useSync() {
 	)
 
 	// Capture syncer state immediately to avoid closure issues
-	const isSyncerRef = useRef(isDedicatedSyncer)
+	const isSyncerRef = useRef(savesToServer)
 	useEffect(() => {
-		isSyncerRef.current = isDedicatedSyncer
-	}, [isDedicatedSyncer])
+		isSyncerRef.current = savesToServer
+	}, [savesToServer])
 
 	// Cache the latest state for final sync - update on EVERY change
 	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[], files: BinaryFiles, appState: AppState } | null>(null)
@@ -472,7 +491,8 @@ export function useSync() {
 		// Use CACHED state instead of trying to get it now (might be cleared already)
 		const scene = cachedStateRef.current
 		const jwt = fileId ? useJWTStore.getState().tokens[fileId] : null
-		if (!fileId || !scene?.elements.length || !jwt || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly || useSyncStore.getState().pausedFileId === fileId) {
+		// Read live: after a disconnect the cached scene may miss what others saved meanwhile
+		if (!fileId || !scene?.elements.length || !jwt || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly || useSyncStore.getState().pausedFileId === fileId || useCollaborationStore.getState().pendingServerMerge) {
 			return
 		}
 
@@ -509,7 +529,7 @@ export function useSync() {
 				elements: scene.elements,
 				files: scene.files,
 				appState: sanitizeAppStateForSync(scene.appState),
-				hasPendingLocalChanges: computeSceneKey(scene.elements, scene.files) !== useSyncStore.getState().savedSceneKey,
+				hasPendingLocalChanges: hasUnsavedChanges(scene.elements, scene.files),
 			}
 			syncWorker.postMessage(message)
 		}

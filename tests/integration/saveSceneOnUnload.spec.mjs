@@ -25,7 +25,7 @@ describe('saveSceneOnUnload', () => {
 
 		expect(fetchMock).toHaveBeenCalledWith('/board', expect.objectContaining({ method: 'PUT', headers, keepalive: true }))
 		const body = fetchMock.mock.calls[0][1].body
-		expect(JSON.parse(await body.text())).toEqual({ data: { elements: [{ id: 'A' }], files: {} } })
+		expect(JSON.parse(await body.text())).toEqual({ data: { elements: [{ id: 'A' }], files: {} }, schemaVersion: 2 })
 	})
 
 	it('reports a failed keepalive request as not saved', async () => {
