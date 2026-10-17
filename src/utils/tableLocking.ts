@@ -5,8 +5,10 @@
 import { getCurrentUser } from '@nextcloud/auth'
 import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
-import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
+import type { ExcalidrawImageElement } from '@nextcloud/excalidraw/element/types'
+
+import { CaptureUpdateAction, newElementWith } from '@nextcloud/excalidraw'
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -90,17 +92,16 @@ export function setLockOnElement(
 	// findIndex() can return -1 if the element does not exist
 	if (idx === -1) return
 
-	// Update the element with the new lock state
-	elements[idx] = {
-		...elements[idx],
+	// Update the element with the new lock state, as a new version so collaborators take it over
+	elements[idx] = newElementWith(elements[idx], {
 		customData: {
 			...elements[idx].customData,
 			// Set tableLock to the provided value, or explicitly undefined to clear
 			...(lock ? { tableLock: lock } : { tableLock: undefined }),
 		},
-	}
-	// Trigger onChange which syncs to other users
-	excalidrawAPI.updateScene({ elements })
+	})
+	// Trigger onChange which syncs to other users; a lock is not an edit to undo
+	excalidrawAPI.updateScene({ elements, captureUpdate: CaptureUpdateAction.NEVER })
 }
 
 /**

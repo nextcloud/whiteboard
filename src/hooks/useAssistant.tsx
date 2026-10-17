@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 
 import { mdiCreation } from '@mdi/js'
 import { getCapabilities } from '@nextcloud/capabilities'
@@ -64,7 +64,7 @@ export function useAssistant() {
 		}
 
 		// copy elements from the current scene and add the new elements
-		const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
+		const elements: ExcalidrawElement[] = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
 		const movedElements = moveElementsToViewport(generatedElements.elements, viewportCoordsToSceneCoords(getViewportCenterPoint(), excalidrawAPI.getAppState()))
 		elements.push(...movedElements)
 

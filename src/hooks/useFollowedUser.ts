@@ -4,8 +4,8 @@
  */
 
 import { useCallback, useEffect } from 'react'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
-import type { OnUserFollowedPayload } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
+import type { OnUserFollowedPayload } from '@nextcloud/excalidraw/types'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import logger from '../utils/logger'
 

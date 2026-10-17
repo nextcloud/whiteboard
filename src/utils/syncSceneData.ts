@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { AppState } from '@nextcloud/excalidraw/types'
 import { isObject } from 'lodash'
 
 /**
@@ -130,13 +130,13 @@ function isDeepEqual(obj1:any, obj2: any, exceptions: Array<string>) {
  * @param localElement element of local state
  * @param remoteElement remote received element
  */
-function shouldDiscardRemoteElement(localAppState: Readonly<AppState>, localElement: ExcalidrawElement | undefined, remoteElement: ExcalidrawElement) {
+function shouldDiscardRemoteElement(localAppState: Readonly<Partial<AppState>>, localElement: ExcalidrawElement | undefined, remoteElement: ExcalidrawElement) {
 	if (
 		localElement
         // local element is being edited
-        && (localElement.id === localAppState.editingElement?.id
+        && (localElement.id === localAppState.editingTextElement?.id
           || localElement.id === localAppState.resizingElement?.id
-          || localElement.id === localAppState.draggingElement?.id // TODO: Is this still valid? As draggingElement is selection element, which is never part of the elements array
+          || localElement.id === localAppState.newElement?.id
           // local element is newer
           || localElement.version > remoteElement.version
           // resolve conflicting edits deterministically by taking the one with
@@ -177,7 +177,7 @@ function arrayToMap <T extends { id: string } | string>(items: readonly T[] | Ma
  * @param remoteElements Elements received from remote
  * @param appState state of the local app
  */
-export function mergeSceneElements(localElements: readonly ExcalidrawElement[], remoteElements: ExcalidrawElement[], appState: Readonly<AppState>) {
+export function mergeSceneElements(localElements: readonly ExcalidrawElement[], remoteElements: ExcalidrawElement[], appState: Readonly<Partial<AppState>>) {
 	const added = new Set<string>()
 	const localElementsMap = arrayToMap(localElements)
 	const reconciledElements: ExcalidrawElement[] = []

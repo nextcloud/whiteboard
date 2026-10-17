@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 
 interface ExcalidrawStore {
 	excalidrawAPI: ExcalidrawImperativeAPI | null
@@ -24,10 +24,20 @@ export const useExcalidrawStore = create<ExcalidrawStore>((set, get) => ({
 		if (!excalidrawAPI) return
 
 		const elements = excalidrawAPI.getSceneElements()
-		excalidrawAPI.scrollToContent(elements, {
-			fitToContent: true,
-			animate: true,
-			duration: 500,
+		excalidrawAPI.setViewport({
+			target: elements,
+			animation: { duration: 500 },
 		})
 	},
 }))
+
+function attachTestHooks() {
+	if (typeof window === 'undefined' || !window.__whiteboardTest) {
+		return
+	}
+
+	window.__whiteboardTestHooks = window.__whiteboardTestHooks || {}
+	;(window.__whiteboardTestHooks as Record<string, unknown>).excalidrawStore = useExcalidrawStore
+}
+
+attachTestHooks()

@@ -170,7 +170,7 @@ export function useBoardDataManager() {
 		try {
 			const defaultSettings = {
 				currentItemFontFamily: 3,
-				currentItemStrokeWidth: 1,
+				currentItemStrokeWidthKey: 'thin' as const,
 				currentItemRoughness: 0,
 			}
 
