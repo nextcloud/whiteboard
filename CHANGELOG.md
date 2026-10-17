@@ -7,6 +7,7 @@
 
 ### Upgrade notes
 - Do not downgrade to Whiteboard 2.x once boards contain elements that only 3.0 knows, such as sticky notes. Whiteboard 2.x cannot read them and drops them when it saves.
+- Browser tabs that still run Whiteboard 2.x when 3.0 is installed can no longer save or change other users' boards. Reload them to continue.
 
 ## 2.0.0
 

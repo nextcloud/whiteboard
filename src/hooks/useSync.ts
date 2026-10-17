@@ -9,7 +9,7 @@ import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useSyncStore, logSyncResult } from '../stores/useSyncStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
-import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { selectSavesToServer, useCollaborationStore } from '../stores/useCollaborationStore'
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import logger from '../utils/logger'
@@ -25,6 +25,8 @@ import {
 	updateBroadcastedElementVersions,
 } from '../utils/syncSceneData'
 import type { BroadcastedElementVersions } from '../utils/syncSceneData'
+
+import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
 
 enum SyncMessageType {
 	SceneInit = 'SCENE_INIT',
@@ -76,9 +78,10 @@ export function useSync() {
 		})),
 	)
 
-	const { isDedicatedSyncer, status: collabStatus, socket, isInRoom } = useCollaborationStore(
+	const { savesToServer, pendingServerMerge, status: collabStatus, socket, isInRoom } = useCollaborationStore(
 		useShallow(state => ({
-			isDedicatedSyncer: state.isDedicatedSyncer,
+			savesToServer: selectSavesToServer(state),
+			pendingServerMerge: state.pendingServerMerge,
 			status: state.status,
 			socket: state.socket as CollaborationSocket | null,
 			isInRoom: state.isInRoom,
@@ -146,12 +149,12 @@ export function useSync() {
 
 	// Saves current state to the Nextcloud server API
 	const doSyncToServerAPI = useCallback(async (forceSync = false) => {
-		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, isDedicatedSyncer, collabStatus })
+		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, savesToServer, pendingServerMerge, collabStatus })
 
 		// Allow force sync for final save, otherwise check normal conditions
-		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online')) {
+		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !savesToServer || pendingServerMerge || isReadOnly || collabStatus !== 'online')) {
 			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus,
+				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, savesToServer, isReadOnly, collabStatus,
 			})
 			return
 		}
@@ -173,6 +176,10 @@ export function useSync() {
 			if (useWhiteboardConfigStore.getState().fileId !== fileId) {
 				throw new Error('FileId changed during server sync preparation.')
 			}
+			if (useCollaborationStore.getState().pendingServerMerge) {
+				logger.debug('[Sync] Skipping server sync - the connection was lost meanwhile')
+				return
+			}
 
 			const elements = excalidrawAPI!.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
 			const files = excalidrawAPI!.getFiles() as BinaryFiles
@@ -192,7 +199,7 @@ export function useSync() {
 			logger.error('[Sync] Server API sync failed:', error)
 			logSyncResult('server', { status: 'error API', error: error instanceof Error ? error.message : String(error) })
 		}
-	}, [isWorkerReady, worker, fileId, excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus, getJWT])
+	}, [isWorkerReady, worker, fileId, excalidrawAPI, savesToServer, pendingServerMerge, isReadOnly, collabStatus, getJWT])
 
 	// Simple hash function for file content
 	const hashFileContent = (content: string): string => {
@@ -216,7 +223,7 @@ export function useSync() {
 			let syncedElementsCount = 0
 
 			if (!hasBroadcastedSceneRef.current) {
-				const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
+				const sceneData = { type: SyncMessageType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
 				const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 				socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 				hasBroadcastedSceneRef.current = true
@@ -230,13 +237,13 @@ export function useSync() {
 				)
 
 				if (incrementalElements.length === 0) {
-					const sceneData = { type: SyncMessageType.SceneInit, payload: { elements } }
+					const sceneData = { type: SyncMessageType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
 					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 					broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
 					syncedElementsCount = elements.length
 				} else {
-					const sceneData = { type: SyncMessageType.SceneUpdate, payload: { elements: incrementalElements } }
+					const sceneData = { type: SyncMessageType.SceneUpdate, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements: incrementalElements } }
 					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 					broadcastedElementVersionsRef.current = updateBroadcastedElementVersions(
@@ -284,7 +291,7 @@ export function useSync() {
 		try {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
 			const sceneHash = computeElementVersionHash(elements)
-			const sceneData = { type: SyncMessageType.SceneUpdate, payload: { elements } }
+			const sceneData = { type: SyncMessageType.SceneUpdate, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
 			const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
 			socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
 			lastBroadcastedSceneHashRef.current = sceneHash
@@ -453,17 +460,18 @@ export function useSync() {
 	)
 
 	// Capture syncer state immediately to avoid closure issues
-	const isSyncerRef = useRef(isDedicatedSyncer)
+	const isSyncerRef = useRef(savesToServer)
 	useEffect(() => {
-		isSyncerRef.current = isDedicatedSyncer
-	}, [isDedicatedSyncer])
+		isSyncerRef.current = savesToServer
+	}, [savesToServer])
 
 	// Cache the latest state for final sync - update on EVERY change
 	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[]; files: BinaryFiles }>({ elements: [], files: {} as BinaryFiles })
 
 	// Direct sync when leaving - synchronous to ensure it completes
 	const doFinalServerSync = useCallback(() => {
-		if (!fileId || !isSyncerRef.current) {
+		// Read live: after a disconnect the cached scene may miss what others saved meanwhile
+		if (!fileId || !isSyncerRef.current || useCollaborationStore.getState().pendingServerMerge) {
 			return
 		}
 
@@ -488,6 +496,7 @@ export function useSync() {
 
 			const data = JSON.stringify({
 				data: { elements, files: files || {} },
+				schemaVersion: SCENE_SCHEMA_VERSION,
 			})
 
 			// Use synchronous XMLHttpRequest (works in beforeunload)
