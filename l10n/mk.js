@@ -35,6 +35,7 @@ OC.L10N.register(
     "Hours" : "Часови",
     "Minutes" : "Минути",
     "min" : "мин",
+    "Start" : "Старт",
     "Reset" : "Ресетирање",
     "Pause" : "Пауза",
     "Resume" : "Продолжи",
