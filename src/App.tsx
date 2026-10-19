@@ -346,7 +346,6 @@ export default function App({
 					try {
 						refItems = await resolveLibrary(ref.scope, ref.name)
 					} catch (error) {
-						// Board still opens with the personal library only.
 						showError(t('whiteboard', 'Could not load the library "{name}".', { name: ref.name }))
 						logger.error('[App] Error resolving library reference:', error)
 					}
