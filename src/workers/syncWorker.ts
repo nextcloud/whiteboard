@@ -43,9 +43,16 @@ const sendMessage = (message: WorkerOutboundMessage) => {
 type SyncToLocalMessage = Extract<WorkerInboundMessage, { type: 'SYNC_TO_LOCAL' }>
 type SyncToServerMessage = Extract<WorkerInboundMessage, { type: 'SYNC_TO_SERVER' }>
 
-const lastSavedSceneKeys = new Map<number, string>()
 const waitingServerSyncs = new Map<number, SyncToServerMessage>()
-let serverSyncQueue: Promise<void> = Promise.resolve()
+// Per board: its uploads run one at a time, and so do its IndexedDB writes
+const serverSyncs = new Map<number, Promise<void>>()
+const localSyncs = new Map<number, Promise<void>>()
+
+function queueLocal(fileId: number, task: () => Promise<void>): Promise<void> {
+	const done = (localSyncs.get(fileId) ?? Promise.resolve()).then(task)
+	localSyncs.set(fileId, done)
+	return done
+}
 
 const handleSyncToLocal = async (data: SyncToLocalMessage) => {
 	const { fileId, elements, files, appState, hasPendingLocalChanges } = data
@@ -135,29 +142,30 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 			// Non-JSON response still counts as success
 		}
 
-		try {
-			const existing = await db.get(fileId)
-			const savedHash = computeElementVersionHash(elements || [])
-			const hasOtherLocalDraft = existing?.hasPendingLocalChanges
-				&& computeElementVersionHash(existing.elements || []) !== savedHash
-			if (!hasOtherLocalDraft) {
-				await db.put(
-					fileId,
-					elements,
-					files || existing?.files || {},
-					existing?.appState,
-					{
-						hasPendingLocalChanges: false,
-						lastSyncedHash: savedHash,
-					},
-				)
+		await queueLocal(fileId, async () => {
+			try {
+				const existing = await db.get(fileId)
+				const savedHash = computeElementVersionHash(elements || [])
+				const hasOtherLocalDraft = existing?.hasPendingLocalChanges
+					&& computeElementVersionHash(existing.elements || []) !== savedHash
+				if (!hasOtherLocalDraft) {
+					await db.put(
+						fileId,
+						elements,
+						files || existing?.files || {},
+						existing?.appState,
+						{
+							hasPendingLocalChanges: false,
+							lastSyncedHash: savedHash,
+						},
+					)
+				}
+			} catch (dbError) {
+				error('Error updating local metadata after server sync:', dbError)
 			}
-		} catch (dbError) {
-			error('Error updating local metadata after server sync:', dbError)
-		}
+		})
 
 		const duration = performance.now() - startTime
-		lastSavedSceneKeys.set(fileId, sceneKey)
 
 		sendMessage({
 			type: 'SERVER_SYNC_COMPLETE',
@@ -177,21 +185,30 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 	}
 }
 
-// One save at a time; per board, a newer scene replaces the one still waiting
+// A newer scene of a board replaces the one still waiting for its upload
 function queueSyncToServer(message: SyncToServerMessage): Promise<void> {
 	const { fileId } = message
 	const isWaiting = waitingServerSyncs.has(fileId)
 	waitingServerSyncs.set(fileId, message)
 	if (!isWaiting) {
-		serverSyncQueue = serverSyncQueue.then(async () => {
+		serverSyncs.set(fileId, (serverSyncs.get(fileId) ?? Promise.resolve()).then(async () => {
 			const next = waitingServerSyncs.get(fileId)
 			waitingServerSyncs.delete(fileId)
-			if (next && next.sceneKey !== lastSavedSceneKeys.get(fileId)) {
+			if (next) {
 				await handleSyncToServer(next)
 			}
-		})
+		}))
 	}
-	return serverSyncQueue
+	return serverSyncs.get(fileId) ?? Promise.resolve()
+}
+
+// Resolves once the board's IndexedDB writes are done; with `server`, also
+// once its running and waiting uploads are done
+async function flushBoard(fileId: number, server: boolean): Promise<void> {
+	if (server) {
+		await serverSyncs.get(fileId)
+	}
+	await localSyncs.get(fileId)
 }
 
 const initWorker = () => {
@@ -211,17 +228,21 @@ const handleMessage = async (event: MessageEvent<WorkerInboundMessage>) => {
 
 	try {
 		switch (message.type) {
-		case 'INIT':
-			initWorker()
-			break
-		case 'SYNC_TO_LOCAL':
-			await handleSyncToLocal(message)
-			break
-		case 'SYNC_TO_SERVER':
-			await queueSyncToServer(message)
-			break
-		default:
-			// Unknown message type - ignore
+			case 'INIT':
+				initWorker()
+				break
+			case 'SYNC_TO_LOCAL':
+				await queueLocal(message.fileId, () => handleSyncToLocal(message))
+				break
+			case 'SYNC_TO_SERVER':
+				await queueSyncToServer(message)
+				break
+			case 'FLUSH':
+				await flushBoard(message.fileId, message.server)
+				sendMessage({ type: 'FLUSH_COMPLETE', id: message.id })
+				break
+			default:
+				// Unknown message type - ignore
 		}
 	} catch (e) {
 		error(`Error handling message ${message.type}:`, e)

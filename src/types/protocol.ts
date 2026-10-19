@@ -25,6 +25,7 @@ export type WorkerInboundMessage
 			files: BinaryFiles
 			sceneKey: string
 		}
+		| { type: 'FLUSH', fileId: number, id: number, server: boolean }
 
 export type WorkerOutboundMessage
 	= { type: 'INIT_COMPLETE' }
@@ -33,5 +34,6 @@ export type WorkerOutboundMessage
 		| { type: 'LOCAL_SYNC_ERROR', error: string }
 		| { type: 'SERVER_SYNC_COMPLETE', duration: number, elementsCount: number, success: boolean, response?: unknown, fileId: number, sceneKey: string }
 		| { type: 'SERVER_SYNC_ERROR', error: string }
+		| { type: 'FLUSH_COMPLETE', id: number }
 
 export type WorkerMessage = WorkerInboundMessage | WorkerOutboundMessage

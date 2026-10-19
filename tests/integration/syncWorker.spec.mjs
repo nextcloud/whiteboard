@@ -6,11 +6,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const records = vi.hoisted(() => new Map())
+const gates = vi.hoisted(() => ({ put: null, puts: 0 }))
 
 vi.mock('../../src/database/db.ts', () => ({
 	db: {
 		get: vi.fn(async (fileId) => records.get(fileId)),
 		put: vi.fn(async (fileId, elements, files, appState, options = {}) => {
+			gates.puts++
+			await gates.put
 			const existing = records.get(fileId)
 			records.set(fileId, {
 				elements,
@@ -44,6 +47,8 @@ describe('sync worker', () => {
 	beforeEach(async () => {
 		vi.resetModules()
 		records.clear()
+		gates.put = null
+		gates.puts = 0
 		responses = []
 		vi.stubGlobal('fetch', vi.fn(() => {
 			const response = deferredResponse()
@@ -83,6 +88,8 @@ describe('sync worker', () => {
 		hasPendingLocalChanges,
 	})
 
+	const flushBoard = (id, fileId, server) => send({ type: 'FLUSH', id, fileId, server })
+
 	const sentScenes = () => fetch.mock.calls.map(([url, init]) => `${url}@${JSON.parse(init.body).data.elements[0].version}`)
 	const sentTypes = () => worker.postMessage.mock.calls.map(([message]) => message.type)
 
@@ -100,30 +107,33 @@ describe('sync worker', () => {
 		expect(sentScenes()).toEqual(['/board/1@1', '/board/1@3'])
 	})
 
-	it('keeps the waiting save of a board when another board saves', async () => {
+	it('saves another board while a save of one board is still running', async () => {
 		save('k1', 1, 1)
 		await flush()
 		save('k2', 1, 2)
 		save('b1', 2, 1)
+		await flush()
+
+		expect(sentScenes()).toEqual(['/board/1@1', '/board/2@1'])
+
 		responses[0].resolve(ok)
+		await flush()
+
+		expect(sentScenes()).toEqual(['/board/1@1', '/board/2@1', '/board/1@2'])
+	})
+
+	it('uploads a scene again when it is sent again', async () => {
+		save('k1', 1)
+		await flush()
+		responses[0].resolve(ok)
+		await flush()
+		save('k1', 1)
 		await flush()
 		responses[1].resolve(ok)
 		await flush()
 
-		expect(sentScenes()).toEqual(['/board/1@1', '/board/1@2', '/board/2@1'])
-	})
-
-	it('skips a scene that was already saved for the same board', async () => {
-		save('k1', 1)
-		await flush()
-		responses[0].resolve(ok)
-		await flush()
-		save('k1', 1)
-		save('k1', 2)
-		await flush()
-
-		expect(sentScenes()).toEqual(['/board/1@1', '/board/2@1'])
-		expect(worker.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'SERVER_SYNC_COMPLETE', fileId: 1, sceneKey: 'k1' }))
+		expect(sentScenes()).toEqual(['/board/1@1', '/board/1@1'])
+		expect(sentTypes()).toEqual(['SERVER_SYNC_COMPLETE', 'SERVER_SYNC_COMPLETE'])
 	})
 
 	it('reports a 409 as an error and retries the scene', async () => {
@@ -164,6 +174,61 @@ describe('sync worker', () => {
 		responses[0].resolve(ok)
 		await flush()
 
+		expect(records.get(1)).toMatchObject({ elements: scene(2), hasPendingLocalChanges: true })
+	})
+
+	it('reports a flush of a board once its local writes are done', async () => {
+		let release
+		gates.put = new Promise((resolve) => {
+			release = resolve
+		})
+		saveLocal(2, true)
+		flushBoard(7, 1, false)
+		flushBoard(8, 2, false)
+		await flush()
+
+		expect(sentTypes()).toEqual(['FLUSH_COMPLETE'])
+		expect(worker.postMessage).toHaveBeenCalledWith({ type: 'FLUSH_COMPLETE', id: 8 })
+
+		release()
+		await flush()
+
+		expect(worker.postMessage).toHaveBeenLastCalledWith({ type: 'FLUSH_COMPLETE', id: 7 })
+		expect(records.get(1)).toMatchObject({ elements: scene(2), hasPendingLocalChanges: true })
+	})
+
+	it('reports a server flush of a board once its running and waiting saves are done', async () => {
+		save('k1', 1, 1)
+		await flush()
+		save('k2', 1, 2)
+		flushBoard(9, 1, true)
+		responses[0].resolve(ok)
+		await flush()
+
+		expect(sentScenes()).toEqual(['/board/1@1', '/board/1@2'])
+		expect(sentTypes()).toEqual(['SERVER_SYNC_COMPLETE'])
+
+		responses[1].resolve(ok)
+		await flush()
+
+		expect(sentTypes()).toEqual(['SERVER_SYNC_COMPLETE', 'SERVER_SYNC_COMPLETE', 'FLUSH_COMPLETE'])
+	})
+
+	it('writes the local copies of a board one at a time', async () => {
+		let release
+		gates.put = new Promise((resolve) => {
+			release = resolve
+		})
+		saveLocal(1, true)
+		saveLocal(2, true)
+		await flush()
+
+		expect(gates.puts).toBe(1)
+
+		release()
+		await flush()
+
+		expect(gates.puts).toBe(2)
 		expect(records.get(1)).toMatchObject({ elements: scene(2), hasPendingLocalChanges: true })
 	})
 })

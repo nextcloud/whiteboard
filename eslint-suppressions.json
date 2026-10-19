@@ -1086,9 +1086,6 @@
     }
   },
   "src/workers/syncWorker.ts": {
-    "@stylistic/indent": {
-      "count": 10
-    },
     "antfu/top-level-function": {
       "count": 7
     },

@@ -117,7 +117,7 @@ export function useSync() {
 
 	// Saves current state to IndexedDB
 	const doSyncToLocal = useCallback(async () => {
-		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly) {
+		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly || useSyncStore.getState().pausedFileId === fileId) {
 			return
 		}
 
@@ -157,6 +157,10 @@ export function useSync() {
 			return
 		}
 
+		if (useSyncStore.getState().pausedFileId === fileId) {
+			return
+		}
+
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
 		const files = excalidrawAPI.getFiles() as BinaryFiles
 		const sceneKey = computeSceneKey(elements, files)
@@ -172,6 +176,10 @@ export function useSync() {
 			if (!jwt) throw new Error('JWT token missing for server API sync.')
 			if (useWhiteboardConfigStore.getState().fileId !== fileId) {
 				throw new Error('FileId changed during server sync preparation.')
+			}
+			// A restore started meanwhile, and this scene is older than the restored one
+			if (useSyncStore.getState().pausedFileId === fileId) {
+				return
 			}
 
 			const message: WorkerInboundMessage = {
@@ -464,7 +472,7 @@ export function useSync() {
 		// Use CACHED state instead of trying to get it now (might be cleared already)
 		const scene = cachedStateRef.current
 		const jwt = fileId ? useJWTStore.getState().tokens[fileId] : null
-		if (!fileId || !scene?.elements.length || !jwt || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly) {
+		if (!fileId || !scene?.elements.length || !jwt || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly || useSyncStore.getState().pausedFileId === fileId) {
 			return
 		}
 
@@ -494,7 +502,7 @@ export function useSync() {
 	const doFinalSync = useCallback(() => {
 		const scene = cachedStateRef.current
 		const syncWorker = useSyncStore.getState().worker
-		if (fileId && scene?.elements.length && syncWorker && !useWhiteboardConfigStore.getState().isReadOnly) {
+		if (fileId && scene?.elements.length && syncWorker && !useWhiteboardConfigStore.getState().isReadOnly && useSyncStore.getState().pausedFileId !== fileId) {
 			const message: WorkerInboundMessage = {
 				type: 'SYNC_TO_LOCAL',
 				fileId,
