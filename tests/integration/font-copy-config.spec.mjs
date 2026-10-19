@@ -24,6 +24,8 @@ describe('Excalidraw font assets', () => {
 			config.configFile = false
 			config.root = projectRoot
 			config.logLevel = 'silent'
+			// It would empty the app's js/ on emit, also while other tests read it
+			config.plugins = config.plugins.flat(Infinity).filter((plugin) => plugin?.name !== 'nextcloud-empty-js')
 			config.build = {
 				...config.build,
 				emptyOutDir: true,
