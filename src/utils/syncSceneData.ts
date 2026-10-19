@@ -4,7 +4,7 @@
  */
 
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState } from '@excalidraw/excalidraw/types/types'
+import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types/types'
 import { isObject } from 'lodash'
 
 /**
@@ -42,6 +42,10 @@ export const computeElementVersionHash = (
 	hash = (hash * 33) ^ deletedCount
 
 	return hash >>> 0 // Ensure positive integer
+}
+
+export function computeSceneKey(elements: readonly ExcalidrawElement[], files: BinaryFiles): string {
+	return `${computeElementVersionHash(elements)}:${Object.keys(files).sort().join(',')}`
 }
 
 export type BroadcastedElementVersion = {

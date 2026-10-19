@@ -14,13 +14,15 @@ import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import logger from '../utils/logger'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
+import { saveSceneOnUnload } from '../utils/saveSceneOnUnload.ts'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types/types'
 import type { CollaborationSocket } from '../types/collaboration'
 import type { WorkerInboundMessage } from '../types/protocol'
 import {
 	buildBroadcastedElementVersions,
 	computeElementVersionHash,
+	computeSceneKey,
 	getIncrementalSceneElements,
 	updateBroadcastedElementVersions,
 } from '../utils/syncSceneData'
@@ -52,13 +54,11 @@ export function useSync() {
 
 	const {
 		initializeWorker,
-		terminateWorker,
 		isWorkerReady,
 		worker,
 	} = useSyncStore(
 		useShallow(state => ({
 			initializeWorker: state.initializeWorker,
-			terminateWorker: state.terminateWorker,
 			isWorkerReady: state.isWorkerReady,
 			worker: state.worker,
 		})),
@@ -84,14 +84,6 @@ export function useSync() {
 			isInRoom: state.isInRoom,
 		})),
 	)
-
-	// --- Worker Initialization ---
-	useEffect(() => {
-		initializeWorker()
-		return () => {
-			terminateWorker()
-		}
-	}, [initializeWorker, terminateWorker])
 
 	// Keep track of previously synced files to avoid resending unchanged files
 	const prevSyncedFilesRef = useRef<Record<string, string>>({})
@@ -135,7 +127,8 @@ export function useSync() {
 			const files = excalidrawAPI.getFiles() as BinaryFiles
 			const filteredAppState = sanitizeAppStateForSync(appState)
 
-			const message: WorkerInboundMessage = { type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState }
+			const hasPendingLocalChanges = computeSceneKey(elements, files) !== useSyncStore.getState().savedSceneKey
+			const message: WorkerInboundMessage = { type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState, hasPendingLocalChanges }
 			worker.postMessage(message)
 			logSyncResult('local', { status: 'syncing' })
 		} catch (error) {
@@ -164,6 +157,13 @@ export function useSync() {
 			return
 		}
 
+		const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
+		const files = excalidrawAPI.getFiles() as BinaryFiles
+		const sceneKey = computeSceneKey(elements, files)
+		if (sceneKey === useSyncStore.getState().savedSceneKey) {
+			return
+		}
+
 		logSyncResult('server', { status: 'syncing API' })
 		logger.debug('[Sync] Sending SYNC_TO_SERVER message to worker')
 
@@ -174,9 +174,6 @@ export function useSync() {
 				throw new Error('FileId changed during server sync preparation.')
 			}
 
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-			const files = excalidrawAPI.getFiles() as BinaryFiles
-
 			const message: WorkerInboundMessage = {
 				type: 'SYNC_TO_SERVER',
 				fileId,
@@ -184,6 +181,7 @@ export function useSync() {
 				jwt,
 				elements,
 				files,
+				sceneKey,
 			}
 
 			worker.postMessage(message)
@@ -419,7 +417,7 @@ export function useSync() {
 		if (excalidrawAPI) {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
 			const files = excalidrawAPI.getFiles()
-			cachedStateRef.current = { elements, files }
+			cachedStateRef.current = { elements, files, appState: excalidrawAPI.getAppState() }
 			const sceneHash = computeElementVersionHash(elements)
 			if (sceneHash !== lastBroadcastedSceneHashRef.current) {
 				throttledFullSceneHealing()
@@ -459,49 +457,62 @@ export function useSync() {
 	}, [isDedicatedSyncer])
 
 	// Cache the latest state for final sync - update on EVERY change
-	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[]; files: BinaryFiles }>({ elements: [], files: {} as BinaryFiles })
+	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[], files: BinaryFiles, appState: AppState } | null>(null)
 
-	// Direct sync when leaving - synchronous to ensure it completes
-	const doFinalServerSync = useCallback(() => {
-		if (!fileId || !isSyncerRef.current) {
+	// Saves the scene when leaving, unless this tab already saved it
+	const doFinalServerSync = useCallback((isUnloading = false) => {
+		// Use CACHED state instead of trying to get it now (might be cleared already)
+		const scene = cachedStateRef.current
+		const jwt = fileId ? useJWTStore.getState().tokens[fileId] : null
+		if (!fileId || !scene?.elements.length || !jwt || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly) {
 			return
 		}
 
-		// eslint-disable-next-line no-console
-		console.log('[Sync] Executing final sync on page leave')
-
-		try {
-			// Get JWT from store - it's stored in tokens[fileId]
-			const jwtState = useJWTStore.getState()
-			const jwt = jwtState.tokens[fileId]
-
-			if (!jwt) {
-				return
-			}
-
-			// Use CACHED state instead of trying to get it now (might be cleared already)
-			const { elements, files } = cachedStateRef.current
-			// eslint-disable-next-line no-console
-			console.log('[Sync] Using cached state with', elements.length, 'elements')
-
-			const url = generateUrl(`apps/whiteboard/${fileId}`)
-
-			const data = JSON.stringify({
-				data: { elements, files: files || {} },
-			})
-
-			// Use synchronous XMLHttpRequest (works in beforeunload)
-			const xhr = new XMLHttpRequest()
-			xhr.open('PUT', url, false) // false = synchronous
-			xhr.setRequestHeader('Content-Type', 'application/json')
-			xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest')
-			xhr.setRequestHeader('Authorization', `Bearer ${jwt}`)
-
-			xhr.send(data)
-		} catch (error) {
-			logger.error('[Sync] Final sync failed:', error)
+		const { elements, files } = scene
+		const sceneKey = computeSceneKey(elements, files)
+		if (sceneKey === useSyncStore.getState().savedSceneKey) {
+			return
 		}
+
+		const url = generateUrl(`apps/whiteboard/${fileId}`)
+		if (!isUnloading) {
+			const message: WorkerInboundMessage = { type: 'SYNC_TO_SERVER', fileId, url, jwt, elements, files, sceneKey }
+			useSyncStore.getState().worker?.postMessage(message)
+			return
+		}
+
+		saveSceneOnUnload(url, jwt, elements, files)
+			.then((saved) => {
+				if (saved) {
+					useSyncStore.setState({ savedSceneKey: sceneKey })
+				}
+			})
+			.catch((error) => logger.error('[Sync] Final sync failed:', error))
 	}, [fileId])
+
+	// Keeps the last scene of the board in IndexedDB and saves it, when the board closes or changes
+	const doFinalSync = useCallback(() => {
+		const scene = cachedStateRef.current
+		const syncWorker = useSyncStore.getState().worker
+		if (fileId && scene?.elements.length && syncWorker && !useWhiteboardConfigStore.getState().isReadOnly) {
+			const message: WorkerInboundMessage = {
+				type: 'SYNC_TO_LOCAL',
+				fileId,
+				elements: scene.elements,
+				files: scene.files,
+				appState: sanitizeAppStateForSync(scene.appState),
+				hasPendingLocalChanges: computeSceneKey(scene.elements, scene.files) !== useSyncStore.getState().savedSceneKey,
+			}
+			syncWorker.postMessage(message)
+		}
+		doFinalServerSync()
+		cachedStateRef.current = null
+	}, [fileId, doFinalServerSync])
+
+	useEffect(() => {
+		initializeWorker()
+		return () => doFinalSync()
+	}, [initializeWorker, doFinalSync])
 
 	useEffect(() => {
 		const handleBeforeUnload = () => {
@@ -515,7 +526,7 @@ export function useSync() {
 				throttledSyncToServerAPI.cancel()
 				// Call the unthrottled versions directly
 				doSyncToLocal()
-				doFinalServerSync()
+				doFinalServerSync(true)
 			}
 		}
 
@@ -545,16 +556,6 @@ export function useSync() {
 
 			if (excalidrawAPI && !isReadOnly) {
 				flushPendingWebSocketSync()
-			}
-
-			// If we're the dedicated syncer and unmounting, do a final sync
-			if (isSyncerRef.current && excalidrawAPI && !isReadOnly) {
-				// Cancel pending throttled calls
-				throttledSyncToLocal.cancel()
-				throttledSyncToServerAPI.cancel()
-				// Do final syncs
-				doSyncToLocal()
-				doFinalServerSync()
 			}
 
 			// Cancel all throttled functions to prevent them from running after unmount

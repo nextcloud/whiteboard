@@ -15,7 +15,7 @@ import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import { initialDataState } from '../constants/excalidraw'
 import logger from '../utils/logger'
-import { computeElementVersionHash, mergeSceneElements } from '../utils/syncSceneData'
+import { computeElementVersionHash, computeSceneKey, mergeSceneElements } from '../utils/syncSceneData'
 import { getLocalBoardDataPolicy } from '../utils/localBoardData.ts'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
@@ -166,6 +166,7 @@ export function useBoardDataManager() {
 
 		// Store the current fileId to validate later
 		currentFileIdRef.current = fileId
+		useSyncStore.setState({ savedSceneKey: null })
 
 		try {
 			const defaultSettings = {
@@ -210,6 +211,7 @@ export function useBoardDataManager() {
 
 				const restoredServerElements = restoreElements(serverData.elements, null)
 				const serverHash = computeElementVersionHash(restoredServerElements)
+				useSyncStore.setState({ savedSceneKey: computeSceneKey(restoredServerElements, serverData.files || {}) })
 				const serverScrollToContent = serverData.scrollToContent ?? true
 				const sanitizedServerAppState = sanitizeAppStateForSync(serverData.appState)
 				const sanitizedLocalAppState = sanitizeAppStateForSync(localData?.appState)
@@ -325,60 +327,6 @@ export function useBoardDataManager() {
 		}
 	}, [fileId, resolveInitialData, setLibraryRef, fetchDataFromServer, isVersionPreview, versionSource, fileVersion])
 
-	const saveOnUnmount = useCallback(() => {
-		if (useWhiteboardConfigStore.getState().isVersionPreview) {
-			return
-		}
-
-		const api = useExcalidrawStore.getState().excalidrawAPI
-		const currentIsReadOnly = useWhiteboardConfigStore.getState().isReadOnly
-
-		if (api && !currentIsReadOnly) {
-
-			const currentFileId = useWhiteboardConfigStore.getState().fileId
-			const currentWorker = useSyncStore.getState().worker
-			const currentIsWorkerReady = useSyncStore.getState().isWorkerReady
-
-			if (currentIsWorkerReady && currentWorker && currentFileId) {
-				try {
-					const elements = api.getSceneElementsIncludingDeleted()
-					const appState = api.getAppState()
-					const files = api.getFiles()
-					const filteredAppState = sanitizeAppStateForSync(appState)
-
-					// Set up a one-time message handler to detect when sync is complete
-					const messageHandler = (event: MessageEvent) => {
-						if (event.data.type === 'LOCAL_SYNC_COMPLETE') {
-							currentWorker.removeEventListener('message', messageHandler)
-						} else if (event.data.type === 'LOCAL_SYNC_ERROR') {
-							logger.error('[App] Final sync failed:', event.data.error)
-							currentWorker.removeEventListener('message', messageHandler)
-						}
-					}
-
-					// Add the message handler
-					currentWorker.addEventListener('message', messageHandler)
-
-					// Send the sync message
-					currentWorker.postMessage({
-						type: 'SYNC_TO_LOCAL',
-						fileId: currentFileId,
-						elements,
-						files,
-						appState: filteredAppState,
-					})
-
-					// Set a timeout to remove the handler after 500ms in case we don't get a response
-					setTimeout(() => {
-						currentWorker.removeEventListener('message', messageHandler)
-					}, 500)
-				} catch (error) {
-					logger.error('[App] Error during final sync on unmount:', error)
-				}
-			}
-		}
-	}, [])
-
 	// Load data when fileId changes
 	useEffect(() => {
 		const shouldLoad = (
@@ -414,6 +362,5 @@ export function useBoardDataManager() {
 	return {
 		isLoading,
 		loadBoard,
-		saveOnUnmount,
 	}
 }
