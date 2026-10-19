@@ -22,5 +22,5 @@ registerHandler({
 		}
 	},
 	theme: 'default',
-	canCompare: true,
+	canCompare: () => true,
 })

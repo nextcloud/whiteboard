@@ -16,6 +16,9 @@ import '@nextcloud/dialogs/style.css'
 
 window.EXCALIDRAW_ASSET_PATH = linkTo('whiteboard', 'dist/')
 
+// `ComparisonView` of `@nextcloud/viewer`
+type ComparisonView = 'side-by-side' | 'differences'
+
 /**
  * Keep Escape for the board: it closes its menus and dialogs, not the viewer
  *
@@ -29,11 +32,12 @@ function keepEscape(event: KeyboardEvent): void {
 
 /**
  * The element the viewer of Nextcloud 36 and up renders a whiteboard with,
- * given the file to show as its `file` property (`ViewerProps` in
- * `@nextcloud/viewer`).
+ * given the file to show and the comparison mode as its `file` and
+ * `comparison` properties (`ViewerProps` in `@nextcloud/viewer`).
  */
 export class WhiteboardViewerElement extends HTMLElement {
 	#file?: IFile
+	#comparison?: ComparisonView
 	#root: WhiteboardRootHandle | null = null
 
 	get file(): IFile | undefined {
@@ -43,6 +47,18 @@ export class WhiteboardViewerElement extends HTMLElement {
 	set file(file: IFile | undefined) {
 		const changed = file?.source !== this.#file?.source
 		this.#file = file
+		if (changed && this.isConnected) {
+			this.#render()
+		}
+	}
+
+	get comparison(): ComparisonView | undefined {
+		return this.#comparison
+	}
+
+	set comparison(comparison: ComparisonView | undefined) {
+		const changed = comparison !== this.#comparison
+		this.#comparison = comparison
 		if (changed && this.isConnected) {
 			this.#render()
 		}
@@ -74,28 +90,25 @@ export class WhiteboardViewerElement extends HTMLElement {
 			return
 		}
 
-		// Outside the viewer, as the preview of a link to the file, the board
-		// is shown read-only
-		const isEmbedded = this.closest('.viewer__modal') === null
-		// An older version carries the id of the file it belongs to, and is
-		// read from its own source
+		// An older version carries the id of the file it belongs to
 		const isVersion = file.source.includes('/dav/versions/')
+		// Side by side with another version, both are shown read-only and
+		// read from their own source, the current file too
+		const isComparisonView = this.#comparison !== undefined
 
 		const container = document.createElement('div')
 		container.classList.add('whiteboard')
-		container.classList.toggle('whiteboard-viewer__embedding', isEmbedded)
 		this.append(container)
 
 		this.#root = renderWhiteboardView(container, {
 			fileId: file.fileid ?? 0,
-			isEmbedded,
+			isEmbedded: false,
 			fileName: file.displayname,
 			publicSharingToken: getSharingToken(),
 			collabBackendUrl: loadState('whiteboard', 'collabBackendUrl', ''),
-			versionSource: isVersion ? file.encodedSource : null,
+			versionSource: (isVersion || isComparisonView) ? file.encodedSource : null,
 			fileVersion: isVersion ? file.basename : null,
-			// Side by side with another version, both are shown read-only
-			isComparisonView: this.closest('.viewer__comparison') !== null,
+			isComparisonView,
 		})
 		this.dispatchEvent(new CustomEvent('loaded'))
 	}
