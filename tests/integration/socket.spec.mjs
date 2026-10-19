@@ -224,4 +224,139 @@ describe('Socket handling', () => {
 		newSocket.disconnect()
 	})
 
+	describe('when a user disconnects', () => {
+		const connectUser = async (fileId, id, name) => {
+			const userSocket = io(Config.NEXTCLOUD_URL, {
+				auth: { token: jwt.sign({ fileId, user: { id, name } }, Config.JWT_SECRET_KEY) },
+			})
+			await waitFor(userSocket, 'connect')
+			return userSocket
+		}
+
+		const joinRoom = async (userSocket, roomID) => {
+			const designation = waitFor(userSocket, 'sync-designate')
+			userSocket.emit('join-room', roomID)
+			return (await designation).isSyncer
+		}
+
+		const within = (promise, ms = 3000) => Promise.race([
+			promise,
+			new Promise((_resolve, reject) => setTimeout(() => reject(new Error('Timed out')), ms)),
+		])
+
+		it('makes another user the syncer when the syncer leaves', async () => {
+			const alice = await connectUser(789, 'alice', 'Alice')
+			const bob = await connectUser(789, 'bob', 'Bob')
+			expect(await joinRoom(alice, 789)).toBe(true)
+			expect(await joinRoom(bob, 789)).toBe(false)
+
+			const promoted = waitFor(bob, 'sync-designate')
+			alice.disconnect()
+
+			expect(await within(promoted)).toEqual({ isSyncer: true })
+			bob.disconnect()
+		})
+
+		it('ends the presentation when the presenter leaves', async () => {
+			const alice = await connectUser(790, 'alice', 'Alice')
+			const bob = await connectUser(790, 'bob', 'Bob')
+			await joinRoom(alice, 790)
+			await joinRoom(bob, 790)
+			const started = waitFor(bob, 'user-started-presenting')
+			alice.emit('presentation-start', { fileId: '790', userId: 'alice' })
+			await within(started)
+
+			const stopped = waitFor(bob, 'user-stopped-presenting')
+			alice.disconnect()
+
+			expect(await within(stopped)).toMatchObject({ userId: 'alice' })
+			bob.disconnect()
+		})
+
+		it('keeps the timer of a board when its only user leaves and comes back', async () => {
+			const alice = await connectUser(795, 'alice', 'Alice')
+			const hydrated = waitFor(alice, 'timer-state')
+			await joinRoom(alice, 795)
+			await within(hydrated)
+			const started = waitFor(alice, 'timer-state')
+			alice.emit('timer-start', { fileId: '795', durationMs: 60000 })
+			expect((await within(started)).status).toBe('running')
+			alice.disconnect()
+			await new Promise((resolve) => setTimeout(resolve, 200))
+
+			const back = await connectUser(795, 'alice', 'Alice')
+			const timer = waitFor(back, 'timer-state')
+			await joinRoom(back, 795)
+
+			expect((await within(timer)).status).toBe('running')
+			back.disconnect()
+		})
+
+		it('keeps the votings of a board when its only user leaves and comes back', async () => {
+			const alice = await connectUser(799, 'alice', 'Alice')
+			await joinRoom(alice, 799)
+			const started = waitFor(alice, 'voting-started')
+			alice.emit('voting-start', '799', { question: 'Lunch?', type: 'single-choice', options: ['Pizza', 'Pho'] })
+			await within(started)
+			alice.disconnect()
+			await new Promise((resolve) => setTimeout(resolve, 200))
+
+			const back = await connectUser(799, 'alice', 'Alice')
+			const votings = waitFor(back, 'votings-init')
+			await joinRoom(back, 799)
+
+			expect((await within(votings)).map((voting) => voting.question)).toEqual(['Lunch?'])
+			back.disconnect()
+		})
+
+		it('tells the room when a user leaves while the presenter stays on another socket', async () => {
+			const presenting = await connectUser(796, 'alice', 'Alice')
+			const otherTab = await connectUser(796, 'alice', 'Alice')
+			const bob = await connectUser(796, 'bob', 'Bob')
+			await joinRoom(presenting, 796)
+			await joinRoom(otherTab, 796)
+			await joinRoom(bob, 796)
+			const started = waitFor(bob, 'user-started-presenting')
+			presenting.emit('presentation-start', { fileId: '796', userId: 'alice' })
+			await within(started)
+
+			const userChange = waitFor(bob, 'room-user-change')
+			otherTab.disconnect()
+
+			expect(await within(userChange)).toHaveLength(2)
+			presenting.disconnect()
+			bob.disconnect()
+		})
+
+		it('forgets the leave handling of a socket whose data is already gone', async () => {
+			const { socketService } = serverManager
+			const alice = await connectUser(797, 'alice', 'Alice')
+			await joinRoom(alice, 797)
+			const socketId = alice.id
+			await socketService.sessionStore.clearSocketMeta(socketId)
+
+			alice.disconnect()
+			await vi.waitFor(() => {
+				expect(socketService.io.sockets.sockets.has(socketId)).toBe(false)
+			})
+
+			await vi.waitFor(() => {
+				expect(socketService.pendingDisconnects.has(socketId)).toBe(false)
+			})
+		})
+
+		it('still clears the socket data when the leave handling fails', async () => {
+			const { socketService } = serverManager
+			const alice = await connectUser(791, 'alice', 'Alice')
+			await joinRoom(alice, 791)
+			const socketId = alice.id
+			vi.spyOn(socketService.roomLifecycleController, 'onDisconnecting').mockRejectedValueOnce(new Error('Leave failed'))
+
+			alice.disconnect()
+
+			await vi.waitFor(async () => {
+				expect(await socketService.sessionStore.getSocketData(socketId)).toBeFalsy()
+			})
+		})
+	})
 })

@@ -105,11 +105,6 @@ export default class VotingService {
 		})
 	}
 
-	async clearRoom(roomID) {
-		this.votings.delete(roomID)
-		await this.roomStateStore.deleteValue(this.#getVotingKey(roomID))
-	}
-
 	// Voting operations
 	async start(socket, roomID, votingData) {
 		try {

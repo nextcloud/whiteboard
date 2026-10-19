@@ -1117,9 +1117,6 @@
     "@stylistic/implicit-arrow-linebreak": {
       "count": 1
     },
-    "@stylistic/padded-blocks": {
-      "count": 1
-    },
     "perfectionist/sort-imports": {
       "count": 3
     },

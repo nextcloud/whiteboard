@@ -70,6 +70,8 @@ export default class SocketService {
 		this.sessionStore = new SessionStore(this.socketDataStorage)
 		this.recordingServices = new Map()
 		this.pendingRecordingStops = new Map()
+		// The leave handling of a socket, which still reads its socket data
+		this.pendingDisconnects = new Map()
 		this.nodeId = process.env.WEBSOCKET_NODE_ID || process.env.HOSTNAME || `node-${crypto.randomUUID()}`
 		this.shuttingDown = false
 		this.roomStateStore = new RoomStateStore({
@@ -536,9 +538,9 @@ export default class SocketService {
 			const rooms = Array.from(socket.rooms).filter(
 				(room) => room !== socket.id,
 			)
-			this.safeSocketHandler(socket, () =>
+			this.pendingDisconnects.set(socket.id, this.safeSocketHandler(socket, () =>
 				this.disconnectingHandler(socket, rooms),
-			)
+			).finally(() => this.pendingDisconnects.delete(socket.id)))
 		})
 	}
 
@@ -565,6 +567,7 @@ export default class SocketService {
 
 	async disconnectHandler(socket) {
 		try {
+			await this.pendingDisconnects.get(socket.id)
 			await this.sessionStore.clearSocketMeta(socket.id)
 
 			socket.removeAllListeners()

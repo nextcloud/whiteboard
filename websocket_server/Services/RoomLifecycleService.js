@@ -226,16 +226,15 @@ export default class RoomLifecycleService {
 
 					if (presenterStillConnected) {
 						console.log(`[${roomID}] Presenter still connected on another socket, skipping presentation end`)
-						continue
+					} else {
+						console.log(`[${roomID}] Presenter ${userName} disconnected, ending presentation`)
+						await this.presentationState.clearPresentationSession(roomID)
+
+						socket.to(roomID).emit('user-stopped-presenting', {
+							userId,
+							username: userName,
+						})
 					}
-
-					console.log(`[${roomID}] Presenter ${userName} disconnected, ending presentation`)
-					await this.presentationState.clearPresentationSession(roomID)
-
-					socket.to(roomID).emit('user-stopped-presenting', {
-						userId,
-						username: userName,
-					})
 				}
 			}
 
@@ -252,12 +251,6 @@ export default class RoomLifecycleService {
 		if (userSockets.length === 0) {
 			console.log(`[${roomID}] No users left in room, no syncer needed`)
 			await this.cluster.clearRoomSyncer(roomID)
-			if (this.timerService) {
-				await this.timerService.clearRoom(roomID)
-			}
-			if (this.votingService) {
-				await this.votingService.clearRoom(roomID)
-			}
 			return
 		}
 
