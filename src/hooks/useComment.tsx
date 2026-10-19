@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { mdiCommentOutline, mdiAccount } from '@mdi/js'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useShallow } from 'zustand/react/shallow'
-import { viewportCoordsToSceneCoords, convertToExcalidrawElements } from '@nextcloud/excalidraw'
+import { viewportCoordsToSceneCoords, convertToExcalidrawElements, newElementWith } from '@nextcloud/excalidraw'
 import { generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { CommentPopover } from '../components/CommentPopover'
@@ -323,16 +325,14 @@ export function useComment(props?: UseCommentProps) {
 		emptyThreadIds.forEach((threadId: string) => deleteThread(threadId))
 	}, [excalidrawAPI, deleteThread])
 
-	const updateThread = useCallback((threadId: string, updater: (thread: CommentThread) => Partial<Record<string, unknown>>) => {
+	const updateThread = useCallback((threadId: string, updater: (thread: CommentThread) => Partial<Pick<CommentElementData, 'customData' | 'x' | 'y'>>) => {
 		if (!excalidrawAPI) return
 
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
-		const updatedElements = elements.map((el: unknown) => {
+		const updatedElements = elements.map((el: ExcalidrawElement) => {
 			if (isCommentElement(el) && el.customData?.commentThread?.id === threadId) {
-				return {
-					...el,
-					...updater(el.customData.commentThread),
-				}
+				// A new version, so the change is saved and reaches collaborators
+				return newElementWith(el, updater(el.customData.commentThread))
 			}
 			return el
 		})

@@ -13,6 +13,7 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useShallow } from 'zustand/react/shallow'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
+import { useSyncStore } from '../stores/useSyncStore.ts'
 import { db } from '../database/db'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
@@ -363,6 +364,8 @@ export function useVersionPreview({
 
 		setIsRestoringVersion(true)
 		try {
+			// A save of the board landing after the restore would replace it
+			await useSyncStore.getState().pauseSaves(fileId)
 			const snapshot = await captureRestoredSnapshot()
 
 			const response = await fetch(versionDavEndpoints.restoreUrl, {
@@ -396,6 +399,7 @@ export function useVersionPreview({
 			logger.error('[useVersionPreview] Failed to restore version', error)
 			showError(t('whiteboard', 'Could not restore this version'))
 		} finally {
+			useSyncStore.getState().resumeSaves()
 			setIsRestoringVersion(false)
 		}
 	}, [versionDavEndpoints, captureRestoredSnapshot, persistRestoredSnapshot, fileId, exitVersionPreview])
@@ -411,6 +415,8 @@ export function useVersionPreview({
 
 		setIsRestoringVersion(true)
 		try {
+			// A save of the board landing after the restore would replace it
+			await useSyncStore.getState().pauseSaves(fileId)
 			const snapshot = await captureRestoredSnapshot(source)
 
 			const response = await fetch(endpoints.restoreUrl, {
@@ -456,6 +462,7 @@ export function useVersionPreview({
 			showError(t('whiteboard', 'Could not restore this version'))
 			return false
 		} finally {
+			useSyncStore.getState().resumeSaves()
 			setIsRestoringVersion(false)
 		}
 	}, [captureRestoredSnapshot, currentVersionSource, exitVersionPreview, fileId, isVersionPreview, persistRestoredSnapshot, refreshReadOnlyState, resolveVersionEndpoints, setReadOnly])

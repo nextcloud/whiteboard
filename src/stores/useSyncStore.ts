@@ -23,6 +23,7 @@ interface SyncStore {
 	worker: Worker | null
 	isWorkerReady: boolean
 	savedSceneKey: string | null
+	pausedFileId: number | null
 
 	// Actions
 	setWorker: (worker: Worker | null) => void
@@ -30,6 +31,20 @@ interface SyncStore {
 
 	// Worker functions
 	initializeWorker: () => Worker | null
+	flushBoard: (fileId: number, server?: boolean) => Promise<void>
+	pauseSaves: (fileId: number) => Promise<void>
+	resumeSaves: () => void
+}
+
+// An upload that takes longer fails the restore waiting for it
+const SERVER_FLUSH_TIMEOUT = 60_000
+
+const pendingFlushes = new Map<number, () => void>()
+let lastFlushId = 0
+
+function resolvePendingFlushes() {
+	pendingFlushes.forEach((resolve) => resolve())
+	pendingFlushes.clear()
 }
 
 export const useSyncStore = create<SyncStore>((set, get) => ({
@@ -37,6 +52,7 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 	worker: null,
 	isWorkerReady: false,
 	savedSceneKey: null,
+	pausedFileId: null,
 
 	// Actions
 	setWorker: (worker) => set({ worker }),
@@ -104,6 +120,11 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 							})
 							break
 
+						case 'FLUSH_COMPLETE':
+							pendingFlushes.get(data.id)?.()
+							pendingFlushes.delete(data.id)
+							break
+
 						case 'SERVER_SYNC_ERROR':
 							logger.error('[SyncStore] Worker server sync error:', data.error)
 							// Use the imported logSyncResult function
@@ -116,6 +137,19 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 						default:
 							logger.warn(`[SyncStore] Unknown message from worker: ${type}`)
 					}
+				}
+
+				// A worker that failed to load is replaced on the next mount
+				const loadingWorker = syncWorker
+				loadingWorker.onerror = (event) => {
+					if (get().worker !== loadingWorker || get().isWorkerReady) {
+						return
+					}
+					logger.error('[SyncStore] Worker failed to load:', event.message)
+					loadingWorker.terminate()
+					set({ worker: null })
+					// Its queued saves will never run, so nothing is left to wait for
+					resolvePendingFlushes()
 				}
 
 				// Initialize the worker
@@ -132,4 +166,34 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 
 		return syncWorker
 	},
+
+	flushBoard: (fileId, server = false) => {
+		const worker = get().worker
+		if (!worker) {
+			return Promise.resolve()
+		}
+		const id = ++lastFlushId
+		return new Promise<void>((resolve, reject) => {
+			let timer: ReturnType<typeof setTimeout> | undefined
+			if (server) {
+				timer = setTimeout(() => {
+					pendingFlushes.delete(id)
+					reject(new Error('The board is still saving'))
+				}, SERVER_FLUSH_TIMEOUT)
+			}
+			pendingFlushes.set(id, () => {
+				clearTimeout(timer)
+				resolve()
+			})
+			worker.postMessage({ type: 'FLUSH', fileId, id, server })
+		})
+	},
+
+	// Stops saving the board and waits for the saves it already queued
+	pauseSaves: (fileId) => {
+		set({ pausedFileId: fileId })
+		return get().flushBoard(fileId, true)
+	},
+
+	resumeSaves: () => set({ pausedFileId: null }),
 }))

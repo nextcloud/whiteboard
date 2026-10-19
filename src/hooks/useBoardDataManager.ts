@@ -175,6 +175,8 @@ export function useBoardDataManager() {
 				currentItemRoughness: 0,
 			}
 
+			// The board may just have closed: read its local copy after the last write
+			await useSyncStore.getState().flushBoard(fileId)
 			const localData = await db.get(fileId)
 			const hasPendingLocalChanges = localData?.hasPendingLocalChanges ?? false
 

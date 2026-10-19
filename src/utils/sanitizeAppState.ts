@@ -7,6 +7,7 @@ import type { AppState } from '@excalidraw/excalidraw/types/types'
 
 const NON_TRANSFERRED_KEYS: Array<keyof AppState> = [
 	'collaborators',
+	'contextMenu',
 	'selectedElementIds',
 	'width',
 	'height',
