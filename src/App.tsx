@@ -25,7 +25,6 @@ import { useLangStore } from './stores/useLangStore'
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
 import { AuthErrorNotification } from './components/AuthErrorNotification'
 import { useSync } from './hooks/useSync'
-import { useSyncStore } from './stores/useSyncStore'
 import { useLibrary } from './hooks/useLibrary'
 import { useLibraryCatalog } from './hooks/useLibraryCatalog'
 import { useCanvasTemplate } from './hooks/useCanvasTemplate'
@@ -125,10 +124,6 @@ export default function App({
 	const { lang, updateLang } = useLangStore(useShallow(state => ({
 		lang: state.lang,
 		updateLang: state.updateLang,
-	})))
-
-	const { terminateWorker } = useSyncStore(useShallow(state => ({
-		terminateWorker: state.terminateWorker,
 	})))
 
 	const { theme } = useThemeHandling()
@@ -305,7 +300,6 @@ export default function App({
 
 	// Use the board data manager hook
 	const {
-		saveOnUnmount,
 		isLoading,
 	} = useBoardDataManager()
 
@@ -326,14 +320,7 @@ export default function App({
 
 		// Reset the initialDataPromise to ensure clean state
 		resetInitialDataPromise()
-
-		return () => {
-			// Save current board data before switching
-			if (excalidrawAPI) {
-				saveOnUnmount()
-			}
-		}
-	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, saveOnUnmount, setIsLibraryLoaded])
+	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, setIsLibraryLoaded])
 
 	useEffect(() => {
 		if (isLoading || !excalidrawAPI) {
@@ -390,17 +377,11 @@ export default function App({
 
 	useEffect(() => {
 		return () => {
-			// Save any pending changes before resetting stores
-			saveOnUnmount()
-
 			// Reset all stores
 			resetStore()
 			resetExcalidrawAPI()
-
-			// Terminate the worker
-			terminateWorker()
 		}
-	}, [resetStore, resetExcalidrawAPI, terminateWorker, saveOnUnmount])
+	}, [resetStore, resetExcalidrawAPI])
 
 	const [activeCommentThreadId, setActiveCommentThreadId] = useState<string | null>(null)
 	const [commentSidebarDocked, setCommentSidebarDocked] = useState(false)

@@ -43,8 +43,12 @@ const sendMessage = (message: WorkerOutboundMessage) => {
 type SyncToLocalMessage = Extract<WorkerInboundMessage, { type: 'SYNC_TO_LOCAL' }>
 type SyncToServerMessage = Extract<WorkerInboundMessage, { type: 'SYNC_TO_SERVER' }>
 
+const lastSavedSceneKeys = new Map<number, string>()
+const waitingServerSyncs = new Map<number, SyncToServerMessage>()
+let serverSyncQueue: Promise<void> = Promise.resolve()
+
 const handleSyncToLocal = async (data: SyncToLocalMessage) => {
-	const { fileId, elements, files, appState } = data
+	const { fileId, elements, files, appState, hasPendingLocalChanges } = data
 
 	if (!fileId) {
 		error('Missing fileId for local sync')
@@ -65,7 +69,7 @@ const handleSyncToLocal = async (data: SyncToLocalMessage) => {
 		}
 
 		await db.put(fileId, elements, files || {}, filteredAppState, {
-			hasPendingLocalChanges: true,
+			hasPendingLocalChanges,
 		})
 
 		const duration = performance.now() - startTime
@@ -85,7 +89,7 @@ const handleSyncToLocal = async (data: SyncToLocalMessage) => {
 }
 
 const handleSyncToServer = async (data: SyncToServerMessage) => {
-	const { fileId, url, jwt, elements, files } = data
+	const { fileId, url, jwt, elements, files, sceneKey } = data
 
 	if (!fileId || !url || !jwt) {
 		error('Missing required data for server sync', { fileId, url: !!url, jwt: !!jwt })
@@ -113,17 +117,6 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 			}),
 		})
 
-		if (response.status === 409) {
-			sendMessage({
-				type: 'SERVER_SYNC_COMPLETE',
-				success: true,
-				skipped: true,
-				duration: 0,
-				elementsCount: elements?.length ?? 0,
-			})
-			return
-		}
-
 		if (!response.ok) {
 			let errorMessage = `Server responded with status: ${response.status}`
 			try {
@@ -144,21 +137,27 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 
 		try {
 			const existing = await db.get(fileId)
-			await db.put(
-				fileId,
-				elements,
-				files || existing?.files || {},
-				existing?.appState,
-				{
-					hasPendingLocalChanges: false,
-					lastSyncedHash: computeElementVersionHash(elements || []),
-				},
-			)
+			const savedHash = computeElementVersionHash(elements || [])
+			const hasOtherLocalDraft = existing?.hasPendingLocalChanges
+				&& computeElementVersionHash(existing.elements || []) !== savedHash
+			if (!hasOtherLocalDraft) {
+				await db.put(
+					fileId,
+					elements,
+					files || existing?.files || {},
+					existing?.appState,
+					{
+						hasPendingLocalChanges: false,
+						lastSyncedHash: savedHash,
+					},
+				)
+			}
 		} catch (dbError) {
 			error('Error updating local metadata after server sync:', dbError)
 		}
 
 		const duration = performance.now() - startTime
+		lastSavedSceneKeys.set(fileId, sceneKey)
 
 		sendMessage({
 			type: 'SERVER_SYNC_COMPLETE',
@@ -166,6 +165,8 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 			duration,
 			elementsCount: elements.length,
 			response: responseData,
+			fileId,
+			sceneKey,
 		})
 	} catch (e) {
 		error('Error syncing to server:', e)
@@ -174,6 +175,23 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 			error: e instanceof Error ? e.message : String(e),
 		})
 	}
+}
+
+// One save at a time; per board, a newer scene replaces the one still waiting
+function queueSyncToServer(message: SyncToServerMessage): Promise<void> {
+	const { fileId } = message
+	const isWaiting = waitingServerSyncs.has(fileId)
+	waitingServerSyncs.set(fileId, message)
+	if (!isWaiting) {
+		serverSyncQueue = serverSyncQueue.then(async () => {
+			const next = waitingServerSyncs.get(fileId)
+			waitingServerSyncs.delete(fileId)
+			if (next && next.sceneKey !== lastSavedSceneKeys.get(fileId)) {
+				await handleSyncToServer(next)
+			}
+		})
+	}
+	return serverSyncQueue
 }
 
 const initWorker = () => {
@@ -200,7 +218,7 @@ const handleMessage = async (event: MessageEvent<WorkerInboundMessage>) => {
 			await handleSyncToLocal(message)
 			break
 		case 'SYNC_TO_SERVER':
-			await handleSyncToServer(message)
+			await queueSyncToServer(message)
 			break
 		default:
 			// Unknown message type - ignore

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
 	buildBroadcastedElementVersions,
+	computeSceneKey,
 	getIncrementalSceneElements,
 	updateBroadcastedElementVersions,
 } from '../../src/utils/syncSceneData.ts'
@@ -37,5 +38,24 @@ describe('syncSceneData incremental bookkeeping', () => {
 			A: { version: 2, versionNonce: 202 },
 			B: { version: 4, versionNonce: 404 },
 		})
+	})
+})
+
+describe('computeSceneKey', () => {
+	const elements = [
+		{ id: 'A', version: 1, versionNonce: 101, isDeleted: false },
+		{ id: 'B', version: 4, versionNonce: 404, isDeleted: false },
+	]
+
+	it('ignores file order', () => {
+		expect(computeSceneKey(elements, { f1: {}, f2: {} })).toBe(computeSceneKey(elements, { f2: {}, f1: {} }))
+	})
+
+	it('changes when an element or a file changes', () => {
+		const key = computeSceneKey(elements, { f1: {} })
+
+		expect(computeSceneKey([elements[0], { ...elements[1], version: 5, versionNonce: 505 }], { f1: {} })).not.toBe(key)
+		expect(computeSceneKey([elements[0], { ...elements[1], isDeleted: true }], { f1: {} })).not.toBe(key)
+		expect(computeSceneKey(elements, { f1: {}, f2: {} })).not.toBe(key)
 	})
 })

@@ -1,0 +1,29 @@
+/**
+ * SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { BinaryFiles } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+
+// Browsers reject keepalive requests above 64 KiB
+const KEEPALIVE_BODY_LIMIT = 64 * 1024
+
+export async function saveSceneOnUnload(url: string, jwt: string, elements: readonly ExcalidrawElement[], files: BinaryFiles): Promise<boolean> {
+	const body = new Blob([JSON.stringify({ data: { elements, files } })])
+	if (body.size > KEEPALIVE_BODY_LIMIT) {
+		return false
+	}
+
+	const response = await fetch(url, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-Requested-With': 'XMLHttpRequest',
+			Authorization: `Bearer ${jwt}`,
+		},
+		body,
+		keepalive: true,
+	})
+	return response.ok
+}

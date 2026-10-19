@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import logger from '../utils/logger'
+import { useWhiteboardConfigStore } from './useWhiteboardConfigStore.ts'
 
 export type SyncOperation = 'local' | 'server' | 'websocket' | 'cursor'
 
@@ -21,6 +22,7 @@ interface SyncStore {
 	// Core state
 	worker: Worker | null
 	isWorkerReady: boolean
+	savedSceneKey: string | null
 
 	// Actions
 	setWorker: (worker: Worker | null) => void
@@ -28,13 +30,13 @@ interface SyncStore {
 
 	// Worker functions
 	initializeWorker: () => Worker | null
-	terminateWorker: () => void
 }
 
 export const useSyncStore = create<SyncStore>((set, get) => ({
 	// State
 	worker: null,
 	isWorkerReady: false,
+	savedSceneKey: null,
 
 	// Actions
 	setWorker: (worker) => set({ worker }),
@@ -45,10 +47,10 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 
 	// Worker functions
 	initializeWorker: () => {
-
-		// If worker already exists, terminate it first
-		if (get().worker) {
-			get().terminateWorker()
+		// One worker per page, so saves of a board stay in order across close and reopen
+		const existingWorker = get().worker
+		if (existingWorker) {
+			return existingWorker
 		}
 
 		// Reset the worker ready state
@@ -68,48 +70,51 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 					const { type, ...data } = event.data
 
 					switch (type) {
-					case 'INIT_COMPLETE':
-						get().setIsWorkerReady(true)
-						break
+						case 'INIT_COMPLETE':
+							get().setIsWorkerReady(true)
+							break
 
-					case 'LOCAL_SYNC_COMPLETE':
+						case 'LOCAL_SYNC_COMPLETE':
 						// Use the imported logSyncResult function
-						logSyncResult('local', {
-							status: 'success',
-							elementsCount: data.elementsCount,
-							error: null,
-						})
-						break
+							logSyncResult('local', {
+								status: 'success',
+								elementsCount: data.elementsCount,
+								error: null,
+							})
+							break
 
-					case 'LOCAL_SYNC_ERROR':
-						logger.error('[SyncStore] Worker local sync error:', data.error)
-						// Use the imported logSyncResult function
-						logSyncResult('local', {
-							status: 'error',
-							error: data.error,
-						})
-						break
+						case 'LOCAL_SYNC_ERROR':
+							logger.error('[SyncStore] Worker local sync error:', data.error)
+							// Use the imported logSyncResult function
+							logSyncResult('local', {
+								status: 'error',
+								error: data.error,
+							})
+							break
 
-					case 'SERVER_SYNC_COMPLETE':
-						// Use the imported logSyncResult function
-						logSyncResult('server', {
-							status: 'success',
-							elementsCount: data.elementsCount,
-							error: null,
-						})
-						break
+						case 'SERVER_SYNC_COMPLETE':
+							if (data.fileId === useWhiteboardConfigStore.getState().fileId) {
+								set({ savedSceneKey: data.sceneKey })
+							}
+							// Use the imported logSyncResult function
+							logSyncResult('server', {
+								status: 'success',
+								elementsCount: data.elementsCount,
+								error: null,
+							})
+							break
 
-					case 'SERVER_SYNC_ERROR':
-						logger.error('[SyncStore] Worker server sync error:', data.error)
-						// Use the imported logSyncResult function
-						logSyncResult('server', {
-							status: 'error',
-							error: data.error,
-						})
-						break
+						case 'SERVER_SYNC_ERROR':
+							logger.error('[SyncStore] Worker server sync error:', data.error)
+							// Use the imported logSyncResult function
+							logSyncResult('server', {
+								status: 'error',
+								error: data.error,
+							})
+							break
 
-					default:
-						logger.warn(`[SyncStore] Unknown message from worker: ${type}`)
+						default:
+							logger.warn(`[SyncStore] Unknown message from worker: ${type}`)
 					}
 				}
 
@@ -126,16 +131,5 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 		}
 
 		return syncWorker
-	},
-
-	terminateWorker: () => {
-		const { worker } = get()
-		if (worker) {
-			worker.terminate()
-			set({
-				worker: null,
-				isWorkerReady: false,
-			})
-		}
 	},
 }))

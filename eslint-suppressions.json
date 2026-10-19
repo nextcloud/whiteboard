@@ -1,7 +1,7 @@
 {
   "src/App.tsx": {
     "@stylistic/arrow-parens": {
-      "count": 8
+      "count": 7
     },
     "@stylistic/jsx-closing-bracket-location": {
       "count": 1
@@ -22,7 +22,7 @@
       "count": 3
     },
     "import-extensions/extensions": {
-      "count": 44
+      "count": 43
     },
     "perfectionist/sort-imports": {
       "count": 32
@@ -427,9 +427,6 @@
     "@stylistic/arrow-parens": {
       "count": 2
     },
-    "@stylistic/padded-blocks": {
-      "count": 1
-    },
     "import-extensions/extensions": {
       "count": 9
     },
@@ -732,7 +729,7 @@
       "count": 6
     },
     "@stylistic/member-delimiter-style": {
-      "count": 10
+      "count": 9
     },
     "@typescript-eslint/no-use-before-define": {
       "count": 1
@@ -915,12 +912,6 @@
     }
   },
   "src/stores/useSyncStore.ts": {
-    "@stylistic/indent": {
-      "count": 35
-    },
-    "@stylistic/padded-blocks": {
-      "count": 1
-    },
     "import-extensions/extensions": {
       "count": 1
     }
@@ -967,14 +958,6 @@
   "src/types/nextcloud.d.ts": {
     "@stylistic/type-annotation-spacing": {
       "count": 1
-    }
-  },
-  "src/types/protocol.ts": {
-    "@stylistic/member-delimiter-style": {
-      "count": 10
-    },
-    "@stylistic/operator-linebreak": {
-      "count": 2
     }
   },
   "src/types/whiteboard.d.ts": {
