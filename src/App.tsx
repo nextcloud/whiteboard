@@ -37,6 +37,7 @@ import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { useAssistant } from './hooks/useAssistant'
 import logger from './utils/logger'
 import { prepareDuplicatedElements } from './utils/mergeElementsWithMetadata.ts'
+import { resolveOrgLibraryItems } from './utils/orgLibraryItems.ts'
 import { useRecording } from './hooks/useRecording'
 import { RecordingOverlay } from './components/Recording'
 import { usePresentation } from './hooks/usePresentation'
@@ -138,7 +139,7 @@ export default function App({
 	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
-	const { resolveLibrary, saveLibrary } = useLibraryCatalog()
+	const { fetchLibraries, resolveLibrary, saveLibrary } = useLibraryCatalog()
 	const { publishCanvasTemplate } = useCanvasTemplate()
 	// Org saves need admin rights and a server (30+) whose picker can
 	// actually surface org templates.
@@ -348,8 +349,9 @@ export default function App({
 			try {
 				// Authoritative palette (merge:false): the writable "My library"
 				// (untagged) plus, if this board was created from a saved library,
-				// that library's CURRENT items resolved live (tagged libraryName ->
-				// rendered as a read-only section, never written back into My library).
+				// that library's CURRENT items resolved live, plus every organization
+				// library (tagged libraryName -> rendered as a read-only section,
+				// never written back into My library).
 				const myLibrary = (await fetchLibraryItems()) ?? []
 				const ref = useWhiteboardConfigStore.getState().libraryRef
 				let refItems: LibraryItems = []
@@ -362,11 +364,13 @@ export default function App({
 						logger.error('[App] Error resolving library reference:', error)
 					}
 				}
+				const { org } = await fetchLibraries()
+				const orgItems = await resolveOrgLibraryItems(org, ref, resolveLibrary)
 				if (cancelled) {
 					return
 				}
 				await excalidrawAPI.updateLibrary({
-					libraryItems: [...myLibrary, ...refItems],
+					libraryItems: [...myLibrary, ...refItems, ...orgItems],
 					merge: false,
 				})
 				setIsLibraryLoaded(true)
@@ -381,6 +385,7 @@ export default function App({
 	}, [
 		fileName,
 		fetchLibraryItems,
+		fetchLibraries,
 		resolveLibrary,
 		isLoading,
 		excalidrawAPI,
