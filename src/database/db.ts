@@ -61,6 +61,36 @@ export class WhiteboardDatabase extends Dexie.Dexie {
 		return this.whiteboards.put(data)
 	}
 
+	// After an upload of the board. One transaction, so a draft another tab writes
+	// meanwhile cannot be overwritten between the check and the write.
+	async markSaved(
+		fileId: number,
+		elements: ExcalidrawElement[],
+		files: BinaryFiles,
+		lastSyncedHash: number,
+		isUploadedScene: (stored: WhiteboardData) => boolean,
+	): Promise<void> {
+		await this.transaction('rw', this.whiteboards, async () => {
+			const existing = await this.whiteboards.get(fileId)
+			if (existing && isUploadedScene(existing)) {
+				await this.whiteboards.update(fileId, { hasPendingLocalChanges: false, lastSyncedHash })
+				return
+			}
+			if (existing?.hasPendingLocalChanges) {
+				return
+			}
+			await this.whiteboards.put({
+				id: fileId,
+				elements,
+				files,
+				appState: existing?.appState,
+				savedAt: Date.now(),
+				hasPendingLocalChanges: false,
+				lastSyncedHash,
+			})
+		})
+	}
+
 	async delete(fileId: number): Promise<void> {
 		return this.whiteboards.delete(fileId)
 	}
