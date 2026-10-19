@@ -3,12 +3,15 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
 import { describe, expect, it } from 'vitest'
 import createConfig from '../../vite.config.ts'
 
 const REACT_MODULE = /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/
+const BUILT_ASSET = fileURLToPath(new URL('../../js/viewer-bundle-spec.txt', import.meta.url))
 
 describe('viewer init script', () => {
 	it('loads no React on pages that only register the viewer handler', async () => {
@@ -17,8 +20,15 @@ describe('viewer init script', () => {
 		config.root = fileURLToPath(new URL('../..', import.meta.url))
 		config.logLevel = 'silent'
 		config.build = { ...config.build, write: false, sourcemap: false, minify: false }
+		// It would empty js/ on emit, even when nothing is written
+		config.plugins = config.plugins.flat(Infinity).filter((plugin) => plugin?.name !== 'nextcloud-empty-js')
 
+		mkdirSync(dirname(BUILT_ASSET), { recursive: true })
+		writeFileSync(BUILT_ASSET, '')
 		const results = await build(config)
+		const keepsBuiltAssets = existsSync(BUILT_ASSET)
+		rmSync(BUILT_ASSET)
+		expect(keepsBuiltAssets).toBe(true)
 		const chunks = new Map((Array.isArray(results) ? results : [results])
 			.flatMap(({ output }) => output)
 			.filter((file) => file.type === 'chunk')
