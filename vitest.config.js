@@ -21,6 +21,8 @@ try {
 export default defineConfig({
 	test: {
 		environment: 'node',
+		// The viewer bundle test builds the whole app
+		execArgv: ['--max-old-space-size=6144'],
 		include: [
 			'tests/integration/*.spec.?(c|m)[jt]s?(x)',
 		],

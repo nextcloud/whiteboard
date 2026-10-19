@@ -14,6 +14,7 @@ const AppConfig = createAppConfig({
 	settings: resolve(join('src', 'admin.ts')),
 	personal: resolve(join('src', 'personal.ts')),
 	files: resolve(join('src', 'files.ts')),
+	viewer: resolve(join('src', 'viewer.ts')),
 }, {
 	config: defineConfig({
 		resolve: {
@@ -35,8 +36,15 @@ const AppConfig = createAppConfig({
 			target: 'es2020',
 			rollupOptions: {
 				output: {
-					manualChunks: {
-						vendor: ['react', 'react-dom'],
+					// The CommonJS helper gets its own chunk: in vendor, the viewer init
+					// script, which needs it on every page, would load React too
+					manualChunks(id) {
+						if (id.includes('commonjsHelpers')) {
+							return 'commonjs-helpers'
+						}
+						if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
+							return 'vendor'
+						}
 					},
 					// assetFileNames: 'js/[name]-[hash].[ext]',
 				},

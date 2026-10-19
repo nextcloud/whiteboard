@@ -170,7 +170,21 @@ function runDirectEditingRuntime(context: DirectEditingContext): void {
 	})
 }
 
+/**
+ * Whether the viewer is the viewer app of Nextcloud 35 and older. From 36,
+ * whiteboard-viewer registers the handler and the server opens a shared board
+ * in the viewer itself. This script still runs there, as the board's code
+ * shares chunks with it.
+ */
+function usesLegacyViewer(): boolean {
+	return loadState('whiteboard', 'legacyViewer', true)
+}
+
 function runPublicShareRuntime(context: PublicShareContext): void {
+	if (!usesLegacyViewer()) {
+		return
+	}
+
 	const viewerContext: ViewerContext = {
 		collabBackendUrl: context.collabBackendUrl,
 		resolveSharingToken: () => context.sharingToken,
@@ -283,6 +297,10 @@ function runPublicShareRuntime(context: PublicShareContext): void {
 }
 
 function runDefaultViewerRuntime(context: ViewerContext): void {
+	if (!usesLegacyViewer()) {
+		return
+	}
+
 	runWhenDomReady(() => {
 		registerViewerHandler(createWhiteboardComponent(context))
 	})

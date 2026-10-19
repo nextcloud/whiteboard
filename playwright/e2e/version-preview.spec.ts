@@ -159,6 +159,17 @@ const openWhiteboardInViewer = async (
 	page: Page,
 	options: { fileId: number, fileName: string, source?: string | null, fileVersion?: string | null },
 ) => {
+	// Nextcloud 36 and up: the viewer is part of the server, a version opens
+	// from the Versions tab of the file
+	const legacyViewer = await page.evaluate(() => Boolean((window as any).OCA?.Viewer?.availableHandlers))
+	if (!legacyViewer) {
+		await page.locator(`[data-cy-files-list-row-name="${options.fileName}"]`).click({ button: 'right' })
+		await page.getByRole('menuitem', { name: /details/i }).first().click()
+		await page.getByRole('tab', { name: 'Versions' }).click()
+		await page.locator(`.version[data-files-versions-version="${options.fileVersion}"] a`).click()
+		return
+	}
+
 	const filePath = options.fileName.startsWith('/') ? options.fileName : `/${options.fileName}`
 	await page.waitForFunction(() => Boolean((window as any).OCA?.Viewer?.openWith), { timeout: 10000 })
 	await page.evaluate(({ fileId, filePathValue, fileName, source, fileVersion }) => {
@@ -267,10 +278,39 @@ test('restore version replaces current content', async ({
 	}).not.toContain(updatedText)
 })
 
+test('comparing a version shows both boards read-only', async ({
+	page,
+	user,
+}) => {
+	test.skip(process.env.SERVER_VERSION !== 'master', 'Comparing versions comes with the viewer of Nextcloud 36')
+	test.setTimeout(120000)
+
+	const { versionEntry, storedName } = await prepareVersionScenario(page, user.userId, {
+		boardName: `Version compare ${Date.now()}`,
+		initialText: 'Compare one',
+		updatedText: 'Compare two',
+	})
+	await page.locator(`[data-cy-files-list-row-name="${storedName}"]`).click({ button: 'right' })
+	await page.getByRole('menuitem', { name: /details/i }).first().click()
+	await page.getByRole('tab', { name: 'Versions' }).click()
+	await page.locator(`.version[data-files-versions-version="${versionEntry.versionId}"]`)
+		.getByRole('button', { name: 'Actions' })
+		.click()
+	await page.locator('[data-cy-files-versions-version-action="compare"]').click()
+
+	const boards = page.locator('whiteboard-viewer')
+	await expect(boards).toHaveCount(2, { timeout: 20000 })
+	for (const board of await boards.all()) {
+		await expect(board.locator('.excalidraw-wrapper .excalidraw canvas').first()).toBeVisible({ timeout: 20000 })
+	}
+	await expect(page.locator('whiteboard-viewer .excalidraw.excalidraw--view-mode')).toHaveCount(2)
+})
+
 test('version preview params still load board content', async ({
 	page,
 	user,
 }) => {
+	test.skip(process.env.SERVER_VERSION === 'master', 'Opens a version with the parameters of the legacy viewer; Nextcloud 36 opens version nodes instead')
 	test.setTimeout(90000)
 	const boardName = `Version preview ${Date.now()}`
 
