@@ -4,9 +4,11 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { computeElementVersionHash, computeSceneKey } from '../../src/utils/syncSceneData.ts'
 
 const records = vi.hoisted(() => new Map())
 const gates = vi.hoisted(() => ({ put: null, puts: 0 }))
+const markSaved = vi.hoisted(() => vi.fn(async () => {}))
 
 vi.mock('../../src/database/db.ts', () => ({
 	db: {
@@ -23,6 +25,7 @@ vi.mock('../../src/database/db.ts', () => ({
 			})
 			return fileId
 		}),
+		markSaved,
 	},
 }))
 
@@ -38,6 +41,7 @@ function deferredResponse() {
 
 const ok = { ok: true, status: 200, json: async () => ({ status: 'success' }) }
 const scene = (version) => [{ id: 'A', version, versionNonce: version }]
+const keyOf = (version) => computeSceneKey(scene(version), {})
 
 describe('sync worker', () => {
 	let send
@@ -46,6 +50,7 @@ describe('sync worker', () => {
 
 	beforeEach(async () => {
 		vi.resetModules()
+		markSaved.mockClear()
 		records.clear()
 		gates.put = null
 		gates.puts = 0
@@ -156,25 +161,36 @@ describe('sync worker', () => {
 		expect(records.get(1).hasPendingLocalChanges).toBe(false)
 	})
 
-	it('marks the local copy clean when it holds the saved scene', async () => {
-		saveLocal(1, true)
-		save('k1', 1, 1)
+	const isUploadedScene = (stored) => markSaved.mock.calls[0][4](stored)
+
+	it('marks the board saved with the uploaded scene once the upload finishes', async () => {
+		save(keyOf(1), 1, 1)
 		await flush()
+		expect(markSaved).not.toHaveBeenCalled()
+
 		responses[0].resolve(ok)
 		await flush()
 
-		expect(records.get(1)).toMatchObject({ elements: scene(1), hasPendingLocalChanges: false })
+		expect(markSaved).toHaveBeenCalledWith(1, scene(1), {}, computeElementVersionHash(scene(1)), expect.any(Function))
+		expect(isUploadedScene({ elements: scene(1), files: {} })).toBe(true)
 	})
 
-	it('keeps a newer local draft when an older save finishes', async () => {
-		save('k1', 1, 1)
-		await flush()
-		saveLocal(2, true)
+	it('does not take a newer local draft for the uploaded scene', async () => {
+		save(keyOf(1), 1, 1)
 		await flush()
 		responses[0].resolve(ok)
 		await flush()
 
-		expect(records.get(1)).toMatchObject({ elements: scene(2), hasPendingLocalChanges: true })
+		expect(isUploadedScene({ elements: scene(2), files: {} })).toBe(false)
+	})
+
+	it('does not take a local draft with other files for the uploaded scene', async () => {
+		save(keyOf(1), 1, 1)
+		await flush()
+		responses[0].resolve(ok)
+		await flush()
+
+		expect(isUploadedScene({ elements: scene(1), files: { image: { id: 'image' } } })).toBe(false)
 	})
 
 	it('reports a flush of a board once its local writes are done', async () => {

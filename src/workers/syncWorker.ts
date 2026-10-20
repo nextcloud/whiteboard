@@ -4,7 +4,7 @@
  */
 
 import { db } from '../database/db'
-import { computeElementVersionHash } from '../utils/syncSceneData'
+import { computeElementVersionHash, computeSceneKey } from '../utils/syncSceneData'
 import type { WorkerInboundMessage, WorkerOutboundMessage } from '../types/protocol'
 
 const ctx: Worker = self as unknown as Worker
@@ -144,22 +144,13 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 
 		await queueLocal(fileId, async () => {
 			try {
-				const existing = await db.get(fileId)
-				const savedHash = computeElementVersionHash(elements || [])
-				const hasOtherLocalDraft = existing?.hasPendingLocalChanges
-					&& computeElementVersionHash(existing.elements || []) !== savedHash
-				if (!hasOtherLocalDraft) {
-					await db.put(
-						fileId,
-						elements,
-						files || existing?.files || {},
-						existing?.appState,
-						{
-							hasPendingLocalChanges: false,
-							lastSyncedHash: savedHash,
-						},
-					)
-				}
+				await db.markSaved(
+					fileId,
+					elements,
+					files || {},
+					computeElementVersionHash(elements || []),
+					(stored) => computeSceneKey(stored.elements || [], stored.files || {}) === sceneKey,
+				)
 			} catch (dbError) {
 				error('Error updating local metadata after server sync:', dbError)
 			}
