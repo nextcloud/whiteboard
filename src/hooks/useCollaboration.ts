@@ -22,6 +22,7 @@ import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { useSyncStore } from '../stores/useSyncStore.ts'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
@@ -1088,8 +1089,10 @@ export function useCollaboration() {
 			// Remove all listeners first to prevent any callbacks during disconnect
 			currentSocket.removeAllListeners()
 
-			// Disconnect the socket
-			currentSocket.disconnect()
+			// Another tab takes over saving once this one leaves the room, so it
+			// leaves after the saves it queued for the board
+			const leave = () => currentSocket.disconnect()
+			useSyncStore.getState().flushBoard(useWhiteboardConfigStore.getState().fileId, true).then(leave, leave)
 
 			// Reset state
 			setSocket(null)
