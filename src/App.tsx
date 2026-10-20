@@ -18,6 +18,7 @@ import { useThemeHandling } from './hooks/useThemeHandling'
 import { useCollaboration } from './hooks/useCollaboration'
 import { useSmartPicker } from './hooks/useSmartPicker'
 import { useTableInsertion } from './hooks/useTableInsertion'
+import { usePdfImport } from './hooks/usePdfImport.ts'
 import { useReadOnlyState } from './hooks/useReadOnlyState'
 import { ExcalidrawMenu } from './components/ExcalidrawMenu'
 import Embeddable from './components/Embeddable'
@@ -130,6 +131,7 @@ export default function App({
 	const { theme } = useThemeHandling()
 	const { renderSmartPicker } = useSmartPicker()
 	const { renderTable } = useTableInsertion()
+	const { openImportDialog } = usePdfImport()
 	const { renderAssistant } = useAssistant()
 	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
@@ -764,6 +766,7 @@ export default function App({
 							onToggleTimer={handleToggleTimer}
 							gridModeEnabled={gridModeEnabled}
 							onToggleGrid={() => setGridModeEnabled(!gridModeEnabled)}
+							onImportPdf={openImportDialog}
 						/>
 					)}
 				</Excalidraw>
