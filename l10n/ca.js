@@ -18,6 +18,7 @@ OC.L10N.register(
     "Multiple choice" : "Selecció múltiple",
     "Question" : "Pregunta",
     "Option" : "Opció",
+    "Remove option" : "Suprimeix l'opció",
     "Add option" : "Afegeix una opció",
     "Comments" : "Comentaris",
     "Voting" : "Votació",
