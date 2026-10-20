@@ -6,7 +6,7 @@
 import type { FileId } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import type { BinaryFileData, DataURL, ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 
-import { convertToExcalidrawElements, viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
+import { convertToExcalidrawElements, newElementWith, viewportCoordsToSceneCoords } from '@nextcloud/excalidraw'
 import { imagePath } from '@nextcloud/router'
 import { Notomoji } from '@svgmoji/noto'
 import { useCallback, useRef } from 'react'
@@ -103,15 +103,16 @@ export function useEmojiPicker() {
 				clientX: moveEv.clientX,
 				clientY: moveEv.clientY,
 			}, excalidrawAPI.getAppState())
-			const movedElem = { ...elem, x: currentScene.x, y: currentScene.y }
+			const position = { x: currentScene.x, y: currentScene.y }
 
-			// Replace the element in the current scene (preserve others)
+			// Replace the element in the current scene (preserve others), with a
+			// new version, so the move is saved and reaches collaborators
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
 			const idx = elements.findIndex((e) => e.id === elem.id)
 			if (idx !== -1) {
-				elements[idx] = movedElem
+				elements[idx] = newElementWith(elements[idx], position)
 			} else {
-				elements.push(movedElem)
+				elements.push(newElementWith(elem, position))
 			}
 
 			excalidrawAPI.updateScene({
