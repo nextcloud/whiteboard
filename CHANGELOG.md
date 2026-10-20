@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.1.0
+
+### Added
+- Support Nextcloud 36 and open whiteboards in its viewer by @skjnldsv and @hweihwang [#1374](https://github.com/nextcloud/whiteboard/pull/1374)
+
+### Changed
+- Keep the viewer out of the websocket server image and the build output by @hweihwang [#1409](https://github.com/nextcloud/whiteboard/pull/1409)
+
+### Fixed
+- Stop blocking the UI with the final whiteboard save by @hweihwang [#1402](https://github.com/nextcloud/whiteboard/pull/1402)
+- Save comment changes and keep saves in order by @hweihwang [#1408](https://github.com/nextcloud/whiteboard/pull/1408)
+- Keep a newer local draft when an upload of the board finishes by @hweihwang [#1413](https://github.com/nextcloud/whiteboard/pull/1413)
+- Hand saving over to another user when the saving user leaves (needs the new websocket server) by @hweihwang [#1412](https://github.com/nextcloud/whiteboard/pull/1412)
+- Leave the room only after the board's last save by @hweihwang [#1416](https://github.com/nextcloud/whiteboard/pull/1416)
+- Keep the table content and lock of the element that wins a merge by @hweihwang [#1414](https://github.com/nextcloud/whiteboard/pull/1414)
+- Save where an emoji is dropped by @hweihwang [#1417](https://github.com/nextcloud/whiteboard/pull/1417)
+- Show organization libraries in the editor by @hweihwang [#1401](https://github.com/nextcloud/whiteboard/pull/1401)
+- Restore the library menu hooks of the Excalidraw fork by @hweihwang [#1386](https://github.com/nextcloud/whiteboard/pull/1386)
+- Allow the collaboration backend on the admin settings page by @steevenraw [#1384](https://github.com/nextcloud/whiteboard/pull/1384)
+- Do not log the Redis password by @bakiburakogun [#1316](https://github.com/nextcloud/whiteboard/pull/1316)
+
+### Other
+- Update dependencies and translations
+
 ## 2.0.0
 
 ### Added
