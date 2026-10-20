@@ -11,9 +11,11 @@ function createSubject(claims = {}) {
 	const socketData = {
 		...claims,
 		user: { id: 'alice', name: 'Alice' },
+		nodeId: 'node-a',
 	}
 	const socket = {
 		id: 'socket-alice',
+		connected: true,
 		rooms: new Set(['socket-alice']),
 		join: vi.fn(async (roomId) => socket.rooms.add(roomId)),
 		emit: vi.fn(),
@@ -25,8 +27,7 @@ function createSubject(claims = {}) {
 	}
 	const cluster = {
 		getRoomSyncer: vi.fn(async () => null),
-		isNodeAlive: vi.fn(async () => true),
-		clearRoomSyncer: vi.fn(async () => {}),
+		releaseRoomSyncer: vi.fn(async () => true),
 		trySetRoomSyncer: vi.fn(async () => true),
 	}
 	const roomEmitter = { emit: vi.fn() }
@@ -90,7 +91,7 @@ describe('room authorization', () => {
 
 		expect(await subject.joinRoom(socket, '123')).toBe(true)
 		expect(socket.join).toHaveBeenCalledWith('123')
-		expect(cluster.trySetRoomSyncer).toHaveBeenCalledWith('123', 'alice')
+		expect(cluster.trySetRoomSyncer).toHaveBeenCalledWith('123', { userId: 'alice', socketId: 'socket-alice', nodeId: 'node-a' })
 		expect(sessionStore.setSocketData).toHaveBeenCalledWith('socket-alice', expect.objectContaining({
 			isSyncer: true,
 			syncerFor: '123',

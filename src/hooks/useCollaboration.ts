@@ -22,6 +22,7 @@ import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { useSyncStore } from '../stores/useSyncStore.ts'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
@@ -29,6 +30,7 @@ import { db } from '../database/db'
 import { fetchWhiteboardSnapshot } from '../utils/fetchWhiteboardSnapshot.ts'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } from '../types/collaboration'
+import type { WorkerInboundMessage } from '../types/protocol.ts'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT', // Incoming scene data from others
@@ -72,11 +74,16 @@ export function useCollaboration() {
 		})),
 	)
 
-	const clientType = useMemo(() => {
+	// The relay never makes a version preview the syncer, because a preview does not save.
+	// Leaving a preview reloads the board, which connects the socket again with the new type.
+	const getClientType = useCallback(() => {
 		if (typeof window === 'undefined') {
 			return 'viewer'
 		}
-		return loadState('whiteboard', 'isRecording', false) ? 'recording' : 'viewer'
+		if (loadState('whiteboard', 'isRecording', false)) {
+			return 'recording'
+		}
+		return useWhiteboardConfigStore.getState().isVersionPreview ? 'preview' : 'viewer'
 	}, [])
 
 	const {
@@ -471,7 +478,7 @@ export function useCollaboration() {
 			}
 
 			if (currentSocket) {
-				currentSocket.auth = { token: newToken }
+				currentSocket.auth = { ...currentSocket.auth, token: newToken }
 				if (!currentSocket.connected) {
 					currentSocket.connect()
 				}
@@ -671,7 +678,12 @@ export function useCollaboration() {
 	const handleSyncDesignate = useCallback((data: { isSyncer: boolean }) => {
 		console.log(`[Collaboration] Sync designation received: ${data.isSyncer}`)
 		setDedicatedSyncer(data.isSyncer)
-	}, [setDedicatedSyncer])
+		// Another socket saves the board, so this tab drops its save that has not started, also one left by an earlier mount
+		if (!data.isSyncer && fileId && !useWhiteboardConfigStore.getState().isVersionPreview) {
+			const message: WorkerInboundMessage = { type: 'CANCEL_SERVER_SYNC', fileId }
+			useSyncStore.getState().worker?.postMessage(message)
+		}
+	}, [setDedicatedSyncer, fileId])
 
 	// Handle user joined event - broadcast the current full scene and images if we're the syncer
 	const handleUserJoined = useCallback((data: { userId: string, userName: string, socketId: string, isSyncer: boolean }) => {
@@ -719,6 +731,7 @@ export function useCollaboration() {
 		(socketInstance: CollaborationSocket) => {
 			// Clear all listeners for safety when reusing a socket instance
 			socketInstance.removeAllListeners()
+			let connectedSocketId: string | undefined
 
 			// --- Connection Lifecycle ---
 			socketInstance.on('connect_error', async (error: Error) => {
@@ -751,6 +764,9 @@ export function useCollaboration() {
 
 			socketInstance.on('connect', () => {
 				console.log('[Collaboration] Socket connect event fired - setting status to online')
+				connectedSocketId = socketInstance.id
+				// The relay designates again on join; it gives the syncer role of the old socket to the new one
+				useCollaborationStore.getState().setDedicatedSyncer(false)
 				setStatus('online')
 				setIsInRoom(false) // not joined yet
 
@@ -773,6 +789,7 @@ export function useCollaboration() {
 				console.warn(`[Collaboration] Socket disconnect event fired: ${reason}`)
 				clearExcalidrawCollaborators()
 				setIsInRoom(false)
+				socketInstance.auth = { ...socketInstance.auth, previousSocketId: connectedSocketId }
 
 				// Only set to offline if this is an intentional disconnect
 				// For server disconnects, Socket.IO will automatically try to reconnect
@@ -1018,11 +1035,12 @@ export function useCollaboration() {
 
 			const url = new URL(collabBackendUrl)
 			const path = (url.pathname.endsWith('/') ? url.pathname : url.pathname + '/') + 'socket.io'
+			const clientType = getClientType()
 
 			// Check if we already have a socket instance in our ref
 			if (socketInstanceRef.current) {
 				console.log('[Collaboration] Reusing existing socket instance')
-				socketInstanceRef.current.auth = { token, clientType }
+				socketInstanceRef.current.auth = { ...socketInstanceRef.current.auth, token, clientType }
 				setupSocketEventHandlers(socketInstanceRef.current)
 				setSocket(socketInstanceRef.current)
 
@@ -1071,7 +1089,7 @@ export function useCollaboration() {
 	}, [
 		getJWT, setStatus, setSocket, setupSocketEventHandlers,
 		fileId,
-		clientType,
+		getClientType,
 	])
 
 	useEffect(() => {

@@ -241,6 +241,9 @@ const handleMessage = async (event: MessageEvent<WorkerInboundMessage>) => {
 				await flushBoard(message.fileId, message.server)
 				sendMessage({ type: 'FLUSH_COMPLETE', id: message.id })
 				break
+			case 'CANCEL_SERVER_SYNC':
+				waitingServerSyncs.delete(message.fileId)
+				break
 			default:
 				// Unknown message type - ignore
 		}

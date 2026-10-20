@@ -61,57 +61,44 @@ export default class RoomLifecycleService {
 
 		await socket.join(validatedRoomId)
 
-		const currentSyncer = await this.cluster.getRoomSyncer(validatedRoomId)
-		let currentSyncerUserId = currentSyncer?.userId
-		if (currentSyncer?.nodeId && !(await this.cluster.isNodeAlive(currentSyncer.nodeId))) {
-			await this.cluster.clearRoomSyncer(validatedRoomId)
-			currentSyncerUserId = null
+		let currentSyncer = await this.cluster.getRoomSyncer(validatedRoomId)
+		let goneSyncer = null
+		if (currentSyncer && await this.isSyncerGone(validatedRoomId, currentSyncer, socketData)) {
+			goneSyncer = currentSyncer
+			currentSyncer = null
 		}
-		const isReadOnly = await this.sessionStore.isReadOnly(socket.id)
 
-		let isSyncer = false
-
-		if (currentSyncerUserId === userId) {
-			await this.sessionStore.setSocketData(socket.id, {
-				...socketData,
-				isSyncer: true,
-				syncerFor: validatedRoomId,
-			})
-
-			isSyncer = true
-			socket.emit('sync-designate', { isSyncer: true })
-			console.log(`[${validatedRoomId}] User ${userName} reconnected as existing syncer`)
-		} else if (!currentSyncerUserId && !isReadOnly) {
-			const elected = await this.cluster.trySetRoomSyncer(validatedRoomId, userId)
-
-			if (elected) {
-				await this.sessionStore.setSocketData(socket.id, {
-					...socketData,
-					isSyncer: true,
-					syncerFor: validatedRoomId,
-				})
-
-				isSyncer = true
-				socket.emit('sync-designate', { isSyncer: true })
-				console.log(`[${validatedRoomId}] Designated new syncer: ${userName}`)
+		let isSyncer = currentSyncer?.socketId === socket.id
+		if (!currentSyncer) {
+			if (await this.canSync(socket.id, socketData)) {
+				if (goneSyncer) {
+					await this.cluster.releaseRoomSyncer(validatedRoomId, goneSyncer)
+				}
+				const syncer = { userId, socketId: socket.id, nodeId: socketData.nodeId }
+				isSyncer = await this.cluster.trySetRoomSyncer(validatedRoomId, syncer)
+				// The socket can leave while it joins; its leave handling then did not find it in the record
+				if (isSyncer && !socket.connected) {
+					await this.findNewSyncer(validatedRoomId, syncer)
+					return false
+				}
 			} else {
-				await this.sessionStore.setSocketData(socket.id, {
-					...socketData,
-					isSyncer: false,
-				})
-
-				isSyncer = false
-				socket.emit('sync-designate', { isSyncer: false })
-				console.log(`[${validatedRoomId}] User ${userName} lost syncer election (another user won)`)
+				await this.findNewSyncer(validatedRoomId, goneSyncer)
 			}
-		} else {
-			await this.sessionStore.setSocketData(socket.id, {
-				...socketData,
-				isSyncer: false,
-			})
+		}
 
-			isSyncer = false
-			socket.emit('sync-designate', { isSyncer: false })
+		await this.sessionStore.setSocketData(socket.id, {
+			...socketData,
+			isSyncer,
+			...(isSyncer ? { syncerFor: validatedRoomId } : {}),
+		})
+		socket.emit('sync-designate', { isSyncer })
+		// The room can elect this socket while it joins, and tell it before the line above
+		if (!isSyncer && (await this.cluster.getRoomSyncer(validatedRoomId))?.socketId === socket.id) {
+			isSyncer = true
+			socket.emit('sync-designate', { isSyncer })
+		}
+		if (isSyncer) {
+			console.log(`[${validatedRoomId}] Designated syncer: ${userName}`)
 		}
 
 		const roomUsers = await this.getUserSocketsAndIds(validatedRoomId)
@@ -186,21 +173,9 @@ export default class RoomLifecycleService {
 			console.log(`[${roomID}] User ${userName} disconnecting`)
 
 			const currentSyncer = await this.cluster.getRoomSyncer(roomID)
-			const currentSyncerUserId = currentSyncer?.userId
-			const wasSyncer = currentSyncerUserId === userId
-
-			if (wasSyncer) {
-				const userSockets = await this.getUserSocketsInRoom(roomID)
-				const userStillConnected = userSockets
-					.filter((s) => s.socketId !== socket.id)
-					.some((s) => s.userId === userId)
-
-				if (!userStillConnected) {
-					console.log(`[${roomID}] Syncer disconnected (all sessions), finding new syncer`)
-					await this.findNewSyncer(roomID)
-				} else {
-					console.log(`[${roomID}] Syncer disconnected but has other active connections, maintaining syncer status`)
-				}
+			if (currentSyncer?.socketId === socket.id) {
+				console.log(`[${roomID}] Syncer disconnected, finding new syncer`)
+				await this.findNewSyncer(roomID, currentSyncer)
 			}
 
 			const presentationSession = await this.presentationState.getPresentationSession(roomID)
@@ -243,57 +218,81 @@ export default class RoomLifecycleService {
 		}
 	}
 
-	async findNewSyncer(roomID) {
-		const userSockets = await this.getUserSocketsInRoom(roomID)
+	// A record without a socket comes from a relay that elected a whole user.
+	// A tab that reconnects names its old socket, which may not have timed out yet.
+	// A socket whose leave handling did not run is no longer in the room.
+	async isSyncerGone(roomID, syncer, socketData) {
+		if (!syncer.socketId) {
+			return true
+		}
+		if (syncer.socketId === socketData.previousSocketId && syncer.userId === socketData.user.id) {
+			return true
+		}
+		return !(await this.isSocketInRoom(roomID, syncer.socketId))
+	}
 
-		console.log(`[${roomID}] Finding new syncer. Users in room: ${userSockets.length}`)
+	// A lookup that fails counts as present: a slow relay says nothing about the socket
+	async isSocketInRoom(roomID, socketId) {
+		const localSocket = this.io.sockets?.sockets.get(socketId)
+		if (localSocket) {
+			return localSocket.rooms.has(roomID)
+		}
+		try {
+			const [remoteSocket] = await this.io.in(socketId).fetchSockets()
+			return Boolean(remoteSocket?.rooms.has(roomID))
+		} catch (error) {
+			console.warn(`[${roomID}] Could not look up socket ${socketId}: ${error.message}`)
+			return true
+		}
+	}
 
-		if (userSockets.length === 0) {
+	// Recording clients render the board for a recording, and version previews do not save
+	async canSync(socketId, socketData) {
+		return !['recording', 'preview'].includes(socketData?.clientType) && !(await this.sessionStore.isReadOnly(socketId))
+	}
+
+	// The previous record is released only once the room could be read, so a failed election is tried again
+	async findNewSyncer(roomID, previousSyncer = null) {
+		const roomSockets = await this.getUserSocketsInRoom(roomID)
+		if (previousSyncer) {
+			await this.cluster.releaseRoomSyncer(roomID, previousSyncer)
+		}
+
+		console.log(`[${roomID}] Finding new syncer. Sockets in room: ${roomSockets.length}`)
+
+		if (roomSockets.length === 0) {
 			console.log(`[${roomID}] No users left in room, no syncer needed`)
-			await this.cluster.clearRoomSyncer(roomID)
 			return
 		}
 
-		await this.cluster.clearRoomSyncer(roomID)
-
-		const userMap = new Map()
-		userSockets.forEach((s) => {
-			if (!userMap.has(s.userId)) {
-				userMap.set(s.userId, [])
+		for (const { socketId, userId, userName } of roomSockets) {
+			const socketData = await this.sessionStore.getSocketData(socketId)
+			if (!socketData || !await this.canSync(socketId, socketData)) {
+				continue
 			}
-			userMap.get(s.userId).push(s)
-		})
 
-		for (const [userId, sockets] of userMap.entries()) {
-			for (const socketInfo of sockets) {
-				const isReadOnly = await this.sessionStore.isReadOnly(socketInfo.socketId)
-
-				if (!isReadOnly) {
-					const elected = await this.cluster.trySetRoomSyncer(roomID, userId)
-
-					if (elected) {
-						for (const s of sockets) {
-							const socketData = await this.sessionStore.getSocketData(s.socketId)
-							if (socketData) {
-								await this.sessionStore.setSocketData(s.socketId, {
-									...socketData,
-									isSyncer: true,
-									syncerFor: roomID,
-								})
-
-								this.io.to(s.socketId).emit('sync-designate', { isSyncer: true })
-							}
-						}
-
-						console.log(`[${roomID}] Promoted new syncer: ${sockets[0].userName}`)
-						return
-					}
-				}
+			const syncer = { userId, socketId, nodeId: socketData.nodeId }
+			// Fails when another socket took the free slot meanwhile; that socket stays the syncer
+			if (!await this.cluster.trySetRoomSyncer(roomID, syncer)) {
+				return
 			}
+			// A socket that left after the room was read did not find itself in the record
+			if (!await this.isSocketInRoom(roomID, socketId)) {
+				await this.cluster.releaseRoomSyncer(roomID, syncer)
+				continue
+			}
+
+			await this.sessionStore.setSocketData(socketId, {
+				...socketData,
+				isSyncer: true,
+				syncerFor: roomID,
+			})
+			this.io.to(socketId).emit('sync-designate', { isSyncer: true })
+			console.log(`[${roomID}] Promoted new syncer: ${userName}`)
+			return
 		}
 
 		console.log(`[${roomID}] No eligible users found for syncer role`)
-		await this.cluster.clearRoomSyncer(roomID)
 	}
 
 	async getUserSocketsAndIds(roomID) {

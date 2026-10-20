@@ -225,9 +225,9 @@ describe('Socket handling', () => {
 	})
 
 	describe('when a user disconnects', () => {
-		const connectUser = async (fileId, id, name) => {
+		const connectUser = async (fileId, id, name, { clientType, previousSocketId } = {}) => {
 			const userSocket = io(Config.NEXTCLOUD_URL, {
-				auth: { token: jwt.sign({ fileId, user: { id, name } }, Config.JWT_SECRET_KEY) },
+				auth: { token: jwt.sign({ fileId, user: { id, name } }, Config.JWT_SECRET_KEY), clientType, previousSocketId },
 			})
 			await waitFor(userSocket, 'connect')
 			return userSocket
@@ -254,6 +254,53 @@ describe('Socket handling', () => {
 			alice.disconnect()
 
 			expect(await within(promoted)).toEqual({ isSyncer: true })
+			bob.disconnect()
+		})
+
+		it('makes only one tab of a user the syncer, and the other tab when that one leaves', async () => {
+			const firstTab = await connectUser(792, 'alice', 'Alice')
+			const secondTab = await connectUser(792, 'alice', 'Alice')
+			expect(await joinRoom(firstTab, 792)).toBe(true)
+			expect(await joinRoom(secondTab, 792)).toBe(false)
+
+			const promoted = waitFor(secondTab, 'sync-designate')
+			firstTab.disconnect()
+
+			expect(await within(promoted)).toEqual({ isSyncer: true })
+			secondTab.disconnect()
+		})
+
+		it('replaces a syncer whose session data expired', async () => {
+			const alice = await connectUser(798, 'alice', 'Alice')
+			const bob = await connectUser(798, 'bob', 'Bob')
+			expect(await joinRoom(alice, 798)).toBe(true)
+			expect(await joinRoom(bob, 798)).toBe(false)
+			await serverManager.socketService.sessionStore.clearSocketMeta(alice.id)
+
+			const promoted = waitFor(bob, 'sync-designate')
+			alice.disconnect()
+
+			expect(await within(promoted)).toEqual({ isSyncer: true })
+			bob.disconnect()
+		})
+
+		it('makes the reconnected socket of the syncer tab the syncer before the old one times out', async () => {
+			const oldSocket = await connectUser(794, 'alice', 'Alice')
+			expect(await joinRoom(oldSocket, 794)).toBe(true)
+
+			const reconnected = await connectUser(794, 'alice', 'Alice', { previousSocketId: oldSocket.id })
+			expect(await joinRoom(reconnected, 794)).toBe(true)
+			oldSocket.disconnect()
+			reconnected.disconnect()
+		})
+
+		it('does not make a recording client the syncer', async () => {
+			const recorder = await connectUser(793, 'alice', 'Alice', { clientType: 'recording' })
+			expect(await joinRoom(recorder, 793)).toBe(false)
+
+			const bob = await connectUser(793, 'bob', 'Bob')
+			expect(await joinRoom(bob, 793)).toBe(true)
+			recorder.disconnect()
 			bob.disconnect()
 		})
 

@@ -475,6 +475,28 @@ describe('Multi node websocket cluster with redis streams', () => {
 		await restartServerA()
 	})
 
+	it('hands on a record of a node that names a socket the node no longer has', async () => {
+		const roomID = 'room-gone-socket'
+		const syncerSocket = createSocket(serverAUrl, buildToken(roomID, { id: 'gone-a', name: 'GoneA', displayName: 'GoneA' }))
+		await waitFor(syncerSocket, 'connect')
+		syncerSocket.emit('join-room', roomID)
+		expect((await waitFor(syncerSocket, 'sync-designate')).isSyncer).toBe(true)
+
+		const followerSocket = createSocket(serverBUrl, buildToken(roomID, { id: 'gone-b', name: 'GoneB', displayName: 'GoneB' }))
+		await waitFor(followerSocket, 'connect')
+		followerSocket.emit('join-room', roomID)
+		expect((await waitFor(followerSocket, 'sync-designate')).isSyncer).toBe(false)
+
+		// As left by an election that picked a leaving socket, or by node A before a crash
+		const cluster = serverA.socketService.clusterService
+		await cluster.releaseSyncer(roomID, await cluster.getSyncer(roomID))
+		await cluster.trySetSyncer(roomID, { userId: 'ghost', socketId: 'ghost-socket', nodeId: serverA.socketService.nodeId })
+
+		await vi.waitFor(async () => {
+			expect([syncerSocket.id, followerSocket.id]).toContain((await cluster.getSyncer(roomID))?.socketId)
+		}, { timeout: 20000, interval: 500 })
+	})
+
 	it('removes stale presentation entries during the cluster sweep', async () => {
 		const roomID = 'room-stale-presentation'
 		await serverB.socketService.roomStateStore.setValue(

@@ -22,6 +22,7 @@ export default class ClusterService {
 		this.heartbeatTtlMs = heartbeatTtlMs
 		this.heartbeatKeyPrefix = heartbeatKeyPrefix
 		this.onSweep = null
+		this.onTick = null
 
 		this.heartbeatKey = this.buildHeartbeatKey(this.nodeId)
 		this.heartbeatInterval = null
@@ -62,6 +63,11 @@ export default class ClusterService {
 
 	setSweepHandler(handler) {
 		this.onSweep = handler
+	}
+
+	// Runs on every node at each sweep; the sweep handler only runs on the node holding the sweep lock
+	setTickHandler(handler) {
+		this.onTick = handler
 	}
 
 	async start() {
@@ -120,6 +126,9 @@ export default class ClusterService {
 		this.stateSweepInterval = setInterval(() => {
 			this.runSweep().catch((error) => {
 				console.error('Failed to sweep cluster state:', error)
+			})
+			this.onTick?.().catch((error) => {
+				console.error('Failed to check the syncers of this node:', error)
 			})
 		}, intervalMs)
 	}
@@ -225,30 +234,25 @@ export default class ClusterService {
 		})
 	}
 
-	async setSyncer(roomId, userId) {
-		await this.roomStateStore.setValue(
-			this.getRoomSyncerKey(roomId),
-			{ userId, nodeId: this.nodeId },
-			{ ttlMs: this.sessionTtl },
-		)
-	}
-
-	async trySetSyncer(roomId, userId) {
+	// The syncer is one socket. Its record does not expire: it goes when the
+	// socket leaves or its node stops, so a long session keeps its syncer.
+	// A socket of an older relay has no node id, so its record expires.
+	async trySetSyncer(roomId, { userId, socketId, nodeId }) {
 		return this.roomStateStore.setValueIfNotExists(
 			this.getRoomSyncerKey(roomId),
-			{ userId, nodeId: this.nodeId },
-			{ ttlMs: this.sessionTtl },
+			{ userId, socketId, nodeId },
+			{ ttlMs: nodeId ? null : this.sessionTtl },
 		)
 	}
 
-	async clearSyncer(roomId) {
-		await this.roomStateStore.deleteValue(this.getRoomSyncerKey(roomId))
+	async releaseSyncer(roomId, syncer) {
+		return this.roomStateStore.deleteValueIfEquals(this.getRoomSyncerKey(roomId), syncer)
 	}
 
 	async sweep() {
 		const presentationsCleared = []
 		const recordingsCleared = []
-		const syncersCleared = []
+		const syncersGone = []
 
 		const presentationKeys = await this.roomStateStore.listValueKeys('room:*:presentation')
 		for (const key of presentationKeys) {
@@ -298,20 +302,15 @@ export default class ClusterService {
 			if (!syncer?.nodeId) continue
 			if (await this.isNodeAlive(syncer.nodeId)) continue
 
-			await this.clearSyncer(roomId)
-			syncersCleared.push({
-				roomId,
-				userId: syncer.userId,
-			})
+			syncersGone.push({ roomId, syncer })
 		}
 
-		return { presentationsCleared, recordingsCleared, syncersCleared }
+		return { presentationsCleared, recordingsCleared, syncersGone }
 	}
 
 	async clearNodeState(nodeId) {
 		const presentationsCleared = []
 		const recordingsCleared = []
-		const syncersCleared = []
 
 		const presentationKeys = await this.roomStateStore.listValueKeys('room:*:presentation')
 		for (const key of presentationKeys) {
@@ -348,22 +347,20 @@ export default class ClusterService {
 			}
 		}
 
-		const syncerKeys = await this.roomStateStore.listValueKeys('room:*:syncer')
-		for (const key of syncerKeys) {
+		return { presentationsCleared, recordingsCleared, syncersGone: await this.listNodeSyncers(nodeId) }
+	}
+
+	// The records stay until an election replaces them, so a failed election is tried again
+	async listNodeSyncers(nodeId) {
+		const syncers = []
+		for (const key of await this.roomStateStore.listValueKeys('room:*:syncer')) {
 			const roomId = this.extractRoomId(key, 'syncer')
-			if (!roomId) continue
-
-			const syncer = await this.roomStateStore.getValue(key)
-			if (!syncer?.nodeId || syncer.nodeId !== nodeId) continue
-
-			await this.clearSyncer(roomId)
-			syncersCleared.push({
-				roomId,
-				userId: syncer.userId,
-			})
+			const syncer = roomId && await this.roomStateStore.getValue(key)
+			if (syncer?.nodeId === nodeId) {
+				syncers.push({ roomId, syncer })
+			}
 		}
-
-		return { presentationsCleared, recordingsCleared, syncersCleared }
+		return syncers
 	}
 
 }

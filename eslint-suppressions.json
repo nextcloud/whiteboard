@@ -720,7 +720,7 @@
       "count": 6
     },
     "@stylistic/exp-list-style": {
-      "count": 10
+      "count": 6
     },
     "@stylistic/function-paren-newline": {
       "count": 22
@@ -1174,7 +1174,7 @@
       "count": 2
     },
     "curly": {
-      "count": 16
+      "count": 14
     }
   },
   "websocket_server/Services/PresentationService.js": {
@@ -1242,9 +1242,6 @@
     },
     "curly": {
       "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 1
     }
   },
   "websocket_server/Services/ServerService.js": {
@@ -1262,14 +1259,8 @@
     }
   },
   "websocket_server/Services/SocketService.js": {
-    "@stylistic/exp-list-style": {
-      "count": 1
-    },
     "@stylistic/function-paren-newline": {
-      "count": 5
-    },
-    "@stylistic/implicit-arrow-linebreak": {
-      "count": 1
+      "count": 4
     },
     "@stylistic/padded-blocks": {
       "count": 2

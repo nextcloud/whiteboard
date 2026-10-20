@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+const DELETE_IF_EQUALS = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0"
+
 export default class RoomStateStore {
 
 	constructor({ redisClient = null, prefix = 'state_', defaultTtlMs = null } = {}) {
@@ -19,6 +21,11 @@ export default class RoomStateStore {
 
 	#fullKey(key) {
 		return `${this.prefix}${key}`
+	}
+
+	// `null` stores the value without expiry
+	#ttlToUse(ttlMs) {
+		return ttlMs === null ? null : (ttlMs || this.defaultTtlMs)
 	}
 
 	#expiresAt(ttlMs) {
@@ -95,7 +102,7 @@ export default class RoomStateStore {
 				if (!raw) return null
 				const value = this.#parse(raw)
 				if (isStale && value && await isStale(value)) {
-					await this.redisClient.del(fullKey)
+					await this.deleteValueIfEquals(key, value)
 					return null
 				}
 				return value
@@ -113,7 +120,7 @@ export default class RoomStateStore {
 			return null
 		}
 		if (isStale && entry.value && await isStale(entry.value)) {
-			this.memoryStore.delete(fullKey)
+			await this.deleteValueIfEquals(key, entry.value)
 			return null
 		}
 		return entry.value
@@ -121,7 +128,7 @@ export default class RoomStateStore {
 
 	async setValue(key, value, { ttlMs } = {}) {
 		const fullKey = this.#fullKey(key)
-		const ttlToUse = ttlMs || this.defaultTtlMs
+		const ttlToUse = this.#ttlToUse(ttlMs)
 
 		if (this.shouldUseRedis()) {
 			try {
@@ -167,9 +174,33 @@ export default class RoomStateStore {
 		this.memoryStore.delete(fullKey)
 	}
 
+	// Deletes the value only while it is still the given one
+	async deleteValueIfEquals(key, value) {
+		const fullKey = this.#fullKey(key)
+		const serialized = this.#stringify(value)
+
+		if (this.shouldUseRedis()) {
+			try {
+				return await this.redisClient.eval(DELETE_IF_EQUALS, { keys: [fullKey], arguments: [serialized] }) === 1
+			} catch (error) {
+				if (this.#isClientClosedError(error)) {
+					return false
+				}
+				throw error
+			}
+		}
+
+		const entry = this.memoryStore.get(fullKey)
+		if (!entry || this.#stringify(entry.value) !== serialized) {
+			return false
+		}
+		this.memoryStore.delete(fullKey)
+		return true
+	}
+
 	async setValueIfNotExists(key, value, { ttlMs } = {}) {
 		const fullKey = this.#fullKey(key)
-		const ttlToUse = ttlMs || this.defaultTtlMs
+		const ttlToUse = this.#ttlToUse(ttlMs)
 
 		if (this.shouldUseRedis()) {
 			try {
@@ -257,7 +288,7 @@ export default class RoomStateStore {
 
 	async setHash(key, entries, { ttlMs } = {}) {
 		const fullKey = this.#fullKey(key)
-		const ttlToUse = ttlMs || this.defaultTtlMs
+		const ttlToUse = this.#ttlToUse(ttlMs)
 
 		if (this.shouldUseRedis()) {
 			try {
@@ -300,7 +331,7 @@ export default class RoomStateStore {
 
 	async setHashEntry(key, field, value, { ttlMs } = {}) {
 		const fullKey = this.#fullKey(key)
-		const ttlToUse = ttlMs || this.defaultTtlMs
+		const ttlToUse = this.#ttlToUse(ttlMs)
 
 		if (this.shouldUseRedis()) {
 			try {

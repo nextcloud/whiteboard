@@ -34,7 +34,7 @@ export default class SocketService {
 	}
 
 	#normalizeClientType(value) {
-		return value === 'recording' ? 'recording' : 'viewer'
+		return ['recording', 'preview'].includes(value) ? value : 'viewer'
 	}
 
 	#getPendingRecordingStopKey(roomId, userId) {
@@ -120,10 +120,8 @@ export default class SocketService {
 			sessionStore: this.sessionStore,
 			cluster: {
 				getRoomSyncer: this.getRoomSyncer.bind(this),
-				setRoomSyncer: this.setRoomSyncer.bind(this),
 				trySetRoomSyncer: this.trySetRoomSyncer.bind(this),
-				clearRoomSyncer: this.clearRoomSyncer.bind(this),
-				isNodeAlive: this.isNodeAlive.bind(this),
+				releaseRoomSyncer: this.releaseRoomSyncer.bind(this),
 			},
 			presentationState: {
 				getPresentationSession: this.getPresentationSession.bind(this),
@@ -136,6 +134,7 @@ export default class SocketService {
 			votingService: this.votingService,
 		})
 		this.clusterService.setSweepHandler(this.handleSweepResults.bind(this))
+		this.clusterService.setTickHandler(this.handOnGoneSyncers.bind(this))
 		this.ready = this.init()
 	}
 
@@ -204,16 +203,12 @@ export default class SocketService {
 		return this.clusterService.getSyncer(roomID)
 	}
 
-	async setRoomSyncer(roomID, userId) {
-		await this.clusterService.setSyncer(roomID, userId)
+	async trySetRoomSyncer(roomID, owner) {
+		return this.clusterService.trySetSyncer(roomID, owner)
 	}
 
-	async trySetRoomSyncer(roomID, userId) {
-		return this.clusterService.trySetSyncer(roomID, userId)
-	}
-
-	async clearRoomSyncer(roomID) {
-		await this.clusterService.clearSyncer(roomID)
+	async releaseRoomSyncer(roomID, syncer) {
+		return this.clusterService.releaseSyncer(roomID, syncer)
 	}
 
 	async init() {
@@ -254,16 +249,12 @@ export default class SocketService {
 		this.clusterService.stopStateSweeper()
 	}
 
-	async isNodeAlive(nodeId) {
-		return this.clusterService.isNodeAlive(nodeId)
-	}
-
 	async runSweep() {
 		return this.clusterService.runSweep()
 	}
 
 	async handleSweepResults(results) {
-		const { presentationsCleared = [], recordingsCleared = [], syncersCleared = [] } = results || {}
+		const { presentationsCleared = [], recordingsCleared = [], syncersGone = [] } = results || {}
 
 		for (const entry of presentationsCleared) {
 			this.io.to(entry.roomId).emit('user-stopped-presenting', {
@@ -279,8 +270,20 @@ export default class SocketService {
 			})
 		}
 
-		for (const entry of syncersCleared) {
-			await this.roomLifecycleController.findNewSyncer(entry.roomId)
+		for (const { roomId, syncer } of syncersGone) {
+			await this.roomLifecycleController.findNewSyncer(roomId, syncer)
+				.catch((error) => console.error(`[${roomId}] Failed to elect a syncer:`, error))
+		}
+	}
+
+	// A record of a socket of this node that is gone is handed on: its election failed or picked a
+	// socket that was leaving, or it comes from a run of this node before a crash
+	async handOnGoneSyncers() {
+		for (const { roomId, syncer } of await this.clusterService.listNodeSyncers(this.nodeId)) {
+			if (!this.io.sockets.sockets.has(syncer.socketId)) {
+				await this.roomLifecycleController.findNewSyncer(roomId, syncer)
+					.catch((error) => console.error(`[${roomId}] Failed to elect a syncer:`, error))
+			}
 		}
 	}
 
@@ -351,31 +354,6 @@ export default class SocketService {
 		this.shuttingDown = true
 		const socketIds = this.io?.sockets ? Array.from(this.io.sockets.sockets.keys()) : []
 		const cleanupTasks = []
-		const syncerRoomsToClear = new Set()
-
-		for (const socketId of socketIds) {
-			const socketData = await this.sessionStore.getSocketData(socketId)
-			const socket = this.io.sockets.sockets.get(socketId)
-			const rooms = socket ? Array.from(socket.rooms).filter((room) => room !== socketId) : []
-
-			for (const roomId of rooms) {
-				const currentSyncer = await this.getRoomSyncer(roomId)
-				const currentSyncerUserId = currentSyncer?.userId
-
-				if (!currentSyncerUserId || !socketData?.user?.id || socketData.user.id !== currentSyncerUserId) {
-					continue
-				}
-
-				const roomSockets = await this.roomLifecycleController.getUserSocketsInRoom(roomId)
-				const otherActiveSocket = roomSockets
-					.filter(Boolean)
-					.some((entry) => entry.userId === currentSyncerUserId && entry.socketId !== socketId)
-
-				if (!otherActiveSocket) {
-					syncerRoomsToClear.add(roomId)
-				}
-			}
-		}
 
 		for (const socketId of socketIds) {
 			cleanupTasks.push(this.sessionStore.clearSocketMeta(socketId))
@@ -385,10 +363,6 @@ export default class SocketService {
 
 		const cleared = await this.clusterService.clearNodeState(this.nodeId)
 		await this.handleSweepResults(cleared)
-
-		for (const roomId of syncerRoomsToClear) {
-			await this.roomLifecycleController.findNewSyncer(roomId)
-		}
 		for (const pending of this.pendingRecordingStops.values()) {
 			clearTimeout(pending.timeoutId)
 		}
@@ -410,9 +384,12 @@ export default class SocketService {
 			const inferredRecording = (typeof referer === 'string' && referer.includes('/apps/whiteboard/recording/'))
 				|| (typeof normalizedUserAgent === 'string' && normalizedUserAgent.includes('WhiteboardRecording/'))
 			const clientType = inferredRecording ? 'recording' : this.#normalizeClientType(rawClientType)
+			const previousSocketId = socket.handshake?.auth?.previousSocketId
 			await this.sessionStore.setSocketData(socket.id, {
 				...decodedData,
 				clientType,
+				nodeId: this.nodeId,
+				previousSocketId: typeof previousSocketId === 'string' ? previousSocketId : undefined,
 			})
 
 			next()
@@ -538,9 +515,10 @@ export default class SocketService {
 			const rooms = Array.from(socket.rooms).filter(
 				(room) => room !== socket.id,
 			)
-			this.pendingDisconnects.set(socket.id, this.safeSocketHandler(socket, () =>
-				this.disconnectingHandler(socket, rooms),
-			).finally(() => this.pendingDisconnects.delete(socket.id)))
+			// Runs without socket data too, so a syncer whose session expired is replaced
+			this.pendingDisconnects.set(socket.id, this.disconnectingHandler(socket, rooms)
+				.catch((error) => console.error('Socket handler error:', error))
+				.finally(() => this.pendingDisconnects.delete(socket.id)))
 		})
 	}
 

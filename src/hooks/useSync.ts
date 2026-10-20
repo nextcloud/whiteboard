@@ -138,21 +138,12 @@ export function useSync() {
 	}, [isWorkerReady, worker, fileId, excalidrawAPI, isReadOnly])
 
 	// Saves current state to the Nextcloud server API
-	const doSyncToServerAPI = useCallback(async (forceSync = false) => {
-		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, isDedicatedSyncer, collabStatus })
+	const doSyncToServerAPI = useCallback(async () => {
+		logger.debug('[Sync] doSyncToServerAPI called', { isDedicatedSyncer, collabStatus })
 
-		// Allow force sync for final save, otherwise check normal conditions
-		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online')) {
+		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !isDedicatedSyncer || isReadOnly || collabStatus !== 'online') {
 			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
 				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isDedicatedSyncer, isReadOnly, collabStatus,
-			})
-			return
-		}
-
-		// For force sync, only check minimum requirements
-		if (forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly)) {
-			logger.debug('[Sync] Skipping forced server sync - minimum requirements not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isReadOnly,
 			})
 			return
 		}
@@ -179,6 +170,10 @@ export function useSync() {
 			}
 			// A restore started meanwhile, and this scene is older than the restored one
 			if (useSyncStore.getState().pausedFileId === fileId) {
+				return
+			}
+			// Another socket became the syncer meanwhile
+			if (!useCollaborationStore.getState().isDedicatedSyncer) {
 				return
 			}
 
@@ -309,6 +304,13 @@ export function useSync() {
 		// Use both leading and trailing edge executions for server sync
 		throttle(doSyncToServerAPI, SERVER_API_SYNC_DELAY, { leading: true, trailing: true })
 	, [doSyncToServerAPI])
+
+	// A tab that becomes the syncer saves what it holds, without waiting for an edit
+	useEffect(() => {
+		if (isDedicatedSyncer && !excalidrawAPI?.getAppState().isLoading) {
+			throttledSyncToServerAPI()
+		}
+	}, [isDedicatedSyncer, excalidrawAPI, throttledSyncToServerAPI])
 
 	const throttledSyncViaWebSocket = useMemo(() =>
 		// Use both leading and trailing edge executions for WebSocket sync

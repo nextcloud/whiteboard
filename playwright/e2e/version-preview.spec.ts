@@ -13,6 +13,7 @@ import {
 	fetchBoardContent,
 	getBoardAuth,
 	openFilesApp,
+	openWhiteboardFromFiles,
 	resolveStoredFileName,
 	waitForCanvas,
 } from '../support/utils'
@@ -236,6 +237,43 @@ test('version preview banner shows and exits to live board', async ({
 
 	await expect(banner).toBeHidden({ timeout: 20000 })
 	await waitForBoardContent(page, baseAuth, updatedText)
+
+	// The tab is the only one on the board, so after the preview it saves
+	await addTextElement(page, 'After the preview', { x: 600, y: 250 })
+	await waitForBoardContent(page, baseAuth, 'After the preview')
+})
+
+test('a version preview does not keep another tab of the user from saving', async ({
+	page,
+	user,
+	browser,
+	baseURL,
+}) => {
+	skipWhenVersionContentUnavailable()
+	test.setTimeout(150000)
+	const boardName = `Preview next to live ${Date.now()}`
+
+	const { baseAuth, versionEntry, storedName } = await prepareVersionScenario(page, user.userId, {
+		boardName,
+		initialText: 'Version one',
+		updatedText: 'Version two',
+	})
+	await openWhiteboardInViewer(page, {
+		fileId: baseAuth.fileId,
+		fileName: storedName,
+		source: versionEntry.versionSource,
+		fileVersion: versionEntry.versionId,
+	})
+	await waitForCanvas(page)
+	await expect(page.locator('.version-preview-banner')).toBeVisible({ timeout: 20000 })
+
+	const context = await browser.newContext({ baseURL, storageState: await page.context().storageState() })
+	const liveTab = await context.newPage()
+	await openFilesApp(liveTab)
+	await openWhiteboardFromFiles(liveTab, boardName)
+	await addTextElement(liveTab, 'Edited next to a preview', { x: 600, y: 250 })
+	await waitForBoardContent(liveTab, baseAuth, 'Edited next to a preview')
+	await context.close()
 })
 
 test('restore version replaces current content', async ({

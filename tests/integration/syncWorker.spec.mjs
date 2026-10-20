@@ -122,6 +122,21 @@ describe('sync worker', () => {
 		expect(sentScenes()).toEqual(['/board/1@1', '/board/2@1', '/board/1@2'])
 	})
 
+	it('drops the waiting save of a board when it is cancelled', async () => {
+		save('k1', 1, 1)
+		await flush()
+		save('k2', 1, 2)
+		save('b1', 2, 1)
+		send({ type: 'CANCEL_SERVER_SYNC', fileId: 1 })
+		await flush()
+
+		responses[0].resolve(ok)
+		responses[1].resolve(ok)
+		await flush()
+
+		expect(sentScenes()).toEqual(['/board/1@1', '/board/2@1'])
+	})
+
 	it('uploads a scene again when it is sent again', async () => {
 		save('k1', 1)
 		await flush()
