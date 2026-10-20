@@ -73,8 +73,7 @@ export function isLockExpired(lock: { lockedAt?: number } | undefined): boolean 
  * Excalidraw's updateScene(), which automatically syncs the change to all collaborators
  * via the normal onChange flow (websocket + server API).
  *
- * The lock survives reconciliation because mergeElementsWithMetadata explicitly
- * preserves tableLock from whichever element version wins.
+ * The element gets a new version, so the change is broadcast and wins reconciliation.
  *
  * @param excalidrawAPI - The Excalidraw API instance
  * @param elementId - The ID of the table element to lock/unlock
@@ -93,6 +92,9 @@ export function setLockOnElement(
 	// Update the element with the new lock state
 	elements[idx] = {
 		...elements[idx],
+		version: elements[idx].version + 1,
+		versionNonce: Math.floor(Math.random() * 2 ** 31),
+		updated: Date.now(),
 		customData: {
 			...elements[idx].customData,
 			// Set tableLock to the provided value, or explicitly undefined to clear

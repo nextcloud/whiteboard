@@ -57,11 +57,15 @@ describe('tableLocking utilities', () => {
 				{
 					id: 'element-1',
 					type: 'image',
+					version: 4,
+					versionNonce: 11,
 					customData: { isTable: true },
 				},
 				{
 					id: 'element-2',
 					type: 'image',
+					version: 2,
+					versionNonce: 22,
 					customData: { isTable: true },
 				},
 			]
@@ -98,6 +102,14 @@ describe('tableLocking utilities', () => {
 			expect(mockAPI.updateScene).toHaveBeenCalledTimes(1)
 			const updateCall = mockAPI.updateScene.mock.calls[0][0]
 			expect(updateCall.elements[0].customData.tableLock).toBeUndefined()
+		})
+
+		it('gives the element a new version, so the lock reaches collaborators', () => {
+			setLockOnElement(mockAPI, 'element-1', { uid: 'user-1', displayName: 'User One', lockedAt: Date.now() })
+
+			const [element] = mockAPI.updateScene.mock.calls[0][0].elements
+			expect(element.version).toBe(5)
+			expect(element.versionNonce).not.toBe(11)
 		})
 
 		it('should do nothing if element not found', () => {
