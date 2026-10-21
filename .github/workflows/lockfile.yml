@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+name: Lockfile
+on:
+  pull_request:
+    paths:
+      - package-lock.json
+      - .github/workflows/lockfile.yml
+
+permissions:
+  contents: read
+
+jobs:
+  resolved-integrity:
+    runs-on: ubuntu-latest
+    name: Every package has resolved and integrity
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # Packagers such as Nixpkgs build from the lockfile alone
+      - name: Check package-lock.json
+        run: |
+          node -e '
+            const { packages } = require("./package-lock.json")
+            const missing = Object.entries(packages)
+              .filter(([path, entry]) => path !== "" && !entry.link && !(entry.resolved && entry.integrity))
+              .map(([path]) => path)
+            if (missing.length > 0) {
+              console.error(`${missing.length} packages in package-lock.json have no "resolved" or "integrity":`)
+              console.error(missing.join("\n"))
+              process.exit(1)
+            }
+          '
