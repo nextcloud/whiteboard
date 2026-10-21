@@ -251,7 +251,7 @@ export function VotingSidebar({ votings, onVote, onEndVoting, onStartVoting, exc
 
 			// Update scene
 			const elements = convertToExcalidrawElements(elementsWithIds)
-			const existingElements = excalidrawAPI.getSceneElements()
+			const existingElements = excalidrawAPI.getSceneElementsIncludingDeleted()
 
 			if (!existingElements) {
 				throw new Error(t('whiteboard', 'Could not get scene elements'))

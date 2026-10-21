@@ -669,7 +669,7 @@ export function useComment(props?: UseCommentProps) {
 					}])
 
 					excalidrawAPI.updateScene({
-						elements: [...excalidrawAPI.getSceneElements(), ...newThreadElement],
+						elements: [...excalidrawAPI.getSceneElementsIncludingDeleted(), ...newThreadElement],
 					})
 
 					setPendingThread(null)
