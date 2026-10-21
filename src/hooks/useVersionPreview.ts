@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { t } from '@nextcloud/l10n'
 import { getRequestToken } from '@nextcloud/auth'
-import { restoreElements } from '@nextcloud/excalidraw'
 import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
 import type { AppState, BinaryFiles, ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
 import { showError, showSuccess } from '@nextcloud/dialogs'
@@ -15,6 +14,9 @@ import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useSyncStore } from '../stores/useSyncStore.ts'
 import { db } from '../database/db'
+import { fetchWhiteboardSnapshot } from '../utils/fetchWhiteboardSnapshot.ts'
+import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata.ts'
+import { restoreVersionElements } from '../utils/restoreVersionElements.ts'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import logger from '../utils/logger'
@@ -66,7 +68,6 @@ export function useVersionPreview({
 	const isVersionPreview = Boolean(currentVersionSource && currentFileVersion)
 	const previousReadOnlyRef = useRef<boolean | null>(null)
 	const wasVersionPreviewRef = useRef(isVersionPreview)
-	const pendingBroadcastRef = useRef<RestoredSnapshot | null>(null)
 
 	useEffect(() => {
 		setCurrentVersionSource(versionSource)
@@ -153,11 +154,11 @@ export function useVersionPreview({
 		})
 	}, [setConfig])
 
-	const captureRestoredSnapshot = useCallback(async (sourceOverride?: string | null): Promise<RestoredSnapshot | null> => {
+	const captureRestoredSnapshot = useCallback(async (sourceOverride: string | null, currentElements: readonly ExcalidrawElement[]): Promise<RestoredSnapshot | null> => {
 		try {
 			if (!sourceOverride && excalidrawAPI) {
 				const rawElements = excalidrawAPI.getSceneElementsIncludingDeleted?.() || []
-				const sanitizedElements = restoreElements(rawElements, null) as ExcalidrawElement[]
+				const sanitizedElements = restoreVersionElements(rawElements, currentElements)
 				const rawFiles = excalidrawAPI.getFiles?.() || {}
 				const filesCopy: BinaryFiles = { ...rawFiles }
 				const rawAppState = excalidrawAPI.getAppState?.() || {}
@@ -192,7 +193,7 @@ export function useVersionPreview({
 				const rawContent = await response.text()
 				if (rawContent.trim() === '') {
 					return {
-						elements: [],
+						elements: restoreVersionElements([], currentElements),
 						files: {},
 						appState: {},
 						scrollToContent: true,
@@ -210,7 +211,7 @@ export function useVersionPreview({
 					throw new Error('Version content is missing elements array')
 				}
 
-				const sanitizedElements = restoreElements(parsedContent.elements as ExcalidrawElement[], null) as ExcalidrawElement[]
+				const sanitizedElements = restoreVersionElements(parsedContent.elements as ExcalidrawElement[], currentElements)
 				const rawFiles = (parsedContent.files && typeof parsedContent.files === 'object')
 					? parsedContent.files
 					: {}
@@ -237,6 +238,20 @@ export function useVersionPreview({
 		return null
 	}, [excalidrawAPI, currentVersionSource])
 
+	const readCurrentElements = useCallback(async (): Promise<readonly ExcalidrawElement[]> => {
+		const jwt = await getJWT()
+		if (!jwt) {
+			throw new Error('Missing JWT')
+		}
+		const stored = await fetchWhiteboardSnapshot(fileId, jwt)
+		// A version preview shows the version, the board itself stays in the local copy
+		const localElements = isVersionPreview
+			? (await db.get(fileId))?.elements ?? []
+			: excalidrawAPI?.getSceneElementsIncludingDeleted() ?? []
+
+		return [...localElements, ...stored.elements as ExcalidrawElement[]]
+	}, [getJWT, fileId, isVersionPreview, excalidrawAPI])
+
 	const applySnapshotToScene = useCallback((snapshot: RestoredSnapshot | null) => {
 		if (!snapshot || !excalidrawAPI) {
 			return
@@ -248,9 +263,9 @@ export function useVersionPreview({
 			viewModeEnabled: false,
 		}
 
+		excalidrawAPI.addFiles(Object.values(files || {}))
 		excalidrawAPI.updateScene?.({
-			elements,
-			files,
+			elements: mergeElementsWithMetadata(excalidrawAPI.getSceneElementsIncludingDeleted(), elements, excalidrawAPI.getAppState()),
 			appState: {
 				...sanitizedAppState,
 				scrollToContent,
@@ -258,19 +273,19 @@ export function useVersionPreview({
 		})
 	}, [excalidrawAPI])
 
-	const broadcastSnapshotToSocket = useCallback((snapshot: RestoredSnapshot): boolean => {
+	// Without a connection, the scene sync sends the restored elements once the session is back in the room
+	const broadcastSnapshotToSocket = useCallback((snapshot: RestoredSnapshot) => {
 		const { socket: currentSocket, isInRoom } = useCollaborationStore.getState()
 		if (!currentSocket?.connected || !fileId || !isInRoom) {
-			return false
+			return
 		}
 
 		try {
 			const encoder = new TextEncoder()
+			// An ordinary scene update: the restored elements carry versions above the copies they replace
 			const scenePayload = {
-				type: 'SCENE_RESTORE',
-				payload: {
-					reloadFromServer: true,
-				},
+				type: 'SCENE_UPDATE',
+				payload: { elements: snapshot.elements },
 			}
 			currentSocket.emit('server-broadcast', `${fileId}`, encoder.encode(JSON.stringify(scenePayload)), [])
 
@@ -285,17 +300,14 @@ export function useVersionPreview({
 				}
 				currentSocket.emit('server-broadcast', `${fileId}`, encoder.encode(JSON.stringify(filePayload)), [])
 			})
-
-			return true
 		} catch (error) {
 			logger.error('[useVersionPreview] Failed to broadcast restored version over socket', error)
-			return false
 		}
 	}, [fileId])
 
-	const persistRestoredSnapshot = useCallback(async (snapshot: RestoredSnapshot): Promise<boolean> => {
+	const persistRestoredSnapshot = useCallback(async (snapshot: RestoredSnapshot) => {
 		if (!Number.isFinite(fileId) || fileId <= 0) {
-			return false
+			return
 		}
 
 		const { elements, files, appState, scrollToContent } = snapshot
@@ -305,17 +317,7 @@ export function useVersionPreview({
 		}
 		const filesToStore: BinaryFiles = files || {}
 
-		await db.put(
-			fileId,
-			elements,
-			filesToStore,
-			sanitizedAppState,
-			{
-				hasPendingLocalChanges: false,
-				lastSyncedHash: computeElementVersionHash(elements),
-			},
-		)
-
+		let saved = false
 		try {
 			const jwt = await getJWT()
 			if (jwt) {
@@ -336,9 +338,10 @@ export function useVersionPreview({
 					}),
 				})
 
-				if (!response.ok && response.status !== 409) {
+				if (!response.ok) {
 					throw new Error(`Unexpected status ${response.status}`)
 				}
+				saved = true
 			} else {
 				logger.warn('[useVersionPreview] Skipping server sync for restored version due to missing JWT')
 			}
@@ -346,14 +349,24 @@ export function useVersionPreview({
 			logger.error('[useVersionPreview] Failed to sync restored version to server', error)
 		}
 
-		const broadcasted = broadcastSnapshotToSocket({
+		// Pending when the server did not store it, so that the next load keeps it over the stored board
+		await db.put(
+			fileId,
+			elements,
+			filesToStore,
+			sanitizedAppState,
+			{
+				hasPendingLocalChanges: !saved,
+				lastSyncedHash: computeElementVersionHash(elements),
+			},
+		)
+
+		broadcastSnapshotToSocket({
 			elements,
 			files: filesToStore,
 			appState: sanitizedAppState,
 			scrollToContent,
 		})
-
-		return broadcasted
 	}, [fileId, getJWT, broadcastSnapshotToSocket])
 
 	const handleRestoreVersion = useCallback(async () => {
@@ -366,7 +379,10 @@ export function useVersionPreview({
 		try {
 			// A save of the board landing after the restore would replace it
 			await useSyncStore.getState().pauseSaves(fileId)
-			const snapshot = await captureRestoredSnapshot()
+			const snapshot = await captureRestoredSnapshot(null, await readCurrentElements())
+			if (!snapshot) {
+				throw new Error('Could not read the version')
+			}
 
 			const response = await fetch(versionDavEndpoints.restoreUrl, {
 				method: 'MOVE',
@@ -383,15 +399,10 @@ export function useVersionPreview({
 				throw new Error(`Unexpected status ${response.status}`)
 			}
 
-			if (snapshot) {
-				const broadcasted = await persistRestoredSnapshot(snapshot)
-				if (!broadcasted) {
-					pendingBroadcastRef.current = snapshot
-				}
-				applySnapshotToScene(snapshot)
-			} else if (Number.isFinite(fileId) && fileId > 0) {
-				await db.delete(fileId)
-			}
+			await persistRestoredSnapshot(snapshot)
+			// Merged with what arrived meanwhile, and saved like any other change
+			useSyncStore.getState().resumeSaves()
+			applySnapshotToScene(snapshot)
 
 			showSuccess(t('whiteboard', 'Version restored'))
 			exitVersionPreview()
@@ -402,7 +413,7 @@ export function useVersionPreview({
 			useSyncStore.getState().resumeSaves()
 			setIsRestoringVersion(false)
 		}
-	}, [versionDavEndpoints, captureRestoredSnapshot, persistRestoredSnapshot, fileId, exitVersionPreview])
+	}, [versionDavEndpoints, captureRestoredSnapshot, readCurrentElements, persistRestoredSnapshot, fileId, exitVersionPreview])
 
 	const handleExternalRestore = useCallback(async (source: string, fileVersionId: string | null) => {
 		const endpoints = resolveVersionEndpoints(source)
@@ -417,7 +428,10 @@ export function useVersionPreview({
 		try {
 			// A save of the board landing after the restore would replace it
 			await useSyncStore.getState().pauseSaves(fileId)
-			const snapshot = await captureRestoredSnapshot(source)
+			const snapshot = await captureRestoredSnapshot(source, await readCurrentElements())
+			if (!snapshot) {
+				throw new Error('Could not read the version')
+			}
 
 			const response = await fetch(endpoints.restoreUrl, {
 				method: 'MOVE',
@@ -435,15 +449,10 @@ export function useVersionPreview({
 				throw new Error(`Unexpected status ${response.status}`)
 			}
 
-			if (snapshot) {
-				const broadcasted = await persistRestoredSnapshot(snapshot)
-				if (!broadcasted) {
-					pendingBroadcastRef.current = snapshot
-				}
-				applySnapshotToScene(snapshot)
-			} else if (Number.isFinite(fileId) && fileId > 0) {
-				await db.delete(fileId)
-			}
+			await persistRestoredSnapshot(snapshot)
+			// Merged with what arrived meanwhile, and saved like any other change
+			useSyncStore.getState().resumeSaves()
+			applySnapshotToScene(snapshot)
 
 			showSuccess(t('whiteboard', 'Version restored'))
 
@@ -465,64 +474,7 @@ export function useVersionPreview({
 			useSyncStore.getState().resumeSaves()
 			setIsRestoringVersion(false)
 		}
-	}, [captureRestoredSnapshot, currentVersionSource, exitVersionPreview, fileId, isVersionPreview, persistRestoredSnapshot, refreshReadOnlyState, resolveVersionEndpoints, setReadOnly])
-
-	useEffect(() => {
-		const unsubscribe = useCollaborationStore.subscribe(
-			state => ({ socket: state.socket, status: state.status, isInRoom: state.isInRoom }),
-			({ socket, status, isInRoom }) => {
-				if (!pendingBroadcastRef.current) {
-					return
-				}
-				if (status !== 'online' || !socket?.connected || !isInRoom) {
-					return
-				}
-
-				const snapshot = pendingBroadcastRef.current
-				const broadcasted = broadcastSnapshotToSocket(snapshot)
-				if (broadcasted) {
-					pendingBroadcastRef.current = null
-					applySnapshotToScene(snapshot)
-				}
-			},
-		)
-
-		return () => {
-			unsubscribe()
-		}
-	}, [broadcastSnapshotToSocket])
-
-	useEffect(() => {
-		let timer: ReturnType<typeof setTimeout> | null = null
-
-		const tryBroadcast = () => {
-			if (!pendingBroadcastRef.current) {
-				return
-			}
-			const snapshot = pendingBroadcastRef.current
-			const broadcasted = broadcastSnapshotToSocket(snapshot)
-			if (broadcasted) {
-				pendingBroadcastRef.current = null
-				applySnapshotToScene(snapshot)
-				return
-			}
-			timer = setTimeout(tryBroadcast, 1000)
-		}
-
-		if (pendingBroadcastRef.current) {
-			timer = setTimeout(tryBroadcast, 500)
-		}
-
-		return () => {
-			if (timer) {
-				clearTimeout(timer)
-			}
-		}
-	}, [broadcastSnapshotToSocket, applySnapshotToScene])
-
-	useEffect(() => {
-		pendingBroadcastRef.current = null
-	}, [fileId])
+	}, [captureRestoredSnapshot, readCurrentElements, currentVersionSource, exitVersionPreview, fileId, isVersionPreview, persistRestoredSnapshot, refreshReadOnlyState, resolveVersionEndpoints, setReadOnly])
 
 	useLayoutEffect(() => {
 		setConfig({
