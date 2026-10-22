@@ -785,7 +785,7 @@
   },
   "src/hooks/useVersionPreview.ts": {
     "@stylistic/arrow-parens": {
-      "count": 6
+      "count": 5
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 1

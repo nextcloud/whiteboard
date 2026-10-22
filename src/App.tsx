@@ -261,9 +261,10 @@ export default function App({
 
 	useEffect(() => {
 		const onRestoreRequested = (payload: any) => {
-			const payloadFileId = Number(payload?.fileInfo?.id)
-			const mimetype = payload?.fileInfo?.mimetype
-			const fileName = payload?.fileInfo?.name ?? ''
+			// Nextcloud 33 and later send the file as a node
+			const payloadFileId = Number(payload?.fileInfo?.id ?? payload?.node?.fileid)
+			const mimetype = payload?.fileInfo?.mimetype ?? payload?.node?.mime
+			const fileName = payload?.fileInfo?.name ?? payload?.node?.basename ?? ''
 			const source = payload?.version?.source ?? payload?.version?.url ?? null
 			const versionId = payload?.version?.fileVersion ?? null
 
