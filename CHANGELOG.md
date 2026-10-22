@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1
+
+### Fixed
+- Keep a restored version when other sessions hold newer copies, and apply a restore from the Files sidebar to the open board on Nextcloud 33 and later by @hweihwang [#1423](https://github.com/nextcloud/whiteboard/pull/1423)
+- Keep deleted elements when adding a comment or voting results by @hweihwang [#1424](https://github.com/nextcloud/whiteboard/pull/1424)
+
+### Other
+- Add the missing `resolved` and `integrity` fields to `package-lock.json` by @alejo7797 [#1421](https://github.com/nextcloud/whiteboard/pull/1421)
+- Update dependencies and translations
+
 ## 2.1.0
 
 ### Added
