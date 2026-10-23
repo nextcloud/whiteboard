@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.2
+
+### Fixed
+- Use Node 26.12.1 from the October security release in the Docker image by @hweihwang [#1428](https://github.com/nextcloud/whiteboard/pull/1428)
+
+### Other
+- Update translations
+
 ## 2.1.1
 
 ### Fixed
