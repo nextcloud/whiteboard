@@ -23,6 +23,7 @@ import logger from '../utils/logger'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 
 import { generateUrl } from '@nextcloud/router'
+import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
 
 type RestoredSnapshot = {
 	elements: ExcalidrawElement[]
@@ -285,6 +286,7 @@ export function useVersionPreview({
 			// An ordinary scene update: the restored elements carry versions above the copies they replace
 			const scenePayload = {
 				type: 'SCENE_UPDATE',
+				schemaVersion: SCENE_SCHEMA_VERSION,
 				payload: { elements: snapshot.elements },
 			}
 			currentSocket.emit('server-broadcast', `${fileId}`, encoder.encode(JSON.stringify(scenePayload)), [])
@@ -335,6 +337,7 @@ export function useVersionPreview({
 							appState: sanitizedAppState,
 							scrollToContent,
 						},
+						schemaVersion: SCENE_SCHEMA_VERSION,
 					}),
 				})
 

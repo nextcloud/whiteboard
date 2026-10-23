@@ -39,6 +39,8 @@ use Psr\Log\LoggerInterface;
  * @psalm-suppress UndefinedDocblockClass
  */
 final class WhiteboardController extends ApiController {
+	private const SCHEMA_VERSION = 2;
+
 	private IMemcache $cache;
 
 	public function __construct(
@@ -81,6 +83,27 @@ final class WhiteboardController extends ApiController {
 	#[NoCSRFRequired]
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
+			$fileService = $this->getFileServiceFactory->create($user, $fileId);
+			$file = $fileService->getFile();
+			if ($fileService->isFileReadOnly()) {
+				throw new NotPermittedException('Permission denied');
+			}
+		} catch (Exception $e) {
+			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());
+			return $this->exceptionService->handleException($e);
+		}
+
+		// Clients older than 3.0 drop element types they do not know, so their
+		// writes are refused. The check comes before the lock, whose busy
+		// response Whiteboard 2.0 treats as saved.
+		if ($this->request->getParam('schemaVersion') !== self::SCHEMA_VERSION) {
+			return new DataResponse(['status' => 'error', 'code' => 'client_upgrade_required'], Http::STATUS_BAD_REQUEST);
+		}
+
 		$lockKey = "sync_lock_{$fileId}";
 		$lockValue = uniqid();
 		$lockTTL = 5; // 5 seconds
@@ -91,15 +114,6 @@ final class WhiteboardController extends ApiController {
 		}
 
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
-			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
-			$fileService = $this->getFileServiceFactory->create($user, $fileId);
-			$file = $fileService->getFile();
-			if ($fileService->isFileReadOnly()) {
-				throw new NotPermittedException('Permission denied');
-			}
-
 			$this->contentService->updateContent($file, $data, $user);
 
 			return new DataResponse(['status' => 'success']);

@@ -7,6 +7,8 @@ import { db } from '../database/db'
 import { computeElementVersionHash, computeSceneKey } from '../utils/syncSceneData'
 import type { WorkerInboundMessage, WorkerOutboundMessage } from '../types/protocol'
 
+import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
+
 const ctx: Worker = self as unknown as Worker
 
 let performance: Performance
@@ -121,6 +123,7 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 			headers,
 			body: JSON.stringify({
 				data: { elements, files: files || {} },
+				schemaVersion: SCENE_SCHEMA_VERSION,
 			}),
 		})
 
@@ -231,6 +234,9 @@ const handleMessage = async (event: MessageEvent<WorkerInboundMessage>) => {
 			case 'FLUSH':
 				await flushBoard(message.fileId, message.server)
 				sendMessage({ type: 'FLUSH_COMPLETE', id: message.id })
+				break
+			case 'DROP_WAITING_SERVER_SYNC':
+				waitingServerSyncs.delete(message.fileId)
 				break
 			default:
 				// Unknown message type - ignore
