@@ -19,4 +19,16 @@ describe('sanitizeAppStateForSync', () => {
 		expect(() => structuredClone(sanitized)).not.toThrow()
 		expect(appState.contextMenu).toBeDefined()
 	})
+
+	it('drops the search matches that Whiteboard 2.x stored locally', () => {
+		const stored = { theme: 'dark', currentItemFontFamily: 3, searchMatches: [] }
+
+		expect(sanitizeAppStateForSync(stored)).toEqual({ theme: 'dark', currentItemFontFamily: 3 })
+	})
+
+	it('drops per-client state', () => {
+		const stored = { theme: 'light', collaborators: new Map(), selectedElementIds: { a: true }, width: 100, height: 50 }
+
+		expect(sanitizeAppStateForSync(stored)).toEqual({ theme: 'light' })
+	})
 })

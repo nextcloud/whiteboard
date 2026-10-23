@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react'
-import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
+import type { ExcalidrawImperativeAPI } from '@nextcloud/excalidraw/types'
 import type { CreatorDisplaySettings, WhiteboardElement } from '../types/whiteboard'
 import styles from './CreatorDisplay.module.scss'
 import { sceneCoordsToViewportCoords } from '@nextcloud/excalidraw'

@@ -13,8 +13,8 @@ updates:
     timezone: Europe/Paris
   open-pull-requests-limit: 10
   ignore:
-  # Fork builds are versioned 0.18.0-<commit>, which semver orders by hash, not by date
-  - dependency-name: "@nextcloud/excalidraw"
+  # Fork builds are pinned by hand; semver orders their prerelease suffixes as text, not by date
+  - dependency-name: "@nextcloud/excalidraw*"
   labels:
   - 3. to review
   - dependencies

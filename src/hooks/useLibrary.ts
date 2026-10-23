@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
-import type { LibraryItem, LibraryItems } from '@excalidraw/excalidraw/types/types'
+import type { LibraryItem, LibraryItems } from '@nextcloud/excalidraw/types'
 import logger from '../utils/logger'
 
 type LibraryItemExtended = LibraryItem & {
@@ -48,7 +48,7 @@ export function useLibrary() {
 			}
 
 			const data = await response.json()
-			const libraryItems: LibraryItems = []
+			const libraryItems: LibraryItem[] = []
 
 			for (const file of data.data) {
 				if (!file.library && !file.libraryItems) {

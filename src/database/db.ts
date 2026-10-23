@@ -5,14 +5,14 @@
 
 import * as Dexie from 'dexie'
 import type { Table } from 'dexie'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { AppState, BinaryFiles } from '@nextcloud/excalidraw/types'
 
 export interface WhiteboardData {
 	id: number
 	elements: ExcalidrawElement[]
 	files: BinaryFiles
-	appState?: AppState
+	appState?: Partial<AppState>
 	savedAt?: number
 	hasPendingLocalChanges?: boolean
 	lastSyncedHash?: number
@@ -40,7 +40,7 @@ export class WhiteboardDatabase extends Dexie.Dexie {
 		fileId: number,
 		elements: ExcalidrawElement[],
 		files: BinaryFiles,
-		appState?: AppState,
+		appState?: Partial<AppState>,
 		options: {
 			hasPendingLocalChanges?: boolean
 			lastSyncedHash?: number

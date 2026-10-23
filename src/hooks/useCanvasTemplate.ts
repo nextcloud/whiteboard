@@ -6,7 +6,7 @@
 import { useCallback } from 'react'
 import { useJWTStore } from '../stores/useJwtStore'
 import { generateUrl } from '@nextcloud/router'
-import type { BinaryFiles } from '@excalidraw/excalidraw/types/types'
+import type { BinaryFiles } from '@nextcloud/excalidraw/types'
 
 export interface CanvasTemplateData {
 	elements: readonly unknown[]
