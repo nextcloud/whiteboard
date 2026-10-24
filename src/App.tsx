@@ -9,6 +9,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { getCurrentUser } from '@nextcloud/auth'
 import { translate as t } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
+import { generateUrl } from '@nextcloud/router'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import type { ExcalidrawImperativeAPI, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
@@ -558,7 +559,14 @@ export default function App({
 		}
 	}, [publishCanvasTemplate])
 
-	const libraryReturnUrl = encodeURIComponent(window.location.href)
+	// The library browser (libraries.excalidraw.com) navigates back to this
+	// URL with an "addLibrary" fragment when the user installs a library.
+	// Inside the Files app viewer the current URL is the Files app, which does
+	// not mount an editor that could handle the fragment, so point at the
+	// standalone editor page instead. Public shares have no session to
+	// authenticate the standalone page with, so keep the share URL there.
+	const standaloneLibraryUrl = window.location.origin + generateUrl(`apps/whiteboard/standalone/${normalizedFileId}`)
+	const libraryReturnUrl = encodeURIComponent(publicSharingToken ? window.location.href : standaloneLibraryUrl)
 
 	// Data loading is now handled by useBoardDataManager
 
