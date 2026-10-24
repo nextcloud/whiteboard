@@ -232,8 +232,11 @@ export default function App({
 	const { startVoting, vote, endVoting } = useVoting()
 	const votings = useCollaborationStore(state => state.votings)
 
+	// Delay handling addLibrary fragments until the initial library load has
+	// finished: that load replaces the library (merge: false) and would wipe
+	// a library that was just imported from the URL.
 	useHandleLibrary({
-		excalidrawAPI,
+		excalidrawAPI: isLibraryLoaded ? excalidrawAPI : null,
 	})
 
 	useEffect(() => {
@@ -326,13 +329,16 @@ export default function App({
 	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, setIsLibraryLoaded])
 
 	useEffect(() => {
-		if (isLoading || !excalidrawAPI) {
+		window.name = fileName
+
+		// Load the library only once per file/editor instance. This effect
+		// replaces the library wholesale (merge: false), so a re-run would
+		// wipe items imported or added after the initial load. File changes
+		// reset isLibraryLoaded via the effect above.
+		if (isLoading || !excalidrawAPI || isLibraryLoaded) {
 			return
 		}
 
-		// Fetch library items from the API
-		window.name = fileName
-		setIsLibraryLoaded(false)
 		let cancelled = false
 		;(async () => {
 			try {
@@ -379,6 +385,7 @@ export default function App({
 		excalidrawAPI,
 		normalizedFileId,
 		setIsLibraryLoaded,
+		isLibraryLoaded,
 	])
 
 	useEffect(() => {
