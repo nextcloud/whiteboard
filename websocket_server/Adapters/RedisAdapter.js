@@ -10,6 +10,8 @@ import { createClient, createCluster } from 'redis'
 import Config from '../Utilities/ConfigUtility.js'
 import { deleteKeys, scanKeys } from '../Utilities/RedisUtility.js'
 
+const ERROR_LOG_INTERVAL_MS = 60 * 1000
+
 export default class RedisAdapter extends StorageAdapter {
 
 	static isClientClosedError(error) {
@@ -102,25 +104,50 @@ export default class RedisAdapter extends StorageAdapter {
 		}
 	}
 
+	/**
+	 * Log the errors a client emits instead of letting them end the process.
+	 *
+	 * A Redis client emits `error` whenever a connection drops, and an `error`
+	 * event without a listener throws, so losing a single node took the whole
+	 * server down. The client reconnects on its own, and the same message comes
+	 * back on every attempt, so each message is logged at most once a minute.
+	 *
+	 * @param {object} client a redis client, one node or a cluster
+	 * @return {object} the same client
+	 */
+	static logClientErrors(client) {
+		const lastLogged = new Map()
+		client.on('error', (error) => {
+			const message = error?.message ?? String(error)
+			const now = Date.now()
+			if (lastLogged.has(message) && now - lastLogged.get(message) < ERROR_LOG_INTERVAL_MS) {
+				return
+			}
+			lastLogged.set(message, now)
+			console.error('Redis client error:', message)
+		})
+		return client
+	}
+
 	static createRedisClient() {
 		console.log(`Creating Redis client with URL: ${RedisAdapter.redactRedisUrl(Config.REDIS_URL)}`)
 
 		const nodeUrls = RedisAdapter.splitRedisUrls(Config.REDIS_URL)
 
 		if (nodeUrls.length > 1) {
-			return RedisAdapter.createRedisClusterClient(nodeUrls)
+			return RedisAdapter.logClientErrors(RedisAdapter.createRedisClusterClient(nodeUrls))
 		}
 
 		const redisUrl = RedisAdapter.parseRedisUrl(Config.REDIS_URL)
 
 		if (redisUrl.protocol === 'unix:') {
 			const db = redisUrl.searchParams.get('db')
-			return createClient({
+			return RedisAdapter.logClientErrors(createClient({
 				socket: { path: redisUrl.pathname },
 				database: db !== null ? Number(db) : undefined,
-			})
+			}))
 		} else {
-			return createClient({ url: Config.REDIS_URL })
+			return RedisAdapter.logClientErrors(createClient({ url: Config.REDIS_URL }))
 		}
 	}
 

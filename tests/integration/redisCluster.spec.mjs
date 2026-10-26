@@ -6,8 +6,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const redis = vi.hoisted(() => ({
-	createClient: vi.fn(() => ({ kind: 'single' })),
-	createCluster: vi.fn(() => ({ kind: 'cluster' })),
+	createClient: vi.fn(() => ({ kind: 'single', on: vi.fn() })),
+	createCluster: vi.fn(() => ({ kind: 'cluster', on: vi.fn() })),
 }))
 vi.mock('redis', () => redis)
 
@@ -83,6 +83,16 @@ describe('choosing between a single node and a cluster', () => {
 
 		const [options] = redis.createCluster.mock.calls[0]
 		expect(options.defaults).toEqual({ username: 'user', password: SECRET })
+	})
+
+	it('reads a comma written as %2C in a seed list password', () => {
+		Config.REDIS_URL = 'redis://user:one%2Ctwo@node1:6379,redis://node2:6379'
+
+		RedisAdapter.createRedisClient()
+
+		const [options] = redis.createCluster.mock.calls[0]
+		expect(options.rootNodes).toHaveLength(2)
+		expect(options.defaults).toEqual({ username: 'user', password: 'one,two' })
 	})
 
 	it('repeats TLS in the defaults, which discovered nodes connect with', () => {
