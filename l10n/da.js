@@ -286,7 +286,7 @@ OC.L10N.register(
     "Connection required to stop presentation" : "Der kræves forbindelse for at stoppe præsentationen",
     "Failed to stop presentation" : "Præsentationen kunne ikke stoppes",
     "Recording requires connection to collaboration server. Please check your network connection." : "Optagelse kræver forbindelse til samarbejdsserveren. Tjek din netværksforbindelse.",
-    "Smart picker" : "Smart Vælger",
+    "Smart picker" : "Smart Picker",
     "Insert table" : "Indsæt tabel",
     "Timer finished" : "Timeren er færdig",
     "Unable to update timer" : "Timeren kunne ikke opdateres",
