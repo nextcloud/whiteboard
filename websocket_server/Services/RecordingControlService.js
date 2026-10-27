@@ -121,6 +121,11 @@ export default class RecordingControlService {
 			const ownRecorder = new RecordingService()
 			recorder = ownRecorder
 			recorderUserId = socketData.user.id
+			const errorRecordingKey = recordingKey
+			recorder.on('error', () => {
+				this.#handleRecorderError(errorRecordingKey, ownRecorder)
+					.catch((error) => console.error(`[${sessionKey}] Ending the failed recording failed:`, error))
+			})
 			console.log(`[${sessionKey}] Initializing recording at ${withoutToken(recordingUrl)}`)
 
 			if (!await recorder.init(botRecordingUrl.toString(), roomID, socketData.user.id)) {
@@ -144,6 +149,10 @@ export default class RecordingControlService {
 			this.recordingServices.set(recordingKey, {
 				recorder,
 				claims,
+				roomID,
+				userId: socketData.user.id,
+				requesterSocketId: socket.id,
+				username,
 				autoUploadOnDisconnect: Boolean(autoUploadOnDisconnect),
 				tokenRenewal: setInterval(() => {
 					ownRecorder.updateToken(roomID, socketData.user.id, signRecordingToken(claims, { readOnly: true }))
@@ -157,6 +166,16 @@ export default class RecordingControlService {
 				nodeId: this.nodeId,
 				startedAt,
 			})
+			// A failing page may have ended this recording while it was registered
+			const registered = this.recordingServices.get(recordingKey)
+			if (registered?.recorder !== recorder || registered.stopping) {
+				const entry = !registered && await this.cluster.getRecordingEntry(roomID, socketData.user.id)
+				// Only this start's entry, not one a new recording wrote meanwhile
+				if (entry && entry.nodeId === this.nodeId && entry.startedAt === startedAt) {
+					await this.cluster.removeRecordingEntry(roomID, socketData.user.id)
+				}
+				return
+			}
 
 			socket.emit('recording-started', { startedAt })
 			socket.to(roomID).emit('user-started-recording', {
@@ -213,6 +232,22 @@ export default class RecordingControlService {
 			}
 		}, FORWARDED_STOP_CHECK_MS)
 		socket.once('disconnect', () => clearInterval(timer))
+	}
+
+	async #handleRecorderError(recordingKey, recorder) {
+		const recordingService = this.recordingServices.get(recordingKey)
+		if (recordingService?.recorder !== recorder) {
+			return
+		}
+		const { roomID, userId, username } = recordingService
+		await this.finalizeRecordingStop({
+			roomID,
+			userId,
+			username,
+			recordingKey,
+			recordingService,
+			requesterSocketId: recordingService.requesterSocketId,
+		})
 	}
 
 	// A writable tab of the user, preferably the one that asked
@@ -366,11 +401,14 @@ export default class RecordingControlService {
 
 		} catch (error) {
 			console.error(`[${roomID}_${userId}] Stop recording failed:`, error)
-			if (initiatorSocket) {
-				initiatorSocket.emit('recording-error', error.message)
-			} else if (requesterSocketId) {
-				this.io.to(requesterSocketId).emit('recording-error', error.message)
+			const preferredSocketId = initiatorSocket?.id ?? requesterSocketId
+			const recipientSocketId = await this.#findRecordingRecipient(roomID, userId, preferredSocketId)
+				.catch(() => preferredSocketId)
+			if (recipientSocketId) {
+				this.io.to(recipientSocketId).emit('recording-error', error.message)
 			}
+			const room = initiatorSocket ? initiatorSocket.to(roomID) : this.io.to(roomID)
+			room.emit('user-stopped-recording', { userId, username })
 		} finally {
 			try {
 				await recorder.cleanup(roomID, userId)
@@ -380,7 +418,11 @@ export default class RecordingControlService {
 			if (recordingKey && this.recordingServices.has(recordingKey)) {
 				this.recordingServices.delete(recordingKey)
 			}
-			await this.cluster.removeRecordingEntry(roomID, userId)
+			try {
+				await this.cluster.removeRecordingEntry(roomID, userId)
+			} catch (error) {
+				console.warn(`[${roomID}_${userId}] Removing the recording entry failed:`, error)
+			}
 		}
 	}
 
