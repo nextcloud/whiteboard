@@ -11,6 +11,7 @@ OC.L10N.register(
     "Insert Table" : "Ievietot tabulu",
     "Cancel" : "Atcelt",
     "Update" : "Atjaunināt",
+    "Option" : "Iespēja",
     "Comments" : "Piebildes",
     "Voting" : "Balsošana",
     "Dismiss" : "Atmest",

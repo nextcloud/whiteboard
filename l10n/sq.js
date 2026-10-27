@@ -9,6 +9,7 @@ OC.L10N.register(
     "Insert Table" : "Fut tabelë",
     "Cancel" : "Cancel",
     "Update" : "Përditëso",
+    "Option" : "Opsion",
     "Comments" : "Komentet",
     "Dismiss" : "Hiq",
     "Edit" : "Përpuno",

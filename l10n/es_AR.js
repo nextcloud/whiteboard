@@ -8,6 +8,7 @@ OC.L10N.register(
     "Cancel" : "Cancel",
     "Update" : "Actualizar",
     "Multiple choice" : "Opción múltiple",
+    "Option" : "Opción",
     "Comments" : "Comentarios",
     "Dismiss" : "Despedir",
     "Edit" : "Editar",

@@ -6,6 +6,7 @@ OC.L10N.register(
     "Close" : "Lat att",
     "Cancel" : "Cancel",
     "Update" : "Oppdater",
+    "Option" : "Alternativ",
     "Comments" : "Kommentarar",
     "Dismiss" : "Forkast",
     "Guest" : "Gjest",
@@ -16,6 +17,7 @@ OC.L10N.register(
     "Unknown" : "Ukjend",
     "Unknown user" : "Ukjend brukar",
     "File" : "Fil",
+    "Reset" : "Tilbakestill",
     "Pause" : "Pause",
     "Status" : "Status"
 },
