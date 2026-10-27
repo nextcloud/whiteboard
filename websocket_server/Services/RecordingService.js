@@ -148,6 +148,11 @@ export default class RecordingService extends EventEmitter {
 			await this.#initializeUserTracking(page, userId)
 
 			this.#sessions.set(sessionKey, { browser, page, isRecording: false, profilePath })
+			browser.on('disconnected', () => {
+				if (!this.#sessions.get(sessionKey)?.closing) {
+					this.#handleError(sessionKey, new Error('Browser disconnected'), 'Browser error')
+				}
+			})
 			this.#updateStatus(sessionKey, { isInitialized: true })
 
 			this.emit('initialized', { recordingUrl, roomId, userId })
@@ -415,6 +420,7 @@ export default class RecordingService extends EventEmitter {
 
 		if (session) {
 			const { browser } = session
+			session.closing = true
 			if (browser) {
 				await browser.close()
 			}
