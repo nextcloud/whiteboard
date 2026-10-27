@@ -18,6 +18,7 @@ vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 	class FakeRecordingService extends EventEmitter {
 		constructor() {
 			super()
+			this.startResult = recorders.nextStartResult ?? true
 			this.updateToken = vi.fn(async () => {})
 			this.cleanup = vi.fn(async () => true)
 			recorders.push(this)
@@ -29,7 +30,8 @@ vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 		}
 
 		async startRecording() {
-			return true
+			await recorders.onStart?.()
+			return this.startResult
 		}
 
 		async stopRecording() {
@@ -79,6 +81,7 @@ function setup({ sockets = { 'tab-1': 'teacher' }, readOnly = [] } = {}) {
 	const service = new RecordingControlService({ cluster, sessionStore, io, nodeId: 'node-a', recordingServices: new Map() })
 	const socket = (id) => ({
 		id,
+		connected: id in sockets,
 		rooms: new Set(['42']),
 		emit: (event, payload) => emitted.push({ to: id, event, payload }),
 		to: () => ({ emit: () => {} }),
@@ -90,6 +93,8 @@ function setup({ sockets = { 'tab-1': 'teacher' }, readOnly = [] } = {}) {
 describe('RecordingControlService', () => {
 	beforeEach(() => {
 		recorders.length = 0
+		delete recorders.nextStartResult
+		delete recorders.onStart
 		delete recorders.onStop
 	})
 
@@ -141,6 +146,49 @@ describe('RecordingControlService', () => {
 		expect(other.events('recording-error').map((e) => e.payload)).toEqual(['Unauthorized'])
 	})
 
+	it('starts one recording when the same user starts twice at once', async () => {
+		vi.useFakeTimers()
+		const { service, socket, events } = setup()
+
+		await Promise.all([
+			service.startRecording(socket('tab-1'), startData(userToken())),
+			service.startRecording(socket('tab-1'), startData(userToken())),
+		])
+
+		expect(events('recording-started')).toHaveLength(1)
+		expect(events('recording-error').map((e) => e.payload)).toEqual(['Recording already in progress'])
+		expect(recorders.filter((recorder) => recorder.cleanup.mock.calls.length)).toHaveLength(1)
+		expect(vi.getTimerCount()).toBe(1)
+	})
+
+	it('closes a recorder that fails to start', async () => {
+		recorders.nextStartResult = false
+		const { service, socket, events } = setup()
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+
+		expect(events('recording-error').map((e) => e.payload)).toEqual(['Recorder failed to start'])
+		expect(recorders[0].cleanup).toHaveBeenCalledOnce()
+		expect(service.recordingServices.size).toBe(0)
+	})
+
+	it('rolls back a start that fails after the recorder started', async () => {
+		vi.useFakeTimers()
+		const { service, socket, events, cluster, entries } = setup()
+		cluster.setRecordingEntry.mockImplementationOnce(async (room, user, entry) => {
+			entries.set(`${room}:${user}`, entry)
+			throw new Error('Redis is gone')
+		})
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		expect(events('recording-error').map((e) => e.payload)).toEqual(['Redis is gone'])
+		expect(service.recordingServices.size).toBe(0)
+		expect(vi.getTimerCount()).toBe(0)
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		expect(events('recording-started')).toHaveLength(1)
+	})
+
 	it('keeps a recording another node is still stopping, and reports one whose node is gone', async () => {
 		vi.useFakeTimers()
 		const { service, socket, events, entries, cluster } = setup()
@@ -185,5 +233,22 @@ describe('RecordingControlService', () => {
 		expect(events('recording-stopped')).toEqual([])
 		expect(upload).toHaveBeenCalledOnce()
 		expect(jwt.verify(upload.mock.calls[0][0].uploadToken, 'secret')).toMatchObject({ userid: 'teacher', isFileReadOnly: false })
+	})
+
+	it('closes a recorder whose user left while it started', async () => {
+		vi.useFakeTimers()
+		const { service, socket, events, entries } = setup()
+		const tab = socket('tab-1')
+		recorders.onStart = () => {
+			tab.connected = false
+		}
+
+		await service.startRecording(tab, startData(userToken()))
+
+		expect(events('recording-started')).toEqual([])
+		expect(recorders[0].cleanup).toHaveBeenCalledOnce()
+		expect(service.recordingServices.size).toBe(0)
+		expect(entries.size).toBe(0)
+		expect(vi.getTimerCount()).toBe(0)
 	})
 })
