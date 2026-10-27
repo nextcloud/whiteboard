@@ -671,19 +671,9 @@ export default class SocketService {
 		if (!recordingService && entry?.nodeId && entry.nodeId !== this.nodeId) {
 			console.log(`[${roomID}] Recorder ${username} disconnected, forwarding recording stop to node ${entry.nodeId}`)
 			const forwarded = await this.forwardRecordingStop(roomID, userId, null)
+			// Reads drop the entry if that host is gone
 			if (!forwarded) {
 				await this.removeRecordingEntry(roomID, userId)
-			} else {
-				setTimeout(async () => {
-					try {
-						const latestEntry = await this.getRecordingEntry(roomID, userId)
-						if (latestEntry && latestEntry.nodeId === entry.nodeId) {
-							await this.removeRecordingEntry(roomID, userId)
-						}
-					} catch (error) {
-						console.error(`[${roomID}_${userId}] Failed to clear stale recording entry after disconnect:`, error)
-					}
-				}, 3000)
 			}
 			return
 		}
