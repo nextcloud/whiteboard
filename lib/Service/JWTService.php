@@ -56,6 +56,17 @@ final class JWTService {
 		return JWT::encode($payload, $key, JWTConsts::JWT_ALGORITHM);
 	}
 
+	public function isReadOnlyJWT(string $jwt): bool {
+		try {
+			$key = $this->configService->getJwtSecretKey();
+			$decoded = JWT::decode($jwt, new Key($key, JWTConsts::JWT_ALGORITHM));
+
+			return (bool)($decoded->isFileReadOnly ?? false);
+		} catch (Exception) {
+			throw new UnauthorizedException();
+		}
+	}
+
 	public function getUserIdFromJWT(string $jwt): string {
 		try {
 			$key = $this->configService->getJwtSecretKey();

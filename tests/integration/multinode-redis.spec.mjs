@@ -57,6 +57,8 @@ vi.mock('../../websocket_server/Services/RecordingService.js', () => {
 			}
 		}
 
+		async updateToken() {}
+
 		async cleanup() { return true }
 	}
 	return { default: FakeRecordingService }
@@ -125,6 +127,10 @@ describe('Multi node websocket cluster with redis streams', () => {
 		const url = new URL('/apps/whiteboard/recording', Config.NEXTCLOUD_URL)
 		url.searchParams.set('token', uploadToken)
 		return url.toString()
+	}
+	const recordingRequest = (roomID, user) => {
+		const uploadToken = jwt.sign({ userid: user.id, fileId: roomID, isFileReadOnly: false, user }, Config.JWT_SECRET_KEY)
+		return { fileId: roomID, recordingUrl: buildRecordingUrl(uploadToken), uploadToken }
 	}
 
 	beforeAll(async () => {
@@ -211,11 +217,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 		viewerSocket.emit('join-room', roomID)
 		await waitFor(viewerSocket, 'sync-designate')
 
-		recorderSocket.emit('start-recording', {
-			fileId: roomID,
-			recordingUrl: buildRecordingUrl('upload-token'),
-			uploadToken: 'upload-token',
-		})
+		recorderSocket.emit('start-recording', recordingRequest(roomID, recorderUser))
 		await waitFor(recorderSocket, 'recording-started')
 		await waitFor(viewerSocket, 'user-started-recording')
 
@@ -265,11 +267,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 			viewerSocket.emit('join-room', roomID)
 			await waitFor(viewerSocket, 'sync-designate')
 
-			recorderSocket.emit('start-recording', {
-				fileId: roomID,
-				recordingUrl: buildRecordingUrl('upload-token'),
-				uploadToken: 'upload-token',
-			})
+			recorderSocket.emit('start-recording', recordingRequest(roomID, recorderUser))
 			await waitFor(recorderSocket, 'recording-started')
 			await waitFor(viewerSocket, 'user-started-recording')
 
@@ -314,11 +312,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 		agentSocket.emit('join-room', roomID)
 		await waitFor(agentSocket, 'sync-designate')
 
-		recorderSocket.emit('start-recording', {
-			fileId: roomID,
-			recordingUrl: buildRecordingUrl('upload-token'),
-			uploadToken: 'upload-token',
-		})
+		recorderSocket.emit('start-recording', recordingRequest(roomID, recorderUser))
 		await waitFor(recorderSocket, 'recording-started')
 
 		const stoppedNotice = waitFor(agentSocket, 'user-stopped-recording')
@@ -341,11 +335,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 		recorderSocket.emit('join-room', roomID)
 		await waitFor(recorderSocket, 'sync-designate')
 
-		recorderSocket.emit('start-recording', {
-			fileId: roomID,
-			recordingUrl: buildRecordingUrl('upload-token'),
-			uploadToken: 'upload-token',
-		})
+		recorderSocket.emit('start-recording', recordingRequest(roomID, recorderUser))
 		await waitFor(recorderSocket, 'recording-started')
 
 		const controllerSocket = createSocket(serverBUrl, recorderToken)
@@ -356,7 +346,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 		const stoppedPromise = waitFor(controllerSocket, 'recording-stopped')
 		controllerSocket.emit('stop-recording', roomID)
 		const stoppedPayload = await stoppedPromise
-		expect(stoppedPayload.uploadToken).toBe('upload-token')
+		expect(jwt.verify(stoppedPayload.uploadToken, Config.JWT_SECRET_KEY)).toMatchObject({ userid: 'recorder', fileId: roomID, isFileReadOnly: false })
 
 		const recordingKey = `${serverA.socketDataStorage.strategy.prefix}room:${roomID}:recording`
 		const remaining = await serverA.redisClient.hLen(recordingKey)
@@ -463,11 +453,7 @@ describe('Multi node websocket cluster with redis streams', () => {
 			await waitFor(hostTab, 'connect')
 			hostTab.emit('join-room', roomID)
 			await waitFor(hostTab, 'sync-designate')
-			hostTab.emit('start-recording', {
-				fileId: roomID,
-				recordingUrl: buildRecordingUrl('upload-token'),
-				uploadToken: 'upload-token',
-			})
+			hostTab.emit('start-recording', recordingRequest(roomID, recorderUser))
 			await waitFor(hostTab, 'recording-started')
 
 			const otherTab = createSocket(serverBUrl, recorderToken)
@@ -485,6 +471,39 @@ describe('Multi node websocket cluster with redis streams', () => {
 		} finally {
 			fakeRecorder.stopDelayMs = 0
 		}
+	})
+
+	it('reassigns syncer when the syncer\'s last editor node shuts down and only their read-only socket is left', async () => {
+		const roomID = 'room-syncer-reassign-read-only'
+		const teacher = { id: 'teacher', name: 'Teacher', displayName: 'Teacher' }
+		const join = async (url, token) => {
+			const socket = createSocket(url, token)
+			await waitFor(socket, 'connect')
+			socket.emit('join-room', roomID)
+			return { socket, isSyncer: (await waitFor(socket, 'sync-designate')).isSyncer }
+		}
+
+		const firstStudent = await join(serverBUrl, buildToken(roomID, { id: 'student-1', name: 'Student 1' }))
+		expect(firstStudent.isSyncer).toBe(true)
+		const editor = await join(serverAUrl, buildToken(roomID, teacher))
+		const bot = await join(serverBUrl, jwt.sign({ roomID, user: teacher, isFileReadOnly: true }, Config.JWT_SECRET_KEY))
+		expect([editor.isSyncer, bot.isSyncer]).toEqual([false, false])
+
+		// Node B elects the teacher, so the syncer entry belongs to node B
+		const teacherPromoted = waitFor(editor.socket, 'sync-designate')
+		firstStudent.socket.disconnect()
+		expect(await teacherPromoted).toEqual({ isSyncer: true })
+
+		const secondStudent = await join(serverBUrl, buildToken(roomID, { id: 'student-2', name: 'Student 2' }))
+		expect(secondStudent.isSyncer).toBe(false)
+
+		const newSyncerNotice = waitFor(secondStudent.socket, 'sync-designate', 10000)
+		await serverA.gracefulShutdown()
+		serverA = null
+
+		expect(await newSyncerNotice).toEqual({ isSyncer: true })
+
+		await restartServerA()
 	})
 
 	it('reassigns syncer to remaining users when the syncer node shuts down', async () => {

@@ -71,7 +71,7 @@ export default class RoomLifecycleService {
 
 		let isSyncer = false
 
-		if (currentSyncerUserId === userId) {
+		if (currentSyncerUserId === userId && !isReadOnly) {
 			await this.sessionStore.setSocketData(socket.id, {
 				...socketData,
 				isSyncer: true,
@@ -191,9 +191,13 @@ export default class RoomLifecycleService {
 
 			if (wasSyncer) {
 				const userSockets = await this.getUserSocketsInRoom(roomID)
-				const userStillConnected = userSockets
-					.filter((s) => s.socketId !== socket.id)
-					.some((s) => s.userId === userId)
+				let userStillConnected = false
+				for (const s of userSockets) {
+					if (s.socketId !== socket.id && s.userId === userId && !(await this.sessionStore.isReadOnly(s.socketId))) {
+						userStillConnected = true
+						break
+					}
+				}
 
 				if (!userStillConnected) {
 					console.log(`[${roomID}] Syncer disconnected (all sessions), finding new syncer`)
@@ -273,6 +277,9 @@ export default class RoomLifecycleService {
 
 					if (elected) {
 						for (const s of sockets) {
+							if (await this.sessionStore.isReadOnly(s.socketId)) {
+								continue
+							}
 							const socketData = await this.sessionStore.getSocketData(s.socketId)
 							if (socketData) {
 								await this.sessionStore.setSocketData(s.socketId, {

@@ -51,9 +51,10 @@ class WhiteboardControllerTest extends TestCase {
 		bool $isAdmin,
 		array $params,
 		int $whiteboardFilePermissions = Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE,
+		array $jwtClaims = [],
 	): WhiteboardController {
 		$request = $this->createMock(IRequest::class);
-		$jwt = JWT::encode(['userid' => self::UID, 'exp' => time() + 300], self::SECRET, JWTConsts::JWT_ALGORITHM);
+		$jwt = JWT::encode(['userid' => self::UID, 'exp' => time() + 300] + $jwtClaims, self::SECRET, JWTConsts::JWT_ALGORITHM);
 		$request->method('getHeader')->willReturnCallback(static fn (string $name): string => $name === 'Authorization' ? 'Bearer ' . $jwt : '');
 		$request->method('getParam')->willReturnCallback(static fn (string $key, $default = null) => $params[$key] ?? $default);
 
@@ -141,6 +142,19 @@ class WhiteboardControllerTest extends TestCase {
 
 	public function testUpdateRejectsReadOnlyFile(): void {
 		$controller = $this->makeController(false, [], Constants::PERMISSION_READ);
+
+		$response = $controller->update(123, [
+			'data' => [
+				'elements' => [['id' => 'el', 'type' => 'rectangle']],
+			],
+		]);
+
+		$this->assertSame(Http::STATUS_FORBIDDEN, $response->getStatus());
+		$this->assertSame('Permission denied', $response->getData()['message']);
+	}
+
+	public function testUpdateRejectsReadOnlyToken(): void {
+		$controller = $this->makeController(false, [], Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE, ['isFileReadOnly' => true]);
 
 		$response = $controller->update(123, [
 			'data' => [

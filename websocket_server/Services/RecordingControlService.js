@@ -11,6 +11,10 @@ import Config from '../Utilities/ConfigUtility.js'
 import fetch from 'node-fetch'
 import FormData from 'form-data'
 import fs from 'fs'
+import { getRecordingClaims, isSameRecordingUser, signRecordingToken, withoutToken } from '../Utilities/RecordingTokenUtility.js'
+
+// Well before the bot's token expires
+const RECORDING_TOKEN_RENEWAL_MS = 5 * 60 * 1000
 
 export default class RecordingControlService {
 
@@ -100,10 +104,18 @@ export default class RecordingControlService {
 				throw new Error('Recording already in progress')
 			}
 
-			const recorder = new RecordingService()
-			console.log(`[${sessionKey}] Initializing recording at ${recordingUrl}`)
+			const claims = getRecordingClaims(uploadToken)
+			if (!isSameRecordingUser(claims.userid, socketData.user.id) || String(claims.fileId) !== roomID) {
+				throw new Error('Unauthorized')
+			}
+			// The bot only watches the board, with a token the backend keeps renewing
+			const botRecordingUrl = new URL(recordingUrl)
+			botRecordingUrl.searchParams.set('token', signRecordingToken(claims, { readOnly: true }))
 
-			if (!await recorder.init(recordingUrl, roomID, socketData.user.id)) {
+			const recorder = new RecordingService()
+			console.log(`[${sessionKey}] Initializing recording at ${withoutToken(recordingUrl)}`)
+
+			if (!await recorder.init(botRecordingUrl.toString(), roomID, socketData.user.id)) {
 				throw new Error('Recorder initialization failed')
 			}
 
@@ -114,13 +126,16 @@ export default class RecordingControlService {
 			const username = socketData.user.displayName || socketData.user.name || 'Unknown User'
 			this.recordingServices.set(recordingKey, {
 				recorder,
-				uploadToken,
+				claims,
 				autoUploadOnDisconnect: Boolean(autoUploadOnDisconnect),
+				tokenRenewal: setInterval(() => {
+					recorder.updateToken(roomID, socketData.user.id, signRecordingToken(claims, { readOnly: true }))
+						.catch((error) => console.warn(`[${sessionKey}] Recording token renewal failed:`, error))
+				}, RECORDING_TOKEN_RENEWAL_MS),
 			})
 			await this.cluster.setRecordingEntry(roomID, socketData.user.id, {
 				userId: socketData.user.id,
 				username,
-				uploadToken,
 				status: 'recording',
 				nodeId: this.nodeId,
 				startedAt,
@@ -159,6 +174,10 @@ export default class RecordingControlService {
 		try {
 			if (!socket.rooms.has(roomID)) {
 				throw new Error('Not joined to room')
+			}
+
+			if (await this.sessionStore.isReadOnly(socket.id)) {
+				throw new Error('Read-only users cannot stop recordings')
 			}
 
 			const socketData = await this.sessionStore.getSocketData(socket.id)
@@ -235,12 +254,15 @@ export default class RecordingControlService {
 		}
 
 		recordingService.stopping = true
-		const { recorder, uploadToken } = recordingService
+		clearInterval(recordingService.tokenRenewal)
+		const { recorder } = recordingService
 		try {
 			const result = await recorder.stopRecording(roomID, userId)
 			if (!result) {
 				throw new Error('Failed to stop recording')
 			}
+			// The token the recording started with may have expired by now
+			const uploadToken = signRecordingToken(recordingService.claims, { readOnly: false })
 
 			const payload = {
 				filePath: result.localPath,
