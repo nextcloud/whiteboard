@@ -89,7 +89,7 @@ final class WhiteboardController extends ApiController {
 			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
 			$fileService = $this->getFileServiceFactory->create($user, $fileId);
 			$file = $fileService->getFile();
-			if ($fileService->isFileReadOnly()) {
+			if ($fileService->isFileReadOnly() || $this->jwtService->isReadOnlyJWT($jwt)) {
 				throw new NotPermittedException('Permission denied');
 			}
 		} catch (Exception $e) {

@@ -224,6 +224,30 @@ describe('Socket handling', () => {
 		newSocket.disconnect()
 	})
 
+	it('keeps a read-only socket of the syncer\'s user out of the syncer role', async () => {
+		const connect = async (isFileReadOnly) => {
+			const userSocket = io(Config.NEXTCLOUD_URL, {
+				auth: { token: jwt.sign({ fileId: 801, user: { id: 'teacher', name: 'Teacher' }, isFileReadOnly }, Config.JWT_SECRET_KEY) },
+			})
+			await waitFor(userSocket, 'connect')
+			return userSocket
+		}
+		const join = async (userSocket) => {
+			const designation = waitFor(userSocket, 'sync-designate')
+			userSocket.emit('join-room', 801)
+			return (await designation).isSyncer
+		}
+
+		const editor = await connect(false)
+		const viewer = await connect(true)
+
+		expect(await join(editor)).toBe(true)
+		expect(await join(viewer)).toBe(false)
+
+		editor.disconnect()
+		viewer.disconnect()
+	})
+
 	describe('when a user disconnects', () => {
 		const connectUser = async (fileId, id, name) => {
 			const userSocket = io(Config.NEXTCLOUD_URL, {
@@ -243,6 +267,60 @@ describe('Socket handling', () => {
 			promise,
 			new Promise((_resolve, reject) => setTimeout(() => reject(new Error('Timed out')), ms)),
 		])
+
+		it('never hands the syncer role to a read-only socket of the elected user', async () => {
+			const connectAs = async (id, isFileReadOnly) => {
+				const userSocket = io(Config.NEXTCLOUD_URL, {
+					auth: { token: jwt.sign({ fileId: 802, user: { id, name: id }, isFileReadOnly }, Config.JWT_SECRET_KEY) },
+				})
+				await waitFor(userSocket, 'connect')
+				return userSocket
+			}
+			const editor = await connectAs('editor', false)
+			const teacher = await connectAs('teacher', false)
+			const bot = await connectAs('teacher', true)
+			expect(await joinRoom(editor, 802)).toBe(true)
+			expect(await joinRoom(teacher, 802)).toBe(false)
+			expect(await joinRoom(bot, 802)).toBe(false)
+
+			const botDesignations = []
+			bot.on('sync-designate', (designation) => botDesignations.push(designation))
+			const teacherPromoted = waitFor(teacher, 'sync-designate')
+			editor.disconnect()
+			expect(await within(teacherPromoted)).toEqual({ isSyncer: true })
+
+			// With only the bot left, the room needs a new syncer instead of keeping the teacher's role
+			const editorBack = await connectAs('editor', false)
+			expect(await joinRoom(editorBack, 802)).toBe(false)
+			const editorPromoted = waitFor(editorBack, 'sync-designate')
+			teacher.disconnect()
+			expect(await within(editorPromoted)).toEqual({ isSyncer: true })
+			expect(botDesignations).toEqual([])
+
+			bot.disconnect()
+			editorBack.disconnect()
+		})
+
+		it('keeps the pending stop of a recording when a read-only socket of its user asks to stop it', async () => {
+			const { socketService } = serverManager
+			const bot = io(Config.NEXTCLOUD_URL, {
+				auth: { token: jwt.sign({ fileId: 803, user: { id: 'teacher', name: 'Teacher' }, isFileReadOnly: true }, Config.JWT_SECRET_KEY) },
+			})
+			await waitFor(bot, 'connect')
+			await joinRoom(bot, 803)
+			Config.RECORDING_DISCONNECT_GRACE_MS = 60000
+			expect(socketService.scheduleRecordingStop({ roomID: '803', userId: 'teacher', userName: 'Teacher' })).toBe(true)
+			const pending = socketService.pendingRecordingStops.size
+
+			const refused = waitFor(bot, 'recording-error')
+			bot.emit('stop-recording', '803')
+			expect(await within(refused)).toBe('Read-only users cannot stop recordings')
+			expect(socketService.pendingRecordingStops.size).toBe(pending)
+
+			socketService.cancelPendingRecordingStop('803', 'teacher')
+			delete Config.RECORDING_DISCONNECT_GRACE_MS
+			bot.disconnect()
+		})
 
 		it('makes another user the syncer when the syncer leaves', async () => {
 			const alice = await connectUser(789, 'alice', 'Alice')
