@@ -35,6 +35,10 @@ const AppConfig = createAppConfig({
 			minify: 'esbuild',
 			target: 'es2020',
 			rollupOptions: {
+				// Nextcloud loads entries with a ?v= query, but chunks import each other
+				// without it, so a chunk importing an entry would run it a second time.
+				// Strict signatures leave the entries as facades that no chunk imports.
+				preserveEntrySignatures: 'strict',
 				output: {
 					// The CommonJS helper gets its own chunk: in vendor, the viewer init
 					// script, which needs it on every page, would load React too

@@ -13,8 +13,10 @@ import createConfig from '../../vite.config.ts'
 const REACT_MODULE = /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/
 const BUILT_ASSET = fileURLToPath(new URL('../../js/viewer-bundle-spec.txt', import.meta.url))
 
-describe('viewer init script', () => {
-	it('loads no React on pages that only register the viewer handler', async () => {
+let builtChunks
+
+async function buildChunks() {
+	builtChunks ??= (async () => {
 		const config = await createConfig({ command: 'build', mode: 'production' })
 		config.configFile = false
 		config.root = fileURLToPath(new URL('../..', import.meta.url))
@@ -29,10 +31,17 @@ describe('viewer init script', () => {
 		const keepsBuiltAssets = existsSync(BUILT_ASSET)
 		rmSync(BUILT_ASSET)
 		expect(keepsBuiltAssets).toBe(true)
-		const chunks = new Map((Array.isArray(results) ? results : [results])
+		return new Map((Array.isArray(results) ? results : [results])
 			.flatMap(({ output }) => output)
 			.filter((file) => file.type === 'chunk')
 			.map((chunk) => [chunk.fileName, chunk]))
+	})()
+	return builtChunks
+}
+
+describe('viewer init script', () => {
+	it('loads no React on pages that only register the viewer handler', async () => {
+		const chunks = await buildChunks()
 		const entry = [...chunks.values()].find((chunk) => chunk.isEntry && chunk.fileName.endsWith('whiteboard-viewer.mjs'))
 
 		const loaded = new Set()
@@ -49,5 +58,20 @@ describe('viewer init script', () => {
 			.filter((id) => REACT_MODULE.test(id))
 
 		expect(reactModules).toEqual([])
+	}, 300_000)
+})
+
+describe('main entry', () => {
+	// Nextcloud loads entries with a ?v= query, so a chunk importing an entry
+	// loads it again under a second URL and starts the app twice
+	it('is not imported by any chunk', async () => {
+		const chunks = await buildChunks()
+		const entries = [...chunks.values()].filter((chunk) => chunk.isEntry).map((chunk) => chunk.fileName)
+		const importers = [...chunks.values()]
+			.filter((chunk) => [...chunk.imports, ...chunk.dynamicImports].some((fileName) => entries.includes(fileName)))
+			.map((chunk) => chunk.fileName)
+
+		expect(entries).toContain('js/whiteboard-main.mjs')
+		expect(importers).toEqual([])
 	}, 300_000)
 })
