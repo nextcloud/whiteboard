@@ -9,6 +9,17 @@ import StorageAdapter from './StorageAdapter.js'
 import { createClient } from 'redis'
 import Config from '../Utilities/ConfigUtility.js'
 
+// node-redis 6 changed two defaults that this server relies on, so keep the
+// ones redis 4 had. RESP3 opens every connection with HELLO, which Redis only
+// has since 6.0, so stay on RESP2 and keep Redis 5 working. And a command that
+// waits for the connection now fails after 5 seconds: the callers here would
+// take that for missing data or a dead node, and the Streams adapter leaves a
+// failed PUBLISH unhandled, which ends the process.
+const CLIENT_OPTIONS = {
+	RESP: 2,
+	commandOptions: { timeout: undefined },
+}
+
 export default class RedisAdapter extends StorageAdapter {
 
 	static isClientClosedError(error) {
@@ -111,9 +122,10 @@ export default class RedisAdapter extends StorageAdapter {
 			return createClient({
 				socket: { path: redisUrl.pathname },
 				database: db !== null ? Number(db) : undefined,
+				...CLIENT_OPTIONS,
 			})
 		} else {
-			return createClient({ url: Config.REDIS_URL })
+			return createClient({ url: Config.REDIS_URL, ...CLIENT_OPTIONS })
 		}
 	}
 
@@ -172,17 +184,10 @@ export default class RedisAdapter extends StorageAdapter {
 
 	async clear() {
 		try {
-			const batchSize = 100
-			let keys = []
-			for await (const key of this.client.scanIterator({ MATCH: `${this.prefix}*`, COUNT: batchSize })) {
-				keys.push(key)
-				if (keys.length >= batchSize) {
+			for await (const keys of this.client.scanIterator({ MATCH: `${this.prefix}*`, COUNT: 100 })) {
+				if (keys.length > 0) {
 					await this.client.del(keys)
-					keys = []
 				}
-			}
-			if (keys.length > 0) {
-				await this.client.del(keys)
 			}
 		} catch (error) {
 			if (RedisAdapter.isClientClosedError(error)) {
