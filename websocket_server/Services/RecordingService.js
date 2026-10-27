@@ -316,8 +316,7 @@ export default class RecordingService extends EventEmitter {
 			session.sessionPath = sessionPath
 
 			await fs.mkdir(sessionPath, { recursive: true })
-			const formattedDate = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-')
-			const outputPath = path.join(sessionPath, `${formattedDate}.webm`)
+			const outputPath = path.join(sessionPath, `${new Date().toISOString().replace(/[:.]/g, '-')}.webm`)
 			session.lastRecordingPath = outputPath
 
 			await page.addStyleTag({ content: '.recording-overlay { display: none !important; } .LoadingMessage { display: none !important; }' })
