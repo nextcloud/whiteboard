@@ -676,8 +676,8 @@ export default class SocketService {
 			} else {
 				setTimeout(async () => {
 					try {
-						const latestEntry = await this.getRecordingEntry(roomID, userId)
-						if (latestEntry && latestEntry.nodeId === entry.nodeId) {
+						// A live host may still be encoding a long recording
+						if (!(await this.isNodeAlive(entry.nodeId))) {
 							await this.removeRecordingEntry(roomID, userId)
 						}
 					} catch (error) {

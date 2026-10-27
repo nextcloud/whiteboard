@@ -43,11 +43,14 @@ vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => {
 	return { default: proxy }
 })
 
+const fakeRecorder = vi.hoisted(() => ({ stopDelayMs: 0 }))
+
 vi.mock('../../websocket_server/Services/RecordingService.js', () => {
 	class FakeRecordingService {
 		async init() { return true }
 		async startRecording() { return true }
 		async stopRecording() {
+			await new Promise((resolve) => setTimeout(resolve, fakeRecorder.stopDelayMs))
 			return {
 				localPath: '/tmp/fake-recording.webm',
 				recordingData: [1, 2, 3],
@@ -446,6 +449,42 @@ describe('Multi node websocket cluster with redis streams', () => {
 		expect(stoppedPayload.userId).toBe('shutdown-presenter')
 
 		await restartServerA()
+	})
+
+	it('keeps a recording whose host is still encoding when the user leaves from another node', async () => {
+		const roomID = 'room-recording-slow-remote-stop'
+		const recorderUser = { id: 'recorder', name: 'Recorder', displayName: 'Recorder' }
+		const recorderToken = buildToken(roomID, recorderUser)
+		const recordingKey = `${serverA.socketDataStorage.strategy.prefix}room:${roomID}:recording`
+		fakeRecorder.stopDelayMs = 4000
+
+		try {
+			const hostTab = createSocket(serverAUrl, recorderToken)
+			await waitFor(hostTab, 'connect')
+			hostTab.emit('join-room', roomID)
+			await waitFor(hostTab, 'sync-designate')
+			hostTab.emit('start-recording', {
+				fileId: roomID,
+				recordingUrl: buildRecordingUrl('upload-token'),
+				uploadToken: 'upload-token',
+			})
+			await waitFor(hostTab, 'recording-started')
+
+			const otherTab = createSocket(serverBUrl, recorderToken)
+			await waitFor(otherTab, 'connect')
+			otherTab.emit('join-room', roomID)
+			await waitFor(otherTab, 'sync-designate')
+
+			hostTab.disconnect()
+			await new Promise((resolve) => setTimeout(resolve, 200))
+			otherTab.disconnect()
+
+			await new Promise((resolve) => setTimeout(resolve, 3500))
+			expect(await serverA.redisClient.hLen(recordingKey)).toBe(1)
+			await vi.waitFor(async () => expect(await serverA.redisClient.hLen(recordingKey)).toBe(0), { timeout: 3000 })
+		} finally {
+			fakeRecorder.stopDelayMs = 0
+		}
 	})
 
 	it('reassigns syncer to remaining users when the syncer node shuts down', async () => {

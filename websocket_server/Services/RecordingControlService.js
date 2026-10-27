@@ -138,6 +138,22 @@ export default class RecordingControlService {
 		}
 	}
 
+	// A writable socket of the user, preferably the one that asked
+	async #findRecordingRecipient(roomID, userId, preferredSocketId) {
+		let recipient = null
+		for (const socket of await this.io.in(roomID).fetchSockets()) {
+			const socketData = await this.sessionStore.getSocketData(socket.id)
+			if (socketData?.user?.id !== userId || await this.sessionStore.isReadOnly(socket.id)) {
+				continue
+			}
+			if (socket.id === preferredSocketId) {
+				return socket.id
+			}
+			recipient ??= socket.id
+		}
+		return recipient
+	}
+
 	async stopRecording(socket, roomID) {
 		const sessionKey = `${roomID}_${socket.id}`
 		try {
@@ -161,8 +177,9 @@ export default class RecordingControlService {
 				}
 				setTimeout(async () => {
 					try {
-						const latestEntry = await this.cluster.getRecordingEntry(roomID, socketData.user.id)
-						if (latestEntry && latestEntry.nodeId === recordingEntry.nodeId) {
+						// A live host may still be encoding a long recording. Reading the entry
+						// would not tell, since entries of hosts that are gone are dropped on read.
+						if (!(await this.cluster.isNodeAlive(recordingEntry.nodeId))) {
 							await this.cluster.removeRecordingEntry(roomID, socketData.user.id)
 							socket.emit('recording-error', 'Recording host unavailable, please try again')
 						}
@@ -232,9 +249,14 @@ export default class RecordingControlService {
 				fileId: roomID,
 			}
 
-			const shouldAutoUpload = !initiatorSocket
-				&& !requesterSocketId
-				&& recordingService.autoUploadOnDisconnect
+			// The tab that asked may have closed while the video was encoded
+			const preferredSocketId = initiatorSocket?.id ?? requesterSocketId
+			const recipientSocketId = await this.#findRecordingRecipient(roomID, userId, preferredSocketId)
+				.catch((error) => {
+					console.warn(`[${roomID}_${userId}] Looking up the recording recipient failed:`, error)
+					return preferredSocketId
+				})
+			const shouldAutoUpload = !recipientSocketId && recordingService.autoUploadOnDisconnect
 
 			if (shouldAutoUpload) {
 				try {
@@ -249,15 +271,11 @@ export default class RecordingControlService {
 				}
 			}
 
+			if (recipientSocketId) {
+				this.io.to(recipientSocketId).emit('recording-stopped', payload)
+			}
 			if (initiatorSocket) {
-				initiatorSocket.emit('recording-stopped', payload)
 				initiatorSocket.to(roomID).emit('user-stopped-recording', {
-					userId,
-					username,
-				})
-			} else if (requesterSocketId) {
-				this.io.to(requesterSocketId).emit('recording-stopped', payload)
-				this.io.to(roomID).emit('user-stopped-recording', {
 					userId,
 					username,
 				})
