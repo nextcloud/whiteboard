@@ -183,7 +183,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 					startingPhase: null,
 				})
 			},
-			'recording-stopped': async (data: { filePath: string; recordingData: number[]; uploadToken: string; fileId: string }) => {
+			'recording-stopped': async (data: { filePath: string, recordingData: number[], uploadToken: string, fileId: string, duration?: number }) => {
 				console.log('[Recording] Recording stopped event received:', data)
 				// Only clear the duration interval, not the success timeout
 				if (durationIntervalRef.current) {
@@ -193,7 +193,8 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 				}
 
 				// Store recording duration before clearing state
-				const recordingDuration = stateRef.current.duration
+				// The backend knows how long it captured, the timer here also counts stopping. Older backends do not send it.
+				const recordingDuration = data.duration ?? stateRef.current.duration
 				console.log('[Recording] Stored recording duration:', recordingDuration)
 
 				// Show upload status immediately
