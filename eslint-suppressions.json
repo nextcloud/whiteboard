@@ -668,9 +668,6 @@
     "@stylistic/arrow-parens": {
       "count": 4
     },
-    "@stylistic/member-delimiter-style": {
-      "count": 2
-    },
     "curly": {
       "count": 1
     },

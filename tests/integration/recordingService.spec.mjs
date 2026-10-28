@@ -4,7 +4,7 @@
  */
 
 import { EventEmitter } from 'node:events'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -14,6 +14,15 @@ const browsers = vi.hoisted(() => [])
 
 vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => ({
 	default: createConfigMock({ RECORDINGS_DIR: mkdtempSync(join(tmpdir(), 'whiteboard-recordings-')) }),
+}))
+
+// ffmpeg is not needed to finish a recording in these tests
+vi.mock('child_process', async (importOriginal) => ({
+	...(await importOriginal()),
+	execFile: (file, args, callback) => {
+		writeFileSync(args.at(-1), 'remuxed')
+		callback(null, '', '')
+	},
 }))
 
 vi.mock('puppeteer-core', () => ({
@@ -38,7 +47,8 @@ vi.mock('puppeteer-core', () => ({
 			evaluate: vi.fn(async (fn, ...args) => {
 				calls.push(['evaluate', fn.toString(), ...args])
 			}),
-			screencast: vi.fn(async () => {
+			screencast: vi.fn(async ({ path }) => {
+				writeFileSync(path, 'webm')
 				calls.push(['screencast'])
 				return {
 					stop: vi.fn(async () => {
@@ -79,6 +89,21 @@ describe('RecordingService', () => {
 		expect(repaint).toBeLessThan(screencast)
 	})
 
+	it('reports how long it captured, including the two seconds after the stop request', async () => {
+		let now = 1000
+		vi.spyOn(Date, 'now').mockImplementation(() => now)
+		const { recorder } = await startedRecorder()
+
+		now = 11000
+		const stopping = recorder.stopRecording('42', 'teacher')
+		setTimeout(() => {
+			now = 13000
+		}, 1000)
+
+		expect((await stopping).duration).toBe(12000)
+		vi.restoreAllMocks()
+	}, 10000)
+
 	it('keeps capturing for two seconds after the stop request', async () => {
 		vi.useFakeTimers()
 		const { recorder, page } = await startedRecorder()
@@ -88,8 +113,13 @@ describe('RecordingService', () => {
 		expect(page.calls.some(([name]) => name === 'stop')).toBe(false)
 		await vi.advanceTimersByTimeAsync(1)
 		expect(page.calls.some(([name]) => name === 'stop')).toBe(true)
-		vi.useRealTimers()
-		await stopping
+		let stopped = false
+		stopping.finally(() => {
+			stopped = true
+		})
+		while (!stopped) {
+			await vi.advanceTimersByTimeAsync(200)
+		}
 	})
 
 	it('hands a renewed token to the recording page', async () => {
