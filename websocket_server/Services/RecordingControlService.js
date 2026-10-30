@@ -61,6 +61,9 @@ export default class RecordingControlService {
 		const { fileId, recordingUrl, uploadToken, autoUploadOnDisconnect = false } = data
 		const roomID = fileId.toString()
 		const sessionKey = `${roomID}_${socket.id}`
+		let recorder = null
+		let recorderUserId = null
+		let recordingKey = null
 
 		try {
 			if (!Config.NEXTCLOUD_URL) {
@@ -99,7 +102,7 @@ export default class RecordingControlService {
 				throw new Error('Recording already in progress')
 			}
 
-			const recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
+			recordingKey = this.#getRecordingKey(roomID, socketData.user.id)
 			if (this.recordingServices.has(recordingKey)) {
 				throw new Error('Recording already in progress')
 			}
@@ -112,7 +115,9 @@ export default class RecordingControlService {
 			const botRecordingUrl = new URL(recordingUrl)
 			botRecordingUrl.searchParams.set('token', signRecordingToken(claims, { readOnly: true }))
 
-			const recorder = new RecordingService()
+			const ownRecorder = new RecordingService()
+			recorder = ownRecorder
+			recorderUserId = socketData.user.id
 			console.log(`[${sessionKey}] Initializing recording at ${withoutToken(recordingUrl)}`)
 
 			if (!await recorder.init(botRecordingUrl.toString(), roomID, socketData.user.id)) {
@@ -120,7 +125,16 @@ export default class RecordingControlService {
 			}
 
 			console.log(`[${sessionKey}] Starting recording`)
-			await recorder.startRecording(roomID, socketData.user.id)
+			if (!await recorder.startRecording(roomID, socketData.user.id)) {
+				throw new Error('Recorder failed to start')
+			}
+			// Another start of the same user may have finished, or the user may have left, while this recorder started
+			if (this.recordingServices.has(recordingKey)) {
+				throw new Error('Recording already in progress')
+			}
+			if (!socket.connected) {
+				throw new Error('Recording requester left')
+			}
 			const startedAt = Date.now()
 
 			const username = socketData.user.displayName || socketData.user.name || 'Unknown User'
@@ -129,7 +143,7 @@ export default class RecordingControlService {
 				claims,
 				autoUploadOnDisconnect: Boolean(autoUploadOnDisconnect),
 				tokenRenewal: setInterval(() => {
-					recorder.updateToken(roomID, socketData.user.id, signRecordingToken(claims, { readOnly: true }))
+					ownRecorder.updateToken(roomID, socketData.user.id, signRecordingToken(claims, { readOnly: true }))
 						.catch((error) => console.warn(`[${sessionKey}] Recording token renewal failed:`, error))
 				}, RECORDING_TOKEN_RENEWAL_MS),
 			})
@@ -149,6 +163,17 @@ export default class RecordingControlService {
 
 		} catch (error) {
 			console.error(`[${sessionKey}] Start recording failed:`, error)
+			const registered = recordingKey && this.recordingServices.get(recordingKey)
+			if (registered?.recorder === recorder) {
+				clearInterval(registered.tokenRenewal)
+				this.recordingServices.delete(recordingKey)
+				await this.cluster.removeRecordingEntry(roomID, recorderUserId)
+					.catch((removeError) => console.warn(`[${sessionKey}] Removing the recording entry after failed start failed:`, removeError))
+			}
+			if (recorder) {
+				await recorder.cleanup(roomID, recorderUserId)
+					.catch((cleanupError) => console.warn(`[${sessionKey}] Cleanup after failed start failed:`, cleanupError))
+			}
 			socket.emit('recording-error', error.message)
 		}
 	}
