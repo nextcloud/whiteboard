@@ -36,7 +36,7 @@ vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 
 		async stopRecording() {
 			await recorders.onStop?.()
-			return { localPath: '/tmp/recording.webm', recordingData: [1, 2, 3] }
+			return { localPath: '/tmp/recording.webm', recordingData: [1, 2, 3], duration: 12000 }
 		}
 	}
 	return { default: FakeRecordingService }
@@ -251,6 +251,7 @@ describe('RecordingControlService', () => {
 		await service.stopRecording(socket('tab-1'), '42')
 
 		expect(events('recording-stopped').map((e) => e.to)).toEqual(['tab-2'])
+		expect(events('recording-stopped')[0].payload.duration).toBe(12000)
 		expect(upload).not.toHaveBeenCalled()
 	})
 

@@ -345,6 +345,7 @@ export default class RecordingService extends EventEmitter {
 
 			// Start browser-based recording
 			session.mediaRecorder = await page.screencast({ path: outputPath, ffmpegPath: '/usr/bin/ffmpeg' })
+			session.captureStartedAt = Date.now()
 
 			// Update status
 			const status = this.#status.get(sessionKey)
@@ -375,6 +376,7 @@ export default class RecordingService extends EventEmitter {
 			// Board changes reach the bot up to a second late, and the screencast
 			// writes each frame only when the next one arrives
 			await new Promise((resolve) => setTimeout(resolve, STOP_CAPTURE_DELAY_MS))
+			const duration = Date.now() - session.captureStartedAt
 
 			// Stop recording
 			await session.mediaRecorder.stop()
@@ -399,6 +401,7 @@ export default class RecordingService extends EventEmitter {
 			return {
 				localPath: outputPath,
 				recordingData, // Return raw recording data for client upload
+				duration,
 			}
 		} catch (error) {
 			console.error(`Failed to stop recording [${sessionKey}]:`, error)
