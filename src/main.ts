@@ -22,6 +22,7 @@ import '@nextcloud/dialogs/style.css'
 declare global {
 	interface Window {
 		EXCALIDRAW_ASSET_PATH?: string | string[]
+		updateRecordingJwt?: (jwt: string) => Promise<void>
 	}
 }
 
@@ -127,6 +128,15 @@ function detectRuntime(): RuntimeDescriptor {
 function runRecordingRuntime(context: RecordingContext): void {
 	runWhenDomReady(async () => {
 		await primeRecordingJwt(context.fileId, context.jwt)
+		// The recording backend renews the bot's token, which cannot be refreshed without a login session
+		window.updateRecordingJwt = async (jwt: string) => {
+			await primeRecordingJwt(context.fileId, jwt)
+			const { useCollaborationStore } = await import('./stores/useCollaborationStore.ts')
+			const { socket } = useCollaborationStore.getState()
+			if (socket) {
+				socket.auth = { ...socket.auth, token: jwt }
+			}
+		}
 
 		document.body.removeAttribute('id')
 		document.body.innerHTML = ''

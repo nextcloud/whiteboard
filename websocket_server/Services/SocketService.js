@@ -367,9 +367,13 @@ export default class SocketService {
 				}
 
 				const roomSockets = await this.roomLifecycleController.getUserSocketsInRoom(roomId)
-				const otherActiveSocket = roomSockets
-					.filter(Boolean)
-					.some((entry) => entry.userId === currentSyncerUserId && entry.socketId !== socketId)
+				let otherActiveSocket = false
+				for (const entry of roomSockets) {
+					if (entry.userId === currentSyncerUserId && entry.socketId !== socketId && !(await this.sessionStore.isReadOnly(entry.socketId))) {
+						otherActiveSocket = true
+						break
+					}
+				}
 
 				if (!otherActiveSocket) {
 					syncerRoomsToClear.add(roomId)
