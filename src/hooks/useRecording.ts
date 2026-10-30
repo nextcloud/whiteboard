@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
+import { addSocketListeners } from '../utils/socketListeners.ts'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
 import { loadState } from '@nextcloud/initial-state'
@@ -46,17 +47,15 @@ export function formatDuration(ms: number) {
 	return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`
 }
 
-const SOCKET_EVENTS = [
-	'recording-started',
-	'recording-stopped',
-	'recording-error',
-	'recording-availability',
-	'user-started-recording',
-	'user-stopped-recording',
-	'connect',
-	'disconnect',
-] as const
-type RecordingSocketEvent = typeof SOCKET_EVENTS[number]
+type RecordingSocketEvent
+	= 'recording-started'
+		| 'recording-stopped'
+		| 'recording-error'
+		| 'recording-availability'
+		| 'user-started-recording'
+		| 'user-stopped-recording'
+		| 'connect'
+		| 'disconnect'
 
 export function useRecording({ fileId }: UseRecordingProps): RecordingHookState {
 	const [state, setState] = useState<RecordingState>(() => ({
@@ -68,6 +67,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 	const stateRef = useRef(state)
 	stateRef.current = state
 	const currentUserIdRef = useRef<string | null>(null)
+	const removeSocketListenersRef = useRef<(() => void) | null>(null)
 
 	const { socket, status } = useCollaborationStore(useShallow(state => ({
 		socket: state.socket as CollaborationSocket | null,
@@ -137,24 +137,32 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 		}
 	}, [state.isRecording, state.startTime, updateState])
 
+	const removeSocketListeners = useCallback(() => {
+		removeSocketListenersRef.current?.()
+		removeSocketListenersRef.current = null
+	}, [])
+
 	const handleSocketEvent = useCallback((
 		socketInstance: CollaborationSocket,
 		handlers: Partial<Record<RecordingSocketEvent, (...args: unknown[]) => void | Promise<void>>>,
 	) => {
-		SOCKET_EVENTS.forEach(event => socketInstance.off(event))
+		removeSocketListeners()
+		const listeners: Record<string, (...args: unknown[]) => void> = {}
 		Object.entries(handlers).forEach(([event, handler]) => {
 			if (handler) {
-				socketInstance.on(event as RecordingSocketEvent, (...args: unknown[]) => {
+				listeners[event] = (...args: unknown[]) => {
 					const result = handler(...args)
 					if (result instanceof Promise) {
 						result.catch((err) => {
 							console.error('[Recording] Socket handler error:', err)
 						})
 					}
-				})
+				}
 			}
 		})
-	}, [])
+		// The socket is shared with the collaboration hook, so only remove our own listeners
+		removeSocketListenersRef.current = addSocketListeners(socketInstance, listeners)
+	}, [removeSocketListeners])
 
 	const setupSocketListeners = useCallback((socketInstance: CollaborationSocket) => {
 		// Check recording availability when socket connects
@@ -341,8 +349,8 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 		if (!socket) return
 
 		setupSocketListeners(socket)
-		return () => SOCKET_EVENTS.forEach(event => socket.off(event))
-	}, [socket, setupSocketListeners])
+		return () => removeSocketListeners()
+	}, [socket, setupSocketListeners, removeSocketListeners])
 
 	const handleRecordingAction = useCallback(async (action: 'start' | 'stop') => {
 		// Check connection status at the time of action, not when callback was created

@@ -2,6 +2,8 @@
  * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+import type { WebSocketRoute } from '@playwright/test'
+
 import { expect } from '@playwright/test'
 import { test } from '../support/fixtures/random-user'
 import {
@@ -52,4 +54,22 @@ test('whiteboard changes sync across sessions', async ({ page, browser, user }) 
 	await expect.poll(async () => fetchContent(page), { timeout: 30000, interval: 500 }).toContain('Second session text')
 
 	await pageB.close()
+})
+
+test('a dropped connection is shown until the board reconnects', async ({ page }) => {
+	const connections: WebSocketRoute[] = []
+	await page.routeWebSocket(/socket\.io/, (connection) => {
+		connection.connectToServer()
+		connections.push(connection)
+	})
+
+	await createWhiteboard(page, { name: `Dropped connection ${Date.now()}` })
+	const status = page.locator('.network-status')
+	await expect(status).toHaveCount(0, { timeout: 30000 })
+
+	await connections.at(-1)?.close()
+
+	await expect(status).toBeVisible()
+	await expect(status).toHaveCount(0, { timeout: 30000 })
+	expect(connections.length).toBeGreaterThan(1)
 })
