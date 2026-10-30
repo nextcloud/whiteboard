@@ -16,6 +16,7 @@ import { promisify } from 'util'
 import Config from '../Utilities/ConfigUtility.js'
 
 const execFileAsync = promisify(execFile)
+const STOP_CAPTURE_DELAY_MS = 2000
 
 const DEFAULT_CONFIG = {
 	viewport: { width: 1920, height: 1080 },
@@ -322,6 +323,19 @@ export default class RecordingService extends EventEmitter {
 
 			await page.addStyleTag({ content: '.recording-overlay { display: none !important; } .LoadingMessage { display: none !important; }' })
 
+			// Chrome only sends screencast frames on repaint, and the screencast writes
+			// nothing until its second frame, so an idle board would give an empty file.
+			await page.evaluate(() => {
+				const pixel = document.createElement('div')
+				pixel.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;pointer-events:none;background:rgba(0,0,0,0.01)'
+				document.body.appendChild(pixel)
+				let toggled = false
+				setInterval(() => {
+					toggled = !toggled
+					pixel.style.background = toggled ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.01)'
+				}, 1000)
+			})
+
 			// Start browser-based recording
 			session.mediaRecorder = await page.screencast({ path: outputPath, ffmpegPath: '/usr/bin/ffmpeg' })
 
@@ -350,6 +364,10 @@ export default class RecordingService extends EventEmitter {
 		try {
 			session.isRecording = false
 			const outputPath = session.lastRecordingPath
+
+			// Board changes reach the bot up to a second late, and the screencast
+			// writes each frame only when the next one arrives
+			await new Promise((resolve) => setTimeout(resolve, STOP_CAPTURE_DELAY_MS))
 
 			// Stop recording
 			await session.mediaRecorder.stop()
