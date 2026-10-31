@@ -45,6 +45,12 @@ type DirectEditingContext = {
 	jwt: string
 }
 
+type StandaloneContext = {
+	fileId: number
+	collabBackendUrl: string
+	jwt: string
+}
+
 type ViewerContext = {
 	collabBackendUrl: string
 	resolveSharingToken: () => string | null
@@ -54,6 +60,7 @@ type RuntimeDescriptor
 	= | { type: 'recording', context: RecordingContext }
 		| { type: 'public-share', context: PublicShareContext }
 		| { type: 'direct-editing', context: DirectEditingContext }
+		| { type: 'standalone', context: StandaloneContext }
 		| { type: 'viewer', context: ViewerContext }
 
 const VIEWER_REGISTRATION_ATTEMPTS = 3
@@ -71,6 +78,9 @@ function bootstrapWhiteboardRuntime(): void {
 			return
 		case 'direct-editing':
 			runDirectEditingRuntime(runtime.context)
+			return
+		case 'standalone':
+			runStandaloneRuntime(runtime.context)
 			return
 		case 'viewer':
 		default:
@@ -96,6 +106,17 @@ function detectRuntime(): RuntimeDescriptor {
 	if (loadState('whiteboard', 'directEditing', false)) {
 		return {
 			type: 'direct-editing',
+			context: {
+				fileId,
+				collabBackendUrl,
+				jwt: loadState('whiteboard', 'jwt', ''),
+			},
+		}
+	}
+
+	if (loadState('whiteboard', 'standalonePage', false)) {
+		return {
+			type: 'standalone',
 			context: {
 				fileId,
 				collabBackendUrl,
@@ -157,6 +178,33 @@ function runDirectEditingRuntime(context: DirectEditingContext): void {
 		}
 
 		callMobileMessage('loading')
+
+		renderWhiteboardView(whiteboardElement, {
+			fileId: context.fileId,
+			isEmbedded: false,
+			fileName: '',
+			publicSharingToken: null,
+			collabBackendUrl: context.collabBackendUrl,
+			versionSource: null,
+			fileVersion: null,
+		})
+	})
+}
+
+// Standalone editor page (PageController::standalone). Boots the editor
+// outside the Files app viewer so that URLs carrying the Excalidraw
+// "addLibrary" fragment — e.g. the return URL used by
+// https://libraries.excalidraw.com when installing a library — load an
+// editor that handles them via useHandleLibrary.
+function runStandaloneRuntime(context: StandaloneContext): void {
+	runWhenDomReady(async () => {
+		await primeRecordingJwt(context.fileId, context.jwt)
+
+		const whiteboardElement = document.getElementById('whiteboard-app')
+		if (!whiteboardElement) {
+			logger.error('Standalone page mount element not found')
+			return
+		}
 
 		renderWhiteboardView(whiteboardElement, {
 			fileId: context.fileId,

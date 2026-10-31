@@ -9,6 +9,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { getCurrentUser } from '@nextcloud/auth'
 import { translate as t } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
+import { generateUrl } from '@nextcloud/router'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import type { ExcalidrawImperativeAPI, LibraryItems } from '@nextcloud/excalidraw/dist/types/excalidraw/types'
@@ -231,8 +232,11 @@ export default function App({
 	const { startVoting, vote, endVoting } = useVoting()
 	const votings = useCollaborationStore(state => state.votings)
 
+	// Delay handling addLibrary fragments until the initial library load has
+	// finished: that load replaces the library (merge: false) and would wipe
+	// a library that was just imported from the URL.
 	useHandleLibrary({
-		excalidrawAPI,
+		excalidrawAPI: isLibraryLoaded ? excalidrawAPI : null,
 	})
 
 	useEffect(() => {
@@ -325,13 +329,16 @@ export default function App({
 	}, [normalizedFileId, excalidrawAPI, resetInitialDataPromise, setIsLibraryLoaded])
 
 	useEffect(() => {
-		if (isLoading || !excalidrawAPI) {
+		window.name = fileName
+
+		// Load the library only once per file/editor instance. This effect
+		// replaces the library wholesale (merge: false), so a re-run would
+		// wipe items imported or added after the initial load. File changes
+		// reset isLibraryLoaded via the effect above.
+		if (isLoading || !excalidrawAPI || isLibraryLoaded) {
 			return
 		}
 
-		// Fetch library items from the API
-		window.name = fileName
-		setIsLibraryLoaded(false)
 		let cancelled = false
 		;(async () => {
 			try {
@@ -378,6 +385,7 @@ export default function App({
 		excalidrawAPI,
 		normalizedFileId,
 		setIsLibraryLoaded,
+		isLibraryLoaded,
 	])
 
 	useEffect(() => {
@@ -558,7 +566,14 @@ export default function App({
 		}
 	}, [publishCanvasTemplate])
 
-	const libraryReturnUrl = encodeURIComponent(window.location.href)
+	// The library browser (libraries.excalidraw.com) navigates back to this
+	// URL with an "addLibrary" fragment when the user installs a library.
+	// Inside the Files app viewer the current URL is the Files app, which does
+	// not mount an editor that could handle the fragment, so point at the
+	// standalone editor page instead. Public shares have no session to
+	// authenticate the standalone page with, so keep the share URL there.
+	const standaloneLibraryUrl = window.location.origin + generateUrl(`apps/whiteboard/standalone/${normalizedFileId}`)
+	const libraryReturnUrl = encodeURIComponent(publicSharingToken ? window.location.href : standaloneLibraryUrl)
 
 	// Data loading is now handled by useBoardDataManager
 
