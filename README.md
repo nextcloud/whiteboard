@@ -206,6 +206,17 @@ STORAGE_STRATEGY=redis
 REDIS_URL=redis://[username:password@]host[:port][/database_number]
 ```
 
+**Redis Cluster**
+- List the seed nodes separated by commas; the remaining nodes are discovered automatically
+- Any credentials given on the first seed are applied to every discovered node, and so is TLS if the first seed uses `rediss://`
+- In a list of seeds, write a comma inside a password as `%2C`, since the list is split on commas; a single URL with a comma in its password is still read as one node
+- Note that Redis Cluster only has database 0, so a database number cannot be used to separate whiteboard keys from other tenants of the same cluster
+
+```bash
+STORAGE_STRATEGY=redis
+REDIS_URL=redis://node1:6379,redis://node2:6379,redis://node3:6379
+```
+
 ### Scaling (Optional)
 
 For high-traffic environments with multiple websocket servers:
