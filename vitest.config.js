@@ -16,7 +16,7 @@ try {
   redisMemoryServerAvailable = true
 } catch (e) {
   console.error('Failed to rebuild redis-memory-server:', e?.message ?? e)
-  console.warn('⚠️  Skipping Redis-dependent tests (multinode-redis.spec.mjs)')
+  console.warn('⚠️  Skipping Redis-dependent tests (multinode-redis.spec.mjs, redisClient.spec.mjs)')
 }
 export default defineConfig({
 	test: {
@@ -30,6 +30,7 @@ export default defineConfig({
 			? []
 			: [
 				'**/multinode-redis.spec.mjs',
+				'**/redisClient.spec.mjs',
 			],
 	},
 })
