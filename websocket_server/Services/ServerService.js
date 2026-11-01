@@ -148,7 +148,7 @@ export default class ServerService {
 
 				// Close Redis client if it exists
 				this.redisClient && (async () => {
-					await this.redisClient.quit()
+					await this.redisClient.close()
 					console.log('Redis client closed')
 				})(),
 
