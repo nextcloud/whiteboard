@@ -18,6 +18,7 @@ vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 	class FakeRecordingService extends EventEmitter {
 		constructor() {
 			super()
+			this.updateToken = vi.fn(async () => {})
 			this.cleanup = vi.fn(async () => true)
 			recorders.push(this)
 		}
@@ -94,6 +95,50 @@ describe('RecordingControlService', () => {
 
 	afterEach(() => {
 		vi.useRealTimers()
+	})
+
+	it('gives the bot a read-only token and renews it until the recording stops', async () => {
+		vi.useFakeTimers()
+		const { service, socket, events } = setup()
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		const botToken = jwt.verify(new URL(recorders[0].url).searchParams.get('token'), 'secret')
+		expect(botToken).toMatchObject({ userid: 'teacher', fileId: 42, isFileReadOnly: true })
+		expect(events('recording-started')).toHaveLength(1)
+
+		await vi.advanceTimersByTimeAsync(5 * 60 * 1000)
+		expect(recorders[0].updateToken).toHaveBeenCalledOnce()
+		const [room, user, renewed] = recorders[0].updateToken.mock.calls[0]
+		expect([room, user]).toEqual(['42', 'teacher'])
+		expect(jwt.verify(renewed, 'secret')).toMatchObject({ userid: 'teacher', isFileReadOnly: true })
+
+		await service.stopRecording(socket('tab-1'), '42')
+		const [stopped] = events('recording-stopped')
+		expect(jwt.verify(stopped.payload.uploadToken, 'secret')).toMatchObject({ userid: 'teacher', fileId: 42, isFileReadOnly: false })
+
+		await vi.advanceTimersByTimeAsync(15 * 60 * 1000)
+		expect(recorders[0].updateToken).toHaveBeenCalledOnce()
+	})
+
+	it('does not give a writable token to a read-only socket of the recording user', async () => {
+		const { service, socket, events } = setup({ sockets: { 'tab-1': 'teacher', bot: 'teacher' }, readOnly: ['bot'] })
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		await service.stopRecording(socket('bot'), '42')
+
+		expect(events('recording-stopped')).toEqual([])
+		expect(events('recording-error')).toEqual([{ to: 'bot', event: 'recording-error', payload: 'Read-only users cannot stop recordings' }])
+	})
+
+	it('accepts a guest whose token ids differ, but not the token of another user', async () => {
+		const guest = setup({ sockets: { 'guest-tab': 'shared_AbCd123_3333' } })
+		const guestToken = userToken({ userid: 'shared_AbCd123_1111', user: { id: 'shared_AbCd123_2222', name: 'Guest' } })
+		await guest.service.startRecording(guest.socket('guest-tab'), startData(guestToken))
+		expect(guest.events('recording-started')).toHaveLength(1)
+
+		const other = setup({ sockets: { 'student-tab': 'student' } })
+		await other.service.startRecording(other.socket('student-tab'), startData(userToken()))
+		expect(other.events('recording-error').map((e) => e.payload)).toEqual(['Unauthorized'])
 	})
 
 	it('keeps a recording another node is still stopping, and reports one whose node is gone', async () => {

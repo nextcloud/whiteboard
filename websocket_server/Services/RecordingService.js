@@ -14,6 +14,7 @@ import EventEmitter from 'events'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import Config from '../Utilities/ConfigUtility.js'
+import { withoutToken } from '../Utilities/RecordingTokenUtility.js'
 
 const execFileAsync = promisify(execFile)
 const STOP_CAPTURE_DELAY_MS = 2000
@@ -245,15 +246,16 @@ export default class RecordingService extends EventEmitter {
 
 	async #navigateWithRetry(page, url, sessionKey) {
 		try {
-			console.log(`Navigating to board [${sessionKey}]:`, url)
+			console.log(`Navigating to board [${sessionKey}]:`, withoutToken(url))
 			await page.goto(url, {
 				waitUntil: ['domcontentloaded', 'load'],
 				timeout: this.config.timeouts.navigation,
 			})
 			console.log(`Page loaded successfully [${sessionKey}]`)
 		} catch (error) {
-			console.error(`Failed to load page [${sessionKey}]:`, error)
-			const reason = error?.message || String(error)
+			// Puppeteer puts the URL, with its token, into navigation errors
+			const reason = (error?.message || String(error)).replaceAll(url, withoutToken(url))
+			console.error(`Failed to load page [${sessionKey}]:`, reason)
 			if (reason.includes('ERR_CONNECTION_REFUSED')) {
 				throw new Error('Page load failed: Unable to reach the Nextcloud URL from the recording container. Make sure the hostname resolves inside the container or adjust NEXTCLOUD_URL.')
 			}
@@ -397,6 +399,14 @@ export default class RecordingService extends EventEmitter {
 			console.error(`Failed to stop recording [${sessionKey}]:`, error)
 			return false
 		}
+	}
+
+	async updateToken(roomId, userId, token) {
+		const session = this.#sessions.get(this.#getSessionKey(roomId, userId))
+		if (!session) {
+			return
+		}
+		await session.page.evaluate((jwt) => window.updateRecordingJwt?.(jwt), token)
 	}
 
 	async cleanup(roomId, userId) {
