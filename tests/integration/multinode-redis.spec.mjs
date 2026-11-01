@@ -45,8 +45,9 @@ vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => {
 
 const fakeRecorder = vi.hoisted(() => ({ stopDelayMs: 0 }))
 
-vi.mock('../../websocket_server/Services/RecordingService.js', () => {
-	class FakeRecordingService {
+vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
+	const { EventEmitter } = await import('events')
+	class FakeRecordingService extends EventEmitter {
 		async init() { return true }
 		async startRecording() { return true }
 		async stopRecording() {

@@ -118,6 +118,11 @@ export default class RecordingControlService {
 			const ownRecorder = new RecordingService()
 			recorder = ownRecorder
 			recorderUserId = socketData.user.id
+			const errorRecordingKey = recordingKey
+			recorder.on('error', () => {
+				this.#handleRecorderError(errorRecordingKey, ownRecorder)
+					.catch((error) => console.error(`[${sessionKey}] Ending the failed recording failed:`, error))
+			})
 			console.log(`[${sessionKey}] Initializing recording at ${withoutToken(recordingUrl)}`)
 
 			if (!await recorder.init(botRecordingUrl.toString(), roomID, socketData.user.id)) {
@@ -141,6 +146,10 @@ export default class RecordingControlService {
 			this.recordingServices.set(recordingKey, {
 				recorder,
 				claims,
+				roomID,
+				userId: socketData.user.id,
+				requesterSocketId: socket.id,
+				username,
 				autoUploadOnDisconnect: Boolean(autoUploadOnDisconnect),
 				tokenRenewal: setInterval(() => {
 					ownRecorder.updateToken(roomID, socketData.user.id, signRecordingToken(claims, { readOnly: true }))
@@ -176,6 +185,22 @@ export default class RecordingControlService {
 			}
 			socket.emit('recording-error', error.message)
 		}
+	}
+
+	async #handleRecorderError(recordingKey, recorder) {
+		const recordingService = this.recordingServices.get(recordingKey)
+		if (recordingService?.recorder !== recorder) {
+			return
+		}
+		const { roomID, userId, username } = recordingService
+		await this.finalizeRecordingStop({
+			roomID,
+			userId,
+			username,
+			recordingKey,
+			recordingService,
+			requesterSocketId: recordingService.requesterSocketId,
+		})
 	}
 
 	// A writable socket of the user, preferably the one that asked
@@ -349,7 +374,11 @@ export default class RecordingControlService {
 			if (recordingKey && this.recordingServices.has(recordingKey)) {
 				this.recordingServices.delete(recordingKey)
 			}
-			await this.cluster.removeRecordingEntry(roomID, userId)
+			try {
+				await this.cluster.removeRecordingEntry(roomID, userId)
+			} catch (error) {
+				console.warn(`[${roomID}_${userId}] Removing the recording entry failed:`, error)
+			}
 		}
 	}
 

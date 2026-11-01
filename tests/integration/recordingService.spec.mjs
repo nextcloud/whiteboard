@@ -100,6 +100,19 @@ describe('RecordingService', () => {
 		expect(page.calls.at(-1)).toEqual(['evaluate', expect.stringContaining('updateRecordingJwt'), 'renewed-token'])
 	})
 
+	it('reports a browser that disconnects, but not one it closes itself', async () => {
+		const { recorder, browser } = await startedRecorder()
+		const errors = vi.fn()
+		recorder.on('error', errors)
+
+		browser.emit('disconnected')
+		expect(errors).toHaveBeenCalledOnce()
+
+		await recorder.cleanup('42', 'teacher')
+		expect(browser.close).toHaveBeenCalledOnce()
+		expect(errors).toHaveBeenCalledOnce()
+	})
+
 	it('keeps the token out of navigation errors', async () => {
 		browsers.failNavigation = true
 		const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
