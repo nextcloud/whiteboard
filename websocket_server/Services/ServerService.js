@@ -26,12 +26,16 @@ export default class ServerService {
 			? RedisAdapter.createRedisClient()
 			: null
 
-		if (this.redisClient) {
-			this.redisClient.connect().catch(error => {
-				console.error('Failed to connect to Redis:', error)
-				throw error
-			})
-		}
+		// Services that use Redis wait on this before they run anything, so that
+		// the server does not accept clients while the connection is still being
+		// established. With a cluster client the slots are not known until then,
+		// and an early command fails rather than waiting.
+		this.redisReady = this.redisClient
+			? this.redisClient.connect().catch((error) => {
+					console.error('Failed to connect to Redis:', error)
+					throw error
+				})
+			: Promise.resolve()
 
 		this.socketDataStorage = Config.STORAGE_STRATEGY === 'redis'
 			? StorageService.create('redis', this.redisClient, { prefix: 'socket_', ttl: Config.SESSION_TTL })
@@ -57,6 +61,7 @@ export default class ServerService {
 			this.socketDataStorage,
 			this.cachedTokenStorage,
 			this.redisClient,
+			this.redisReady,
 		)
 
 		// Update system monitor with socket service reference

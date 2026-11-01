@@ -6,8 +6,11 @@
  */
 
 import StorageAdapter from './StorageAdapter.js'
-import { createClient } from 'redis'
+import { createClient, createCluster } from 'redis'
 import Config from '../Utilities/ConfigUtility.js'
+import { deleteKeys, scanKeys } from '../Utilities/RedisUtility.js'
+
+const ERROR_LOG_INTERVAL_MS = 60 * 1000
 
 export default class RedisAdapter extends StorageAdapter {
 
@@ -101,20 +104,85 @@ export default class RedisAdapter extends StorageAdapter {
 		}
 	}
 
+	/**
+	 * Log the errors a client emits instead of letting them end the process.
+	 *
+	 * A Redis client emits `error` whenever a connection drops, and an `error`
+	 * event without a listener throws, so losing a single node took the whole
+	 * server down. The client reconnects on its own, and the same message comes
+	 * back on every attempt, so each message is logged at most once a minute.
+	 *
+	 * @param {object} client a redis client, one node or a cluster
+	 * @return {object} the same client
+	 */
+	static logClientErrors(client) {
+		const lastLogged = new Map()
+		client.on('error', (error) => {
+			const message = error?.message ?? String(error)
+			const now = Date.now()
+			if (lastLogged.has(message) && now - lastLogged.get(message) < ERROR_LOG_INTERVAL_MS) {
+				return
+			}
+			lastLogged.set(message, now)
+			console.error('Redis client error:', message)
+		})
+		return client
+	}
+
 	static createRedisClient() {
 		console.log(`Creating Redis client with URL: ${RedisAdapter.redactRedisUrl(Config.REDIS_URL)}`)
+
+		const nodeUrls = RedisAdapter.splitRedisUrls(Config.REDIS_URL)
+
+		if (nodeUrls.length > 1) {
+			return RedisAdapter.logClientErrors(RedisAdapter.createRedisClusterClient(nodeUrls))
+		}
 
 		const redisUrl = RedisAdapter.parseRedisUrl(Config.REDIS_URL)
 
 		if (redisUrl.protocol === 'unix:') {
 			const db = redisUrl.searchParams.get('db')
-			return createClient({
+			return RedisAdapter.logClientErrors(createClient({
 				socket: { path: redisUrl.pathname },
 				database: db !== null ? Number(db) : undefined,
-			})
+			}))
 		} else {
-			return createClient({ url: Config.REDIS_URL })
+			return RedisAdapter.logClientErrors(createClient({ url: Config.REDIS_URL }))
 		}
+	}
+
+	/**
+	 * Build a cluster client from a list of seed node URLs.
+	 *
+	 * Redis Cluster discovers the remaining nodes itself and reports them
+	 * without credentials, and the scheme of a seed only governs the connection
+	 * to that seed. Everything the discovered nodes need therefore has to be
+	 * repeated in the defaults: the credentials given on the first seed, and
+	 * TLS when the first seed asks for it, or those connections fall back to
+	 * plain TCP and a TLS only cluster cannot be reached.
+	 *
+	 * @param {string[]} nodeUrls the seed node URLs
+	 * @return {object} a connected-on-demand cluster client
+	 */
+	static createRedisClusterClient(nodeUrls) {
+		const rootNodes = nodeUrls.map((url) => ({ url }))
+		const firstNode = RedisAdapter.parseRedisUrl(nodeUrls[0])
+
+		const defaults = {}
+		if (firstNode.username) {
+			defaults.username = decodeURIComponent(firstNode.username)
+		}
+		if (firstNode.password) {
+			defaults.password = decodeURIComponent(firstNode.password)
+		}
+		if (firstNode.protocol === 'rediss:') {
+			defaults.socket = { tls: true }
+		}
+
+		return createCluster({
+			rootNodes,
+			...(Object.keys(defaults).length > 0 ? { defaults } : {}),
+		})
 	}
 
 	constructor(redisClient, options = {}) {
@@ -174,16 +242,14 @@ export default class RedisAdapter extends StorageAdapter {
 		try {
 			const batchSize = 100
 			let keys = []
-			for await (const key of this.client.scanIterator({ MATCH: `${this.prefix}*`, COUNT: batchSize })) {
+			for await (const key of scanKeys(this.client, { MATCH: `${this.prefix}*`, COUNT: batchSize })) {
 				keys.push(key)
 				if (keys.length >= batchSize) {
-					await this.client.del(keys)
+					await deleteKeys(this.client, keys)
 					keys = []
 				}
 			}
-			if (keys.length > 0) {
-				await this.client.del(keys)
-			}
+			await deleteKeys(this.client, keys)
 		} catch (error) {
 			if (RedisAdapter.isClientClosedError(error)) {
 				return
