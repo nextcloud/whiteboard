@@ -60,8 +60,10 @@ export default class RoomStateStore {
 		if (this.shouldUseRedis()) {
 			const keys = []
 			const fullMatch = this.#fullKey(matchPattern)
-			for await (const key of this.redisClient.scanIterator({ MATCH: fullMatch })) {
-				keys.push(key.slice(this.prefix.length))
+			for await (const batch of this.redisClient.scanIterator({ MATCH: fullMatch })) {
+				for (const key of batch) {
+					keys.push(key.slice(this.prefix.length))
+				}
 			}
 			return keys
 		}
@@ -75,8 +77,10 @@ export default class RoomStateStore {
 		if (this.shouldUseRedis()) {
 			const keys = []
 			const fullMatch = this.#fullKey(matchPattern)
-			for await (const key of this.redisClient.scanIterator({ MATCH: fullMatch })) {
-				keys.push(key.slice(this.prefix.length))
+			for await (const batch of this.redisClient.scanIterator({ MATCH: fullMatch })) {
+				for (const key of batch) {
+					keys.push(key.slice(this.prefix.length))
+				}
 			}
 			return keys
 		}
