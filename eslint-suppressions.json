@@ -666,7 +666,7 @@
   },
   "src/hooks/useRecording.ts": {
     "@stylistic/arrow-parens": {
-      "count": 6
+      "count": 4
     },
     "@stylistic/member-delimiter-style": {
       "count": 3
@@ -983,9 +983,6 @@
       "count": 3
     },
     "import-extensions/extensions": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
       "count": 1
     }
   },

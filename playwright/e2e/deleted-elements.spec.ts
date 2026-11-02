@@ -125,7 +125,7 @@ test('a deleted element stays deleted after voting results are added', async ({ 
 	const { auth, otherPage } = await prepareDeletionWhileOffline(page, browser)
 
 	await page.getByTestId('main-menu-trigger').click()
-	await page.getByRole('button', { name: 'Votings', exact: true }).click()
+	await page.getByRole('menuitem', { name: 'Votings', exact: true }).click()
 	await page.getByRole('button', { name: /start new voting/i }).click()
 	const votingDialog = page.getByRole('dialog', { name: /start new voting/i }).last()
 	await votingDialog.getByLabel(/question/i).fill('Voting after the deletion')

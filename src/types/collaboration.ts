@@ -4,7 +4,7 @@
  */
 
 import type { Socket } from 'socket.io-client'
-import type { AppState } from '@excalidraw/excalidraw/types/types'
+import type { AppState } from '@nextcloud/excalidraw/types'
 import type { RecordingUser } from './recording'
 import type { Voting } from './voting'
 

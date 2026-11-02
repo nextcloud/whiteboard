@@ -12,8 +12,8 @@ import type {
 	BinaryFileData,
 	DataURL,
 	ExcalidrawImperativeAPI,
-} from '@nextcloud/excalidraw/dist/types/excalidraw/types'
-import type { FileId } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+} from '@nextcloud/excalidraw/types'
+import type { FileId } from '@nextcloud/excalidraw/element/types'
 import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
@@ -178,9 +178,10 @@ export function useFiles(
 					reader.onloadend = () => {
 						if (typeof reader.result === 'string') {
 							file = {
-								mimeType: blob.type,
+								mimeType: blob.type as BinaryFileData['mimeType'],
 								id: `filetype-icon-${mimeType}` as FileId,
 								dataURL: reader.result as DataURL,
+								created: Date.now(),
 							}
 							sendImageFiles({ [file.id]: file }).then(() => {
 								resolve(file.id)

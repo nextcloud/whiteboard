@@ -5,15 +5,17 @@
 
 /* eslint-disable no-console */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 import type {
 	AppState,
 	BinaryFileData,
 	BinaryFiles,
 	Collaborator,
-	ExcalidrawImageElement,
-} from '@excalidraw/excalidraw/types/types'
+	ExcalidrawImperativeAPI,
+	NormalizedZoomValue,
+	SocketId,
+} from '@nextcloud/excalidraw/types'
 import { restoreElements } from '@nextcloud/excalidraw'
 import { loadState } from '@nextcloud/initial-state'
 import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata'
@@ -21,7 +23,7 @@ import { io } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
-import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { selectSavesToServer, useCollaborationStore } from '../stores/useCollaborationStore'
 import { useSyncStore } from '../stores/useSyncStore.ts'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { useShallow } from 'zustand/react/shallow'
@@ -30,6 +32,8 @@ import { db } from '../database/db'
 import { fetchWhiteboardSnapshot } from '../utils/fetchWhiteboardSnapshot.ts'
 import { computeElementVersionHash } from '../utils/syncSceneData'
 import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } from '../types/collaboration'
+
+import { isOutdatedSceneBroadcast, SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
 
 enum BroadcastType {
 	SceneInit = 'SCENE_INIT', // Incoming scene data from others
@@ -42,6 +46,7 @@ enum BroadcastType {
 }
 
 const CURSOR_UPDATE_DELAY = 50
+const SERVER_MERGE_RETRY_DELAY = 3000
 
 export function useCollaboration() {
 	const joinedRoomRef = useRef<string | null>(null)
@@ -54,11 +59,18 @@ export function useCollaboration() {
 		scrollToContent: boolean
 	} | null>(null)
 
-	const { excalidrawAPI } = useExcalidrawStore(
+	const { excalidrawAPI: editorAPI } = useExcalidrawStore(
 		useShallow(state => ({
 			excalidrawAPI: state.excalidrawAPI,
 		})),
 	)
+
+	// Loading the initial scene replaces all elements, so remote updates queue until it is done
+	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null)
+	useEffect(() => {
+		setExcalidrawAPI(null)
+		return editorAPI?.onEvent('editor:initialize', setExcalidrawAPI)
+	}, [editorAPI])
 
 	const { getJWT, clearTokens } = useJWTStore(
 		useShallow(state => ({
@@ -119,14 +131,11 @@ export function useCollaboration() {
 
 				if (currentSocket?.connected && fileId) {
 					// Find image elements with missing file data
-					const missingImages = restoredRemoteElements
-						.filter(el => el.type === 'image'
-							&& (el as ExcalidrawImageElement).fileId
-							&& !currentFiles[(el as ExcalidrawImageElement).fileId])
+					const missingImageIds = restoredRemoteElements
+						.flatMap(el => el.type === 'image' && el.fileId && !currentFiles[el.fileId] ? [el.fileId] : [])
 
 					// Request each missing image
-					missingImages.forEach(el => {
-						const imageId = (el as ExcalidrawImageElement).fileId
+					missingImageIds.forEach(imageId => {
 						console.log(`[Collaboration] Requesting missing image: ${imageId}`)
 						currentSocket.emit('image-get', `${fileId}`, imageId)
 					})
@@ -255,7 +264,53 @@ export function useCollaboration() {
 		pendingSceneReplaceRef.current = null
 	}, [fileId])
 
+	const { isInRoom, pendingServerMerge } = useCollaborationStore(useShallow((state) => ({
+		isInRoom: state.isInRoom,
+		pendingServerMerge: state.pendingServerMerge,
+	})))
+	const isVersionPreview = useWhiteboardConfigStore((state) => state.isVersionPreview)
+
+	useEffect(() => {
+		if (!isInRoom || !pendingServerMerge || isVersionPreview || !excalidrawAPI || !fileId) {
+			return
+		}
+
+		let cancelled = false
+		let retryTimeout: ReturnType<typeof setTimeout> | undefined
+		const mergeSavedScene = async () => {
+			try {
+				const jwt = await getJWT()
+				if (!jwt) {
+					throw new Error('Missing JWT')
+				}
+				const snapshot = await fetchWhiteboardSnapshot(fileId, jwt)
+				if (cancelled) {
+					return
+				}
+				excalidrawAPI.addFiles(Object.values((snapshot.files || {}) as BinaryFiles))
+				reconcileAndApplyRemoteElements(snapshot.elements as ExcalidrawElement[])
+				// The saved board may lack what this client saved before, so the next save must not be skipped
+				useSyncStore.setState({ savedSceneKey: null })
+				useCollaborationStore.getState().setPendingServerMerge(false)
+			} catch (error) {
+				console.error('[Collaboration] Failed to merge the saved board, retrying:', error)
+				if (!cancelled) {
+					retryTimeout = setTimeout(mergeSavedScene, SERVER_MERGE_RETRY_DELAY)
+				}
+			}
+		}
+		mergeSavedScene()
+
+		return () => {
+			cancelled = true
+			clearTimeout(retryTimeout)
+		}
+	}, [isInRoom, pendingServerMerge, isVersionPreview, excalidrawAPI, fileId, getJWT, reconcileAndApplyRemoteElements])
+
 	// --- Collaborator State Management ---
+	// Unlike the editor's collaborators, kept while disconnected
+	const collaboratorIdsRef = useRef(new Set<string>())
+
 	const updateCollaboratorsState = useCallback(
 		async (usersPayload: {
 			user: { id: string; name: string } // Persistent user ID and display name
@@ -278,13 +333,13 @@ export function useCollaboration() {
 				console.error('[Collaboration] Failed to get current user ID:', error)
 			}
 
-			const newCollaborators = new Map<string, Collaborator>()
+			const newCollaborators = new Map<SocketId, Collaborator>()
 
 			usersPayload.forEach((payload) => {
 				// Filter out the current user from collaborators list
 				if (payload.user.id !== currentUserId) {
 					// Use persistent user ID as the key for the map
-					newCollaborators.set(payload.user.id, {
+					newCollaborators.set(payload.user.id as SocketId, {
 						id: payload.user.id,
 						username: payload.user.name,
 						pointer: payload.pointer,
@@ -293,6 +348,15 @@ export function useCollaboration() {
 					})
 				}
 			})
+
+			// The editor no longer stops following a collaborator who left the room
+			const { followedUserId } = useCollaborationStore.getState()
+			if (followedUserId
+				&& collaboratorIdsRef.current.has(followedUserId)
+				&& !newCollaborators.has(followedUserId as SocketId)) {
+				useCollaborationStore.setState({ followedUserId: null })
+			}
+			collaboratorIdsRef.current = new Set(newCollaborators.keys())
 
 			excalidrawAPI!.updateScene({ collaborators: newCollaborators })
 			console.log(`[Collaboration] Updated collaborators: ${newCollaborators.size} users online (filtered out current user)`)
@@ -329,13 +393,13 @@ export function useCollaboration() {
 				}
 
 				// Get current collaborators directly from Excalidraw
-				const currentCollaborators = excalidrawAPI.getAppState().collaborators || new Map<string, Collaborator>()
+				const currentCollaborators = excalidrawAPI.getAppState().collaborators || new Map<SocketId, Collaborator>()
 
 				// Create a new collaborators map
-				const updatedCollaborators = new Map<string, Collaborator>(currentCollaborators)
+				const updatedCollaborators = new Map<SocketId, Collaborator>(currentCollaborators)
 
 				// Update or add the collaborator
-				updatedCollaborators.set(payload.user.id, {
+				updatedCollaborators.set(payload.user.id as SocketId, {
 					id: payload.user.id,
 					username: payload.user.name,
 					pointer: payload.pointer,
@@ -433,7 +497,7 @@ export function useCollaboration() {
 						...currentAppState,
 						scrollX: payload.scrollX,
 						scrollY: payload.scrollY,
-						zoom: { value: payload.zoom },
+						zoom: { value: payload.zoom as NormalizedZoomValue },
 					},
 				})
 			} else if (followedUserId || (isPresentationMode && presenterId)) {
@@ -536,6 +600,12 @@ export function useCollaboration() {
 					return
 				}
 
+				if (isOutdatedSceneBroadcast(decoded)) {
+					console.warn('[Collaboration] Ignoring scene broadcast from a client older than 3.0')
+					useCollaborationStore.getState().setHasOutdatedPeer()
+					return
+				}
+
 				switch (decoded.type) {
 				case BroadcastType.SceneRestore: {
 					if (decoded.payload?.reloadFromServer !== true || !fileId) {
@@ -549,9 +619,9 @@ export function useCollaboration() {
 							throw new Error('Missing JWT')
 						}
 						const payload = await fetchWhiteboardSnapshot(fileId, jwt)
-						const restoredElements = restoreElements(payload.elements, null) as ExcalidrawElement[]
+						const restoredElements = restoreElements(payload.elements as ExcalidrawElement[], null) as ExcalidrawElement[]
 						const files = (payload.files || {}) as BinaryFiles
-						const appStatePatch: Partial<AppState> = sanitizeAppStateForSync(payload.appState)
+						const appStatePatch: Partial<AppState> = sanitizeAppStateForSync(payload.appState as Partial<AppState>)
 						const scrollToContent = payload.scrollToContent ?? true
 
 						// Clear pending queue state since we have an authoritative snapshot
@@ -678,8 +748,7 @@ export function useCollaboration() {
 	const handleUserJoined = useCallback((data: { userId: string, userName: string, socketId: string, isSyncer: boolean }) => {
 		// If we are the syncer, re-broadcast the current full scene so late joiners
 		// reconcile against the latest peer state via Excalidraw's built-in merge.
-		const { isDedicatedSyncer } = useCollaborationStore.getState()
-		if (isDedicatedSyncer && excalidrawAPI) {
+		if (selectSavesToServer(useCollaborationStore.getState()) && excalidrawAPI) {
 			console.log(`[Collaboration] Broadcasting full scene to new user: ${data.userName}`)
 
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
@@ -688,7 +757,7 @@ export function useCollaboration() {
 
 			if (!socket || !socket.connected || !fileId) return
 
-			const sceneData = { type: BroadcastType.SceneInit, payload: { elements } }
+			const sceneData = { type: BroadcastType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
 			const sceneJson = JSON.stringify(sceneData)
 			const sceneBuffer = new TextEncoder().encode(sceneJson)
 			socket.emit('server-broadcast', `${fileId}`, sceneBuffer, [])
@@ -774,6 +843,9 @@ export function useCollaboration() {
 				console.warn(`[Collaboration] Socket disconnect event fired: ${reason}`)
 				clearExcalidrawCollaborators()
 				setIsInRoom(false)
+				// Others may save while this client is away; it saves again after merging their changes
+				useCollaborationStore.getState().setPendingServerMerge(true)
+				useSyncStore.getState().worker?.postMessage({ type: 'DROP_WAITING_SERVER_SYNC', fileId: useWhiteboardConfigStore.getState().fileId })
 
 				// Only set to offline if this is an intentional disconnect
 				// For server disconnects, Socket.IO will automatically try to reconnect

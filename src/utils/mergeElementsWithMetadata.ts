@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { reconcileElements as excalidrawReconcileElements } from '@nextcloud/excalidraw'
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types'
-import type { AppState } from '@excalidraw/excalidraw/types/types'
+import type { RemoteExcalidrawElement } from '@nextcloud/excalidraw/data/reconcile'
+import type { ExcalidrawElement, OrderedExcalidrawElement } from '@nextcloud/excalidraw/element/types'
+import type { AppState } from '@nextcloud/excalidraw/types'
 import type { WhiteboardElement } from '../types/whiteboard'
+
+import { reconcileElements as excalidrawReconcileElements } from '@nextcloud/excalidraw'
 
 export function prepareDuplicatedElements(
 	nextElements: readonly ExcalidrawElement[],
@@ -30,8 +32,8 @@ export function mergeElementsWithMetadata(
 ): ExcalidrawElement[] {
 	// First, do the standard Excalidraw reconciliation
 	const reconciledElements = excalidrawReconcileElements(
-		localElements,
-		remoteElements,
+		localElements as readonly OrderedExcalidrawElement[],
+		remoteElements as readonly RemoteExcalidrawElement[],
 		appState,
 	)
 

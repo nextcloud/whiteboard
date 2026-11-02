@@ -37,6 +37,8 @@ use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
 use OCP\Share\IManager as ShareManager;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
@@ -47,10 +49,13 @@ class WhiteboardControllerTest extends TestCase {
 	/** Captured writes into the user's Templates folder, name => File mock. */
 	private array $templatesChildren = [];
 
+	private File&MockObject $whiteboardFile;
+
 	private function makeController(
 		bool $isAdmin,
 		array $params,
 		int $whiteboardFilePermissions = Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE,
+		bool $syncLockBusy = false,
 	): WhiteboardController {
 		$request = $this->createMock(IRequest::class);
 		$jwt = JWT::encode(['userid' => self::UID, 'exp' => time() + 300], self::SECRET, JWTConsts::JWT_ALGORITHM);
@@ -89,6 +94,7 @@ class WhiteboardControllerTest extends TestCase {
 		$userFolder = $this->createMock(interface_exists(IUserFolder::class) ? IUserFolder::class : Folder::class);
 		$userFolder->method('get')->with('Templates/')->willReturn($templatesFolder);
 		$whiteboardFile = $this->createMock(File::class);
+		$this->whiteboardFile = $whiteboardFile;
 		$whiteboardFile->method('getId')->willReturn(123);
 		$whiteboardFile->method('getPermissions')->willReturn($whiteboardFilePermissions);
 		$whiteboardFile->method('getContent')->willReturn('{"elements":[],"files":[]}');
@@ -105,7 +111,7 @@ class WhiteboardControllerTest extends TestCase {
 		$folders = new WhiteboardFolderService($templateManager, $rootFolder, $config, $logger, static fn (): bool => true);
 
 		$cache = $this->createMock(IMemcache::class);
-		$cache->method('add')->willReturn(true);
+		$cache->method('add')->willReturn(!$syncLockBusy);
 		$cacheFactory = $this->createMock(ICacheFactory::class);
 		$cacheFactory->method('createLocking')->willReturn($cache);
 
@@ -153,7 +159,7 @@ class WhiteboardControllerTest extends TestCase {
 	}
 
 	public function testUpdateCanonicalizesForgedCreator(): void {
-		$controller = $this->makeController(false, []);
+		$controller = $this->makeController(false, ['schemaVersion' => 2]);
 
 		$response = $controller->update(123, [
 			'data' => [
@@ -169,6 +175,69 @@ class WhiteboardControllerTest extends TestCase {
 
 		$this->assertSame(Http::STATUS_OK, $response->getStatus());
 		$this->assertSame('success', $response->getData()['status']);
+	}
+
+	public static function outdatedClientParams(): array {
+		return [
+			'missing marker' => [[]],
+			'wrong marker' => [['schemaVersion' => 1]],
+			'marker as string' => [['schemaVersion' => '2']],
+		];
+	}
+
+	#[DataProvider('outdatedClientParams')]
+	public function testUpdateRejectsOutdatedClientWithoutWriting(array $params): void {
+		$controller = $this->makeController(false, $params);
+		$this->whiteboardFile->expects($this->never())->method('putContent');
+
+		$response = $controller->update(123, [
+			'data' => [
+				'elements' => [['id' => 'el', 'type' => 'rectangle']],
+			],
+		]);
+
+		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
+		$this->assertSame(['status' => 'error', 'code' => 'client_upgrade_required'], $response->getData());
+	}
+
+	public function testUpdateRejectsOutdatedClientWhileSyncLockIsBusy(): void {
+		$controller = $this->makeController(false, [], syncLockBusy: true);
+		$this->whiteboardFile->expects($this->never())->method('putContent');
+
+		$response = $controller->update(123, [
+			'data' => [
+				'elements' => [['id' => 'el', 'type' => 'rectangle']],
+			],
+		]);
+
+		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
+		$this->assertSame('client_upgrade_required', $response->getData()['code']);
+	}
+
+	public function testUpdateWritesWithCurrentMarker(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 2]);
+		$this->whiteboardFile->expects($this->once())->method('putContent');
+
+		$response = $controller->update(123, [
+			'data' => [
+				'elements' => [['id' => 'el', 'type' => 'rectangle']],
+			],
+		]);
+
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
+	}
+
+	public function testUpdateWithCurrentMarkerReportsBusySyncLock(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 2], syncLockBusy: true);
+		$this->whiteboardFile->expects($this->never())->method('putContent');
+
+		$response = $controller->update(123, [
+			'data' => [
+				'elements' => [['id' => 'el', 'type' => 'rectangle']],
+			],
+		]);
+
+		$this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
 	}
 
 	public function testSaveLibraryOrgScopeForbiddenForNonAdmin(): void {

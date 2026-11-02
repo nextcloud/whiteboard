@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { ExcalidrawElement } from '@nextcloud/excalidraw/dist/types/excalidraw/element/types'
+import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 
 import { bumpVersion, newElementWith, restoreElements } from '@nextcloud/excalidraw'
 

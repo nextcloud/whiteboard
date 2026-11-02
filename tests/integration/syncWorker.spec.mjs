@@ -112,6 +112,29 @@ describe('sync worker', () => {
 		expect(sentScenes()).toEqual(['/board/1@1', '/board/1@3'])
 	})
 
+	it('drops the waiting scene of a board but not the running save or other boards', async () => {
+		save('k1', 1, 1)
+		await flush()
+		save('k2', 1, 2)
+		save('b1', 2, 1)
+		await flush()
+		save('b2', 2, 2)
+		send({ type: 'DROP_WAITING_SERVER_SYNC', fileId: 1 })
+		flushBoard(9, 1, true)
+
+		responses[0].resolve(ok)
+		responses[1].resolve(ok)
+		await flush()
+
+		expect(sentScenes()).toEqual(['/board/1@1', '/board/2@1', '/board/2@2'])
+		expect(worker.postMessage).toHaveBeenCalledWith({ type: 'FLUSH_COMPLETE', id: 9 })
+
+		save('k3', 1, 3)
+		await flush()
+
+		expect(sentScenes()).toEqual(['/board/1@1', '/board/2@1', '/board/2@2', '/board/1@3'])
+	})
+
 	it('saves another board while a save of one board is still running', async () => {
 		save('k1', 1, 1)
 		await flush()

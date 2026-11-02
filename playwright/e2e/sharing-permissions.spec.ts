@@ -198,7 +198,7 @@ test('user shares honor read-only and edit permissions', async ({ page, browser 
 					'Content-Type': 'application/json',
 					'X-Requested-With': 'XMLHttpRequest',
 				},
-				data: { data: attemptedUpdate },
+				data: { data: attemptedUpdate, schemaVersion: 2 },
 			})
 			expect(putResponse.ok()).toBeFalsy()
 			const after = JSON.stringify(await fetchBoardContent(userPage, userAuth))
@@ -245,7 +245,7 @@ test('user shares honor read-only and edit permissions', async ({ page, browser 
 					'Content-Type': 'application/json',
 					'X-Requested-With': 'XMLHttpRequest',
 				},
-				data: { data: updated },
+				data: { data: updated, schemaVersion: 2 },
 			})
 			expect(putResponse.ok()).toBeTruthy()
 			await expect.poll(async () => JSON.stringify(await fetchBoardContent(userPage, userAuth)), {

@@ -4,7 +4,7 @@
  */
 
 import { getCommonBounds } from '@nextcloud/excalidraw'
-import type { ExcalidrawElementsIncludingDeleted } from '@excalidraw/excalidraw/types/scene/Scene'
+import type { ExcalidrawElementsIncludingDeleted } from '@nextcloud/excalidraw/element/Scene'
 
 export function getViewportCenterPoint() {
 	const x = window.innerWidth / 2
