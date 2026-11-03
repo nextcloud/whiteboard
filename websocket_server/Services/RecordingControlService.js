@@ -355,6 +355,7 @@ export default class RecordingControlService {
 				recordingData: result.recordingData,
 				uploadToken,
 				fileId: roomID,
+				duration: result.duration,
 			}
 
 			// The tab that asked may have closed while the video was encoded
