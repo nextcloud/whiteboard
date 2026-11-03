@@ -39,6 +39,9 @@ const INITIAL_STATE: RecordingState = {
 	autoUploadOnDisconnect: false,
 }
 
+// The error a node that forwarded a stop sends when the recording host went away
+const HOST_UNAVAILABLE = 'Recording host unavailable, please try again'
+
 export function formatDuration(ms: number) {
 	const seconds = Math.floor(ms / 1000)
 	const minutes = Math.floor(seconds / 60)
@@ -65,6 +68,8 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 	const stateRef = useRef(state)
 	stateRef.current = state
 	const currentUserIdRef = useRef<string | null>(null)
+	// Set at once, unlike the state a handler right after it would read
+	const resultReceivedRef = useRef(false)
 
 	const { socket, status } = useCollaborationStore(useShallow(state => ({
 		socket: state.socket as CollaborationSocket | null,
@@ -178,6 +183,7 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 				})
 			},
 			'recording-started': (data?: { startedAt?: number }) => {
+				resultReceivedRef.current = false
 				const startTime = typeof data?.startedAt === 'number' ? data.startedAt : Date.now()
 				updateState({
 					isRecording: true,
@@ -190,8 +196,9 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 					startingPhase: null,
 				})
 			},
-			'recording-stopped': async (data: { filePath: string; recordingData: number[]; uploadToken: string; fileId: string }) => {
+			'recording-stopped': async (data: { fileId: string } & ({ uploaded: boolean } | { filePath: string; recordingData: number[]; uploadToken: string })) => {
 				console.log('[Recording] Recording stopped event received:', data)
+				resultReceivedRef.current = true
 				// Only clear the duration interval, not the success timeout
 				if (durationIntervalRef.current) {
 					console.log('[Recording] Clearing duration interval only')
@@ -215,6 +222,11 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 					showSuccess: false,
 					error: null,
 				})
+				// The backend saved it already
+				if ('uploaded' in data) {
+					updateState({ isUploading: false, error: data.uploaded ? null : 'Failed to upload recording' })
+					return
+				}
 				console.log('[Recording] Upload state set, starting upload...')
 
 				try {
@@ -310,13 +322,19 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 					})
 				}
 			},
-			'recording-error': (error: string) => updateState({
-				isRecording: false,
-				error,
-				status: 'idle',
-				startTime: null,
-				duration: null,
-			}),
+			'recording-error': (error: string) => {
+				// A host that went away after it sent the recording
+				if (error === HOST_UNAVAILABLE && resultReceivedRef.current) {
+					return
+				}
+				updateState({
+					isRecording: false,
+					error,
+					status: 'idle',
+					startTime: null,
+					duration: null,
+				})
+			},
 			'user-started-recording': async (user: RecordingUser) => {
 				const currentUserId = await resolveCurrentUserId()
 				if (currentUserId && user.userId === currentUserId) {

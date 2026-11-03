@@ -12,6 +12,9 @@ import fetch from 'node-fetch'
 import FormData from 'form-data'
 import fs from 'fs'
 
+// How often a stop forwarded to another node checks that node is still there
+const FORWARDED_STOP_CHECK_MS = 5000
+
 export default class RecordingControlService {
 
 	constructor({
@@ -138,6 +141,50 @@ export default class RecordingControlService {
 		}
 	}
 
+	/**
+	 * Tell the tab that asked when the node it forwarded a stop to goes away
+	 * before the recording ends. Encoding a long recording takes a while.
+	 *
+	 * @param {import('socket.io').Socket} socket The tab that asked
+	 * @param {string} roomID The board
+	 * @param {string} userId Whose recording it is
+	 * @param {string} hostNodeId The node that records
+	 */
+	#watchForwardedStop(socket, roomID, userId, hostNodeId) {
+		const timer = setInterval(async () => {
+			try {
+				// Reading drops the entry of a host that is gone
+				const entry = await this.cluster.getRecordingEntry(roomID, userId)
+				if (entry?.nodeId === hostNodeId) {
+					return
+				}
+				clearInterval(timer)
+				if (!entry && !(await this.cluster.isNodeAlive(hostNodeId))) {
+					socket.emit('recording-error', 'Recording host unavailable, please try again')
+				}
+			} catch (error) {
+				console.error(`[${roomID}_${userId}] Checking the recording host failed:`, error)
+			}
+		}, FORWARDED_STOP_CHECK_MS)
+		socket.once('disconnect', () => clearInterval(timer))
+	}
+
+	// A writable tab of the user, preferably the one that asked
+	async #findRecordingRecipient(roomID, userId, preferredSocketId) {
+		let recipient = null
+		for (const socket of await this.io.in(roomID).fetchSockets()) {
+			const socketData = await this.sessionStore.getSocketData(socket.id)
+			if (socketData?.user?.id !== userId || socketData.clientType === 'recording' || await this.sessionStore.isReadOnly(socket.id)) {
+				continue
+			}
+			if (socket.id === preferredSocketId) {
+				return socket.id
+			}
+			recipient ??= socket.id
+		}
+		return recipient
+	}
+
 	async stopRecording(socket, roomID) {
 		const sessionKey = `${roomID}_${socket.id}`
 		try {
@@ -159,17 +206,7 @@ export default class RecordingControlService {
 				if (!forwarded) {
 					throw new Error('No active recording found')
 				}
-				setTimeout(async () => {
-					try {
-						const latestEntry = await this.cluster.getRecordingEntry(roomID, socketData.user.id)
-						if (latestEntry && latestEntry.nodeId === recordingEntry.nodeId) {
-							await this.cluster.removeRecordingEntry(roomID, socketData.user.id)
-							socket.emit('recording-error', 'Recording host unavailable, please try again')
-						}
-					} catch (err) {
-						console.error(`[${sessionKey}] Failed to clear stale recording entry:`, err)
-					}
-				}, 3000)
+				this.#watchForwardedStop(socket, roomID, socketData.user.id, recordingEntry.nodeId)
 				return
 			}
 
@@ -232,10 +269,15 @@ export default class RecordingControlService {
 				fileId: roomID,
 			}
 
-			const shouldAutoUpload = !initiatorSocket
-				&& !requesterSocketId
-				&& recordingService.autoUploadOnDisconnect
-
+			// The tab that asked may have closed while the video was encoded
+			const preferredSocketId = initiatorSocket?.id ?? requesterSocketId
+			const recipientSocketId = await this.#findRecordingRecipient(roomID, userId, preferredSocketId)
+				.catch((error) => {
+					console.warn(`[${roomID}_${userId}] Looking up the recording recipient failed:`, error)
+					return recordingService.autoUploadOnDisconnect ? null : preferredSocketId
+				})
+			const shouldAutoUpload = !recipientSocketId && recordingService.autoUploadOnDisconnect
+			let uploaded
 			if (shouldAutoUpload) {
 				try {
 					await this.uploadRecordingToNextcloud({
@@ -244,20 +286,21 @@ export default class RecordingControlService {
 						filePath: result.localPath,
 						recordingData: result.recordingData,
 					})
+					uploaded = true
 				} catch (error) {
 					console.error(`[${roomID}_${userId}] Auto-upload on disconnect failed:`, error)
+					uploaded = false
 				}
 			}
 
+			if (recipientSocketId) {
+				this.io.to(recipientSocketId).emit('recording-stopped', payload)
+			} else if (uploaded !== undefined && preferredSocketId) {
+				// The tab that asked may still be there, though the lookup could not tell
+				this.io.to(preferredSocketId).emit('recording-stopped', { fileId: roomID, uploaded })
+			}
 			if (initiatorSocket) {
-				initiatorSocket.emit('recording-stopped', payload)
 				initiatorSocket.to(roomID).emit('user-stopped-recording', {
-					userId,
-					username,
-				})
-			} else if (requesterSocketId) {
-				this.io.to(requesterSocketId).emit('recording-stopped', payload)
-				this.io.to(roomID).emit('user-stopped-recording', {
 					userId,
 					username,
 				})
