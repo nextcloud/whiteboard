@@ -147,6 +147,80 @@ describe('RecordingControlService', () => {
 		expect(other.events('recording-error').map((e) => e.payload)).toEqual(['Unauthorized'])
 	})
 
+	it('ends a recording whose page fails and sends it to the user\'s current tab', async () => {
+		const { service, socket, events, cluster, sockets } = setup()
+		const unhandled = vi.fn()
+		process.on('unhandledRejection', unhandled)
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		delete sockets['tab-1']
+		sockets['tab-2'] = 'teacher'
+		cluster.removeRecordingEntry.mockRejectedValueOnce(new Error('Redis is gone'))
+		recorders[0].emit('error', new Error('Page crashed!'))
+
+		await vi.waitFor(() => expect(events('recording-stopped')).toHaveLength(1))
+		expect(events('recording-stopped')[0].to).toBe('tab-2')
+		expect(recorders[0].cleanup).toHaveBeenCalledOnce()
+		expect(service.recordingServices.size).toBe(0)
+		await new Promise((resolve) => setTimeout(resolve, 10))
+		process.off('unhandledRejection', unhandled)
+		expect(unhandled).not.toHaveBeenCalled()
+	})
+
+	it('tells the user\'s current tab and the room when a failed page leaves no video', async () => {
+		const { service, socket, events, sockets } = setup()
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		delete sockets['tab-1']
+		sockets['tab-2'] = 'teacher'
+		recorders[0].stopRecording = async () => null
+		recorders[0].emit('error', new Error('Page crashed!'))
+
+		await vi.waitFor(() => expect(events('user-stopped-recording').map((e) => e.to)).toEqual(['42']))
+		expect(events('recording-error').map((e) => e.to)).toEqual(['tab-2'])
+		expect(service.recordingServices.size).toBe(0)
+	})
+
+	it('does not report a recording as started when its page fails while it is registered', async () => {
+		const { service, socket, events, cluster, entries } = setup()
+		let register
+		cluster.setRecordingEntry.mockImplementationOnce((room, user, entry) => new Promise((resolve) => {
+			register = () => resolve(entries.set(`${room}:${user}`, entry))
+		}))
+
+		const starting = service.startRecording(socket('tab-1'), startData(userToken()))
+		await vi.waitFor(() => expect(register).toBeTypeOf('function'))
+		recorders[0].emit('error', new Error('Page crashed!'))
+		await vi.waitFor(() => expect(service.recordingServices.size).toBe(0))
+		register()
+		await starting
+
+		expect(events('recording-started')).toEqual([])
+		expect(entries.size).toBe(0)
+	})
+
+	it('keeps the entry of a new recording when an ended start finishes registering', async () => {
+		const { service, socket, events, cluster, entries } = setup()
+		let registered
+		cluster.setRecordingEntry.mockImplementationOnce((room, user, entry) => {
+			entries.set(`${room}:${user}`, entry)
+			return new Promise((resolve) => {
+				registered = resolve
+			})
+		})
+
+		const starting = service.startRecording(socket('tab-1'), startData(userToken()))
+		await vi.waitFor(() => expect(registered).toBeTypeOf('function'))
+		recorders[0].emit('error', new Error('Page crashed!'))
+		await vi.waitFor(() => expect(service.recordingServices.size).toBe(0))
+		entries.set('42:teacher', { userId: 'teacher', nodeId: 'node-b', status: 'recording', startedAt: 1 })
+		registered()
+		await starting
+
+		expect(events('recording-started')).toEqual([])
+		expect(entries.get('42:teacher').nodeId).toBe('node-b')
+	})
+
 	it('starts one recording when the same user starts twice at once', async () => {
 		vi.useFakeTimers()
 		const { service, socket, events } = setup()
@@ -160,6 +234,20 @@ describe('RecordingControlService', () => {
 		expect(events('recording-error').map((e) => e.payload)).toEqual(['Recording already in progress'])
 		expect(recorders.filter((recorder) => recorder.cleanup.mock.calls.length)).toHaveLength(1)
 		expect(vi.getTimerCount()).toBe(1)
+	})
+
+	it('ignores a failure of a recorder that already ended', async () => {
+		const { service, socket, events } = setup()
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		await service.stopRecording(socket('tab-1'), '42')
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		recorders[0].emit('error', new Error('Browser disconnected'))
+		await new Promise((resolve) => setTimeout(resolve, 10))
+
+		expect(events('recording-stopped')).toHaveLength(1)
+		expect(recorders[1].cleanup).not.toHaveBeenCalled()
+		expect(service.recordingServices.size).toBe(1)
 	})
 
 	it('closes a recorder that fails to start', async () => {
