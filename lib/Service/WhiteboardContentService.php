@@ -39,7 +39,8 @@ final class WhiteboardContentService {
 	 */
 	public function getContent(File $file): array {
 		$fileContent = $file->getContent();
-		if ($fileContent === '') {
+		// Some object stores create new files with a single space
+		if (trim($fileContent, " \t\r\n") === '') {
 			$fileContent = '{"elements":[],"scrollToContent":true}';
 		}
 
