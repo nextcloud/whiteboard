@@ -11,7 +11,7 @@ import type { Voting } from '../types/voting'
 
 export type CollaborationConnectionStatus = 'online' | 'offline' | 'connecting' | 'reconnecting'
 
-export type AuthErrorType = 'jwt_secret_mismatch' | 'token_expired' | 'unauthorized' | null
+export type AuthErrorType = 'jwt_secret_mismatch' | 'token_expired' | 'unauthorized' | 'not_found' | null
 
 interface AuthErrorState {
 	type: AuthErrorType

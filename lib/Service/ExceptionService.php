@@ -17,6 +17,7 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
 
 /**
  * @psalm-suppress UndefinedClass
@@ -31,8 +32,7 @@ final class ExceptionService {
 		$statusCode = $this->getStatusCode($e);
 		$message = $this->getMessage($e);
 
-		// Log the exception with essential context for debugging
-		$this->logger->error('Exception handled: ' . get_class($e), [
+		$this->logger->log($this->getLogLevel($statusCode), 'Exception handled: ' . get_class($e), [
 			'message' => $e->getMessage(),
 			'file' => $e->getFile(),
 			'line' => $e->getLine(),
@@ -50,6 +50,11 @@ final class ExceptionService {
 			$e instanceof InvalidUserException => Http::STATUS_BAD_REQUEST,
 			default => (int)($e->getCode() ?: Http::STATUS_INTERNAL_SERVER_ERROR),
 		};
+	}
+
+	// Invalid requests, missing files and denied access are expected answers, not server errors
+	private function getLogLevel(int $statusCode): string {
+		return in_array($statusCode, [Http::STATUS_BAD_REQUEST, Http::STATUS_UNAUTHORIZED, Http::STATUS_FORBIDDEN, Http::STATUS_NOT_FOUND], true) ? LogLevel::DEBUG : LogLevel::ERROR;
 	}
 
 	private function getMessage(Exception $e): string {
