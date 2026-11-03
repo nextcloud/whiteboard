@@ -89,16 +89,19 @@ jobs:
           IMAGE: ${{ env.GHCR_REPO}}:${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.platform }}
         run: |
           docker run -d --name whiteboard -e JWT_SECRET_KEY=ci "$IMAGE"
-          for _ in $(seq 1 24); do
-            status=$(docker inspect --format '{{.State.Health.Status}}' whiteboard)
-            echo "health: $status"
-            if [ "$status" = healthy ]; then
-              exit 0
-            fi
-            sleep 5
+          docker run -d --name whiteboard-port -e JWT_SECRET_KEY=ci -e PORT=4000 "$IMAGE"
+          for container in whiteboard whiteboard-port; do
+            for _ in $(seq 1 24); do
+              status=$(docker inspect --format '{{.State.Health.Status}}' "$container")
+              echo "$container health: $status"
+              if [ "$status" = healthy ]; then
+                continue 2
+              fi
+              sleep 5
+            done
+            docker logs "$container"
+            exit 1
           done
-          docker logs whiteboard
-          exit 1
 
   release:
     if: github.event_name != 'pull_request'
