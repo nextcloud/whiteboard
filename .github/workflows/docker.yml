@@ -103,6 +103,22 @@ jobs:
             exit 1
           done
 
+      - name: Check that the image reaps orphaned processes and stops cleanly
+        if: github.event_name == 'pull_request'
+        run: |
+          # An orphan is handed to PID 1, which must reap it once it exits
+          docker exec whiteboard sh -c 'sleep 1 &'
+          sleep 3
+          docker exec whiteboard ps -o pid,ppid,stat,comm
+          if docker exec whiteboard ps -o stat | grep -q Z; then
+            echo 'Zombie processes left behind'
+            exit 1
+          fi
+          docker stop --time 20 whiteboard
+          code=$(docker inspect --format '{{.State.ExitCode}}' whiteboard)
+          docker logs --tail 20 whiteboard
+          [ "$code" = 0 ]
+
   release:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-22.04
