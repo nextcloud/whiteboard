@@ -35,6 +35,12 @@
 		gap: var(--default-grid-baseline);
 	}
 
+	// Nextcloud's hover and focus background for buttons would paint over the color of a swatch
+	.color-picker__button:hover,
+	.color-picker__button:focus {
+		background-color: var(--swatch-color);
+	}
+
 	.App-menu__left {
 		width: 270px;
 	}
