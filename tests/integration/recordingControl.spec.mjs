@@ -18,6 +18,7 @@ vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 	class FakeRecordingService extends EventEmitter {
 		constructor() {
 			super()
+			this.startResult = recorders.nextStartResult ?? true
 			this.updateToken = vi.fn(async () => {})
 			this.cleanup = vi.fn(async () => true)
 			recorders.push(this)
@@ -29,7 +30,8 @@ vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 		}
 
 		async startRecording() {
-			return true
+			await recorders.onStart?.()
+			return this.startResult
 		}
 
 		async stopRecording() {
@@ -79,6 +81,7 @@ function setup({ sockets = { 'tab-1': 'teacher' }, readOnly = [], recordingClien
 	const service = new RecordingControlService({ cluster, sessionStore, io, nodeId: 'node-a', recordingServices: new Map() })
 	const socket = (id) => ({
 		id,
+		connected: id in sockets,
 		rooms: new Set(['42']),
 		emit: (event, payload) => emitted.push({ to: id, event, payload }),
 		once: () => {},
@@ -91,6 +94,8 @@ function setup({ sockets = { 'tab-1': 'teacher' }, readOnly = [], recordingClien
 describe('RecordingControlService', () => {
 	beforeEach(() => {
 		recorders.length = 0
+		delete recorders.nextStartResult
+		delete recorders.onStart
 		delete recorders.onStop
 	})
 
@@ -140,6 +145,49 @@ describe('RecordingControlService', () => {
 		const other = setup({ sockets: { 'student-tab': 'student' } })
 		await other.service.startRecording(other.socket('student-tab'), startData(userToken()))
 		expect(other.events('recording-error').map((e) => e.payload)).toEqual(['Unauthorized'])
+	})
+
+	it('starts one recording when the same user starts twice at once', async () => {
+		vi.useFakeTimers()
+		const { service, socket, events } = setup()
+
+		await Promise.all([
+			service.startRecording(socket('tab-1'), startData(userToken())),
+			service.startRecording(socket('tab-1'), startData(userToken())),
+		])
+
+		expect(events('recording-started')).toHaveLength(1)
+		expect(events('recording-error').map((e) => e.payload)).toEqual(['Recording already in progress'])
+		expect(recorders.filter((recorder) => recorder.cleanup.mock.calls.length)).toHaveLength(1)
+		expect(vi.getTimerCount()).toBe(1)
+	})
+
+	it('closes a recorder that fails to start', async () => {
+		recorders.nextStartResult = false
+		const { service, socket, events } = setup()
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+
+		expect(events('recording-error').map((e) => e.payload)).toEqual(['Recorder failed to start'])
+		expect(recorders[0].cleanup).toHaveBeenCalledOnce()
+		expect(service.recordingServices.size).toBe(0)
+	})
+
+	it('rolls back a start that fails after the recorder started', async () => {
+		vi.useFakeTimers()
+		const { service, socket, events, cluster, entries } = setup()
+		cluster.setRecordingEntry.mockImplementationOnce(async (room, user, entry) => {
+			entries.set(`${room}:${user}`, entry)
+			throw new Error('Redis is gone')
+		})
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		expect(events('recording-error').map((e) => e.payload)).toEqual(['Redis is gone'])
+		expect(service.recordingServices.size).toBe(0)
+		expect(vi.getTimerCount()).toBe(0)
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+		expect(events('recording-started')).toHaveLength(1)
 	})
 
 	it('waits for a forwarded stop however long the node encodes, and reports a node that went away', async () => {
@@ -243,5 +291,36 @@ describe('RecordingControlService', () => {
 			['tab-1', { fileId: '42', uploaded: true }],
 			['tab-2', { fileId: '42', uploaded: true }],
 		])
+	})
+
+	it('keeps the recording another node registered when this node fails to register its own', async () => {
+		const { service, socket, events, entries, cluster } = setup()
+		cluster.setRecordingEntry.mockImplementationOnce(async () => {
+			entries.set('42:teacher', { userId: 'teacher', nodeId: 'node-b', status: 'recording' })
+			throw new Error('Redis unavailable')
+		})
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+
+		expect(events('recording-error').map((e) => e.payload)).toEqual(['Redis unavailable'])
+		expect(recorders[0].cleanup).toHaveBeenCalledOnce()
+		expect(entries.get('42:teacher').nodeId).toBe('node-b')
+	})
+
+	it('closes a recorder whose user left while it started', async () => {
+		vi.useFakeTimers()
+		const { service, socket, events, entries } = setup()
+		const tab = socket('tab-1')
+		recorders.onStart = () => {
+			tab.connected = false
+		}
+
+		await service.startRecording(tab, startData(userToken()))
+
+		expect(events('recording-started')).toEqual([])
+		expect(recorders[0].cleanup).toHaveBeenCalledOnce()
+		expect(service.recordingServices.size).toBe(0)
+		expect(entries.size).toBe(0)
+		expect(vi.getTimerCount()).toBe(0)
 	})
 })
