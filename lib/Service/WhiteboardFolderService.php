@@ -19,6 +19,7 @@ use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\Files\Template\ITemplateManager;
 use OCP\IConfig;
+use OCP\L10N\IFactory;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -49,6 +50,7 @@ final class WhiteboardFolderService {
 		private IRootFolder $rootFolder,
 		private IConfig $config,
 		private LoggerInterface $logger,
+		private IFactory $l10nFactory,
 		?callable $isFilenameValid = null,
 	) {
 		$this->isFilenameValid = $isFilenameValid;
@@ -68,11 +70,52 @@ final class WhiteboardFolderService {
 		}
 
 		$userFolder = $this->rootFolder->getUserFolder($uid);
-		$templatesFolder = $userFolder->get($this->templateManager->getTemplatePath());
-		if (!$templatesFolder instanceof Folder) {
+		$templatesFolder = $this->getSubfolder($userFolder, $this->templateManager->getTemplatePath());
+		if ($templatesFolder === null) {
+			// The user has no Templates folder, or deleted it: create one with the name Nextcloud gives new users
+			$defaultPath = $this->config->getAppValue('core', 'defaultTemplateDirectory', $this->l10nFactory->get('lib')->t('Templates')) . '/';
+			$templatesFolder = $this->getSubfolder($userFolder, $this->templateManager->initializeTemplateDirectory($defaultPath, $uid, false));
+		}
+		if ($templatesFolder === null) {
 			throw new NotFoundException('Templates folder not found for user: ' . $uid);
 		}
+		$this->moveLibraryFromRootFolder($userFolder, $templatesFolder);
 		return $templatesFolder;
+	}
+
+	/**
+	 * Without a Templates folder, the personal library used to be stored in the user's root folder
+	 */
+	private function moveLibraryFromRootFolder(Folder $userFolder, Folder $templatesFolder): void {
+		$name = WhiteboardLibraryService::PERSONAL_FILE;
+		if (!$userFolder->nodeExists($name) || $templatesFolder->nodeExists($name)) {
+			return;
+		}
+		$library = $userFolder->get($name);
+		if (!$library instanceof File) {
+			return;
+		}
+		try {
+			$library->move($templatesFolder->getPath() . '/' . $name);
+		} catch (\Exception $e) {
+			// Tried again on the next request
+			$this->logger->warning('Could not move the personal library into the Templates folder', ['app' => 'whiteboard', 'exception' => $e]);
+		}
+	}
+
+	/**
+	 * An empty path or `/` would be the user's root folder, which is never the Templates folder
+	 */
+	private function getSubfolder(Folder $userFolder, string $path): ?Folder {
+		if (trim($path, '/') === '') {
+			return null;
+		}
+		try {
+			$node = $userFolder->get($path);
+		} catch (NotFoundException) {
+			return null;
+		}
+		return $node instanceof Folder ? $node : null;
 	}
 
 	public function getAppDataFolder(string $dir, bool $create): ?Folder {
