@@ -9,6 +9,7 @@ import type { WhiteboardRootHandle } from '../utils/renderWhiteboardView.tsx'
 import { loadState } from '@nextcloud/initial-state'
 import { linkTo } from '@nextcloud/router'
 import { getSharingToken } from '@nextcloud/sharing/public'
+import { keepCtrlDelete } from '../utils/keepCtrlDelete.ts'
 import { renderWhiteboardView } from '../utils/renderWhiteboardView.tsx'
 
 import '../styles/index.scss'
@@ -39,6 +40,7 @@ export class WhiteboardViewerElement extends HTMLElement {
 	#file?: IFile
 	#comparison?: ComparisonView
 	#root: WhiteboardRootHandle | null = null
+	#releaseCtrlDelete: (() => void) | null = null
 
 	get file(): IFile | undefined {
 		return this.#file
@@ -66,6 +68,7 @@ export class WhiteboardViewerElement extends HTMLElement {
 
 	connectedCallback(): void {
 		this.addEventListener('keydown', keepEscape)
+		this.#releaseCtrlDelete = keepCtrlDelete()
 		this.#render()
 		// Drawing on a touch screen would otherwise step to the next file.
 		// Once the viewer listens: it does from after the element is rendered.
@@ -74,6 +77,8 @@ export class WhiteboardViewerElement extends HTMLElement {
 
 	disconnectedCallback(): void {
 		this.removeEventListener('keydown', keepEscape)
+		this.#releaseCtrlDelete?.()
+		this.#releaseCtrlDelete = null
 		this.#unmount()
 	}
 
