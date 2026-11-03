@@ -159,7 +159,6 @@
 </template>
 <script>
 import axios from '@nextcloud/axios'
-import { io } from 'socket.io-client'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -170,6 +169,7 @@ import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 import { t, n } from '@nextcloud/l10n'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import { verifyCollabConnection } from '../utils/verifyCollabConnection.ts'
 
 export default {
 	name: 'AdminSettings',
@@ -192,6 +192,7 @@ export default {
 			connectionError: undefined,
 			loadingSettings: false,
 			loadingSocket: false,
+			connectionCheck: null,
 			setupCheck: null,
 			orgLibraries: [],
 			loadingOrgLibraries: false,
@@ -259,6 +260,10 @@ export default {
 		this.verifyConnection({ jwt: loadState('whiteboard', 'jwt', '') })
 		this.fetchWebsocketLimits()
 	},
+
+	beforeUnmount() {
+		this.connectionCheck?.cancel()
+	},
 	methods: {
 		async submit() {
 			const data = await this.callSettings({
@@ -325,31 +330,19 @@ export default {
 				return
 			}
 
-			const url = new URL(this.serverUrl)
-			const path = url.pathname.replace(/\/$/, '') + '/socket.io'
-
+			this.connectionCheck?.cancel()
+			const check = verifyCollabConnection(this.serverUrl, data.jwt)
+			this.connectionCheck = check
 			this.loadingSocket = true
-			const socket = io(url.origin, {
-				path,
-				withCredentials: true,
-				auth: {
-					secret: data.jwt,
-				},
-				transports: ['websocket'],
-				timeout: 5000,
-			})
-			socket.on('connect', () => {
-				this.validConnection = true
-				this.connectionError = undefined
+			check.result.then(({ verified, error, cancelled }) => {
+				if (cancelled) {
+					return
+				}
+				this.connectionCheck = null
+				this.validConnection = verified
+				this.connectionError = verified ? undefined : error
 				this.loadingSocket = false
 			})
-			socket.on('connect_error', (error) => {
-				this.validConnection = error.message === 'Connection verified'
-				this.connectionError = this.validConnection === false ? error.message : undefined
-				socket.close()
-				this.loadingSocket = false
-			})
-			socket.connect()
 		},
 		async fetchOrgLibraries() {
 			this.loadingOrgLibraries = true
