@@ -9,27 +9,32 @@
 	--zIndex-popup: 100020 !important;
 }
 
-.widgets--list {
-	height: 100%;
-}
+// Reference widgets in an Excalidraw embeddable on the canvas fill the
+// embeddable's frame. Scoped as this stylesheet is also loaded on pages
+// that embed a whiteboard, where the page sizes these widgets.
+.excalidraw__embeddable-container {
+	.widgets--list {
+		height: 100%;
+	}
 
-.widgets--list > div {
-	height: 100% !important;
-}
+	.widgets--list > div {
+		height: 100% !important;
+	}
 
-.widgets--list > div > div {
-	height: 100% !important;
-}
+	.widgets--list > div > div {
+		height: 100% !important;
+	}
 
-.widget-custom {
-	height: 100%;
-	margin: 0 !important;
-}
+	.widget-custom {
+		height: 100%;
+		margin: 0 !important;
+	}
 
-.widget-file--interactive {
-	height: 100% !important;
-	max-height: 100% !important;
-	min-height: unset !important;
+	.widget-file--interactive {
+		height: 100% !important;
+		max-height: 100% !important;
+		min-height: unset !important;
+	}
 }
 
 .text-menubar--ready {
@@ -870,7 +875,7 @@
 			width: 32px;
 			height: 32px;
 			z-index: 100; /* High z-index to ensure clickability */
-			
+
 			svg {
 				pointer-events: none; /* Ensure icon doesn't block clicks */
 			}
@@ -1018,16 +1023,16 @@
 /* Draggable Dialog Component */
 .draggable-dialog {
 	user-select: none;
-	
+
 	&.dragging {
 		opacity: 0.9;
 		cursor: grabbing !important;
-		
+
 		* {
 			cursor: grabbing !important;
 		}
 	}
-	
+
 	&__handle {
 		position: absolute;
 		top: -30px;
@@ -1044,21 +1049,21 @@
 		color: var(--color-text-lighter);
 		transition: all 0.2s ease;
 		z-index: 1;
-		
+
 		&:hover {
 			background: var(--color-background-hover);
 			color: var(--color-main-text);
 		}
-		
+
 		&:active {
 			cursor: grabbing;
 		}
-		
+
 		svg {
 			pointer-events: none;
 		}
 	}
-	
+
 	&__content {
 		position: relative;
 	}
