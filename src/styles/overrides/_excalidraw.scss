@@ -41,6 +41,11 @@
 		background-color: var(--swatch-color);
 	}
 
+	// A border, not only a lighter background, tells the selected option apart
+	.buttonList label.active {
+		border-color: var(--color-primary-element);
+	}
+
 	.App-menu__left {
 		width: 270px;
 	}
