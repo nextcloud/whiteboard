@@ -802,7 +802,7 @@
   },
   "src/hooks/useVoting.ts": {
     "@stylistic/arrow-parens": {
-      "count": 3
+      "count": 2
     },
     "curly": {
       "count": 1

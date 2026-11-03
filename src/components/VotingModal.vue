@@ -105,8 +105,9 @@ export default {
 				showError(t('whiteboard', 'Please enter at least 2 options'))
 				return
 			}
-			this.onStartVoting(question, this.selectedType.id, validOptions)
-			this.$emit('close')
+			if (this.onStartVoting(question, this.selectedType.id, validOptions)) {
+				this.$emit('close')
+			}
 		},
 
 		onOpenUpdate(open) {
