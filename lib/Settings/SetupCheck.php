@@ -39,7 +39,7 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 		// Check if the WebSocket server URL is configured
 		if ($this->configService->getCollabBackendUrl() === '') {
 			return SetupResult::error(
-				$this->l10n->t('WebSocket server URL is not configured. Real-time collaboration requires a separate WebSocket server. Basic whiteboard functionality works without it.'),
+				$this->l10n->t('WebSocket server URL is not configured. Whiteboard needs a separate WebSocket server to save boards and for real-time collaboration.'),
 				'https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server-for-real-time-collaboration'
 			);
 		}
