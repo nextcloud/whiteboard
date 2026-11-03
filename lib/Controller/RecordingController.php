@@ -111,7 +111,7 @@ final class RecordingController extends Controller {
 			$content = $this->readUploadedFileContent($uploadedFile);
 
 			$recordingsFolder = $this->getOrCreateRecordingsFolder($userId);
-			$filename = $this->generateRecordingFilename($fileService->getFile()->getName() ?: $fileId);
+			$filename = $recordingsFolder->getNonExistingName($this->generateRecordingFilename($fileService->getFile()->getName() ?: $fileId));
 
 			$file = $recordingsFolder->newFile($filename, $content);
 
