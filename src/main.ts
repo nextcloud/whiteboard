@@ -545,7 +545,7 @@ async function primeRecordingJwt(fileId: number, jwt: string): Promise<void> {
 		return
 	}
 
-	const { useJWTStore } = await import('./stores/useJwtStore')
+	const { localTokenExpiry, useJWTStore } = await import('./stores/useJwtStore')
 	const payload = useJWTStore.getState().parseJwt(jwt)
 
 	if (!payload) {
@@ -560,7 +560,7 @@ async function primeRecordingJwt(fileId: number, jwt: string): Promise<void> {
 		},
 		tokenExpiries: {
 			...state.tokenExpiries,
-			[fileId]: payload.exp,
+			[fileId]: localTokenExpiry(payload),
 		},
 	}))
 }
