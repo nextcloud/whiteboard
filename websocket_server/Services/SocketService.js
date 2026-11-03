@@ -367,9 +367,13 @@ export default class SocketService {
 				}
 
 				const roomSockets = await this.roomLifecycleController.getUserSocketsInRoom(roomId)
-				const otherActiveSocket = roomSockets
-					.filter(Boolean)
-					.some((entry) => entry.userId === currentSyncerUserId && entry.socketId !== socketId)
+				let otherActiveSocket = false
+				for (const entry of roomSockets.filter(Boolean)) {
+					if (entry.userId === currentSyncerUserId && entry.socketId !== socketId && !(await this.sessionStore.isReadOnly(entry.socketId))) {
+						otherActiveSocket = true
+						break
+					}
+				}
 
 				if (!otherActiveSocket) {
 					syncerRoomsToClear.add(roomId)
@@ -810,7 +814,7 @@ export default class SocketService {
 	 */
 	async stopRecordingHandler(socket, roomID) {
 		const socketData = await this.sessionStore.getSocketData(socket.id)
-		if (socketData?.user?.id) {
+		if (socketData?.user?.id && !(await this.sessionStore.isReadOnly(socket.id))) {
 			this.cancelPendingRecordingStop(roomID, socketData.user.id)
 		}
 		return this.recordingController.stopRecording(socket, roomID)

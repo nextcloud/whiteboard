@@ -28,7 +28,11 @@ vi.mock('puppeteer-core', () => ({
 			setJavaScriptEnabled: async () => {},
 			setViewport: async () => {},
 			setUserAgent: async () => {},
-			goto: async () => {},
+			goto: async (url) => {
+				if (browsers.failNavigation) {
+					throw new Error(`net::ERR_NAME_NOT_RESOLVED at ${url}`)
+				}
+			},
 			waitForFunction: async () => {},
 			addStyleTag: async () => {},
 			evaluate: vi.fn(async (fn, ...args) => {
@@ -86,5 +90,30 @@ describe('RecordingService', () => {
 		expect(page.calls.some(([name]) => name === 'stop')).toBe(true)
 		vi.useRealTimers()
 		await stopping
+	})
+
+	it('hands a renewed token to the recording page', async () => {
+		const { recorder, page } = await startedRecorder()
+
+		await recorder.updateToken('42', 'teacher', 'renewed-token')
+
+		expect(page.calls.at(-1)).toEqual(['evaluate', expect.stringContaining('updateRecordingJwt'), 'renewed-token'])
+	})
+
+	it('keeps the token out of navigation errors', async () => {
+		browsers.failNavigation = true
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+		try {
+			const error = await new RecordingService()
+				.init('https://cloud.example/apps/whiteboard/recording/42/teacher?token=bot-token', '42', 'teacher')
+				.catch((e) => e)
+
+			expect(error.message).toContain('https://cloud.example/apps/whiteboard/recording/42/teacher')
+			expect(error.message).not.toContain('bot-token')
+			expect(logged.mock.calls.flat().map(String).join('\n')).not.toContain('bot-token')
+		} finally {
+			browsers.failNavigation = false
+			logged.mockRestore()
+		}
 	})
 })
