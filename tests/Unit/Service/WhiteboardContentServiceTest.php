@@ -403,6 +403,45 @@ class WhiteboardContentServiceTest extends TestCase {
 		return $actor;
 	}
 
+	public function testSaveKeepsTheExcalidrawFileType(): void {
+		$file = $this->mockFileWithContent([
+			'type' => 'excalidraw',
+			'version' => 2,
+			'source' => 'https://excalidraw.com',
+			'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1]],
+			'appState' => ['viewBackgroundColor' => '#ffffff'],
+			'files' => [],
+		]);
+		$captured = $this->captureWrite($file);
+
+		$this->service()->updateContent($file, [
+			'data' => [
+				'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 2, 'versionNonce' => 2]],
+				'files' => [],
+			],
+		], $this->actor());
+
+		$this->assertSame('excalidraw', $captured->data['type']);
+		$this->assertSame(2, $captured->data['version']);
+		$this->assertSame('https://excalidraw.com', $captured->data['source']);
+	}
+
+	public function testSaveAddsTheExcalidrawFileTypeToBoards(): void {
+		$file = $this->mockEmptyFile();
+		$captured = $this->captureWrite($file);
+
+		$this->service()->updateContent($file, [
+			'data' => [
+				'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1]],
+				'files' => [],
+			],
+		], $this->actor());
+
+		$this->assertSame('excalidraw', $captured->data['type']);
+		$this->assertSame(2, $captured->data['version']);
+		$this->assertArrayNotHasKey('source', $captured->data);
+	}
+
 	/** @return File&MockObject */
 	private function mockEmptyFile(): File {
 		$file = $this->createMock(File::class);
