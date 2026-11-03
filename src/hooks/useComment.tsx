@@ -436,6 +436,18 @@ export function useComment(props?: UseCommentProps) {
 		}
 
 		const handlePointerStart = (e: PointerEvent) => {
+			// Panning with the hand tool or the middle button moves the canvas, not the comment
+			const isPanning = e.button === 1 || (e.button === 0 && excalidrawAPI.getAppState().activeTool.type === 'hand')
+			if (isPanning) {
+				e.preventDefault()
+				pin.closest('.excalidraw')
+					?.querySelector('.excalidraw__canvas.interactive')
+					?.dispatchEvent(new PointerEvent('pointerdown', e))
+				return
+			}
+			if (e.button !== 0) {
+				return
+			}
 			e.preventDefault()
 			e.stopPropagation()
 
