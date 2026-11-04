@@ -9,6 +9,7 @@ import { loadState } from '@nextcloud/initial-state'
 import { linkTo } from '@nextcloud/router'
 import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
 import { h } from 'vue'
+import { keepCtrlDelete } from './utils/keepCtrlDelete.ts'
 import logger from './utils/logger'
 import { callMobileMessage } from './utils/mobileInterface'
 import {
@@ -327,6 +328,7 @@ type ViewerComponentOptions = {
 type WhiteboardComponentData = {
 	containerId: string
 	root: WhiteboardRootHandle | null
+	releaseCtrlDelete: (() => void) | null
 }
 
 type LegacyCreateElement = (
@@ -344,6 +346,7 @@ type WhiteboardComponentInstance = WhiteboardComponentData & {
 	source?: string | null
 	isEmbedded?: boolean
 	isComparisonView?: boolean
+	active?: boolean
 	basename?: string
 }
 
@@ -401,6 +404,8 @@ type WindowWithViewer = Window & {
 }
 
 function unmountWhiteboardRoot(component: WhiteboardComponentInstance): void {
+	component.releaseCtrlDelete?.()
+	component.releaseCtrlDelete = null
 	component.root?.unmount()
 	component.root = null
 }
@@ -445,6 +450,7 @@ function createWhiteboardComponent(options: ViewerComponentOptions): ViewerCompo
 					event.stopPropagation()
 				}
 			})
+			this.releaseCtrlDelete = keepCtrlDelete(() => this.active === true)
 
 			const normalizedFileId
 				= Number(this.fileid ?? this.fileId ?? 0) || 0
@@ -501,10 +507,13 @@ function createWhiteboardComponent(options: ViewerComponentOptions): ViewerCompo
 			source: { type: String, default: null },
 			isEmbedded: { type: Boolean, default: false },
 			isComparisonView: { type: Boolean, default: false },
+			// The viewer also renders the previous and next file, without `active`
+			active: { type: Boolean, default: false },
 		},
 		data: (): WhiteboardComponentData => ({
 			containerId: generateWhiteboardElementId(),
 			root: null,
+			releaseCtrlDelete: null,
 		}),
 	}
 }
