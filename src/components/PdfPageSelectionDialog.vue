@@ -3,7 +3,9 @@
  - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <template>
-	<NcDialog :name="t('whiteboard', 'Import pages from \'{fileName}\'', { fileName })" @update:open="onOpenUpdate">
+	<!-- Vue escapes the title itself, so t() must neither escape nor sanitize it,
+		or the file name would show HTML entities or lose parts that look like tags. -->
+	<NcDialog :name="t('whiteboard', 'Import pages from \'{fileName}\'', { fileName }, undefined, { escape: false, sanitize: false })" @update:open="onOpenUpdate">
 		<!-- NcModal ignores Escape from inputs, which hold the focus when the dialog
 			opens, so Escape anywhere in the content cancels here, like in the smart picker.
 			Stopping it keeps Excalidraw from reacting to it as well. -->
