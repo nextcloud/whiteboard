@@ -63,6 +63,7 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.1.0",
     "@nextcloud/browserslist-config": "^3.1.2",
     "@nextcloud/e2e-test-server": "^0.6.1",
     "@nextcloud/eslint-config": "^9.0.1",
@@ -78,7 +79,6 @@
     "@vue/tsconfig": "^0.9.1",
     "browserslist": "^4.29.5",
     "fake-indexeddb": "^6.2.7",
-    "happy-dom": "^21.0.1",
     "jsdom": "^30.1.2",
     "nodemon": "^3.1.14",
     "prettier": "^3.9.10",
