@@ -4,12 +4,12 @@
 -->
 <template>
 	<div>
-		<NcSettingsSection :name="t('whiteboard', 'Real-time collaboration server')">
+		<NcSettingsSection :name="t('whiteboard', 'WebSocket server')">
 			<NcNoteCard v-if="!loading && setupCheck !== null" :type="setupCheck.severity">
 				{{ setupCheck.description }}
 			</NcNoteCard>
 			<NcNoteCard v-else-if="!loading && validConnection === true" type="success">
-				{{ t('whiteboard', 'WebSocket server for real-time collaboration is configured and connected.') }}
+				{{ t('whiteboard', 'WebSocket server is configured and connected.') }}
 			</NcNoteCard>
 			<NcNoteCard v-else-if="!loading && validConnection === false" type="error">
 				{{ t('whiteboard', 'Failed to verify the connection:') }} {{ connectionError }}
@@ -24,7 +24,7 @@
 				{{ t('whiteboard', 'The WebSocket server handles real-time collaboration sessions between users and decides which browser saves each board. Boards are only saved to Nextcloud when this server is running and accessible from users\' browsers.') }}
 			</p>
 			<p>
-				<a href="https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server-for-real-time-collaboration"
+				<a href="https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server"
 					rel="noreferrer noopener"
 					target="_blank"
 					class="external">{{ t('whiteboard', 'See the documentation on how to install and configure the WebSocket server.') }}</a>
@@ -33,7 +33,7 @@
 				<p>
 					<NcTextField v-model="serverUrl"
 						:label="t('whiteboard', 'WebSocket server URL')"
-						:helper-text="t('whiteboard', 'URL where the WebSocket server for real-time collaboration is running. Must be accessible from users\' browsers.')" />
+						:helper-text="t('whiteboard', 'URL where the WebSocket server is running. Must be accessible from users\' browsers.')" />
 				</p>
 				<p>
 					<NcPasswordField v-model="secret"

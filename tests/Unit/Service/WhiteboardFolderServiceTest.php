@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\Service;
 
 use InvalidArgumentException;
+use OCA\Whiteboard\Exception\TemplatesFolderUnavailableException;
+use OCP\AppFramework\Http;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -147,7 +149,9 @@ class WhiteboardFolderServiceTest extends TestCase {
 	}
 
 	public function testFailsWhenNoTemplatesFolderCanBeCreated(): void {
-		$this->expectException(NotFoundException::class);
+		$this->expectException(TemplatesFolderUnavailableException::class);
+		$this->expectExceptionCode(Http::STATUS_FAILED_DEPENDENCY);
+		$this->expectExceptionMessage('alice');
 		$this->createService($this->templateManager('', ''), $this->userFolder([]))->getUserTemplateFolder('alice');
 	}
 

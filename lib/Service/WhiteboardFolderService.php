@@ -11,6 +11,7 @@ namespace OCA\Whiteboard\Service;
 
 use InvalidArgumentException;
 use JsonException;
+use OCA\Whiteboard\Exception\TemplatesFolderUnavailableException;
 use OCP\AppFramework\Http;
 use OCP\Files\File;
 use OCP\Files\Folder;
@@ -63,6 +64,7 @@ final class WhiteboardFolderService {
 	/**
 	 * @throws NotPermittedException
 	 * @throws NotFoundException
+	 * @throws TemplatesFolderUnavailableException
 	 */
 	public function getUserTemplateFolder(string $uid): Folder {
 		if (!$this->templateManager->hasTemplateDirectory()) {
@@ -77,7 +79,7 @@ final class WhiteboardFolderService {
 			$templatesFolder = $this->getSubfolder($userFolder, $this->templateManager->initializeTemplateDirectory($defaultPath, $uid, false));
 		}
 		if ($templatesFolder === null) {
-			throw new NotFoundException('Templates folder not found for user: ' . $uid);
+			throw new TemplatesFolderUnavailableException($uid);
 		}
 		$this->moveLibraryFromRootFolder($userFolder, $templatesFolder);
 		return $templatesFolder;

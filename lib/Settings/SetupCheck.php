@@ -28,7 +28,7 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 	 */
 	#[\Override]
 	public function getName(): string {
-		return 'Whiteboard real-time collaboration';
+		return 'Whiteboard WebSocket server';
 	}
 
 	/**
@@ -40,15 +40,15 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 		if ($this->configService->getCollabBackendUrl() === '') {
 			return SetupResult::error(
 				$this->l10n->t('WebSocket server URL is not configured. Whiteboard needs a separate WebSocket server to save boards and for real-time collaboration.'),
-				'https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server-for-real-time-collaboration'
+				'https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server'
 			);
 		}
 
 		// Check if the shared secret key is configured
 		if ($this->configService->getWhiteboardSharedSecret() === '') {
 			return SetupResult::error(
-				$this->l10n->t('WebSocket server shared secret is not configured. This is required for secure authentication between Nextcloud and the WebSocket server for real-time collaboration.'),
-				'https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server-for-real-time-collaboration'
+				$this->l10n->t('WebSocket server shared secret is not configured. Nextcloud and the WebSocket server need it to authenticate each other, which is required to save boards and for real-time collaboration.'),
+				'https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server'
 			);
 		}
 
@@ -57,6 +57,6 @@ class SetupCheck implements \OCP\SetupCheck\ISetupCheck {
 		// 2. The Nextcloud server might be in a different network environment (Docker, proxy, etc.)
 		// 3. The frontend admin UI already performs a browser-based connection test
 
-		return SetupResult::success($this->l10n->t('WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity for real-time collaboration.'));
+		return SetupResult::success($this->l10n->t('WebSocket server configuration is valid. Browser-based connection test will verify actual connectivity.'));
 	}
 }

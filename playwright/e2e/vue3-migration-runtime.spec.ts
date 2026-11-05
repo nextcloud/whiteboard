@@ -111,7 +111,7 @@ base('Vue 3 admin settings render and validation', async ({ browser, baseURL }) 
 
 	await loginAsAdmin(page)
 	await page.goto('settings/admin/whiteboard')
-	await expect(page.getByText('Real-time collaboration server')).toBeVisible()
+	await expect(page.getByRole('heading', { name: 'WebSocket server', exact: true })).toBeVisible()
 	await expect(page.getByLabel('WebSocket server URL')).toBeVisible()
 	await expect(page.getByLabel('Shared secret')).toBeVisible()
 

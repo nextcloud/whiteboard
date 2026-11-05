@@ -37,6 +37,7 @@ import { useAssistant } from './hooks/useAssistant'
 import logger from './utils/logger'
 import { prepareDuplicatedElements } from './utils/mergeElementsWithMetadata.ts'
 import { resolveOrgLibraryItems } from './utils/orgLibraryItems.ts'
+import { saveErrorMessage } from './utils/saveErrorMessage.ts'
 import { useRecording } from './hooks/useRecording'
 import { RecordingOverlay } from './components/Recording'
 import { usePresentation } from './hooks/usePresentation'
@@ -488,9 +489,11 @@ export default function App({
 				: t('whiteboard', 'Library saved.'))
 			setLibraryDialogOpen(false)
 		} catch (error) {
-			const message = (error as { status?: number }).status === 409
-				? t('whiteboard', 'A canvas template with this name already exists. Choose a different name.')
-				: t('whiteboard', 'Could not save library.')
+			const message = saveErrorMessage(
+				error,
+				t('whiteboard', 'A canvas template with this name already exists. Choose a different name.'),
+				t('whiteboard', 'Could not save library.'),
+			)
 			setSaveDialogError(message)
 			showError(message)
 			logger.error('[App] Error saving library:', error)
@@ -548,9 +551,11 @@ export default function App({
 				: t('whiteboard', 'Canvas saved to your Templates folder.'))
 			setCanvasTemplateDialogOpen(false)
 		} catch (error) {
-			const message = (error as { status?: number }).status === 409
-				? t('whiteboard', 'A library with this name already exists. Choose a different name.')
-				: t('whiteboard', 'Could not save canvas.')
+			const message = saveErrorMessage(
+				error,
+				t('whiteboard', 'A library with this name already exists. Choose a different name.'),
+				t('whiteboard', 'Could not save canvas.'),
+			)
 			setSaveDialogError(message)
 			showError(message)
 			logger.error('[App] Error saving canvas template:', error)
