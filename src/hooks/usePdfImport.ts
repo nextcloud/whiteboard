@@ -29,6 +29,16 @@ const PAGE_GAP_PX = 40
 class PdfImportCancelled extends Error {}
 
 /**
+ * Why a running import was stopped: the board became read-only, or it was
+ * closed (the hook unmounted or got another Excalidraw instance).
+ */
+class PdfImportAborted extends Error {
+	constructor(readonly reason: 'readOnly' | 'closed') {
+		super(`PDF import aborted: ${reason}`)
+	}
+}
+
+/**
  * Lists pages with their sizes, for the size messages.
  *
  * @param pages - The pages to list.
@@ -93,32 +103,60 @@ export function usePdfImport() {
 		isReadOnly: state.isReadOnly,
 	})))
 
+	// Imports in progress, so they can be stopped when the board stops being
+	// writable or goes away.
+	const runningImportsRef = useRef(new Set<AbortController>())
+	const abortRunningImports = useCallback((reason: PdfImportAborted['reason']) => {
+		for (const controller of runningImportsRef.current) {
+			controller.abort(new PdfImportAborted(reason))
+		}
+		runningImportsRef.current.clear()
+	}, [])
+
+	useEffect(() => {
+		if (isReadOnly) {
+			abortRunningImports('readOnly')
+		}
+	}, [isReadOnly, abortRunningImports])
+
+	// Also runs on unmount, when the board is closed.
+	useEffect(() => () => abortRunningImports('closed'), [excalidrawAPI, abortRunningImports])
+
 	/**
 	 * Resolves with the page range chosen in PdfPageSelectionDialog, or rejects
-	 * with PdfImportCancelled. The dialog renders its previews through
+	 * with PdfImportCancelled, or with the signal's reason once it aborts, which
+	 * also closes the dialog. The dialog renders its previews through
 	 * renderPreview and never touches pdfjs-dist itself.
 	 */
-	const openPageSelectionDialog = useCallback((fileName: string, numPages: number, renderPreview: (pageNumber: number) => Promise<string>) => {
+	const openPageSelectionDialog = useCallback((fileName: string, numPages: number, renderPreview: (pageNumber: number) => Promise<string>, signal: AbortSignal) => {
 		return new Promise<{ start: number, end: number }>((resolve, reject) => {
 			const element = document.createElement('div')
 			document.body.appendChild(element)
+			// Removes the abort listener once the dialog is answered.
+			const listening = new AbortController()
 			const view = mountVueComponent(PdfPageSelectionDialog, element, { fileName, numPages, renderPreview }, {
 				cancel: () => {
+					listening.abort()
 					view.unmount()
 					reject(new PdfImportCancelled())
 				},
 				submit: (range: { start: number, end: number }) => {
+					listening.abort()
 					view.unmount()
 					resolve(range)
 				},
 			}, {
 				removeTargetOnUnmount: true,
 			})
+			signal.addEventListener('abort', () => {
+				view.unmount()
+				reject(signal.reason)
+			}, { signal: listening.signal })
 		})
 	}, [])
 
-	const importPdfFile = useCallback(async (fileName: string, data: ArrayBuffer) => {
-		if (!excalidrawAPI || isReadOnly) {
+	const importPdfFile = useCallback(async (fileName: string, data: ArrayBuffer, signal: AbortSignal) => {
+		if (!excalidrawAPI || isReadOnly || signal.aborted) {
 			return
 		}
 
@@ -127,6 +165,7 @@ export function usePdfImport() {
 
 		try {
 			handle = await openPdfDocument(data)
+			signal.throwIfAborted()
 
 			if (handle.totalPages === 0) {
 				showError(t('whiteboard', 'The PDF "{name}" has no pages to import.', { name: fileName }))
@@ -143,7 +182,7 @@ export function usePdfImport() {
 					const { pages: previewPages } = await renderPdfPages(openHandle, { start: pageNumber, end: pageNumber }, undefined, PREVIEW_MAX_DIMENSION_PX)
 					return previewPages[0].dataURL
 				}
-				range = await openPageSelectionDialog(fileName, handle.totalPages, renderPreview)
+				range = await openPageSelectionDialog(fileName, handle.totalPages, renderPreview, signal)
 			}
 			const pagesToRender = range.end - range.start + 1
 
@@ -162,7 +201,9 @@ export function usePdfImport() {
 			const maxImageSizeBytes = getMaxImageSizeBytes()
 			const sizeTarget = getPageSizeTarget(maxImageSizeBytes, pagesToRender)
 			const sizeLimit = getPageSizeLimit(maxImageSizeBytes)
-			const { pages: renderedPages } = await renderPdfPages(handle, range, showProgress, undefined, sizeTarget.bytes)
+			const { pages: renderedPages } = await renderPdfPages(handle, range, showProgress, undefined, sizeTarget.bytes, signal)
+			// The last page may have finished just as the board stopped being writable.
+			signal.throwIfAborted()
 
 			toastState.current?.hideToast()
 
@@ -227,7 +268,12 @@ export function usePdfImport() {
 			}
 		} catch (error) {
 			toastState.current?.hideToast()
-			if (!(error instanceof PdfImportCancelled)) {
+			if (error instanceof PdfImportAborted) {
+				// A closed board has no one left to tell.
+				if (error.reason === 'readOnly') {
+					showWarning(t('whiteboard', 'The import of "{name}" was stopped because the whiteboard is now read-only. Nothing was imported.', { name: fileName }))
+				}
+			} else if (!(error instanceof PdfImportCancelled)) {
 				showError(t('whiteboard', 'Could not import PDF "{name}": {message}', {
 					name: fileName,
 					message: error instanceof Error ? error.message : String(error),
@@ -248,22 +294,28 @@ export function usePdfImport() {
 	// Read the file before any other async work: cloud-sync placeholder files
 	// can become unreadable (NotReadableError) if the read is delayed.
 	const readFileAndImport = useCallback(async (file: File) => {
-		let data: ArrayBuffer
+		const controller = new AbortController()
+		runningImportsRef.current.add(controller)
 		try {
-			data = await file.arrayBuffer()
-		} catch (error) {
-			if (error instanceof DOMException && error.name === 'NotReadableError') {
-				showError(t('whiteboard', 'The file could not be read. Make sure it is fully downloaded and still exists.'))
-			} else {
-				showError(t('whiteboard', 'Could not read "{name}": {message}', {
-					name: file.name,
-					message: error instanceof Error ? error.message : String(error),
-				}))
+			let data: ArrayBuffer
+			try {
+				data = await file.arrayBuffer()
+			} catch (error) {
+				if (error instanceof DOMException && error.name === 'NotReadableError') {
+					showError(t('whiteboard', 'The file could not be read. Make sure it is fully downloaded and still exists.'))
+				} else {
+					showError(t('whiteboard', 'Could not read "{name}": {message}', {
+						name: file.name,
+						message: error instanceof Error ? error.message : String(error),
+					}))
+				}
+				return
 			}
-			return
-		}
 
-		await importPdfFileRef.current(file.name, data)
+			await importPdfFileRef.current(file.name, data, controller.signal)
+		} finally {
+			runningImportsRef.current.delete(controller)
+		}
 	}, [])
 
 	useEffect(() => {
