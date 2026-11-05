@@ -9,7 +9,7 @@ ENV PUPPETEER_SKIP_DOWNLOAD=1
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --global clean-modules && \
-    npm clean-install && \
+    npm clean-install --omit=dev --omit=optional && \
     clean-modules --yes && \
     npm cache clean --force
 COPY . .
