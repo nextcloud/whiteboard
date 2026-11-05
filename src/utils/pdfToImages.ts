@@ -7,7 +7,6 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy } from 'pdf
 
 import { linkTo } from '@nextcloud/router'
 import logger from './logger.ts'
-import { applyPromiseTryPolyfill } from './promiseTryPolyfill.ts'
 
 /** Longer edge of an A4 page, in PDF points (1/72 inch). */
 export const A4_LONG_EDGE_PT = 842
@@ -235,11 +234,10 @@ interface PdfDocumentHandle {
  *   cloud-sync placeholder file can become unreadable after a delay.
  */
 export async function openPdfDocument(pdfData: ArrayBuffer): Promise<PdfDocumentHandle> {
-	applyPromiseTryPolyfill()
-
+	// The legacy build brings its own polyfills, Promise.try among them.
 	const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-	// Our own worker entry, so the Promise.try polyfill runs inside the worker too.
+	// Our own worker entry, bundled by Vite like syncWorker.ts.
 	const workerPort = new Worker(new URL('../workers/pdfWorkerEntry.ts', import.meta.url), { type: 'module' })
 
 	// A worker that fails to start never answers pdf.js, so surface its errors
