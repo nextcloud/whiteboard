@@ -164,7 +164,7 @@ describe('getPageRenderScale against a real PDF', () => {
 })
 
 describe('renderPdfPages', () => {
-	// Node has no DOM canvas; @napi-rs/canvas (a pdfjs-dist dependency) stands in.
+	// Node has no DOM canvas; @napi-rs/canvas stands in.
 	let originalDocument
 
 	beforeEach(() => {
