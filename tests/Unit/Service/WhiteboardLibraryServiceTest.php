@@ -16,6 +16,7 @@ use OCP\Files\IRootFolder;
 use OCP\Files\IUserFolder;
 use OCP\Files\Template\ITemplateManager;
 use OCP\IConfig;
+use OCP\L10N\IFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 use Test\TestCase;
@@ -85,7 +86,7 @@ class WhiteboardLibraryServiceTest extends TestCase {
 		$config->method('getSystemValueString')->with('instanceid', '')->willReturn('test');
 
 		$logger = $this->createMock(LoggerInterface::class);
-		$folders = new WhiteboardFolderService($this->templateManager, $this->rootFolder, $config, $logger, static fn (): bool => true);
+		$folders = new WhiteboardFolderService($this->templateManager, $this->rootFolder, $config, $logger, $this->createMock(IFactory::class), static fn (): bool => true);
 		$this->service = new WhiteboardLibraryService($folders, $config, $logger);
 	}
 

@@ -22,6 +22,7 @@ use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use OCP\L10N\IFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 use Test\TestCase;
@@ -90,7 +91,7 @@ class PickerControllerTest extends TestCase {
 		$userSession->method('getUser')->willReturn($user);
 
 		$logger = $this->createMock(LoggerInterface::class);
-		$folders = new WhiteboardFolderService($templateManager, $rootFolder, $config, $logger);
+		$folders = new WhiteboardFolderService($templateManager, $rootFolder, $config, $logger, $this->createMock(IFactory::class));
 		$controller = new PickerController(
 			$this->createMock(IRequest::class),
 			$userSession,
@@ -121,7 +122,7 @@ class PickerControllerTest extends TestCase {
 		$userSession->method('getUser')->willReturn(null);
 
 		$logger = $this->createMock(LoggerInterface::class);
-		$folders = new WhiteboardFolderService($this->createMock(ITemplateManager::class), $rootFolder, $config, $logger);
+		$folders = new WhiteboardFolderService($this->createMock(ITemplateManager::class), $rootFolder, $config, $logger, $this->createMock(IFactory::class));
 		$controller = new PickerController(
 			$this->createMock(IRequest::class),
 			$userSession,

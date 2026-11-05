@@ -44,7 +44,7 @@ use RuntimeException;
  * @psalm-suppress MissingDependency
  */
 final class WhiteboardLibraryService {
-	private const PERSONAL_FILE = 'personal.excalidrawlib';
+	public const PERSONAL_FILE = 'personal.excalidrawlib';
 	private const LIBRARY_EXTENSION = '.excalidrawlib';
 	private const WHITEBOARD_EXTENSION = '.whiteboard';
 	private const PERSONAL_LIBRARY_DIR = '.whiteboard-libraries';

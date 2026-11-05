@@ -36,6 +36,7 @@ use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
+use OCP\L10N\IFactory;
 use OCP\Share\IManager as ShareManager;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -109,7 +110,7 @@ class WhiteboardControllerTest extends TestCase {
 		$config->method('getSystemValueString')->with('instanceid', '')->willReturn('test');
 
 		$logger = $this->createMock(LoggerInterface::class);
-		$folders = new WhiteboardFolderService($templateManager, $rootFolder, $config, $logger, static fn (): bool => true);
+		$folders = new WhiteboardFolderService($templateManager, $rootFolder, $config, $logger, $this->createMock(IFactory::class), static fn (): bool => true);
 
 		$cache = $this->createMock(IMemcache::class);
 		$cache->method('add')->willReturn(!$syncLockBusy);
