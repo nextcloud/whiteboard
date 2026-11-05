@@ -306,13 +306,15 @@ async function renderPageToCanvas(page: PDFPageProxy, longerEdgePx: number): Pro
  * @param longerEdgePx - Initial longer edge, in pixels.
  * @param budgetBytes - Maximum data URL length.
  * @param firstQualityStep - Index into JPEG_QUALITY_STEPS to start at.
+ * @param signal - Stops before the next render once aborted, throwing its reason.
  */
-export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: number, budgetBytes: number = PAGE_DATAURL_BUDGET_BYTES, firstQualityStep = 0): Promise<BudgetedPage> {
+export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: number, budgetBytes: number = PAGE_DATAURL_BUDGET_BYTES, firstQualityStep = 0, signal?: AbortSignal): Promise<BudgetedPage> {
 	const lowestQualityStep = JPEG_QUALITY_STEPS.length - 1
 	let edgePx = longerEdgePx
 	let smallest: BudgetedPage | undefined
 
 	for (let downscaleStep = 0; downscaleStep <= MAX_DOWNSCALE_STEPS; downscaleStep++) {
+		signal?.throwIfAborted()
 		const qualityStep = downscaleStep === 0 ? Math.min(firstQualityStep, lowestQualityStep) : lowestQualityStep
 		const atThisSize = await encodePageWithinBudget(page, edgePx, qualityStep, budgetBytes)
 		if (atThisSize.dataURL.length <= budgetBytes) {
@@ -391,6 +393,8 @@ async function encodePageWithinBudget(page: PDFPageProxy, longerEdgePx: number, 
  *   limit. Pages that still don't fit are returned anyway, for the caller
  *   to skip or keep. Each page starts at the JPEG quality that sufficed for
  *   the page before it.
+ * @param signal - Stops before the next page or render once aborted,
+ *   throwing its reason.
  */
 export async function renderPdfPages(
 	handle: PdfDocumentHandle,
@@ -398,6 +402,7 @@ export async function renderPdfPages(
 	onProgress?: (renderedCount: number, pagesToRender: number, totalPages: number) => void,
 	maxDimensionPx?: number,
 	maxPageBytes: number = Infinity,
+	signal?: AbortSignal,
 ): Promise<PdfToImagesResult> {
 	const { pdf, totalPages } = handle
 	// Base64 takes 4 characters per 3 bytes.
@@ -409,11 +414,12 @@ export async function renderPdfPages(
 	let qualityStep = 0
 
 	for (let pageNumber = range.start; pageNumber <= range.end; pageNumber++) {
+		signal?.throwIfAborted()
 		const page = await pdf.getPage(pageNumber)
 		try {
 			const baseViewport = page.getViewport({ scale: 1 })
 			const longerEdgePx = maxDimensionPx ?? getPageRenderDimension(baseViewport.width, baseViewport.height)
-			const { qualityStep: usedQualityStep, ...rendered } = await renderPageWithinBudget(page, longerEdgePx, budgetBytes, qualityStep)
+			const { qualityStep: usedQualityStep, ...rendered } = await renderPageWithinBudget(page, longerEdgePx, budgetBytes, qualityStep, signal)
 			qualityStep = usedQualityStep
 			const display = getPageDisplaySize(baseViewport.width, baseViewport.height)
 

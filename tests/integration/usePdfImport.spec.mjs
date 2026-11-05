@@ -114,6 +114,7 @@ describe('usePdfImport', () => {
 	})
 
 	afterEach(async () => {
+		// Unmounting twice is a no-op, for tests that close the board themselves.
 		await act(async () => root.unmount())
 		document.body.innerHTML = ''
 		vi.clearAllMocks()
@@ -126,7 +127,7 @@ describe('usePdfImport', () => {
 		await importFinished()
 
 		expect(mountVueComponent).not.toHaveBeenCalled()
-		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, 1 * MB)
+		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, 1 * MB, expect.any(AbortSignal))
 		expect(excalidrawAPI.addFiles).toHaveBeenCalledWith([expect.objectContaining({ mimeType: 'image/png' })])
 		expect(excalidrawAPI.updateScene).toHaveBeenCalledWith({ elements: [expect.objectContaining({ type: 'image' })] })
 		expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "slides.pdf".')
@@ -143,7 +144,7 @@ describe('usePdfImport', () => {
 		listeners.submit({ start: 2, end: 4 })
 		await importFinished()
 
-		expect(renderPdfPages).toHaveBeenLastCalledWith(expect.anything(), { start: 2, end: 4 }, expect.any(Function), undefined, 1 * MB)
+		expect(renderPdfPages).toHaveBeenLastCalledWith(expect.anything(), { start: 2, end: 4 }, expect.any(Function), undefined, 1 * MB, expect.any(AbortSignal))
 		const [{ elements }] = excalidrawAPI.updateScene.mock.calls[0]
 		expect(elements).toHaveLength(3)
 		expect(new Set(elements.map((element) => element.groupIds[0])).size).toBe(1)
@@ -209,7 +210,7 @@ describe('usePdfImport', () => {
 		mountedDialog().listeners.submit({ start: 1, end: pageCount })
 		await importFinished()
 
-		expect(renderPdfPages).toHaveBeenLastCalledWith(expect.anything(), { start: 1, end: pageCount }, expect.any(Function), undefined, Math.floor(IMPORT_TOTAL_BUDGET_BYTES / pageCount))
+		expect(renderPdfPages).toHaveBeenLastCalledWith(expect.anything(), { start: 1, end: pageCount }, expect.any(Function), undefined, Math.floor(IMPORT_TOTAL_BUDGET_BYTES / pageCount), expect.any(AbortSignal))
 		const files = excalidrawAPI.addFiles.mock.calls[0][0]
 		expect(files).toHaveLength(pageCount)
 		const totalBytes = vi.mocked(renderPdfPages).mock.results.at(-1).value.then(({ pages }) => pages.reduce((sum, { byteSize }) => sum + byteSize, 0))
@@ -238,7 +239,7 @@ describe('usePdfImport', () => {
 		await chooseFile()
 		await importFinished()
 
-		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, MAX_SOCKET_PAGE_BYTES)
+		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, MAX_SOCKET_PAGE_BYTES, expect.any(AbortSignal))
 		expect(showError).toHaveBeenCalledWith('Page 1 (2 MB) is larger than 1.79 MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as others in this whiteboard would never see it.', { timeout: -1 })
 		expect(excalidrawAPI.addFiles).not.toHaveBeenCalled()
 	})
@@ -250,7 +251,7 @@ describe('usePdfImport', () => {
 		await chooseFile()
 		await importFinished()
 
-		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, MAX_SOCKET_PAGE_BYTES)
+		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, MAX_SOCKET_PAGE_BYTES, expect.any(AbortSignal))
 		expect(showWarning).not.toHaveBeenCalled()
 	})
 
@@ -282,6 +283,92 @@ describe('usePdfImport', () => {
 		expect(pdfDrop.defaultPrevented).toBe(true)
 		expect(openPdfDocument).toHaveBeenCalledTimes(1)
 		expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "dropped.pdf".')
+	})
+
+	describe('when the board stops being writable or closes', () => {
+		const becomeReadOnly = () => act(async () => useWhiteboardConfigStore.setState({ isReadOnly: true }))
+		const closeBoard = () => act(async () => root.unmount())
+
+		/** Makes the next render wait until the returned function is called, and keeps its signal. */
+		function givenSlowRender() {
+			let finish
+			let signal
+			vi.mocked(renderPdfPages).mockImplementation((_handle, range, _onProgress, _maxDimensionPx, _maxPageBytes, renderSignal) => {
+				signal = renderSignal
+				return new Promise((resolve) => {
+					finish = () => resolve({ pages: [page(range.start)], totalPages: 5 })
+				})
+			})
+			return { finish: () => finish(), signal: () => signal }
+		}
+
+		async function openDialog() {
+			givenPdf(5)
+			await chooseFile()
+			await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalled())
+			return vi.mocked(mountVueComponent).mock.results.at(-1).value
+		}
+
+		function expectNothingImported() {
+			expect(excalidrawAPI.addFiles).not.toHaveBeenCalled()
+			expect(excalidrawAPI.updateScene).not.toHaveBeenCalled()
+			expect(showSuccess).not.toHaveBeenCalled()
+			expect(showError).not.toHaveBeenCalled()
+		}
+
+		it('closes the dialog, imports nothing and says why when the board becomes read-only', async () => {
+			const view = await openDialog()
+
+			await becomeReadOnly()
+			await importFinished()
+
+			expect(view.unmount).toHaveBeenCalledTimes(1)
+			expect(renderPdfPages).not.toHaveBeenCalled()
+			expectNothingImported()
+			expect(showWarning).toHaveBeenCalledWith('The import of "slides.pdf" was stopped because the whiteboard is now read-only. Nothing was imported.')
+		})
+
+		it('stops rendering and imports nothing when the board becomes read-only during it', async () => {
+			await openDialog()
+			const render = givenSlowRender()
+			mountedDialog().listeners.submit({ start: 1, end: 3 })
+			await vi.waitFor(() => expect(renderPdfPages).toHaveBeenCalled())
+
+			await becomeReadOnly()
+			expect(render.signal().aborted).toBe(true)
+			// Even if the page in progress still finishes, it is not added.
+			render.finish()
+			await importFinished()
+
+			expectNothingImported()
+			expect(showWarning).toHaveBeenCalledTimes(1)
+		})
+
+		it('closes the dialog and imports nothing, silently, when the board is closed', async () => {
+			const view = await openDialog()
+
+			await closeBoard()
+			await importFinished()
+
+			expect(view.unmount).toHaveBeenCalledTimes(1)
+			expectNothingImported()
+			expect(showWarning).not.toHaveBeenCalled()
+		})
+
+		it('stops rendering and imports nothing when the board is closed during it', async () => {
+			await openDialog()
+			const render = givenSlowRender()
+			mountedDialog().listeners.submit({ start: 1, end: 3 })
+			await vi.waitFor(() => expect(renderPdfPages).toHaveBeenCalled())
+
+			await closeBoard()
+			expect(render.signal().aborted).toBe(true)
+			render.finish()
+			await importFinished()
+
+			expectNothingImported()
+			expect(showWarning).not.toHaveBeenCalled()
+		})
 	})
 
 	it('offers no import on a read-only board', async () => {

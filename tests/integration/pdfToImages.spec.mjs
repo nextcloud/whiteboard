@@ -208,6 +208,37 @@ describe('renderPdfPages', () => {
 		}
 	})
 
+	it('stops before the next page once its signal aborts, throwing the reason', async () => {
+		const { handle, loadingTask } = await openFixture()
+
+		try {
+			const controller = new AbortController()
+			const reason = new Error('board closed')
+			const getPage = vi.spyOn(handle.pdf, 'getPage')
+			const onProgress = vi.fn(() => controller.abort(reason))
+
+			await expect(renderPdfPages(handle, { start: 1, end: 2 }, onProgress, SMALL_EDGE_PX, Infinity, controller.signal)).rejects.toBe(reason)
+			expect(onProgress).toHaveBeenCalledTimes(1)
+			expect(getPage).toHaveBeenCalledTimes(1)
+		} finally {
+			await loadingTask.destroy()
+		}
+	})
+
+	it('renders nothing with an already aborted signal', async () => {
+		const { handle, loadingTask } = await openFixture()
+
+		try {
+			const getPage = vi.spyOn(handle.pdf, 'getPage')
+			const signal = AbortSignal.abort(new Error('read-only'))
+
+			await expect(renderPdfPages(handle, { start: 1, end: 2 }, undefined, SMALL_EDGE_PX, Infinity, signal)).rejects.toThrow('read-only')
+			expect(getPage).not.toHaveBeenCalled()
+		} finally {
+			await loadingTask.destroy()
+		}
+	})
+
 	it('respects a smaller target size for a preview render, distinct from the default final-import size', async () => {
 		const { handle, loadingTask } = await openFixture()
 
