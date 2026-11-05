@@ -87,6 +87,11 @@ describe('usePdfImport', () => {
 		input.dispatchEvent(new Event('change'))
 	}
 
+	/** Lets pending promises and timers run, to show that nothing else happens. */
+	async function flush() {
+		await new Promise((resolve) => setTimeout(resolve, 20))
+	}
+
 	async function importFinished() {
 		await vi.waitFor(() => expect(closePdfDocument).toHaveBeenCalled())
 	}
@@ -266,23 +271,154 @@ describe('usePdfImport', () => {
 		expect(excalidrawAPI.addFiles).not.toHaveBeenCalled()
 	})
 
-	it('handles PDFs dropped on the board and leaves other drops to Excalidraw', async () => {
-		givenPdf(1)
-		const drop = (file) => {
-			const event = new Event('drop', { bubbles: true, cancelable: true })
-			Object.defineProperty(event, 'dataTransfer', { value: { files: [file] } })
-			container.dispatchEvent(event)
-			return event
+	describe('dropping files', () => {
+		// Stand-ins, so the tests don't depend on the DOM library's drag support.
+		class FakeDataTransfer {
+			files = []
+			items = { add: (file) => this.files.push(file) }
+		}
+		class FakeDragEvent extends Event {
+			constructor(type, init) {
+				super(type, init)
+				this.dataTransfer = init.dataTransfer
+				this.clientX = init.clientX
+				this.shiftKey = init.shiftKey
+			}
 		}
 
-		const imageDrop = drop(new File(['x'], 'photo.png', { type: 'image/png' }))
-		const pdfDrop = drop(new File(['%PDF-1.7'], 'dropped.pdf', { type: 'application/pdf' }))
-		await importFinished()
+		let target
+		let drops
 
-		expect(imageDrop.defaultPrevented).toBe(false)
-		expect(pdfDrop.defaultPrevented).toBe(true)
-		expect(openPdfDocument).toHaveBeenCalledTimes(1)
-		expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "dropped.pdf".')
+		beforeEach(() => {
+			vi.stubGlobal('DataTransfer', FakeDataTransfer)
+			vi.stubGlobal('DragEvent', FakeDragEvent)
+			// Stands in for Excalidraw, which handles drops below the wrapper.
+			target = document.createElement('div')
+			container.appendChild(target)
+			drops = []
+			target.addEventListener('drop', (event) => drops.push(Array.from(event.dataTransfer.files).map((file) => file.name)))
+		})
+
+		afterEach(() => {
+			vi.unstubAllGlobals()
+		})
+
+		function drop(...files) {
+			const event = new Event('drop', { bubbles: true, cancelable: true })
+			Object.defineProperty(event, 'dataTransfer', { value: { files } })
+			Object.defineProperty(event, 'clientX', { value: 123 })
+			target.dispatchEvent(event)
+			return event
+		}
+		const pdf = (name) => new File(['%PDF-1.7'], name, { type: 'application/pdf' })
+		const png = (name) => new File(['x'], name, { type: 'image/png' })
+
+		it('imports a dropped PDF and leaves drops without one to Excalidraw unchanged', async () => {
+			givenPdf(1)
+
+			const imageDrop = drop(png('photo.png'))
+			const pdfDrop = drop(pdf('dropped.pdf'))
+			await importFinished()
+
+			expect(imageDrop.defaultPrevented).toBe(false)
+			expect(pdfDrop.defaultPrevented).toBe(true)
+			expect(drops).toEqual([['photo.png']])
+			expect(openPdfDocument).toHaveBeenCalledTimes(1)
+			expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "dropped.pdf".')
+		})
+
+		it('offers every dropped PDF in turn, each with its own dialog', async () => {
+			givenPdf(5)
+
+			drop(pdf('first.pdf'), pdf('second.pdf'))
+			await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalledTimes(1))
+			expect(mountedDialog().props.fileName).toBe('first.pdf')
+			// The second dialog only opens once the first PDF is imported.
+			await flush()
+			expect(mountVueComponent).toHaveBeenCalledTimes(1)
+
+			mountedDialog().listeners.submit({ start: 1, end: 1 })
+			await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalledTimes(2))
+			expect(mountedDialog().props.fileName).toBe('second.pdf')
+			mountedDialog().listeners.submit({ start: 2, end: 3 })
+			await vi.waitFor(() => expect(closePdfDocument).toHaveBeenCalledTimes(2))
+
+			expect(showSuccess.mock.calls).toEqual([
+				['Imported 1 PDF page from "first.pdf".'],
+				['Imported 2 PDF pages from "second.pdf".'],
+			])
+		})
+
+		it('still offers the next PDF when one dialog is cancelled', async () => {
+			givenPdf(5)
+
+			drop(pdf('first.pdf'), pdf('second.pdf'))
+			await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalledTimes(1))
+			mountedDialog().listeners.cancel()
+			await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalledTimes(2))
+			mountedDialog().listeners.submit({ start: 1, end: 1 })
+			await vi.waitFor(() => expect(closePdfDocument).toHaveBeenCalledTimes(2))
+
+			expect(showSuccess.mock.calls).toEqual([['Imported 1 PDF page from "second.pdf".']])
+		})
+
+		it('passes the other files of a mixed drop on to Excalidraw, at the same point', async () => {
+			givenPdf(1)
+			const passedOn = []
+			target.addEventListener('drop', (event) => passedOn.push(event))
+
+			const event = drop(png('photo.png'), pdf('slides.pdf'), png('chart.png'))
+			await importFinished()
+
+			expect(event.defaultPrevented).toBe(true)
+			expect(drops).toEqual([['photo.png', 'chart.png']])
+			expect(passedOn[0].clientX).toBe(123)
+			expect(passedOn[0].bubbles).toBe(true)
+			expect(openPdfDocument).toHaveBeenCalledTimes(1)
+			expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "slides.pdf".')
+		})
+
+		it('names the other files when they cannot be passed on', async () => {
+			givenPdf(1)
+			vi.stubGlobal('DataTransfer', class {
+				constructor() {
+					throw new TypeError('Illegal constructor')
+				}
+			})
+
+			drop(pdf('slides.pdf'), png('photo.png'))
+			await importFinished()
+
+			expect(drops).toEqual([])
+			expect(showError).toHaveBeenCalledWith('"photo.png" was not added. Drop it separately from PDF files.')
+			expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "slides.pdf".')
+		})
+
+		it('offers no further PDF once the board becomes read-only', async () => {
+			givenPdf(5)
+
+			drop(pdf('first.pdf'), pdf('second.pdf'))
+			await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalledTimes(1))
+			await act(async () => useWhiteboardConfigStore.setState({ isReadOnly: true }))
+			await importFinished()
+			await flush()
+
+			expect(mountVueComponent).toHaveBeenCalledTimes(1)
+			expect(openPdfDocument).toHaveBeenCalledTimes(1)
+			expect(showWarning).toHaveBeenCalledTimes(1)
+		})
+
+		it('reports a file that cannot be read and goes on with the next', async () => {
+			givenPdf(1)
+			const unreadable = pdf('cloud.pdf')
+			unreadable.arrayBuffer = () => Promise.reject(new DOMException('gone', 'NotReadableError'))
+
+			drop(unreadable, pdf('local.pdf'))
+			await importFinished()
+
+			expect(showError).toHaveBeenCalledWith('The file "cloud.pdf" could not be read. Make sure it is fully downloaded and still exists.')
+			expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "local.pdf".')
+		})
 	})
 
 	describe('when the board stops being writable or closes', () => {
