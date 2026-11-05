@@ -16,6 +16,7 @@ import { useShallow } from 'zustand/react/shallow'
 import PdfPageSelectionDialog from '../components/PdfPageSelectionDialog.vue'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore.ts'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
+import logger from '../utils/logger.ts'
 import { formatMegabytes, getImportSizeReport, getMaxImageSizeBytes, getPageSizeLimit, getPageSizeTarget, IMPORT_TOTAL_BUDGET_BYTES } from '../utils/pdfImportSize.ts'
 import { PREVIEW_MAX_DIMENSION_PX } from '../utils/pdfPageSelection.ts'
 import { closePdfDocument, openPdfDocument, renderPdfPages } from '../utils/pdfToImages.ts'
@@ -93,6 +94,52 @@ function getOversizedPagesMessage(pages: ImportedPageSize[], targetBytes: number
 		count,
 		{ count, max: formatMegabytes(targetBytes), pages: formatPageSizes(pages), total: formatMegabytes(IMPORT_TOTAL_BUDGET_BYTES) },
 	)
+}
+
+function isPdfFile(file: File): boolean {
+	return file.type === 'application/pdf'
+}
+
+/**
+ * Hands the files of a drop that also held PDFs on to Excalidraw, as a drop
+ * of just those files at the same point, so images still land where they
+ * were dropped. The capture listener lets it through, as it has no PDFs.
+ *
+ * @param ev - The original drop, already stopped.
+ * @param files - The files that are not PDFs.
+ */
+function passDropOn(ev: DragEvent, files: File[]) {
+	try {
+		const dataTransfer = new DataTransfer()
+		for (const file of files) {
+			dataTransfer.items.add(file)
+		}
+		const { clientX, clientY, screenX, screenY, shiftKey, altKey, ctrlKey, metaKey } = ev
+		;(ev.target ?? ev.currentTarget)?.dispatchEvent(new DragEvent('drop', {
+			bubbles: true,
+			cancelable: true,
+			composed: true,
+			dataTransfer,
+			clientX,
+			clientY,
+			screenX,
+			screenY,
+			shiftKey,
+			altKey,
+			ctrlKey,
+			metaKey,
+		}))
+	} catch (error) {
+		// Browsers without a DataTransfer constructor can't pass them on.
+		logger.warn('[usePdfImport] Could not pass the other dropped files on', error)
+		showError(n(
+			'whiteboard',
+			'"{names}" was not added. Drop it separately from PDF files.',
+			'{count} files were not added: {names}. Drop them separately from PDF files.',
+			files.length,
+			{ count: files.length, names: files.map((file) => file.name).join(', ') },
+		))
+	}
 }
 
 export function usePdfImport() {
@@ -291,28 +338,40 @@ export function usePdfImport() {
 		importPdfFileRef.current = importPdfFile
 	}, [importPdfFile])
 
-	// Read the file before any other async work: cloud-sync placeholder files
-	// can become unreadable (NotReadableError) if the read is delayed.
-	const readFileAndImport = useCallback(async (file: File) => {
+	// Start reading every file before any other async work: cloud-sync
+	// placeholder files can become unreadable (NotReadableError) if the read
+	// is delayed. The PDFs are then offered one after the other, each with its
+	// own dialog, and an abort stops the ones not yet imported.
+	const readFilesAndImport = useCallback(async (files: File[]) => {
 		const controller = new AbortController()
 		runningImportsRef.current.add(controller)
-		try {
-			let data: ArrayBuffer
-			try {
-				data = await file.arrayBuffer()
-			} catch (error) {
-				if (error instanceof DOMException && error.name === 'NotReadableError') {
-					showError(t('whiteboard', 'The file could not be read. Make sure it is fully downloaded and still exists.'))
-				} else {
-					showError(t('whiteboard', 'Could not read "{name}": {message}', {
-						name: file.name,
-						message: error instanceof Error ? error.message : String(error),
-					}))
-				}
-				return
-			}
+		const reads = files.map((file) => file.arrayBuffer().then(
+			(data) => ({ data }),
+			(error: unknown) => ({ error }),
+		))
 
-			await importPdfFileRef.current(file.name, data, controller.signal)
+		try {
+			for (const [index, file] of files.entries()) {
+				if (controller.signal.aborted) {
+					return
+				}
+
+				const read = await reads[index]
+				if ('error' in read) {
+					const { error } = read
+					if (error instanceof DOMException && error.name === 'NotReadableError') {
+						showError(t('whiteboard', 'The file "{name}" could not be read. Make sure it is fully downloaded and still exists.', { name: file.name }))
+					} else {
+						showError(t('whiteboard', 'Could not read "{name}": {message}', {
+							name: file.name,
+							message: error instanceof Error ? error.message : String(error),
+						}))
+					}
+					continue
+				}
+
+				await importPdfFileRef.current(file.name, read.data, controller.signal)
+			}
 		} finally {
 			runningImportsRef.current.delete(controller)
 		}
@@ -331,21 +390,26 @@ export function usePdfImport() {
 		}
 
 		const handleDrop = (ev: DragEvent) => {
-			const file = ev.dataTransfer?.files?.[0]
-			if (!file || file.type !== 'application/pdf') {
+			const files = Array.from(ev.dataTransfer?.files ?? [])
+			const pdfFiles = files.filter(isPdfFile)
+			if (pdfFiles.length === 0) {
 				return
 			}
 
 			ev.preventDefault()
 			ev.stopPropagation()
-			void readFileAndImport(file)
+			const otherFiles = files.filter((file) => !isPdfFile(file))
+			if (otherFiles.length > 0) {
+				passDropOn(ev, otherFiles)
+			}
+			void readFilesAndImport(pdfFiles)
 		}
 
 		// Capture phase, so PDFs are handled before Excalidraw's own drop handler
-		// and every other drop reaches it unchanged.
+		// and every drop without one reaches it unchanged.
 		wrapper.addEventListener('drop', handleDrop, true)
 		return () => wrapper.removeEventListener('drop', handleDrop, true)
-	}, [excalidrawAPI, readFileAndImport])
+	}, [excalidrawAPI, readFilesAndImport])
 
 	const openImportDialog = useCallback(() => {
 		const input = document.createElement('input')
@@ -355,13 +419,13 @@ export function usePdfImport() {
 		input.addEventListener('change', () => {
 			const file = input.files?.[0]
 			if (file) {
-				void readFileAndImport(file)
+				void readFilesAndImport([file])
 			}
 			input.remove()
 		})
 		document.body.appendChild(input)
 		input.click()
-	}, [readFileAndImport])
+	}, [readFilesAndImport])
 
 	return { openImportDialog: isReadOnly ? undefined : openImportDialog }
 }
