@@ -329,7 +329,7 @@ export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: n
 		}
 	}
 
-	logger.warn(`[pdfToImages] Page ${page.pageNumber} is still ${smallest!.dataURL.length} bytes at its smallest size and quality (budget ${budgetBytes}); importing it anyway.`)
+	logger.warn(`[pdfToImages] Page ${page.pageNumber} is still ${smallest!.dataURL.length} bytes at its smallest size and quality (budget ${budgetBytes}); returning it anyway.`)
 	return smallest!
 }
 
@@ -388,8 +388,9 @@ async function encodePageWithinBudget(page: PDFPageProxy, longerEdgePx: number, 
  *   getPageRenderDimension for its paper format.
  * @param maxPageBytes - Image size, in bytes, each page is compressed and
  *   then shrunk to fit if possible, on top of the collab server's message
- *   limit. Pages that still don't fit are returned anyway. Each page starts
- *   at the JPEG quality that sufficed for the page before it.
+ *   limit. Pages that still don't fit are returned anyway, for the caller
+ *   to skip or keep. Each page starts at the JPEG quality that sufficed for
+ *   the page before it.
  */
 export async function renderPdfPages(
 	handle: PdfDocumentHandle,

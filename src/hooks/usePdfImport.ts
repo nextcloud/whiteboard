@@ -16,7 +16,7 @@ import { useShallow } from 'zustand/react/shallow'
 import PdfPageSelectionDialog from '../components/PdfPageSelectionDialog.vue'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore.ts'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
-import { formatMegabytes, getImportSizeReport, getMaxImageSizeBytes, getPageSizeTarget, IMPORT_TOTAL_BUDGET_BYTES } from '../utils/pdfImportSize.ts'
+import { formatMegabytes, getImportSizeReport, getMaxImageSizeBytes, getPageSizeLimit, getPageSizeTarget, IMPORT_TOTAL_BUDGET_BYTES } from '../utils/pdfImportSize.ts'
 import { PREVIEW_MAX_DIMENSION_PX } from '../utils/pdfPageSelection.ts'
 import { closePdfDocument, openPdfDocument, renderPdfPages } from '../utils/pdfToImages.ts'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport.ts'
@@ -29,46 +29,60 @@ const PAGE_GAP_PX = 40
 class PdfImportCancelled extends Error {}
 
 /**
- * Warning for pages that stayed over their target size even at the lowest
- * quality and size, naming the limit that set the target.
+ * Lists pages with their sizes, for the size messages.
  *
- * @param pages - The pages over the target.
- * @param target - The target from getPageSizeTarget.
+ * @param pages - The pages to list.
  */
-function getOversizedPagesMessage(pages: ImportedPageSize[], target: PageSizeTarget): string {
-	const count = pages.length
-	const variables = {
-		count,
-		max: formatMegabytes(target.bytes),
-		pages: pages.map((page) => t('whiteboard', '{page} ({size} MB)', { page: page.pageNumber, size: formatMegabytes(page.byteSize) })).join(', '),
-	}
+function formatPageSizes(pages: ImportedPageSize[]): string {
+	return pages.map((page) => t('whiteboard', '{page} ({size} MB)', { page: page.pageNumber, size: formatMegabytes(page.byteSize) })).join(', ')
+}
 
-	switch (target.limit) {
-		case 'admin':
-			return n(
-				'whiteboard',
-				'Page {pages} is larger than the maximum image size of {max} MB set by your administrator, even at the lowest quality. It was imported anyway.',
-				'{count} pages are larger than the maximum image size of {max} MB set by your administrator, even at the lowest quality: {pages}. They were imported anyway.',
-				count,
-				variables,
-			)
-		case 'socket':
-			return n(
-				'whiteboard',
-				'Page {pages} is larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality. It was imported anyway, but others in this whiteboard may not see it.',
-				'{count} pages are larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality: {pages}. They were imported anyway, but others in this whiteboard may not see them.',
-				count,
-				variables,
-			)
-		case 'importBudget':
-			return n(
-				'whiteboard',
-				'Page {pages} is larger than {max} MB, its share of the {total} MB limit for one import, even at the lowest quality. It was imported anyway.',
-				'{count} pages are larger than {max} MB, their share of the {total} MB limit for one import, even at the lowest quality: {pages}. They were imported anyway.',
-				count,
-				{ ...variables, total: formatMegabytes(IMPORT_TOTAL_BUDGET_BYTES) },
-			)
+/**
+ * Error for pages that stayed over the hard limit even at the lowest quality
+ * and size, and so were not imported, naming the limit.
+ *
+ * @param pages - The skipped pages.
+ * @param limit - The limit from getPageSizeLimit.
+ */
+function getSkippedPagesMessage(pages: ImportedPageSize[], limit: PageSizeTarget): string {
+	const count = pages.length
+	const variables = { count, max: formatMegabytes(limit.bytes), pages: formatPageSizes(pages) }
+
+	if (limit.limit === 'admin') {
+		return n(
+			'whiteboard',
+			'Page {pages} is larger than the maximum image size of {max} MB set by your administrator, even at the lowest quality. It was not imported.',
+			'{count} pages are larger than the maximum image size of {max} MB set by your administrator, even at the lowest quality: {pages}. They were not imported.',
+			count,
+			variables,
+		)
 	}
+	return n(
+		'whiteboard',
+		'Page {pages} is larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as others in this whiteboard would never see it.',
+		'{count} pages are larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality: {pages}. They were not imported, as others in this whiteboard would never see them.',
+		count,
+		variables,
+	)
+}
+
+/**
+ * Warning for pages that were imported although they stayed over their share
+ * of the import budget even at the lowest quality and size. Pages over a hard
+ * limit are skipped instead, so the budget is the only target they can miss.
+ *
+ * @param pages - The pages over their share.
+ * @param targetBytes - The target from getPageSizeTarget.
+ */
+function getOversizedPagesMessage(pages: ImportedPageSize[], targetBytes: number): string {
+	const count = pages.length
+	return n(
+		'whiteboard',
+		'Page {pages} is larger than {max} MB, its share of the {total} MB limit for one import, even at the lowest quality. It was imported anyway.',
+		'{count} pages are larger than {max} MB, their share of the {total} MB limit for one import, even at the lowest quality: {pages}. They were imported anyway.',
+		count,
+		{ count, max: formatMegabytes(targetBytes), pages: formatPageSizes(pages), total: formatMegabytes(IMPORT_TOTAL_BUDGET_BYTES) },
+	)
 }
 
 export function usePdfImport() {
@@ -145,10 +159,23 @@ export function usePdfImport() {
 			}
 			showProgress(0)
 
-			const sizeTarget = getPageSizeTarget(getMaxImageSizeBytes(), pagesToRender)
-			const { pages } = await renderPdfPages(handle, range, showProgress, undefined, sizeTarget.bytes)
+			const maxImageSizeBytes = getMaxImageSizeBytes()
+			const sizeTarget = getPageSizeTarget(maxImageSizeBytes, pagesToRender)
+			const sizeLimit = getPageSizeLimit(maxImageSizeBytes)
+			const { pages: renderedPages } = await renderPdfPages(handle, range, showProgress, undefined, sizeTarget.bytes)
 
 			toastState.current?.hideToast()
+
+			// Like regular images over the admin's limit, pages over a hard limit
+			// are refused. Pages that only miss their share of the budget are kept.
+			const { skippedPages, oversizedPages } = getImportSizeReport(renderedPages, sizeTarget.bytes, sizeLimit.bytes)
+			const pages = renderedPages.filter((page) => page.byteSize <= sizeLimit.bytes)
+			if (skippedPages.length > 0) {
+				showError(getSkippedPagesMessage(skippedPages, sizeLimit), { timeout: -1 })
+			}
+			if (pages.length === 0) {
+				return
+			}
 
 			const groupId = uuidv4()
 			const files: BinaryFileData[] = []
@@ -195,10 +222,8 @@ export function usePdfImport() {
 				name: fileName,
 			}))
 
-			// Pages are never dropped for their size, so tell the user afterwards.
-			const { oversizedPages } = getImportSizeReport(pages, sizeTarget.bytes)
 			if (oversizedPages.length > 0) {
-				showWarning(getOversizedPagesMessage(oversizedPages, sizeTarget), { timeout: -1 })
+				showWarning(getOversizedPagesMessage(oversizedPages, sizeTarget.bytes), { timeout: -1 })
 			}
 		} catch (error) {
 			toastState.current?.hideToast()

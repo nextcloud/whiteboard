@@ -26,8 +26,11 @@ export interface ImportedPageSize {
 }
 
 export interface ImportSizeReport {
-	/** Pages still larger than the target, in page order. */
+	/** Pages over the hard limit, which are not imported, in page order. */
+	skippedPages: ImportedPageSize[]
+	/** Pages within the hard limit but still over the target, in page order. */
 	oversizedPages: ImportedPageSize[]
+	/** Size of the pages that are imported. */
 	totalBytes: number
 }
 
@@ -61,15 +64,35 @@ export function getPageSizeTarget(maxImageSizeBytes: number | null, pageCount: n
 }
 
 /**
- * Which imported pages are still over their target size.
+ * Size above which a page is not imported: the smaller of the admin's
+ * maximum image size, which regular images are refused above, and the collab
+ * server's message limit, above which others in the board would never
+ * receive the page. On a tie, the admin's limit is named.
  *
- * @param pages - The imported pages.
- * @param targetBytes - The target size from getPageSizeTarget.
+ * @param maxImageSizeBytes - The admin's maximum image size, or null for none.
  */
-export function getImportSizeReport(pages: ImportedPageSize[], targetBytes: number): ImportSizeReport {
+export function getPageSizeLimit(maxImageSizeBytes: number | null): PageSizeTarget {
+	if (maxImageSizeBytes !== null && maxImageSizeBytes <= MAX_SOCKET_PAGE_BYTES) {
+		return { bytes: maxImageSizeBytes, limit: 'admin' }
+	}
+	return { bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' }
+}
+
+/**
+ * Splits rendered pages into those over the hard limit, which are skipped,
+ * and those that are imported, noting which of them missed their target.
+ *
+ * @param pages - The rendered pages.
+ * @param targetBytes - The target size from getPageSizeTarget.
+ * @param limitBytes - The hard limit from getPageSizeLimit.
+ */
+export function getImportSizeReport(pages: ImportedPageSize[], targetBytes: number, limitBytes: number): ImportSizeReport {
+	const toSize = ({ pageNumber, byteSize }: ImportedPageSize): ImportedPageSize => ({ pageNumber, byteSize })
+	const imported = pages.filter((page) => page.byteSize <= limitBytes)
 	return {
-		oversizedPages: pages.filter((page) => page.byteSize > targetBytes).map(({ pageNumber, byteSize }) => ({ pageNumber, byteSize })),
-		totalBytes: pages.reduce((sum, page) => sum + page.byteSize, 0),
+		skippedPages: pages.filter((page) => page.byteSize > limitBytes).map(toSize),
+		oversizedPages: imported.filter((page) => page.byteSize > targetBytes).map(toSize),
+		totalBytes: imported.reduce((sum, page) => sum + page.byteSize, 0),
 	}
 }
 

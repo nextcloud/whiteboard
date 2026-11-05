@@ -9,6 +9,7 @@ import {
 	formatMegabytes,
 	getImportSizeReport,
 	getMaxImageSizeBytes,
+	getPageSizeLimit,
 	getPageSizeTarget,
 	IMPORT_TOTAL_BUDGET_BYTES,
 } from '../../src/utils/pdfImportSize.ts'
@@ -63,23 +64,52 @@ describe('getPageSizeTarget', () => {
 	})
 })
 
-describe('getImportSizeReport', () => {
-	it('lists the pages over the target, in page order, and the total', () => {
-		const report = getImportSizeReport([
-			{ pageNumber: 3, byteSize: 3 * MB },
-			{ pageNumber: 4, byteSize: 1 * MB },
-			{ pageNumber: 5, byteSize: 2 * MB + 1 },
-		], 2 * MB)
+describe('getPageSizeLimit', () => {
+	it('is the admin\'s maximum image size when it is below the collab server\'s limit', () => {
+		expect(getPageSizeLimit(1 * MB)).toEqual({ bytes: 1 * MB, limit: 'admin' })
+		expect(getPageSizeLimit(MAX_SOCKET_PAGE_BYTES)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'admin' })
+	})
 
-		expect(report.oversizedPages).toEqual([
+	it('is the collab server\'s limit when the admin allows larger images or set none', () => {
+		expect(getPageSizeLimit(10 * MB)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' })
+		expect(getPageSizeLimit(null)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' })
+	})
+
+	it('never lies below the target, so only the import budget can be missed by an imported page', () => {
+		for (const maxImageSize of [null, 1 * MB, 10 * MB]) {
+			for (const pageCount of [1, 7, 50]) {
+				expect(getPageSizeTarget(maxImageSize, pageCount).bytes).toBeLessThanOrEqual(getPageSizeLimit(maxImageSize).bytes)
+			}
+		}
+	})
+})
+
+describe('getImportSizeReport', () => {
+	const pages = [
+		{ pageNumber: 3, byteSize: 3 * MB },
+		{ pageNumber: 4, byteSize: 1 * MB },
+		{ pageNumber: 5, byteSize: 2 * MB + 1 },
+		{ pageNumber: 6, byteSize: 0.5 * MB },
+	]
+
+	it('lists the pages over the limit as skipped and those only over the target, in page order', () => {
+		const report = getImportSizeReport(pages, 0.75 * MB, 2 * MB)
+
+		expect(report.skippedPages).toEqual([
 			{ pageNumber: 3, byteSize: 3 * MB },
 			{ pageNumber: 5, byteSize: 2 * MB + 1 },
 		])
-		expect(report.totalBytes).toBe(6 * MB + 1)
+		expect(report.oversizedPages).toEqual([{ pageNumber: 4, byteSize: 1 * MB }])
 	})
 
-	it('does not count a page of exactly the target size as over it', () => {
-		expect(getImportSizeReport([{ pageNumber: 1, byteSize: 2 * MB }], 2 * MB).oversizedPages).toEqual([])
+	it('counts only the imported pages in the total', () => {
+		expect(getImportSizeReport(pages, 0.75 * MB, 2 * MB).totalBytes).toBe(1.5 * MB)
+	})
+
+	it('neither skips nor flags a page of exactly the limit or target size', () => {
+		const report = getImportSizeReport([{ pageNumber: 1, byteSize: 2 * MB }], 2 * MB, 2 * MB)
+		expect(report.skippedPages).toEqual([])
+		expect(report.oversizedPages).toEqual([])
 	})
 })
 
