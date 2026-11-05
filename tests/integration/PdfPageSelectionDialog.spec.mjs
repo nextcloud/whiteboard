@@ -212,6 +212,17 @@ describe('PdfPageSelectionDialog', () => {
 		expect(wrapper.emitted('submit')).toBeUndefined()
 	})
 
+	it('shows the file name in the title as it is, with characters that HTML escapes', async () => {
+		const fileName = 'Q&A <draft> "final" \'v2\'.pdf'
+		await mountDialog({ fileName })
+
+		const title = find('.dialog__name')
+		expect(title.textContent).toBe(`Import pages from '${fileName}'`)
+		expect(title.textContent).not.toContain('&amp;')
+		// Rendered as text, not markup.
+		expect(title.querySelector('draft')).toBeNull()
+	})
+
 	it('emits cancel when closed', async () => {
 		await mountDialog()
 
