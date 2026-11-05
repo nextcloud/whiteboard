@@ -15,28 +15,27 @@ The official whiteboard app for Nextcloud. Create and share whiteboards with rea
 - 📝 Real-time collaboration with semi-offline support
 - 💾 Client-first architecture with local storage
 - 🔄 Automatic sync between local and server storage
-- 🌐 Works semi-offline - changes saved locally and synced when online (websocker server configured successfully)
+- 🌐 Works semi-offline - changes saved locally and synced when online (websocket server configured successfully)
 - 💪 Built on [Excalidraw](https://github.com/excalidraw/excalidraw)
 
 ## Architecture
 
 Nextcloud Whiteboard uses a **client-first architecture** that prioritizes browser-based functionality:
 
-- **Browser-First**: All whiteboard functionality works directly in the browser
+- **Browser-First**: The editor runs in the browser and saves to Nextcloud directly
 - **Local Storage**: Changes are immediately saved to browser storage (IndexedDB)
-- **Real-time Collaboration**: WebSocket server handles live collaboration sessions
+- **Real-time Collaboration**: WebSocket server handles live collaboration sessions and picks the browser that saves each board to Nextcloud
 - **Simplified Connectivity**: Only browsers need to connect to the websocket server
-- **Reduced Dependencies**: Websocket server is only needed for real-time collaboration, not basic functionality
 
 ## Installation & Setup
 
 ### WebSocket Server for Real-time Collaboration
 
-The websocket server handles real-time collaboration sessions between users. **Important**: The websocket server is only needed for live collaboration - basic whiteboard functionality works without it.
+The websocket server handles real-time collaboration sessions between users. **Important**: The websocket server is required, also when only one person edits a board. It decides which browser saves each board to Nextcloud, so without it changes stay in the browser and are not saved to Nextcloud. A websocket server deployment, with one or more nodes, serves a single Nextcloud instance.
 
 #### Connectivity Requirements
 
-**Essential (for real-time collaboration):**
+**Essential:**
 - User browsers need HTTP(S) access to the websocket server
 - Nextcloud and websocket server share a JWT secret for authentication
 
@@ -282,7 +281,7 @@ occ maintenance:mimetype:update-js
 ```
 
 **Misleading Admin Errors**
-Admin connectivity checks may show false negatives in Docker/proxy environments. These errors don't affect actual functionality since the architecture is client-first. Focus on browser-based connectivity tests instead.
+The admin connectivity check connects from your browser in the same way the editor does. If it fails, check the websocket server URL, the reverse proxy and the browser console. Boards are saved to Nextcloud only while the editor is connected to the websocket server.
 
 ## Development
 

@@ -21,7 +21,7 @@
 			</NcNoteCard>
 
 			<p>
-				{{ t('whiteboard', 'The WebSocket server handles real-time collaboration sessions between users. Basic whiteboard functionality works without it, but real-time collaboration requires this server to be running and accessible from users\' browsers.') }}
+				{{ t('whiteboard', 'The WebSocket server handles real-time collaboration sessions between users and decides which browser saves each board. Boards are only saved to Nextcloud when this server is running and accessible from users\' browsers.') }}
 			</p>
 			<p>
 				<a href="https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server-for-real-time-collaboration"
