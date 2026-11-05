@@ -164,29 +164,34 @@ describe('usePdfImport', () => {
 		expect(showSuccess).not.toHaveBeenCalled()
 	})
 
-	it('imports a page that stays over the maximum image size, then warns with its page number, size and the admin limit', async () => {
-		givenPdf(3, [page(1), page(2, 2.5 * MB), page(3, 3 * MB)])
+	it('skips pages that stay over the maximum image size, names them with their size and the admin limit, and imports the rest', async () => {
+		givenPdf(4, [page(1), page(2, 2.5 * MB), page(3, 3 * MB), page(4, 1 * MB)])
 
 		await chooseFile()
 		await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalled())
-		mountedDialog().listeners.submit({ start: 1, end: 3 })
+		mountedDialog().listeners.submit({ start: 1, end: 4 })
 		await importFinished()
 
-		expect(excalidrawAPI.addFiles.mock.calls[0][0]).toHaveLength(3)
-		expect(showSuccess).toHaveBeenCalled()
-		expect(showWarning).toHaveBeenCalledTimes(1)
-		const [message, options] = vi.mocked(showWarning).mock.calls[0]
-		expect(message).toBe('2 pages are larger than the maximum image size of 1 MB set by your administrator, even at the lowest quality: 2 (2.5 MB), 3 (3 MB). They were imported anyway.')
-		expect(options).toEqual({ timeout: -1 })
+		// Page 4 is exactly at the limit, so it is kept.
+		expect(excalidrawAPI.addFiles.mock.calls[0][0]).toHaveLength(2)
+		expect(excalidrawAPI.updateScene.mock.calls[0][0].elements).toHaveLength(2)
+		expect(showSuccess).toHaveBeenCalledWith('Imported 2 PDF pages from "slides.pdf".')
+		expect(showError).toHaveBeenCalledTimes(1)
+		expect(showError).toHaveBeenCalledWith('2 pages are larger than the maximum image size of 1 MB set by your administrator, even at the lowest quality: 2 (2.5 MB), 3 (3 MB). They were not imported.', { timeout: -1 })
+		expect(showWarning).not.toHaveBeenCalled()
 	})
 
-	it('uses the singular warning for one page over the limit', async () => {
+	it('imports nothing when the only page stays over the limit, and says so in the singular', async () => {
 		givenPdf(1, [page(1, 2.5 * MB)])
 
 		await chooseFile()
 		await importFinished()
 
-		expect(showWarning).toHaveBeenCalledWith('Page 1 (2.5 MB) is larger than the maximum image size of 1 MB set by your administrator, even at the lowest quality. It was imported anyway.', { timeout: -1 })
+		expect(showError).toHaveBeenCalledWith('Page 1 (2.5 MB) is larger than the maximum image size of 1 MB set by your administrator, even at the lowest quality. It was not imported.', { timeout: -1 })
+		expect(excalidrawAPI.addFiles).not.toHaveBeenCalled()
+		expect(excalidrawAPI.updateScene).not.toHaveBeenCalled()
+		expect(excalidrawAPI.setViewport).not.toHaveBeenCalled()
+		expect(showSuccess).not.toHaveBeenCalled()
 	})
 
 	it('shares the import budget across 50 pages of ~0.5 MB, so they fit it without a warning', async () => {
@@ -226,7 +231,7 @@ describe('usePdfImport', () => {
 		expect(showWarning).toHaveBeenCalledWith('Page 7 (0.5 MB) is larger than 0.4 MB, its share of the 20 MB limit for one import, even at the lowest quality. It was imported anyway.', { timeout: -1 })
 	})
 
-	it('names the collab server\'s limit when the admin allows larger images', async () => {
+	it('skips a page over the collab server\'s limit when the admin allows larger images, as others would never receive it', async () => {
 		givenMaxFileSize(10)
 		givenPdf(1, [page(1, 2 * MB)])
 
@@ -234,7 +239,8 @@ describe('usePdfImport', () => {
 		await importFinished()
 
 		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, MAX_SOCKET_PAGE_BYTES)
-		expect(showWarning).toHaveBeenCalledWith('Page 1 (2 MB) is larger than 1.79 MB, the largest image the collaboration server passes on, even at the lowest quality. It was imported anyway, but others in this whiteboard may not see it.', { timeout: -1 })
+		expect(showError).toHaveBeenCalledWith('Page 1 (2 MB) is larger than 1.79 MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as others in this whiteboard would never see it.', { timeout: -1 })
+		expect(excalidrawAPI.addFiles).not.toHaveBeenCalled()
 	})
 
 	it('falls back to the collab server\'s limit when the admin setting is not a positive number', async () => {
