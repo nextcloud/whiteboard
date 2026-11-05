@@ -4,4 +4,8 @@
 # Copied to dist/pdfjs/.htaccess. Nextcloud's root .htaccess routes files with
 # extensions outside its static list (such as .bcmap and .pfb) to index.php,
 # which answers 404, so pdf.js could not load these CMaps and fonts on Apache.
-RewriteEngine Off
+# Without mod_rewrite there is no such routing, and a bare RewriteEngine would
+# be an error.
+<IfModule mod_rewrite.c>
+	RewriteEngine Off
+</IfModule>
