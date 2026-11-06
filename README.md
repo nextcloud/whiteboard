@@ -37,41 +37,29 @@ Nextcloud Whiteboard uses a **client-first architecture** that prioritizes brows
 The websocket server handles real-time collaboration sessions between users. **Important**: The websocket server is required, also when only one person edits a board. It decides which browser saves each board to Nextcloud, so without it changes stay in the browser and are not saved to Nextcloud. A websocket server deployment, with one or more nodes, serves a single Nextcloud instance.
 
 **Environment Variables:**
-The WebSocket Server accepts several environment variables during startup. 
+The websocket server reads these environment variables at startup:
 
-| Name                            | Default                                                                   | Description                                                                                                                                            |
-|---------------------------------|---------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `CACHED_TOKEN_TTL`              | `10 * 60 * 1000`                                                          |                                                                                                                                                        | \
-|                                 | (10 minutes)                                                              |                                                                                                                                                        |
-| `CHROME_EXECUTABLE_PATH`        | A calculated PATH which is mostly suitable for Linux, Windows and MacOS X | Path to the executable of the Chrome engine.                                                                                                           |
-| `CLEANUP_LOCAL_RECORDINGS`      | `false`                                                                   |                                                                                                                                                        |
-| `COMPRESSION_ENABLED`           | `true`                                                                    |                                                                                                                                                        |
-| `FORCE_CLOSE_TIMEOUT`           | `60 * 60 * 1000`                                                          |                                                                                                                                                        | \
-|                                 | (1 minute)                                                                |                                                                                                                                                        |
-| `HOST`                          | `0.0.0.0`                                                                 | Definition of the listening interface                                                                                                                  |
-| `JWT_SECRET_KEY`                |                                                                           | Must match the secret configured in Nextcloud                                                                                                          |
-| `MAX_UPLOAD_FILE_SIZE`          |                                                                           |                                                                                                                                                        |
-| `METRICS_TOKEN`                 |                                                                           |                                                                                                                                                        |
-|                                 |                                                                           |                                                                                                                                                        |
-| `NEXTCLOUD_UPLOAD_ENABLED`      | false                                                                     |                                                                                                                                                        |
-| `NEXTCLOUD_URL`                 | `http://nextcloud.local`                                                  | Used for JWT token validation and optional recording uploads                                                                                           |
-| PORT                            | `3002`                                                                    | The Port where the Service is listening                                                                                                                |
-| RECORDINGS_DIR                  | `/tmp/whiteboard-recordings`                                              | Optional writable directory for temporary recording files                                                                                              | \
-|                                 |                                                                           |                                                                                                                                                        | \
-|                                 | (automatically falls back to the OS temp directory if unavailable)        |                                                                                                                                                        |
-| `RECORDING_DISCONNECT_GRACE_MS` | `5000 (5 Seconds)`                                                        | Grace period before stopping a recording after the recorder disconnects                                                                                |
-| REDIS_URL                       | `redis://localhost:6379`                                                  |                                                                                                                                                        |
-| SESSION_TTL                     | 24 \* 60 \*  60 * 1000                                                    |                                                                                                                                                        | \
-|                                 | (1 day)                                                                   |                                                                                                                                                        |
-| STORAGE_STRATEGY                | `lru`                                                                     | One of `lru`, `redis` or `in-mem`. If redis ist choosen, a `REDIS_URL` has to be configured (see above).                                               | \
-|                                 |                                                                           |                                                                                                                                                        | \
-|                                 |                                                                           | ```                                                                                                                                                    | \
-|                                 |                                                                           | ```                                                                                                                                                    |
-| `NODE_ENV`                      | `””`                                                                      | `”test”` or another value for njs environment.                                                                                                         |
-| TLS                             | `false`                                                                   | true or false for HTTPS or HTTP. If set to `` true then TLS_CERT should hold the certificate and `TLS_KEY` should hold the key for the certificate. `` |
-| TLS_CERT                        |                                                                           |                                                                                                                                                        |
-| TLS_KEY                         |                                                                           |                                                                                                                                                        |
-| USERNAME                        | `““`                                                                      | Used in conjunction with CHROME_EXECUTABLE_PATH. Used in Windows environments to calculate the executable path for the Chrome engine.                  |
+| Name | Default | Description |
+|---|---|---|
+| `CACHED_TOKEN_TTL` | `600000` (10 minutes) | Time in milliseconds that the server caches a verified token |
+| `CHROME_EXECUTABLE_PATH` | Found in the usual install locations | Path of the Chrome or Chromium binary used for recordings |
+| `CLEANUP_LOCAL_RECORDINGS` | `false` | Delete the local recording file after it is uploaded |
+| `COMPRESSION_ENABLED` | `true` | Per-message deflate compression for WebSocket messages |
+| `FORCE_CLOSE_TIMEOUT` | `3600000` (1 hour) | Time in milliseconds the server waits for connections to close on shutdown before it stops anyway |
+| `HOST` | `0.0.0.0` | Interface the server listens on |
+| `JWT_SECRET_KEY` | none, required | Must match the secret configured in Nextcloud |
+| `MAX_UPLOAD_FILE_SIZE` | `2` | Largest file in megabytes that users can add to a board |
+| `METRICS_TOKEN` | none | Enables the Prometheus metrics at `/metrics`, with this token as a Bearer token or as the `?token=` parameter |
+| `NEXTCLOUD_URL` | `http://nextcloud.local` | Used for JWT token validation and optional recording uploads |
+| `PORT` | `3002` | Port the server listens on |
+| `RECORDINGS_DIR` | `/tmp/whiteboard-recordings` in the Docker image | Writable directory for temporary recording files; falls back to the OS temp directory if it is not writable |
+| `RECORDING_DISCONNECT_GRACE_MS` | `5000` | Time in milliseconds before a recording stops after the recorder disconnects |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL when `STORAGE_STRATEGY` is `redis`, in the form `redis://[username:password@]host[:port][/database_number]` |
+| `SESSION_TTL` | `86400000` (24 hours) | Time in milliseconds that collaboration data of a session, such as timers and votings, is kept |
+| `STORAGE_STRATEGY` | `lru` | `lru` keeps collaboration data in memory. `redis` keeps it in Redis and is required for more than one node |
+| `TLS` | `false` | Serve HTTPS instead of HTTP. A reverse proxy is recommended for production |
+| `TLS_CERT` | none | Path of the certificate file when `TLS` is `true` |
+| `TLS_KEY` | none | Path of the private key file when `TLS` is `true` |
 
 #### Connectivity Requirements
 
