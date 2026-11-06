@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Predlošci",
     "Delete" : "Obriši",
     "Close" : "Zatvori",
     "Cancel" : "Cancel",

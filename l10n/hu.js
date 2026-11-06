@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Tábla",
+    "Templates" : "Sablonok",
     "Shared secret" : "Megosztott titok",
     "Save settings" : "Beállítások mentése",
     "Uploading…" : "Feltöltés…",

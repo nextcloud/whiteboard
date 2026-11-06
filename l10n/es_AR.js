@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Plantillas",
     "Uploading…" : "Subiendo…",
     "Delete" : "Eliminar",
     "Advanced settings" : "Configuraciones avanzadas",

@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Bela tabla",
+    "Templates" : "Predloge",
     "Shared secret" : "Skrivna koda",
     "Save settings" : "Shrani nastavitve",
     "Uploading…" : "Poteka pošiljanje …",

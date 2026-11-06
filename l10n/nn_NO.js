@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Malar",
     "Delete" : "Slett",
     "Advanced settings" : "Avanserte innstillingar",
     "Close" : "Lat att",

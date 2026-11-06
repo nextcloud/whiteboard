@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Табло",
+    "Templates" : "Шаблони",
     "Shared secret" : "Споделена тайна",
     "Save settings" : "Запазване на настройките",
     "Uploading…" : "Качване…",

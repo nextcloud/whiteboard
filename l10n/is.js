@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Teiknitafla",
+    "Templates" : "Sniðmát",
     "Shared secret" : "Sameiginlegur leynilykill",
     "Save settings" : "Vista stillingar",
     "Uploading…" : "Sendi inn…",

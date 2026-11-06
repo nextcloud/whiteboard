@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Tāfele",
+    "Templates" : "Veidnes",
     "Shared secret" : "Koplietojams noslēpums",
     "Save settings" : "Saglabāt iestatījumus",
     "Uploading…" : "Augšupielādē…",

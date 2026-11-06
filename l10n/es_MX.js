@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Pizarrón",
+    "Templates" : "Plantillas",
     "Shared secret" : "Secreto compartido",
     "Save settings" : "Guardar configuraciones",
     "Uploading…" : "Cargando",

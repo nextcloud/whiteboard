@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Arbel zuria",
+    "Templates" : "Txantiloiak",
     "Shared secret" : "Partekatutako sekretua",
     "Save settings" : "Gorde ezarpenak",
     "Uploading…" : "Igotzen...",

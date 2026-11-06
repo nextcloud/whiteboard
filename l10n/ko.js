@@ -4,6 +4,7 @@ OC.L10N.register(
     "Whiteboard" : "화이트보드",
     "New whiteboard" : "새 화이트보드",
     "Create new whiteboard" : "새 화이트보드 생성",
+    "Templates" : "템플릿",
     "Whiteboard app" : "화이트보드 앱",
     "Failed to verify the connection:" : "연결을 확인하는데 실패하였습니다:",
     "Verifying connection…" : "연결을 확인하는 중입니다...",

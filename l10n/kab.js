@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Timudmiwin",
     "Save settings" : "Sekles iɣewwaren",
     "Uploading…" : "Asali …",
     "Delete" : "Kkes",

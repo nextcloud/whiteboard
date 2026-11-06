@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Pizarra",
+    "Templates" : "Plantíes",
     "Uploading…" : "Xubiendo…",
     "Delete" : "Desaniciar",
     "Advanced settings" : "Configuración avanzada",

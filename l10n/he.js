@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "תבניות",
     "Shared secret" : "סוד משותף",
     "Uploading…" : "מתבצעת העלאה…",
     "Delete" : "מחיקה",

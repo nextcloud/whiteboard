@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Whiteboard",
+    "Templates" : "Virlagen",
     "Uploading…" : "Lued erop …",
     "Delete" : "Läschen",
     "Advanced settings" : "Erweidert Astellungen",

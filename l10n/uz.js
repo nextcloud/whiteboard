@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Oq doska",
+    "Templates" : "Shablonlar",
     "Uploading…" : "Yuklanmoqda...",
     "Delete" : "Oʻchirish",
     "Close" : "Yopish",

@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Pissarra blanca",
+    "Templates" : "Plantilles",
     "Shared secret" : "Clau secreta compartida",
     "Save settings" : "Desa els paràmetres",
     "Uploading…" : "S'està pujant…",

@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Bảng viết",
+    "Templates" : "Mẫu",
     "Shared secret" : "Chia sẽ mật khẩu",
     "Uploading…" : "Đang tải lên…",
     "Delete" : "Xóa",

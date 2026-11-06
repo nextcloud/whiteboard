@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Modèls",
     "Shared secret" : "Secret partejat",
     "Save settings" : "Salvar paramètres",
     "Delete" : "Suprimir",

@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Shabllone",
     "Save settings" : "Ruaj konfigurimet",
     "Uploading…" : "Po ngarkohet…",
     "Delete" : "Fshi",

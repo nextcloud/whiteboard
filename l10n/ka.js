@@ -2,6 +2,7 @@ OC.L10N.register(
     "whiteboard",
     {
     "Whiteboard" : "Whiteboard",
+    "Templates" : "Templates",
     "Shared secret" : "Shared secret",
     "Uploading…" : "Uploading…",
     "Delete" : "წაშლა",

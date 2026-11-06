@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Modellos",
     "Shared secret" : "Segretu cumpartzidu",
     "Uploading…" : "Carrighende...",
     "Delete" : "Cantzella",

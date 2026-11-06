@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Шаблоны",
     "Uploading…" : "Запампоўванне…",
     "Delete" : "Выдаліць",
     "Advanced settings" : "Пашыраныя налады",

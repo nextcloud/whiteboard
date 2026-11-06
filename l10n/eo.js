@@ -1,6 +1,7 @@
 OC.L10N.register(
     "whiteboard",
     {
+    "Templates" : "Ŝablonoj",
     "Save settings" : "Konservi agordojn",
     "Uploading…" : "Alŝutado…",
     "Delete" : "Forigi",
