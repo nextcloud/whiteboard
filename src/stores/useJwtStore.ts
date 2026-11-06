@@ -14,6 +14,7 @@ import { useWhiteboardConfigStore } from './useWhiteboardConfigStore'
 import { useCollaborationStore } from './useCollaborationStore'
 
 const TOKEN_REFRESH_BUFFER = 90
+const REFRESH_RETRY_DELAY = 30_000
 
 function isTokenFormatValid(token: string): boolean {
 	const parts = token.split('.')
@@ -54,7 +55,7 @@ interface JWTStore {
 	isTokenExpired: (roomId: string) => boolean
 	parseJwt: (token: string) => JwtPayload | null
 	validateJwtIntegrity: (token: string) => boolean
-	setupAutoRefresh: (roomId: string) => void
+	setupAutoRefresh: (roomId: string, afterFailure?: boolean) => void
 	clearAutoRefresh: (roomId: string) => void
 	clearTokens: () => void
 }
@@ -367,6 +368,19 @@ export const useJWTStore = create<JWTStore>()(
 					// Track authentication failures for better error detection
 					if (error instanceof Error && 'response' in error && error.response) {
 						const status = (error.response as any).status
+						if (status === 404) {
+							// Stops every further token request for a board that was deleted or is no longer shared,
+							// unless another board was opened while this request ran
+							if (useWhiteboardConfigStore.getState().fileId === fileId) {
+								useCollaborationStore.getState().setAuthError({
+									type: 'not_found',
+									message: 'Whiteboard not found during token refresh',
+									isPersistent: true,
+								})
+								useWhiteboardConfigStore.getState().setReadOnly(true)
+							}
+							return null
+						}
 						if (status === 401 || status === 403) {
 							console.warn('[JWTStore] Authentication error during token refresh')
 							useCollaborationStore.getState().incrementAuthFailure(
@@ -496,7 +510,7 @@ export const useJWTStore = create<JWTStore>()(
 				}
 			},
 
-			setupAutoRefresh: (roomId) => {
+			setupAutoRefresh: (roomId, afterFailure = false) => {
 				const { autoRefreshTimers, tokenExpiries, refreshJWT } = get()
 
 				// Clear any existing timer for this room
@@ -513,7 +527,9 @@ export const useJWTStore = create<JWTStore>()(
 
 				// Calculate time until refresh (expiry - buffer)
 				const now = Math.floor(Date.now() / 1000)
-				const timeUntilRefresh = Math.max(0, (expiry - TOKEN_REFRESH_BUFFER - now) * 1000)
+				const timeUntilRefresh = afterFailure
+					? REFRESH_RETRY_DELAY
+					: Math.max(0, (expiry - TOKEN_REFRESH_BUFFER - now) * 1000)
 
 				console.log(`[JWTStore] Setting up auto-refresh for room ${roomId} in ${Math.round(timeUntilRefresh / 1000)} seconds (at ${new Date(Date.now() + timeUntilRefresh).toISOString()})`)
 
@@ -530,8 +546,8 @@ export const useJWTStore = create<JWTStore>()(
 
 					await refreshJWT()
 
-					// After refresh, set up the next auto-refresh
-					get().setupAutoRefresh(roomId)
+					// A failed refresh keeps the old expiry, which would fire this timer again right away
+					get().setupAutoRefresh(roomId, get().tokenExpiries[roomId] === expiry)
 				}, timeUntilRefresh)
 
 				// Store the timer ID

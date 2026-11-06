@@ -48,6 +48,13 @@ const getAuthErrorConfig = (errorType: AuthErrorType, isPersistent: boolean): Au
 				: t('whiteboard', 'Authentication issue detected. Retrying…'),
 			severity: isPersistent ? 'error' : 'warning',
 		}
+		case 'not_found':
+			return {
+				icon: mdiAlert,
+				title: t('whiteboard', 'Whiteboard not found'),
+				message: t('whiteboard', 'This whiteboard was deleted or you no longer have access to it.'),
+				severity: 'error',
+			}
 	default:
 		return null
 	}

@@ -53,7 +53,7 @@ final class GetFileFromIdService implements GetFileService {
 
 		$files = $userFolder->getById($this->fileId);
 		if (empty($files)) {
-			$this->logger->error('File not found', [
+			$this->logger->debug('File not found', [
 				'user_id' => $this->userId,
 				'file_id' => $this->fileId
 			]);
@@ -66,7 +66,7 @@ final class GetFileFromIdService implements GetFileService {
 
 		$file = $files[0];
 		if (!$file instanceof File) {
-			$this->logger->error('Node is not a file', [
+			$this->logger->debug('Node is not a file', [
 				'file_id' => $this->fileId,
 				'node_type' => get_class($file)
 			]);
@@ -74,7 +74,7 @@ final class GetFileFromIdService implements GetFileService {
 		}
 
 		if (!($file->getPermissions() & Constants::PERMISSION_READ)) {
-			$this->logger->error('No read permission for file', [
+			$this->logger->debug('No read permission for file', [
 				'file_id' => $this->fileId,
 				'permissions' => $file->getPermissions()
 			]);
