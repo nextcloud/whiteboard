@@ -30,6 +30,21 @@ Nextcloud Whiteboard uses a **client-first architecture** that prioritizes brows
 
 ## Installation & Setup
 
+Whiteboard has two parts, and a working setup needs both:
+
+1. The **Whiteboard app**, installed in Nextcloud.
+2. The **collaboration server**, also called the websocket server: a separate Node.js service that the browsers of your users connect to.
+
+### Installing the Whiteboard app
+
+Install and enable the app from the Nextcloud App Store in Apps, or with occ:
+
+```bash
+occ app:install whiteboard
+```
+
+With the app alone, users can create and open boards, but their changes are not saved to Nextcloud. Set up the collaboration server next.
+
 <a id="websocket-server-for-real-time-collaboration"></a>
 
 ### WebSocket Server
@@ -51,7 +66,7 @@ The websocket server reads these environment variables at startup:
 | `JWT_SECRET_KEY_FILE` | none | Path of a file holding the secret, instead of `JWT_SECRET_KEY`, for example a Docker secret in `/run/secrets/` |
 | `MAX_UPLOAD_FILE_SIZE` | `2` | Largest file in megabytes that users can add to a board |
 | `METRICS_TOKEN` | none | Enables the Prometheus metrics at `/metrics`, with this token as a Bearer token or as the `?token=` parameter |
-| `NEXTCLOUD_URL` | `http://nextcloud.local` | Used for JWT token validation and optional recording uploads |
+| `NEXTCLOUD_URL` | `http://nextcloud.local` | URL of your Nextcloud. Recordings open and upload boards there, and HTTP requests from browsers, such as the status check of the admin settings, are allowed only from this origin |
 | `PORT` | `3002` | Port the server listens on |
 | `RECORDINGS_DIR` | `/tmp/whiteboard-recordings` in the Docker image | Writable directory for temporary recording files; falls back to the OS temp directory if it is not writable |
 | `RECORDING_DISCONNECT_GRACE_MS` | `5000` | Time in milliseconds before a recording stops after the recorder disconnects |
@@ -71,12 +86,27 @@ The websocket server reads these environment variables at startup:
 
 #### Configuration
 
-Configure Nextcloud with the websocket server details: (Can be configured in the Nextcloud admin settings)
+Enter the URL of the websocket server and the shared secret in Administration settings > Whiteboard, or set them with occ:
 
 ```bash
-occ config:app:set whiteboard collabBackendUrl --value="https://nextcloud.local:3002"
-occ config:app:set whiteboard jwt_secret_key --type=string --value="some-random-secret"
+occ config:app:set whiteboard collabBackendUrl --value="https://nextcloud.example.com/whiteboard"
+occ config:app:set whiteboard jwt_secret_key --type=string --value="some-random-secret" --no-interaction
 ```
+
+Without `--no-interaction`, Nextcloud 36 asks you to confirm the secret by typing `yes`.
+
+The app reads these settings, set with `occ config:app:set whiteboard <key>`:
+
+| Key | Default | Description |
+|---|---|---|
+| `collabBackendUrl` | none | URL of the websocket server as the browsers reach it, for example through the [reverse proxy](#reverse-proxy-configuration) |
+| `jwt_secret_key` | none | Must match `JWT_SECRET_KEY` of the websocket server |
+| `max_file_size` | `10` | Largest image in megabytes that users can add to a board, measured on the original file. Images must also fit `MAX_UPLOAD_FILE_SIZE` of the websocket server, or the board refuses them. Set it with `--type=integer` |
+| `disable_external_libraries` | `false` | Set to `true` with `--type=boolean` to hide the button that browses the public Excalidraw libraries |
+
+#### Managed hosting
+
+If a provider hosts your Nextcloud, ask them whether they run the websocket server for Whiteboard. If they do not, you can run it on any machine that the browsers of your users reach over HTTPS, for example with the Docker image below, with `NEXTCLOUD_URL` set to the URL of your Nextcloud. Then enter its URL and secret in Administration settings > Whiteboard, or ask your provider to do it if you are not an administrator. The websocket server needs to reach your Nextcloud only for recordings.
 
 ### Running the WebSocket Server
 
@@ -106,13 +136,7 @@ services:
       JWT_SECRET_KEY: some-random-secret
 ```
 
-**Environment Variables:**
-- `JWT_SECRET_KEY`: Must match the secret configured in Nextcloud
-- `JWT_SECRET_KEY_FILE`: Path of a file holding the secret, instead of `JWT_SECRET_KEY`, for example a Docker secret in `/run/secrets/`
-- `NEXTCLOUD_URL`: Used for JWT token validation and optional recording uploads
-- `RECORDINGS_DIR`: Optional writable directory for temporary recording files (defaults to `/tmp/whiteboard-recordings` in the Docker image and automatically falls back to the OS temp directory if unavailable)
-- `RECORDING_DISCONNECT_GRACE_MS`: Grace period before stopping a recording after the recorder disconnects (default: `5000`)
-- `HOST`: Optional definition of the listening interface (defaults to `0.0.0.0`).
+The [environment variables](#websocket-server) above apply to both.
 
 ### Recording prerequisites
 
