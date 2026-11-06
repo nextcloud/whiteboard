@@ -48,6 +48,7 @@ The websocket server reads these environment variables at startup:
 | `FORCE_CLOSE_TIMEOUT` | `3600000` (1 hour) | Time in milliseconds the server waits for connections to close on shutdown before it stops anyway |
 | `HOST` | `0.0.0.0` | Interface the server listens on |
 | `JWT_SECRET_KEY` | none, required | Must match the secret configured in Nextcloud |
+| `JWT_SECRET_KEY_FILE` | none | Path of a file holding the secret, instead of `JWT_SECRET_KEY`, for example a Docker secret in `/run/secrets/` |
 | `MAX_UPLOAD_FILE_SIZE` | `2` | Largest file in megabytes that users can add to a board |
 | `METRICS_TOKEN` | none | Enables the Prometheus metrics at `/metrics`, with this token as a Bearer token or as the `?token=` parameter |
 | `NEXTCLOUD_URL` | `http://nextcloud.local` | Used for JWT token validation and optional recording uploads |
