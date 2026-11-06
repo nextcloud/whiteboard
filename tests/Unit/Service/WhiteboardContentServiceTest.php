@@ -14,6 +14,7 @@ use OCA\Whiteboard\Model\User;
 use OCP\AppFramework\Services\IAppConfig;
 use OCP\Files\File;
 use OCP\IConfig;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 use Test\TestCase;
@@ -384,6 +385,30 @@ class WhiteboardContentServiceTest extends TestCase {
 		$customData = $captured->data['elements'][0]['customData'];
 		$this->assertEquals($tableLock, $customData['tableLock']);
 		$this->assertEquals($commentThread, $customData['commentThread']);
+	}
+
+	#[DataProvider('blankContentProvider')]
+	public function testBlankFileIsAnEmptyBoard(string $content): void {
+		$file = $this->createStub(File::class);
+		$file->method('getContent')->willReturn($content);
+
+		$this->assertSame(['elements' => [], 'scrollToContent' => true], $this->service()->getContent($file));
+	}
+
+	public static function blankContentProvider(): array {
+		return [
+			'empty' => [''],
+			'space from an object store' => [' '],
+			'mixed whitespace' => [" \t\r\n"],
+		];
+	}
+
+	public function testMalformedFileStillFails(): void {
+		$file = $this->createStub(File::class);
+		$file->method('getContent')->willReturn(' {"elements": ');
+
+		$this->expectException(\JsonException::class);
+		$this->service()->getContent($file);
 	}
 
 	private function service(): WhiteboardContentService {
