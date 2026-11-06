@@ -88,9 +88,15 @@ jobs:
         env:
           IMAGE: ${{ env.GHCR_REPO}}:${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.platform }}
         run: |
+          tls="$RUNNER_TEMP/tls"
+          mkdir -p "$tls"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=whiteboard.example -keyout "$tls/tls.key" -out "$tls/tls.crt"
+          chmod 644 "$tls/tls.key"
           docker run -d --name whiteboard -e JWT_SECRET_KEY=ci "$IMAGE"
           docker run -d --name whiteboard-port -e JWT_SECRET_KEY=ci -e PORT=4000 "$IMAGE"
-          for container in whiteboard whiteboard-port; do
+          docker run -d --name whiteboard-tls -e JWT_SECRET_KEY=ci -e TLS=true -e TLS_KEY=/tls/tls.key -e TLS_CERT=/tls/tls.crt -v "$tls:/tls:ro" "$IMAGE"
+          docker run -d --name whiteboard-host -e JWT_SECRET_KEY=ci -e HOST=127.0.0.2 "$IMAGE"
+          for container in whiteboard whiteboard-port whiteboard-tls whiteboard-host; do
             for _ in $(seq 1 24); do
               status=$(docker inspect --format '{{.State.Health.Status}}' "$container")
               echo "$container health: $status"
