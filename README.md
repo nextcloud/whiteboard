@@ -105,9 +105,12 @@ docker run -e JWT_SECRET_KEY=some-random-secret -p 3002:3002 --rm ghcr.io/nextcl
 
 **Self-hosted Systems**
 ```bash
-# Debian/Ubuntu
+# Debian
 sudo apt-get update
-sudo apt-get install -y chromium chromium-common
+sudo apt-get install -y chromium
+
+# Ubuntu (Chromium is only available as a snap)
+sudo snap install chromium
 
 # Alpine Linux  
 apk add --no-cache chromium nss freetype harfbuzz ttf-freefont
@@ -116,7 +119,8 @@ apk add --no-cache chromium nss freetype harfbuzz ttf-freefont
 brew install --cask google-chrome
 
 # Verify installation
-chromium-browser --version  # Linux
+chromium --version          # Debian, Ubuntu
+chromium-browser --version  # Alpine
 google-chrome --version     # macOS/Chrome
 ```
 
