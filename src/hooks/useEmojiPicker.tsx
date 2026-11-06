@@ -82,6 +82,8 @@ export function useEmojiPicker() {
 				y: sceneCoords.y,
 				width: 40,
 				height: 40,
+				// Dark mode inverts SVG images, which would turn the emoji's colors around
+				customData: { keepColorsInDarkMode: true },
 			},
 		])
 		const elements = excalidrawAPI.getSceneElementsIncludingDeleted().slice()
