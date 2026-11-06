@@ -25,6 +25,13 @@ class SetupCheckTest extends TestCase {
 		$this->assertStringNotContainsString('works without it', $result->getDescription());
 	}
 
+	public function testMissingSecretIsAnErrorBecauseBoardsAreNotSaved(): void {
+		$result = $this->setupCheck('https://whiteboard.example.com', '')->run();
+
+		$this->assertSame(SetupResult::ERROR, $result->getSeverity());
+		$this->assertStringContainsString('to save boards', $result->getDescription());
+	}
+
 	public function testConfiguredServerPasses(): void {
 		$result = $this->setupCheck('https://whiteboard.example.com', 'secret')->run();
 

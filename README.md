@@ -24,12 +24,15 @@ Nextcloud Whiteboard uses a **client-first architecture** that prioritizes brows
 
 - **Browser-First**: The editor runs in the browser and saves to Nextcloud directly
 - **Local Storage**: Changes are immediately saved to browser storage (IndexedDB)
-- **Real-time Collaboration**: WebSocket server handles live collaboration sessions and picks the browser that saves each board to Nextcloud
+- **Saving**: WebSocket server picks the browser that saves each board to Nextcloud, also when only one person edits it
+- **Real-time Collaboration**: WebSocket server handles live collaboration sessions
 - **Simplified Connectivity**: Only browsers need to connect to the websocket server
 
 ## Installation & Setup
 
-### WebSocket Server for Real-time Collaboration
+<a id="websocket-server-for-real-time-collaboration"></a>
+
+### WebSocket Server
 
 The websocket server handles real-time collaboration sessions between users. **Important**: The websocket server is required, also when only one person edits a board. It decides which browser saves each board to Nextcloud, so without it changes stay in the browser and are not saved to Nextcloud. A websocket server deployment, with one or more nodes, serves a single Nextcloud instance.
 
@@ -265,7 +268,7 @@ To size dedicated collaboration servers we profiled the websocket backend with t
 
 ### Connection Issues
 
-**Real-time Collaboration Not Working**
+**Boards Not Saved or Real-time Collaboration Not Working**
 - Verify JWT secrets match between Nextcloud and websocket server
 - Check that user browsers can access the websocket server URL
 - Ensure reverse proxy correctly handles WebSocket upgrades
