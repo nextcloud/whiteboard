@@ -26,6 +26,28 @@ dotenv.config()
 
 const require = createRequire(import.meta.url)
 
+let jwtSecretFromFile = null
+
+/**
+ * Read the JWT secret from JWT_SECRET_KEY_FILE, for example a Docker secret
+ */
+function readJwtSecretFile() {
+	if (jwtSecretFromFile === null) {
+		const path = process.env.JWT_SECRET_KEY_FILE
+		let secret
+		try {
+			secret = fs.readFileSync(path, 'utf8').replace(/[\r\n]+$/, '')
+		} catch (error) {
+			throw new Error(`[FATAL] Cannot read JWT_SECRET_KEY_FILE ${path}: ${error.message}`, { cause: error })
+		}
+		if (!secret) {
+			throw new Error(`[FATAL] JWT_SECRET_KEY_FILE ${path} is empty.`)
+		}
+		jwtSecretFromFile = secret
+	}
+	return jwtSecretFromFile
+}
+
 const Config = {
 	IS_TEST_ENV: process.env.NODE_ENV === 'test',
 
@@ -59,14 +81,19 @@ const Config = {
 		: DEFAULT_COMPRESSION_ENABLED,
 
 	get JWT_SECRET_KEY() {
-		if (!process.env.JWT_SECRET_KEY) {
+		if (process.env.JWT_SECRET_KEY && process.env.JWT_SECRET_KEY_FILE) {
+			throw new Error('[FATAL] Set either JWT_SECRET_KEY or JWT_SECRET_KEY_FILE, not both.')
+		}
+
+		const secret = process.env.JWT_SECRET_KEY_FILE ? readJwtSecretFile() : process.env.JWT_SECRET_KEY
+		if (!secret) {
 			throw new Error(
 				'[FATAL] JWT_SECRET_KEY environment variable is required but not set. '
 				+ 'Generate one with: openssl rand -hex 32',
 			)
 		}
 
-		return process.env.JWT_SECRET_KEY
+		return secret
 	},
 
 	get NEXTCLOUD_URL() {
