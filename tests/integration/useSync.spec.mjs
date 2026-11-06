@@ -109,3 +109,98 @@ describe('server saves of useSync', () => {
 		root = createRoot(document.createElement('div'))
 	})
 })
+
+describe('images in the websocket sync of useSync', () => {
+	let root
+
+	const image = (id, size) => ({ id, mimeType: 'image/png', dataURL: `data:image/png;base64,${'A'.repeat(size)}`, created: 1 })
+
+	function Board() {
+		useSync()
+		return null
+	}
+
+	afterEach(async () => {
+		await act(async () => root.unmount())
+		useWhiteboardConfigStore.setState({ collabMaxMessageBytes: null })
+	})
+
+	let setToast
+
+	async function sentImages(files, collabMaxMessageBytes) {
+		const socket = { emit: vi.fn(), connected: true }
+		setToast = vi.fn()
+		useWhiteboardConfigStore.setState({ fileId: 1, isReadOnly: false, collabMaxMessageBytes })
+		useSyncStore.setState({ worker: { postMessage: vi.fn() }, isWorkerReady: true, savedSceneKey: null, pausedFileId: null })
+		useCollaborationStore.setState({ status: 'online', isDedicatedSyncer: false, pendingServerMerge: false, socket, isInRoom: true })
+		useExcalidrawStore.setState({
+			excalidrawAPI: {
+				getSceneElementsIncludingDeleted: () => scene(1),
+				getFiles: () => files,
+				getAppState: () => ({}),
+				setToast,
+			},
+		})
+
+		root = createRoot(document.createElement('div'))
+		await act(async () => root.render(createElement(Board)))
+
+		return socket.emit.mock.calls
+			.map(([, , message]) => JSON.parse(new TextDecoder().decode(message)))
+			.filter((message) => message.type === 'IMAGE_ADD')
+			.map((message) => message.payload.file.id)
+	}
+
+	it('does not send an image the collaboration server would refuse, tells the user, and sends the others', async () => {
+		expect(await sentImages({ small: image('small', 10), large: image('large', 2000) }, 1000)).toEqual(['small'])
+		expect(setToast).toHaveBeenCalledOnce()
+	})
+
+	it('tells once about an image added later that the server refuses, and sends it when a connection allows it', async () => {
+		const socket = { emit: vi.fn(), connected: true }
+		const setToast = vi.fn()
+		const files = {}
+		let onChange
+		function Editor() {
+			onChange = useSync().onChange
+			return null
+		}
+		useWhiteboardConfigStore.setState({ fileId: 1, isReadOnly: false, collabMaxMessageBytes: 1000 })
+		useSyncStore.setState({ worker: { postMessage: vi.fn() }, isWorkerReady: true, savedSceneKey: null, pausedFileId: null })
+		useCollaborationStore.setState({ status: 'online', isDedicatedSyncer: false, pendingServerMerge: false, socket, isInRoom: true })
+		useExcalidrawStore.setState({
+			excalidrawAPI: {
+				getSceneElementsIncludingDeleted: () => scene(1),
+				getFiles: () => files,
+				getAppState: () => ({ scrollX: 0, scrollY: 0, zoom: { value: 1 } }),
+				setToast,
+			},
+		})
+		root = createRoot(document.createElement('div'))
+		await act(async () => root.render(createElement(Editor)))
+		const sentImages = () => socket.emit.mock.calls
+			.map(([, , message]) => JSON.parse(new TextDecoder().decode(message)))
+			.filter((message) => message.type === 'IMAGE_ADD')
+			.map((message) => message.payload.file.id)
+		const change = async () => {
+			await new Promise((resolve) => setTimeout(resolve, 600))
+			await act(async () => onChange())
+		}
+
+		files.large = image('large', 2000)
+		await change()
+		await change()
+		expect(sentImages()).toEqual([])
+		expect(setToast).toHaveBeenCalledOnce()
+		expect(setToast.mock.calls[0][0].message).toBe('This image is too large to share with others')
+
+		useWhiteboardConfigStore.setState({ collabMaxMessageBytes: 10000 })
+		await change()
+		expect(sentImages()).toEqual(['large'])
+		expect(setToast).toHaveBeenCalledOnce()
+	})
+
+	it('keeps to the limit of servers before this fix while the connection did not tell its own', async () => {
+		expect(await sentImages({ small: image('small', 10), large: image('large', 3e6) }, null)).toEqual(['small'])
+	})
+})

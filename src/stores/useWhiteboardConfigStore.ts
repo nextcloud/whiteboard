@@ -21,6 +21,7 @@ interface WhiteboardConfigState {
 	initialDataPromise: InitialDataPromise
 	pendingInitialDataPromises: InitialDataPromise[]
 	collabBackendUrl: string // URL of the collaboration backend server
+	collabMaxMessageBytes: number | null // Largest message the collaboration server accepts, null when unknown
 	isVersionPreview: boolean
 	versionSource: string | null
 	fileVersion: string | null
@@ -50,6 +51,7 @@ interface WhiteboardConfigState {
 	resetInitialDataPromise: () => void
 	resetStore: () => void // Reset the entire store state
 	setLibraryRef: (ref: LibraryRef | null) => void
+	setCollabMaxMessageBytes: (bytes: number | null) => void
 
 	// UI actions
 	setZenModeEnabled: (enabled: boolean) => void
@@ -70,6 +72,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	initialDataPromise: createResolvablePromise(),
 	pendingInitialDataPromises: [],
 	collabBackendUrl: '', // Will be initialized from initial state
+	collabMaxMessageBytes: null,
 	isVersionPreview: false,
 	versionSource: null,
 	fileVersion: null,
@@ -128,6 +131,7 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 			versionSource: null,
 			fileVersion: null,
 			// Reset these values
+			collabMaxMessageBytes: null,
 			isReadOnly: false,
 			initialDataPromise: createResolvablePromise(),
 			pendingInitialDataPromises: [],
@@ -138,6 +142,8 @@ export const useWhiteboardConfigStore = create<WhiteboardConfigState>()((set, ge
 	},
 
 	setLibraryRef: (ref: LibraryRef | null) => set({ libraryRef: ref }),
+
+	setCollabMaxMessageBytes: (bytes: number | null) => set({ collabMaxMessageBytes: bytes }),
 
 	// UI actions
 	setZenModeEnabled: (enabled: boolean) => set({ zenModeEnabled: enabled }),

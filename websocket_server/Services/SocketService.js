@@ -142,7 +142,7 @@ export default class SocketService {
 	createSocketServer(server) {
 		const socketOptions = {
 			transports: ['websocket', 'polling'],
-			maxHttpBufferSize: Config.MAX_UPLOAD_FILE_SIZE + 1e6,
+			maxHttpBufferSize: GeneralUtility.maxSocketMessageSize(Config.MAX_UPLOAD_FILE_SIZE),
 			cors: {
 				origin: Config.CORS_ORIGINS,
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

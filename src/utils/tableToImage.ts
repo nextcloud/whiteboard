@@ -5,6 +5,8 @@
 import type { ExcalidrawImperativeAPI, BinaryFileData, DataURL } from '@nextcloud/excalidraw/types'
 import type { FileId, ExcalidrawImageElement } from '@nextcloud/excalidraw/element/types'
 import { convertToExcalidrawElements } from '@nextcloud/excalidraw'
+import { t } from '@nextcloud/l10n'
+import { filesFitCollabMessages } from './collabServerLimits.ts'
 
 // Style constants - hardcoded values for static image rendering (CSS variables won't work in exported images)
 const CELL_BASE_STYLE = 'border: 1px solid #ddd; padding: 12px 16px; line-height: 1.4; white-space: normal; word-wrap: break-word; overflow-wrap: break-word;'
@@ -37,6 +39,15 @@ export async function convertHtmlTableToImage(
 		id: fileId,
 		dataURL: dataUrl as DataURL,
 		created: Date.now(),
+	}
+
+	if (!filesFitCollabMessages([file])) {
+		excalidrawAPI.setToast({
+			message: t('whiteboard', 'This table is too large to share with others'),
+			closable: true,
+			duration: 5000,
+		})
+		throw new Error('Table too large to share')
 	}
 
 	// Add file to excalidraw

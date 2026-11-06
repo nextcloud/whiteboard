@@ -15,6 +15,17 @@ export default class GeneralUtility {
 		return new TextDecoder().decode(arrayBuffer)
 	}
 
+	/**
+	 * Largest socket message that still carries a file of the given size:
+	 * files travel as base64 data URLs inside JSON.
+	 *
+	 * @param {number} maxFileSize Largest file in bytes
+	 * @return {number} Bytes
+	 */
+	static maxSocketMessageSize(maxFileSize) {
+		return Math.ceil(maxFileSize * 4 / 3) + 1e6
+	}
+
 	static parseBooleanFromEnv(value) {
 		return value === 'true'
 	}

@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import type { WebSocketRoute } from '@playwright/test'
+import type { Page, WebSocketRoute } from '@playwright/test'
 
 import { expect } from '@playwright/test'
 import { test } from '../support/fixtures/random-user'
@@ -20,6 +20,38 @@ import {
 
 test.beforeEach(async ({ page }) => {
 	await openFilesApp(page)
+})
+
+// Pastes a PNG of random pixels, which PNG cannot compress, and returns its size
+async function pasteNoiseImage(page: Page, side: number): Promise<number> {
+	await (await getCanvasForInteraction(page)).click({ position: { x: 500, y: 300 } })
+	return page.evaluate(async (side) => {
+		const canvas = document.createElement('canvas')
+		canvas.width = side
+		canvas.height = side
+		const context = canvas.getContext('2d')!
+		const pixels = context.createImageData(side, side)
+		for (let i = 0; i < pixels.data.length; i += 4) {
+			pixels.data[i] = Math.random() * 256
+			pixels.data[i + 1] = Math.random() * 256
+			pixels.data[i + 2] = Math.random() * 256
+			pixels.data[i + 3] = 255
+		}
+		context.putImageData(pixels, 0, 0)
+		const blob = await new Promise<Blob>((resolve) => canvas.toBlob((result) => resolve(result!), 'image/png'))
+		const data = new DataTransfer()
+		data.items.add(new File([blob], 'noise.png', { type: 'image/png' }))
+		document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+		return blob.size
+	}, side)
+}
+
+const imageFileSizes = (page: Page) => page.evaluate(() => {
+	const api = (window as any).__whiteboardTestHooks?.excalidrawStore?.getState().excalidrawAPI
+	if (!api) {
+		throw new Error('The test hooks of the editor are missing')
+	}
+	return Object.values(api.getFiles()).map((file: any) => file.dataURL?.length ?? 0)
 })
 
 test('whiteboard changes sync across sessions', async ({ page, browser, user }) => {
@@ -120,4 +152,62 @@ test('a dropped connection is shown until the board reconnects', async ({ page }
 	await expect(status).toBeVisible()
 	await expect(status).toHaveCount(0, { timeout: 30000 })
 	expect(connections.length).toBeGreaterThan(1)
+})
+
+test('shares an image above the old limit of the collaboration server with a session that is already open', async ({ page, browser }) => {
+	test.setTimeout(120000)
+	const boardName = `Large image ${Date.now()}`
+	await createWhiteboard(page, { name: boardName })
+
+	const pageB = await newLoggedInPage(page, browser)
+	await pageB.addInitScript(() => {
+		;(window as any).__whiteboardTest = true
+	})
+	await openFilesApp(pageB)
+	await openWhiteboardFromFiles(pageB, boardName)
+	await expect.poll(() => pageB.evaluate(() => (window as any).__whiteboardTestHooks?.collaborationStore?.getState().isInRoom), { timeout: 30000 }).toBe(true)
+
+	// Above the 2.25 MB the 3 MB message limit of the default server used to carry, below the 2.74 MB it carries now
+	const size = await pasteNoiseImage(page, 830)
+	expect(size).toBeGreaterThan(2.26e6)
+	expect(size).toBeLessThan(2.74e6)
+
+	await expect.poll(() => imageFileSizes(pageB), { timeout: 30000, intervals: [500] }).toEqual([expect.any(Number)])
+	expect((await imageFileSizes(pageB))[0]).toBeGreaterThan(size)
+	// The image element of the scene shows the received file
+	await expect.poll(() => pageB.evaluate(() => {
+		const api = (window as any).__whiteboardTestHooks.excalidrawStore.getState().excalidrawAPI
+		const files = api.getFiles()
+		return api.getSceneElements().filter((element: any) => element.type === 'image' && files[element.fileId]).length
+	}), { timeout: 30000, intervals: [500] }).toBe(1)
+
+	await pageB.close()
+})
+
+test('refuses an image the collaboration server cannot pass on, and says so', async ({ page }) => {
+	let rewritten = 0
+	await page.routeWebSocket(/socket\.io/, (connection) => {
+		const server = connection.connectToServer()
+		server.onMessage((message) => {
+			if (typeof message === 'string' && message.startsWith('0{') && message.includes('"maxPayload"')) {
+				rewritten++
+				connection.send(message.replace(/"maxPayload":\d+/, '"maxPayload":200000'))
+				return
+			}
+			connection.send(message)
+		})
+	})
+	await page.addInitScript(() => {
+		;(window as any).__whiteboardTest = true
+	})
+	await openFilesApp(page)
+	await createWhiteboard(page, { name: `Image over the limit ${Date.now()}` })
+	await expect.poll(() => page.evaluate(() => (window as any).__whiteboardTestHooks?.whiteboardConfigStore?.getState().collabMaxMessageBytes), { timeout: 30000 }).toBe(200000)
+	expect(rewritten).toBeGreaterThan(0)
+
+	const size = await pasteNoiseImage(page, 300)
+	expect(size).toBeGreaterThan(150000)
+
+	await expect(page.getByText(/File is too big/)).toBeVisible({ timeout: 15000 })
+	expect(await imageFileSizes(page)).toEqual([])
 })
