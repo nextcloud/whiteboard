@@ -24,7 +24,7 @@ interface VotingSidebarProps {
 	votings: Array<Voting>
 	onVote: (votingId: string, optionId: string) => void
 	onEndVoting: (votingId: string) => void
-	onStartVoting: (question: string, type: string, options: string[]) => void
+	onStartVoting: (question: string, type: string, options: string[]) => boolean
 	excalidrawAPI: ExcalidrawImperativeAPI | null
 	isReadOnly: boolean
 }

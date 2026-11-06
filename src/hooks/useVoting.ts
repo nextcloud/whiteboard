@@ -6,6 +6,8 @@
 /* eslint-disable no-console */
 import { useEffect, useCallback } from 'react'
 import { getCurrentUser } from '@nextcloud/auth'
+import { showError } from '@nextcloud/dialogs'
+import { translate as t } from '@nextcloud/l10n'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
@@ -29,23 +31,23 @@ export function useVoting() {
 
 	const currentUserId = getCurrentUser()?.uid
 
-	const { fileId } = useWhiteboardConfigStore(useShallow(state => ({
-		fileId: state.fileId,
-	})))
-
 	const { excalidrawAPI } = useExcalidrawStore(useShallow(state => ({
 		excalidrawAPI: state.excalidrawAPI,
 	})))
 
 	const isConnected = status === 'online' && socket?.connected === true
 
-	const validateConnection = useCallback(() => {
-		if (!socket || !isConnected || !fileId) {
+	// The voting dialog keeps the callback it was opened with, so the connection is read when an action runs
+	const connectedRoom = useCallback(() => {
+		const { socket, status } = useCollaborationStore.getState()
+		const { fileId } = useWhiteboardConfigStore.getState()
+		if (!socket || status !== 'online' || !socket.connected || !fileId) {
 			console.error('[Voting] Action blocked: Socket not connected or no file ID')
+			showError(t('whiteboard', 'Voting requires connection to collaboration server'))
 			return null
 		}
-		return String(fileId)
-	}, [socket, isConnected, fileId])
+		return { socket: socket as CollaborationSocket, roomId: String(fileId) }
+	}, [])
 
 	useEffect(() => {
 		if (!socket || !isConnected) return
@@ -75,25 +77,20 @@ export function useVoting() {
 	}, [socket, isConnected, addVoting, updateVoting, setVotings, excalidrawAPI, currentUserId])
 
 	const startVoting = useCallback((question: string, type: string, options: string[]) => {
-		const roomId = validateConnection()
-		if (roomId) {
-			socket!.emit(SOCKET_MSG.VOTING_START, roomId, { question, type, options })
-		}
-	}, [socket, validateConnection])
+		const room = connectedRoom()
+		room?.socket.emit(SOCKET_MSG.VOTING_START, room.roomId, { question, type, options })
+		return room !== null
+	}, [connectedRoom])
 
 	const vote = useCallback((votingId: string, optionId: string) => {
-		const roomId = validateConnection()
-		if (roomId) {
-			socket!.emit(SOCKET_MSG.VOTING_VOTE, roomId, votingId, optionId)
-		}
-	}, [socket, validateConnection])
+		const room = connectedRoom()
+		room?.socket.emit(SOCKET_MSG.VOTING_VOTE, room.roomId, votingId, optionId)
+	}, [connectedRoom])
 
 	const endVoting = useCallback((votingId: string) => {
-		const roomId = validateConnection()
-		if (roomId) {
-			socket!.emit(SOCKET_MSG.VOTING_END, roomId, votingId)
-		}
-	}, [socket, validateConnection])
+		const room = connectedRoom()
+		room?.socket.emit(SOCKET_MSG.VOTING_END, room.roomId, votingId)
+	}, [connectedRoom])
 
 	return {
 		startVoting,
