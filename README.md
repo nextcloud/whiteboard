@@ -218,9 +218,8 @@ REDIS_URL=redis://[username:password@]host[:port][/database_number]
 For high-traffic environments with multiple websocket servers:
 
 1. Use Redis for shared session state
-2. Configure load balancer with session stickiness
-3. Redis Streams handles WebSocket scaling automatically
-4. Redis is required for multi-node clusters; socket and room session keys use TTLs instead of global clears so restarting a node does not erase active state on its peers
+2. Redis Streams handles WebSocket scaling automatically; clients connect over WebSocket only, so the load balancer needs no session stickiness
+3. Redis is required for multi-node clusters; socket and room session keys use TTLs instead of global clears so restarting a node does not erase active state on its peers
 
 ## Benchmarking & Capacity Planning
 
@@ -248,7 +247,7 @@ To size dedicated collaboration servers we profiled the websocket backend with t
 | 100 | ~20% (~0.20% per user) | ~0.36 GB | ~96.6 MB total (≈12.9 Mbps) | 4 vCPU / 2 GB RAM |
 | 500* | ~203% (≈2 cores) | ~3.6–4.5 GB | ~9.2 GB total (≈1.2 Gbps) | ≥8 vCPU / ≥8 GB RAM per node + Redis + ≥2 nodes |
 
-\*500-user test saturated a single instance and dropped ~30% of simulated clients. Treat this as an upper bound and plan to run multiple websocket workers behind a sticky load balancer with `STORAGE_STRATEGY=redis`.
+\*500-user test saturated a single instance and dropped ~30% of simulated clients. Treat this as an upper bound and plan to run multiple websocket workers behind a load balancer with `STORAGE_STRATEGY=redis`.
 
 ### Run the benchmark locally
 
