@@ -5,24 +5,33 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useState, useRef } from 'react'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
-import { useExcalidrawStore } from '../stores/useExcalidrawStore'
-import { useJWTStore } from '../stores/useJwtStore'
-import { useSyncStore } from '../stores/useSyncStore'
-import { db } from '../database/db'
-import { generateUrl } from '@nextcloud/router'
+import type { LibraryRef } from '../stores/useWhiteboardConfigStore'
+import type { BoardSync } from '../sync/boardSync.ts'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { initialDataState } from '../constants/excalidraw'
+import { useExcalidrawStore } from '../stores/useExcalidrawStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { getBoardSync, setBoardSync } from '../sync/boardSync.ts'
+import { boardAccount, createBoardSync } from '../sync/createBoardSync.ts'
 import logger from '../utils/logger'
-import { computeElementVersionHash, computeSceneKey, mergeSceneElements } from '../utils/syncSceneData'
-import { getLocalBoardDataPolicy } from '../utils/localBoardData.ts'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
+
+// Counts the boards and versions opened in this page, across React roots; an answer for an earlier one is dropped
+let openings = 0
+
+const defaultSettings = {
+	currentItemFontFamily: 3,
+	currentItemStrokeWidthKey: 'thin' as const,
+	currentItemRoughness: 0,
+}
 
 export function useBoardDataManager() {
 	const [isLoading, setIsLoading] = useState(true)
 	const loadingTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set())
 	const currentFileIdRef = useRef<number | null>(null)
+	const openedRef = useRef<BoardSync | null>(null)
 
 	const {
 		fileId,
@@ -32,7 +41,7 @@ export function useBoardDataManager() {
 		isVersionPreview,
 		versionSource,
 		fileVersion,
-	} = useWhiteboardConfigStore(useShallow(state => ({
+	} = useWhiteboardConfigStore(useShallow((state) => ({
 		fileId: state.fileId,
 		resolveInitialData: state.resolveInitialData,
 		resetInitialDataPromise: state.resetInitialDataPromise,
@@ -42,50 +51,27 @@ export function useBoardDataManager() {
 		fileVersion: state.fileVersion,
 	})))
 
-	const fetchDataFromServer = useCallback(async (fileId: number) => {
-		try {
-			const jwt = await useJWTStore.getState().getJWT()
-			if (!jwt) {
-				logger.error('[BoardDataManager] Failed to get JWT token for server data fetch')
-				return null
-			}
-
-			const url = generateUrl(`apps/whiteboard/${fileId}`)
-			const response = await fetch(url, {
-				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest',
-					Authorization: `Bearer ${jwt}`,
-				},
-			})
-
-			if (!response.ok) {
-				logger.error(`[BoardDataManager] Server responded with status: ${response.status} when fetching data`)
-				return null
-			}
-
-			const responseData = await response.json()
-			if (!responseData || !responseData.data) {
-				logger.error('[BoardDataManager] Invalid response data from server:', responseData)
-				return null
-			}
-
-			return responseData.data
-		} catch (error) {
-			logger.error('[BoardDataManager] Error fetching data from server:', error)
-			return null
-		}
-	}, [])
-
-	// Cleanup function to cancel all pending timeouts
 	const cancelPendingTimeouts = useCallback(() => {
-		loadingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout))
+		loadingTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
 		loadingTimeoutsRef.current.clear()
 	}, [])
 
 	const loadBoard = useCallback(async () => {
+		// The page may show another board, or another version, by the time an answer arrives
+		const opening = ++openings
+		const isStillShown = () => {
+			const shown = useWhiteboardConfigStore.getState()
+			return opening === openings && shown.fileId === fileId && shown.isVersionPreview === isVersionPreview && shown.versionSource === versionSource
+		}
+		// Only for the version still shown: another may have opened while this one loaded
+		const finish = (data: Parameters<typeof resolveInitialData>[0]) => {
+			if (isStillShown()) {
+				resolveInitialData(data)
+				setIsLoading(false)
+			}
+		}
 		if (isVersionPreview) {
+			setBoardSync(null)
 			try {
 				if (!versionSource) {
 					logger.warn('[BoardDataManager] Version preview requested without a version source', {
@@ -109,8 +95,7 @@ export function useBoardDataManager() {
 						versionSource,
 						status: response.status,
 					})
-					resolveInitialData(initialDataState)
-					setIsLoading(false)
+					finish(initialDataState)
 					return
 				}
 
@@ -131,8 +116,7 @@ export function useBoardDataManager() {
 					logger.warn('[BoardDataManager] Version content missing elements array, falling back to defaults', {
 						versionSource,
 					})
-					resolveInitialData(initialDataState)
-					setIsLoading(false)
+					finish(initialDataState)
 					return
 				}
 
@@ -142,17 +126,15 @@ export function useBoardDataManager() {
 					...sanitizedAppState,
 				}
 
-				resolveInitialData({
+				finish({
 					elements: parsedContent.elements,
 					files: parsedContent.files || {},
 					appState: finalAppState,
 					scrollToContent: parsedContent.scrollToContent ?? true,
 				})
-				setIsLoading(false)
 			} catch (error) {
 				logger.error('[BoardDataManager] Error loading version content', error)
-				resolveInitialData(initialDataState)
-				setIsLoading(false)
+				finish(initialDataState)
 			}
 			return
 		}
@@ -164,170 +146,33 @@ export function useBoardDataManager() {
 			return
 		}
 
-		// Store the current fileId to validate later
 		currentFileIdRef.current = fileId
-		useSyncStore.setState({ savedSceneKey: null })
+		const sync = createBoardSync(fileId, boardAccount())
+		openedRef.current = sync
+		setBoardSync(sync)
 
-		try {
-			const defaultSettings = {
-				currentItemFontFamily: 3,
-				currentItemStrokeWidthKey: 'thin' as const,
-				currentItemRoughness: 0,
-			}
-
-			// The board may just have closed: read its local copy after the last write
-			await useSyncStore.getState().flushBoard(fileId)
-			const localData = await db.get(fileId)
-			const hasPendingLocalChanges = localData?.hasPendingLocalChanges ?? false
-
-			// Validate that we're still loading the same file
-			if (currentFileIdRef.current !== fileId) {
-				return
-			}
-
-			// ALWAYS fetch from server to get latest data
-			const serverData = await fetchDataFromServer(fileId)
-			const isReadOnly = useWhiteboardConfigStore.getState().isReadOnly
-			const hasServerData = Boolean(serverData && Array.isArray(serverData.elements))
-			const hasLocalData = Boolean(localData && Array.isArray(localData.elements))
-			const localBoardDataPolicy = getLocalBoardDataPolicy(
-				hasServerData,
-				hasLocalData,
-				hasPendingLocalChanges,
-				isReadOnly,
-			)
-
-			// Validate that we're still loading the same file
-			if (currentFileIdRef.current !== fileId) {
-				return
-			}
-
-			// The library (if any) this board was created from; resolved live in App.
-			setLibraryRef(serverData?.libraryRef ?? null)
-
-			let dataToUse = null
-
-			if (serverData && serverData.elements && Array.isArray(serverData.elements)) {
-				// Server has data
-				const { restoreElements } = await import('@nextcloud/excalidraw')
-
-				const restoredServerElements = restoreElements(serverData.elements, null)
-				const serverHash = computeElementVersionHash(restoredServerElements)
-				useSyncStore.setState({ savedSceneKey: computeSceneKey(restoredServerElements, serverData.files || {}) })
-				const serverScrollToContent = serverData.scrollToContent ?? true
-				const sanitizedServerAppState = sanitizeAppStateForSync(serverData.appState)
-				const sanitizedLocalAppState = sanitizeAppStateForSync(localData?.appState)
-
-				if (localData && localData.elements && Array.isArray(localData.elements) && localBoardDataPolicy === 'reconcile') {
-					// Local has pending changes – reconcile to avoid losing unsynced work
-					const restoredLocalElements = restoreElements(localData.elements, null)
-					const reconciledElements = mergeSceneElements(restoredLocalElements, restoredServerElements, {})
-
-					const mergedFiles = { ...localData.files, ...serverData.files }
-					const mergedAppState = { ...sanitizedLocalAppState, ...sanitizedServerAppState }
-
-					dataToUse = {
-						elements: reconciledElements,
-						files: mergedFiles,
-						appState: mergedAppState,
-						scrollToContent: serverScrollToContent,
-					}
-
-					await db.put(
-						fileId,
-						reconciledElements,
-						mergedFiles || {},
-						mergedAppState,
-						{
-							hasPendingLocalChanges: true,
-							lastSyncedHash: serverHash,
-						},
-					)
-				} else {
-					// Use server content as source of truth (restores, clean loads, etc.)
-					const mergedAppState = { ...sanitizedLocalAppState, ...sanitizedServerAppState }
-					const files = serverData.files || {}
-
-					dataToUse = {
-						...serverData,
-						files,
-						appState: mergedAppState,
-						scrollToContent: serverScrollToContent,
-					}
-
-					await db.put(
-						fileId,
-						serverData.elements,
-						files,
-						mergedAppState,
-						{
-							hasPendingLocalChanges: false,
-							lastSyncedHash: serverHash,
-						},
-					)
-				}
-			} else if (localData && localData.elements && localBoardDataPolicy === 'fallback') {
-				// Only writable local data is available
-				dataToUse = localData
-			} else {
-				// No data from either source
-				dataToUse = null
-			}
-
-			// Final validation before resolving data
-			if (currentFileIdRef.current !== fileId) {
-				return
-			}
-
-			// Use the reconciled/fetched data
-			if (dataToUse && dataToUse.elements) {
-				const elements = dataToUse.elements
-				const sanitizedAppState = sanitizeAppStateForSync(dataToUse.appState)
-				const finalAppState = { ...defaultSettings, ...sanitizedAppState }
-				const files = dataToUse.files || {}
-
-				// Force a small delay to ensure the component is ready to receive the data
-				const timeout = setTimeout(() => {
-					// Validate one more time before resolving
-					if (currentFileIdRef.current === fileId) {
-						resolveInitialData({
-							elements,
-							appState: finalAppState,
-							files,
-							scrollToContent: dataToUse.scrollToContent ?? true,
-						})
-						setIsLoading(false)
-					}
-					loadingTimeoutsRef.current.delete(timeout)
-				}, 50)
-				loadingTimeoutsRef.current.add(timeout)
-			} else {
-				// No valid data from either source, use defaults
-				// Force a small delay to ensure the component is ready to receive the data
-				const timeout = setTimeout(() => {
-					// Validate one more time before resolving
-					if (currentFileIdRef.current === fileId) {
-						resolveInitialData(initialDataState)
-						setIsLoading(false)
-					}
-					loadingTimeoutsRef.current.delete(timeout)
-				}, 50)
-				loadingTimeoutsRef.current.add(timeout)
-			}
-		} catch (error) {
-			logger.error('[BoardDataManager] Error loading data:', error)
-			// Force a small delay to ensure the component is ready to receive the data
-			const timeout = setTimeout(() => {
-				// Validate one more time before resolving
-				if (currentFileIdRef.current === fileId) {
-					resolveInitialData(initialDataState)
-					setIsLoading(false)
-				}
-				loadingTimeoutsRef.current.delete(timeout)
-			}, 50)
-			loadingTimeoutsRef.current.add(timeout)
+		const data = await sync.open()
+		if (currentFileIdRef.current !== fileId || !isStillShown() || getBoardSync() !== sync) {
+			return
 		}
-	}, [fileId, resolveInitialData, setLibraryRef, fetchDataFromServer, isVersionPreview, versionSource, fileVersion])
+
+		setLibraryRef((data?.libraryRef as LibraryRef | undefined) ?? null)
+		const timeout = setTimeout(() => {
+			if (currentFileIdRef.current === fileId && isStillShown()) {
+				resolveInitialData(data
+					? {
+							elements: data.elements,
+							appState: { ...defaultSettings, ...sanitizeAppStateForSync(data.appState) },
+							files: data.files || {},
+							scrollToContent: data.scrollToContent ?? true,
+						}
+					: initialDataState)
+				setIsLoading(false)
+			}
+			loadingTimeoutsRef.current.delete(timeout)
+		}, 50)
+		loadingTimeoutsRef.current.add(timeout)
+	}, [fileId, resolveInitialData, setLibraryRef, isVersionPreview, versionSource, fileVersion])
 
 	// Load data when fileId changes
 	useEffect(() => {
@@ -343,7 +188,8 @@ export function useBoardDataManager() {
 			// Reset the initialDataPromise to ensure clean state
 			resetInitialDataPromise()
 
-			// Clear any existing Excalidraw data
+			// The board shown so far closes first, so it still sends what it has not saved
+			setBoardSync(null)
 			const api = useExcalidrawStore.getState().excalidrawAPI
 			if (api) {
 				api.resetScene()
@@ -358,6 +204,10 @@ export function useBoardDataManager() {
 	useEffect(() => {
 		return () => {
 			cancelPendingTimeouts()
+			// Only its own board: another one may already be open in this page
+			if (getBoardSync() === openedRef.current) {
+				setBoardSync(null)
+			}
 		}
 	}, [cancelPendingTimeouts])
 

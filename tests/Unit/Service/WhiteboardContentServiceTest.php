@@ -16,51 +16,158 @@ use OCP\Files\File;
 use OCP\IConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
-use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class WhiteboardContentServiceTest extends TestCase {
 	private const CREATOR_PROOF = 'v1:31a3f15ad65d53e0b630d98a4fb2fbb9d629c4cb36992ba211c04f69304665bf';
 	private const SECRET = 'test-secret';
 
-	public function testNormalSaveKeepsEmbeddedLibraryItems(): void {
-		$file = $this->createMock(File::class);
-		$file->method('getId')->willReturn(123);
-		$file->method('getContent')->willReturn(json_encode([
-			'elements' => [
-				['id' => 'old-element', 'type' => 'rectangle'],
-			],
+	public function testSaveMergesElementsAndKeepsTheRestOfTheBoard(): void {
+		$board = $this->save([
+			'elements' => [['id' => 'old-element', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1]],
 			'files' => [],
-			'libraryItems' => [
-				[
-					'id' => 'library-item-1',
-					'elements' => [
-						['id' => 'library-element-1', 'type' => 'ellipse'],
-					],
-				],
-			],
+			'libraryItems' => [['id' => 'library-item-1', 'elements' => [['id' => 'library-element-1', 'type' => 'ellipse']]]],
+			'libraryRef' => ['scope' => 'personal', 'name' => 'Kit'],
 			'scrollToContent' => true,
-		], JSON_THROW_ON_ERROR));
+		], [
+			'elements' => [['id' => 'new-element', 'type' => 'diamond', 'version' => 1, 'versionNonce' => 1]],
+			'files' => [],
+		]);
 
-		$file->expects($this->once())
-			->method('putContent')
-			->with($this->callback(static function (string $content): bool {
-				$data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-				return $data['elements'][0]['id'] === 'new-element'
-					&& $data['libraryItems'][0]['id'] === 'library-item-1'
-					&& !isset($data['libraryMode'])
-					&& !isset($data['librarySource']);
-			}));
+		$this->assertSame(['old-element', 'new-element'], array_column($board['elements'], 'id'));
+		$this->assertSame('library-item-1', $board['libraryItems'][0]['id']);
+		$this->assertSame(['scope' => 'personal', 'name' => 'Kit'], $board['libraryRef']);
+	}
 
-		$this->service()->updateContent($file, [
-			'data' => [
-				'elements' => [
-					['id' => 'new-element', 'type' => 'diamond'],
-				],
-				'files' => [],
-				'scrollToContent' => true,
+	public function testSaveNeverRemovesOrLowersAStoredElement(): void {
+		$board = $this->save([
+			'elements' => [
+				['id' => 'a', 'type' => 'rectangle', 'version' => 5, 'versionNonce' => 9, 'width' => 50],
+				['id' => 'b', 'type' => 'rectangle', 'version' => 2, 'versionNonce' => 2],
 			],
-		], $this->actor());
+		], [
+			'elements' => [
+				['id' => 'a', 'type' => 'rectangle', 'version' => 3, 'versionNonce' => 1, 'width' => 30],
+				['id' => 'c', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1],
+			],
+		]);
+
+		$this->assertSame(['a', 'b', 'c'], array_column($board['elements'], 'id'));
+		$this->assertSame(50, $board['elements'][0]['width']);
+	}
+
+	public function testEqualVersionsKeepTheLowerNonce(): void {
+		$stored = ['elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 4, 'versionNonce' => 20, 'width' => 1]]];
+
+		$lower = $this->save($stored, ['elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 4, 'versionNonce' => 10, 'width' => 2]]]);
+		$higher = $this->save($stored, ['elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 4, 'versionNonce' => 30, 'width' => 3]]]);
+
+		$this->assertSame(2, $lower['elements'][0]['width']);
+		$this->assertNull($higher);
+	}
+
+	public function testDeletedElementStaysDeletedAgainstAnOlderCopy(): void {
+		$board = $this->save([
+			'elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 6, 'versionNonce' => 1, 'isDeleted' => true]],
+		], [
+			'elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 5, 'versionNonce' => 1, 'isDeleted' => false]],
+		]);
+
+		$this->assertNull($board);
+	}
+
+	public function testFilesAreAddedAndNeverReplaced(): void {
+		$board = $this->save([
+			'elements' => [],
+			'files' => ['one' => ['id' => 'one', 'dataURL' => 'data:stored']],
+		], [
+			'elements' => [],
+			'files' => [
+				'one' => ['id' => 'one', 'dataURL' => 'data:other'],
+				'two' => ['id' => 'two', 'dataURL' => 'data:new'],
+			],
+		]);
+
+		$this->assertSame('data:stored', $board['files']['one']['dataURL']);
+		$this->assertSame('data:new', $board['files']['two']['dataURL']);
+	}
+
+	public function testChangedElementsAndFilesGetTheRevision(): void {
+		$result = $this->service()->merge([
+			'elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1]],
+			'revisions' => ['elements' => ['a' => 3], 'files' => []],
+		], [
+			['id' => 'b', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1],
+		], ['f' => ['id' => 'f', 'dataURL' => 'data:x']], $this->actor(), 123, 4);
+
+		$this->assertSame(['a' => 3, 'b' => 4], $result['board']['revisions']['elements']);
+		$this->assertSame(['f' => 4], $result['board']['revisions']['files']);
+		$this->assertSame(['b'], $result['elements']);
+		$this->assertSame(['f'], $result['files']);
+		$changes = $this->service()->changesSince($result['board'], 3);
+		$this->assertSame(['b'], array_column($changes['elements'], 'id'));
+		$this->assertSame(['f'], array_keys($changes['files']));
+	}
+
+	public function testElementsAreOrderedByFractionalIndex(): void {
+		$board = $this->save([
+			'elements' => [
+				['id' => 'a', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1, 'index' => 'a0'],
+				['id' => 'b', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1, 'index' => 'a1'],
+			],
+		], [
+			'elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 2, 'versionNonce' => 1, 'index' => 'a2']],
+		]);
+
+		$this->assertSame(['b', 'a'], array_column($board['elements'], 'id'));
+	}
+
+	public function testBoardsWithoutIndicesKeepTheirOrder(): void {
+		$board = $this->save([
+			'elements' => [
+				['id' => 'b', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1],
+				['id' => 'a', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1],
+			],
+		], [
+			'elements' => [['id' => 'c', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1, 'index' => 'a0']],
+		]);
+
+		$this->assertSame(['b', 'a', 'c'], array_column($board['elements'], 'id'));
+	}
+
+	public function testRestoreReplacesTheBoardAndKeepsItsLibrary(): void {
+		$board = $this->service()->replace([
+			'elements' => [['id' => 'now', 'type' => 'rectangle', 'version' => 9, 'versionNonce' => 1]],
+			'libraryRef' => ['scope' => 'personal', 'name' => 'Kit'],
+		], [
+			'elements' => [['id' => 'then', 'type' => 'rectangle', 'version' => 2, 'versionNonce' => 1]],
+			'files' => ['f' => ['id' => 'f', 'dataURL' => 'data:x']],
+			'appState' => ['viewBackgroundColor' => '#000000'],
+		], 7);
+
+		$this->assertSame(['then'], array_column($board['elements'], 'id'));
+		$this->assertSame(['scope' => 'personal', 'name' => 'Kit'], $board['libraryRef']);
+		$this->assertSame(['then' => 7], $board['revisions']['elements']);
+		$this->assertSame(['f' => 7], $board['revisions']['files']);
+		$this->assertArrayNotHasKey('revisions', $this->service()->forClient($board));
+	}
+
+	public function testClientsAlwaysReadAnElementList(): void {
+		foreach ([[], ['data' => ['elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1]]]]] as $stored) {
+			$board = $this->service()->forClient($stored);
+			$this->assertIsArray($board['elements']);
+		}
+		$this->assertSame(['a'], array_column($board['elements'], 'id'));
+	}
+
+	public function testTheWinningCopyCountsWhenARequestCarriesAnElementTwice(): void {
+		$stored = ['elements' => [['id' => 'a', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1]]];
+		$board = $this->service()->merge($stored, [
+			['id' => 'a', 'type' => 'rectangle', 'version' => 2, 'versionNonce' => 1],
+			['id' => 'a', 'type' => 'rectangle', 'version' => 3, 'versionNonce' => 1],
+		], [], $this->actor(), 42, 2)['board'];
+
+		$this->assertSame(3, $board['elements'][0]['version']);
 	}
 
 	public function testSaveWithUnchangedElementVersionsWritesNothing(): void {
@@ -77,7 +184,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		]);
 		$file->expects($this->never())->method('putContent');
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'arrow',
@@ -100,7 +207,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		]);
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 8, 'versionNonce' => 43, 'width' => 20]],
 				'files' => [],
@@ -111,79 +218,11 @@ class WhiteboardContentServiceTest extends TestCase {
 		$this->assertSame(20, $captured->data['elements'][0]['width']);
 	}
 
-	public function testValidLibraryRefIsPersisted(): void {
-		$file = $this->mockEmptyFile();
-		$captured = $this->captureWrite($file);
-
-		$this->service()->updateContent($file, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-				'files' => [],
-				'libraryRef' => ['scope' => 'org', 'name' => 'Brand kit'],
-			],
-		], $this->actor());
-
-		// canonicalize() ksorts associative arrays, so compare order-insensitively.
-		$this->assertEquals(['scope' => 'org', 'name' => 'Brand kit'], $captured->data['libraryRef']);
-	}
-
-	public function testInvalidLibraryRefNamesAreDropped(): void {
-		$file = $this->mockEmptyFile();
-		$captured = $this->captureWrite($file);
-
-		$this->service()->updateContent($file, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-				'files' => [],
-				'libraryRef' => ['scope' => 'personal', 'name' => 'a/b'],
-			],
-		], $this->actor());
-
-		$this->assertArrayNotHasKey('libraryRef', $captured->data);
-	}
-
-	public function testNullLibraryRefRemovesStoredRef(): void {
-		$file = $this->mockFileWithContent([
-			'elements' => [['id' => 'el', 'type' => 'rectangle']],
-			'files' => [],
-			'libraryRef' => ['scope' => 'personal', 'name' => 'Kit'],
-		]);
-		$captured = $this->captureWrite($file);
-
-		$this->service()->updateContent($file, [
-			'data' => [
-				'elements' => [['id' => 'el2', 'type' => 'diamond']],
-				'files' => [],
-				'libraryRef' => null,
-			],
-		], $this->actor());
-
-		$this->assertArrayNotHasKey('libraryRef', $captured->data);
-	}
-
-	public function testEmbeddedLibraryItemsLoseReadOnlyTag(): void {
-		$file = $this->mockEmptyFile();
-		$captured = $this->captureWrite($file);
-
-		$this->service()->updateContent($file, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-				'files' => [],
-				'libraryItems' => [
-					['id' => 'item', 'elements' => [['type' => 'ellipse']], 'libraryName' => 'Kit', 'scope' => 'org'],
-				],
-			],
-		], $this->actor());
-
-		$this->assertArrayNotHasKey('libraryName', $captured->data['libraryItems'][0]);
-		$this->assertArrayNotHasKey('scope', $captured->data['libraryItems'][0]);
-	}
-
 	public function testDirectSaveCanonicalizesForgedCreatorToActor(): void {
 		$file = $this->mockEmptyFile();
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'forged-element',
@@ -207,7 +246,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$file = $this->mockEmptyFile();
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'own-element',
@@ -230,7 +269,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$captured = $this->captureWrite($file);
 		$invalidProof = 'v1:' . str_repeat('0', 64);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'own-element',
@@ -251,7 +290,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$file = $this->mockEmptyFile();
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'peer-element',
@@ -272,7 +311,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$file = $this->mockEmptyFile();
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [['id' => 'public-element', 'type' => 'rectangle']],
 			],
@@ -288,7 +327,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$file = $this->mockEmptyFile();
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'other-element',
@@ -310,6 +349,7 @@ class WhiteboardContentServiceTest extends TestCase {
 			'elements' => [[
 				'id' => 'existing-element',
 				'type' => 'rectangle',
+				'version' => 1,
 				'customData' => [
 					'creator' => ['uid' => 'bob', 'displayName' => 'Bob', 'createdAt' => 10],
 				],
@@ -318,11 +358,12 @@ class WhiteboardContentServiceTest extends TestCase {
 		]);
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'existing-element',
 					'type' => 'diamond',
+					'version' => 2,
 					'customData' => [
 						'creator' => ['uid' => 'mallory', 'displayName' => 'Mallory', 'createdAt' => 1],
 					],
@@ -340,6 +381,7 @@ class WhiteboardContentServiceTest extends TestCase {
 			'elements' => [[
 				'id' => 'peer-element',
 				'type' => 'rectangle',
+				'version' => 1,
 				'customData' => [
 					'creator' => ['uid' => 'alice', 'displayName' => 'Alice', 'createdAt' => 1773915810534],
 					'creatorProof' => self::CREATOR_PROOF,
@@ -349,11 +391,12 @@ class WhiteboardContentServiceTest extends TestCase {
 		]);
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'peer-element',
 					'type' => 'diamond',
+					'version' => 2,
 				]],
 			],
 		], $this->actor('bob', 'Bob'));
@@ -368,7 +411,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$commentThread = ['comments' => [['id' => 'comment', 'author' => 'Bob', 'text' => 'hello']]];
 		$tableLock = ['uid' => 'bob', 'displayName' => 'Bob', 'lockedAt' => 10];
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [[
 					'id' => 'table',
@@ -392,7 +435,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$file = $this->createStub(File::class);
 		$file->method('getContent')->willReturn($content);
 
-		$this->assertSame(['elements' => [], 'scrollToContent' => true], $this->service()->getContent($file));
+		$this->assertSame(['elements' => [], 'scrollToContent' => true], $this->service()->decode($file->getContent()));
 	}
 
 	public static function blankContentProvider(): array {
@@ -408,11 +451,32 @@ class WhiteboardContentServiceTest extends TestCase {
 		$file->method('getContent')->willReturn(' {"elements": ');
 
 		$this->expectException(\JsonException::class);
-		$this->service()->getContent($file);
+		$this->service()->decode($file->getContent());
 	}
 
 	private function service(): WhiteboardContentService {
-		return new WhiteboardContentService($this->createMock(LoggerInterface::class), $this->configService());
+		return new WhiteboardContentService($this->configService());
+	}
+
+	/**
+	 * Merges a save into the board stored in `$file` and writes it, as Nextcloud does
+	 *
+	 * @param File&MockObject $file
+	 */
+	private function updateContent(File $file, array $data, User $actor): void {
+		$service = $this->service();
+		$result = $service->merge($service->decode($file->getContent()), $data['data']['elements'] ?? [], $data['data']['files'] ?? [], $actor, 123, 1);
+		if ($result['elements'] !== [] || $result['files'] !== []) {
+			$file->putContent($service->encode($result['board']));
+		}
+	}
+
+	/**
+	 * The board after merging a save, or null when the save changes nothing
+	 */
+	private function save(array $stored, array $data, ?User $actor = null): ?array {
+		$result = $this->service()->merge($stored, $data['elements'] ?? [], $data['files'] ?? [], $actor ?? $this->actor(), 123, 1);
+		return $result['elements'] === [] && $result['files'] === [] ? null : $result['board'];
 	}
 
 	private function configService(): ConfigService {
@@ -439,7 +503,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		]);
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 2, 'versionNonce' => 2]],
 				'files' => [],
@@ -455,7 +519,7 @@ class WhiteboardContentServiceTest extends TestCase {
 		$file = $this->mockEmptyFile();
 		$captured = $this->captureWrite($file);
 
-		$this->service()->updateContent($file, [
+		$this->updateContent($file, [
 			'data' => [
 				'elements' => [['id' => 'box', 'type' => 'rectangle', 'version' => 1, 'versionNonce' => 1]],
 				'files' => [],

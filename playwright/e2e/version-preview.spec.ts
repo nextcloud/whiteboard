@@ -312,7 +312,7 @@ const setConnected = async (page: Page, connected: boolean) => {
 // Holds the first matching request until released; with sendFirst the request
 // reaches the server right away and only its response is held, so held() counts
 // it once that response is in
-const holdRequests = async (page: Page, method: string, url: string, { sendFirst = false } = {}) => {
+const holdRequests = async (page: Page, method: string, url: string | RegExp, { sendFirst = false } = {}) => {
 	let held = 0
 	let release = () => {}
 	const released = new Promise<void>((resolve) => {
@@ -341,18 +341,11 @@ const watchReceivedFrames = (page: Page) => {
 	return (text: string) => frames.some((frame) => frame.includes(text))
 }
 
-const locallyStoredTexts = (page: Page, fileId: number) => page.evaluate((fileId) => new Promise<string[]>((resolve, reject) => {
-	const request = indexedDB.open('WhiteboardDatabase')
-	request.onerror = () => reject(request.error)
-	request.onsuccess = () => {
-		const read = request.result.transaction('whiteboards').objectStore('whiteboards').get(fileId)
-		read.onerror = () => reject(read.error)
-		read.onsuccess = () => resolve((read.result?.elements ?? [])
-			.filter((element: any) => element.type === 'text' && !element.isDeleted)
-			.map((element: any) => element.text)
-			.sort())
-	}
-}), fileId)
+const shownTexts = (page: Page) => page.evaluate(() => (window as any).__whiteboardTestHooks.excalidrawStore.getState().excalidrawAPI
+	.getSceneElements()
+	.filter((element: any) => element.type === 'text')
+	.map((element: any) => element.text)
+	.sort())
 
 // A board with a version that has the text "Restore kept", which was deleted
 // afterwards, while "Restore added" was added after it
@@ -480,7 +473,7 @@ const expectRestoredAfterEdits = async (editors: Page[], auth: { fileId: number,
 	expect(await stored()).toEqual({ texts: [...keptTexts].sort(), rectangles: editors.length })
 }
 
-test('a restore reaches a session that missed it, also when the server refused its save', async ({
+test('a restore reaches a session that was disconnected', async ({
 	page,
 	browser,
 	user,
@@ -491,21 +484,9 @@ test('a restore reaches a session that missed it, also when the server refused i
 	const otherPage = await openOtherSession(page, browser, storedName)
 
 	await setConnected(otherPage, false)
-	let refused = false
-	await restoreFromBanner(page, { fileId: auth.fileId, storedName, versionEntry }, async () => {
-		// as while the save of another session holds the board
-		await page.route(`**/apps/whiteboard/${auth.fileId}`, async (route) => {
-			if (route.request().method() !== 'PUT' || refused) {
-				await route.fallback()
-				return
-			}
-			refused = true
-			await route.fulfill({ status: 409, json: { status: 'conflict' } })
-		})
-	})
-	expect(refused).toBe(true)
+	await restoreFromBanner(page, { fileId: auth.fileId, storedName, versionEntry })
 	await setConnected(otherPage, true)
-	await expect.poll(() => locallyStoredTexts(otherPage, auth.fileId), { timeout: 20000, intervals: [500] }).toEqual(['Restore kept'])
+	await expect.poll(() => shownTexts(otherPage), { timeout: 30000, intervals: [500] }).toEqual(['Restore kept'])
 
 	await expectRestoredAfterEdits([otherPage, page], auth)
 	await otherPage.context().close()
@@ -522,12 +503,13 @@ test('a restored version reaches the other sessions before their next save', asy
 	const otherPage = await openOtherSession(page, browser, storedName)
 
 	await restoreFromBanner(page, { fileId: auth.fileId, storedName, versionEntry })
+	await expect.poll(() => shownTexts(otherPage), { timeout: 30000, intervals: [500] }).toEqual(['Restore kept'])
 
 	await expectRestoredAfterEdits([otherPage, page], auth)
 	await otherPage.context().close()
 })
 
-test('a version restored from the Files sidebar keeps what others draw meanwhile', async ({
+test('a version restored from the Files sidebar wins over what others drew before it', async ({
 	page,
 	browser,
 	user,
@@ -539,19 +521,19 @@ test('a version restored from the Files sidebar keeps what others draw meanwhile
 	const otherPage = await openOtherSession(page, browser, storedName)
 	const drawn = 'Drawn during the restore'
 
-	const restore = await holdRequests(page, 'MOVE', '**/remote.php/dav/versions/**')
+	const restore = await holdRequests(page, 'POST', `**/apps/whiteboard/${auth.fileId}/restore`)
 	await requestRestoreFromSidebar(page, auth.fileId, versionEntry)
 	await expect.poll(restore.held, { timeout: 20000 }).toBe(1)
 	await addTextElement(otherPage, drawn, { x: 900, y: 250 })
 	await expect.poll(() => hasReceived(drawn), { timeout: 20000 }).toBe(true)
-	// only the restoring session still has the drawing
-	await otherPage.context().close()
 	restore.release()
 	await expect(page.getByText('Version restored').first()).toBeVisible({ timeout: 20000 })
-	await expect.poll(async () => visibleTexts(await fetchBoardContent(page, auth)), { timeout: 30000, intervals: [500] })
-		.toEqual(['Restore kept', drawn].sort())
+	await expect.poll(async () => visibleTexts(await fetchBoardContent(page, auth)), { timeout: 30000, intervals: [500] }).toEqual(['Restore kept'])
+	await expect.poll(() => shownTexts(page), { timeout: 30000, intervals: [500] }).toEqual(['Restore kept'])
+	await expect.poll(() => shownTexts(otherPage), { timeout: 30000, intervals: [500] }).toEqual(['Restore kept'])
 
-	await expectRestoredAfterEdits([page], auth, ['Restore kept', drawn])
+	await expectRestoredAfterEdits([otherPage, page], auth)
+	await otherPage.context().close()
 })
 
 test('a version that cannot be read is not restored', async ({
@@ -563,10 +545,10 @@ test('a version that cannot be read is not restored', async ({
 	const { auth, versionEntry } = await prepareRestoreScenario(page, user.userId)
 	const before = visibleTexts(await fetchBoardContent(page, auth))
 
-	const moves: string[] = []
+	const restores: string[] = []
 	page.on('request', (request) => {
-		if (request.method() === 'MOVE') {
-			moves.push(request.url())
+		if (request.method() === 'POST' && request.url().includes('/restore')) {
+			restores.push(request.url())
 		}
 	})
 	await page.route(`**${versionEntry.versionSource}`, (route) => route.request().method() === 'GET'
@@ -575,7 +557,7 @@ test('a version that cannot be read is not restored', async ({
 	await requestRestoreFromSidebar(page, auth.fileId, versionEntry)
 	await expect(page.getByText('Could not restore this version').first()).toBeVisible({ timeout: 20000 })
 
-	expect(moves).toEqual([])
+	expect(restores).toEqual([])
 	expect(visibleTexts(await fetchBoardContent(page, auth))).toEqual(before)
 })
 
@@ -593,7 +575,7 @@ test('a restore made without a connection reaches the others once the session is
 	await requestRestoreFromSidebar(page, auth.fileId, versionEntry)
 	await expect(page.getByText('Version restored').first()).toBeVisible({ timeout: 20000 })
 	await setConnected(page, true)
-	await expect.poll(() => locallyStoredTexts(otherPage, auth.fileId), { timeout: 30000, intervals: [500] }).toEqual(['Restore kept'])
+	await expect.poll(() => shownTexts(otherPage), { timeout: 30000, intervals: [500] }).toEqual(['Restore kept'])
 
 	await expectRestoredAfterEdits([otherPage, page], auth)
 	await otherPage.context().close()
@@ -651,13 +633,13 @@ test('a restore wins over the saved board that a reconnect loaded before it', as
 
 	// the reconnect reads the saved board before the restore and gets the answer after it
 	await setConnected(page, false)
-	const reconnectLoad = await holdRequests(page, 'GET', `**/apps/whiteboard/${auth.fileId}`, { sendFirst: true })
+	const reconnectLoad = await holdRequests(page, 'GET', new RegExp(`/apps/whiteboard/${auth.fileId}(\\?|$)`), { sendFirst: true })
 	await setConnected(page, true)
 	await expect.poll(reconnectLoad.held, { timeout: 20000 }).toBe(1)
 	await requestRestoreFromSidebar(page, auth.fileId, versionEntry)
 	await expect(page.getByText('Version restored').first()).toBeVisible({ timeout: 20000 })
 	reconnectLoad.release()
-	await expect.poll(() => page.evaluate(() => (window as any).__whiteboardTestHooks.collaborationStore.getState().pendingServerMerge), { timeout: 20000 }).toBe(false)
+	await expect.poll(() => shownTexts(page), { timeout: 20000, intervals: [500] }).toEqual(['Restore kept'])
 
 	await expectRestoredAfterEdits([page], auth)
 })
