@@ -334,3 +334,26 @@ To run the websocket server in development:
 ```bash
 npm run server:watch
 ```
+
+### Building with a local Excalidraw
+
+Whiteboard uses [`@nextcloud/excalidraw`](https://www.npmjs.com/package/@nextcloud/excalidraw), built from our fork [nextcloud-deps/excalidraw](https://github.com/nextcloud-deps/excalidraw). Whiteboard 3 uses the fork's branch `release-base-2026-10`, not `master`.
+
+To try a change of the fork in Whiteboard, build and pack the fork's packages, then install them into Whiteboard without changing `package.json`. You need the Node.js and npm versions of Whiteboard's `package.json` and yarn 1, for example through `corepack enable`. Run these commands in the directory that contains your Whiteboard checkout, named `whiteboard`:
+
+```bash
+git clone --branch release-base-2026-10 https://github.com/nextcloud-deps/excalidraw.git
+cd excalidraw
+yarn release --tag=whiteboard-3 --pack=../excalidraw-packages
+
+cd ../whiteboard
+npm ci
+npm install --no-save ../excalidraw-packages/*.tgz
+npm run dev
+```
+
+The release script installs the fork's dependencies, builds the packages and packs them into `excalidraw-packages`. While these packages are installed, `npm ls` calls them invalid, because `package.json` pins the published version. Run `npm ci` in Whiteboard to go back to it.
+
+### Releasing the Excalidraw fork
+
+Every push to `release-base-2026-10` runs the fork's `autorelease-excalidraw.yml` workflow. It publishes the packages to npm with the version in `packages/excalidraw/package.json` and the dist-tag `whiteboard-3`, and skips versions that are already published. To release, merge a pull request into that branch that raises the version of the five packages that `scripts/release.js` publishes, and of their dependencies on each other, as [nextcloud-deps/excalidraw#30](https://github.com/nextcloud-deps/excalidraw/pull/30) did from `0.18.0-nc.1` to `0.18.0-nc.2`. Then update `@nextcloud/excalidraw` in Whiteboard in a separate pull request.
