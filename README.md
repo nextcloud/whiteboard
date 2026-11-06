@@ -36,6 +36,32 @@ Nextcloud Whiteboard uses a **client-first architecture** that prioritizes brows
 
 The websocket server handles real-time collaboration sessions between users. **Important**: The websocket server is required, also when only one person edits a board. It decides which browser saves each board to Nextcloud, so without it changes stay in the browser and are not saved to Nextcloud. A websocket server deployment, with one or more nodes, serves a single Nextcloud instance.
 
+**Environment Variables:**
+The websocket server reads these environment variables at startup:
+
+| Name | Default | Description |
+|---|---|---|
+| `CACHED_TOKEN_TTL` | `600000` (10 minutes) | Time in milliseconds that the server caches a verified token |
+| `CHROME_EXECUTABLE_PATH` | Found in the usual install locations | Path of the Chrome or Chromium binary used for recordings |
+| `CLEANUP_LOCAL_RECORDINGS` | `false` | Delete the local recording file after it is uploaded |
+| `COMPRESSION_ENABLED` | `true` | Per-message deflate compression for WebSocket messages |
+| `FORCE_CLOSE_TIMEOUT` | `3600000` (1 hour) | Time in milliseconds the server waits for connections to close on shutdown before it stops anyway |
+| `HOST` | `0.0.0.0` | Interface the server listens on |
+| `JWT_SECRET_KEY` | none, required | Must match the secret configured in Nextcloud |
+| `JWT_SECRET_KEY_FILE` | none | Path of a file holding the secret, instead of `JWT_SECRET_KEY`, for example a Docker secret in `/run/secrets/` |
+| `MAX_UPLOAD_FILE_SIZE` | `2` | Largest file in megabytes that users can add to a board |
+| `METRICS_TOKEN` | none | Enables the Prometheus metrics at `/metrics`, with this token as a Bearer token or as the `?token=` parameter |
+| `NEXTCLOUD_URL` | `http://nextcloud.local` | Used for JWT token validation and optional recording uploads |
+| `PORT` | `3002` | Port the server listens on |
+| `RECORDINGS_DIR` | `/tmp/whiteboard-recordings` in the Docker image | Writable directory for temporary recording files; falls back to the OS temp directory if it is not writable |
+| `RECORDING_DISCONNECT_GRACE_MS` | `5000` | Time in milliseconds before a recording stops after the recorder disconnects |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL when `STORAGE_STRATEGY` is `redis`, in the form `redis://[username:password@]host[:port][/database_number]` |
+| `SESSION_TTL` | `86400000` (24 hours) | Time in milliseconds that collaboration data of a session, such as timers and votings, is kept |
+| `STORAGE_STRATEGY` | `lru` | `lru` keeps collaboration data in memory. `redis` keeps it in Redis and is required for more than one node |
+| `TLS` | `false` | Serve HTTPS instead of HTTP. A reverse proxy is recommended for production |
+| `TLS_CERT` | none | Path of the certificate file when `TLS` is `true` |
+| `TLS_KEY` | none | Path of the private key file when `TLS` is `true` |
+
 #### Connectivity Requirements
 
 **Essential:**
