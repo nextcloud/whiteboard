@@ -20,6 +20,16 @@ function isTokenFormatValid(token: string): boolean {
 	return parts.length === 3 && !!parts[0] && !!parts[1] && !!parts[2]
 }
 
+/**
+ * When a token expires by this device's clock. The times in the token come
+ * from the server clock, which can differ from the device clock.
+ *
+ * @param payload - Payload of the token, received just now
+ */
+export function localTokenExpiry(payload: Pick<JwtPayload, 'iat' | 'exp'>): number {
+	return Math.floor(Date.now() / 1000) + payload.exp - payload.iat
+}
+
 interface JwtPayload {
 	userid: string
 	fileId: number
@@ -92,12 +102,6 @@ export const useJWTStore = create<JWTStore>()(
 						return null
 					}
 
-					const now = Math.floor(Date.now() / 1000)
-
-					if (payload.exp < now) {
-						console.error('[JWTStore] Token has expired')
-					}
-
 					return payload
 				} catch (e) {
 					console.error('[JWTStore] Error parsing JWT:', e)
@@ -113,21 +117,6 @@ export const useJWTStore = create<JWTStore>()(
 
 					const payload = get().parseJwt(token)
 					if (!payload) {
-						return false
-					}
-
-					// Additional integrity checks
-					const now = Math.floor(Date.now() / 1000)
-
-					// Check if token is not expired
-					if (payload.exp < now) {
-						console.warn('[JWTStore] Token validation failed: expired')
-						return false
-					}
-
-					// Check if token was issued in the past (not future)
-					if (payload.iat > now + 60) { // Allow 60 seconds clock skew
-						console.warn('[JWTStore] Token validation failed: issued in future')
 						return false
 					}
 
@@ -342,7 +331,7 @@ export const useJWTStore = create<JWTStore>()(
 						return null
 					}
 
-					// Store the token and its expiry
+					const expiry = localTokenExpiry(payload)
 					set((state) => ({
 						tokens: {
 							...state.tokens,
@@ -350,12 +339,12 @@ export const useJWTStore = create<JWTStore>()(
 						},
 						tokenExpiries: {
 							...state.tokenExpiries,
-							[fileId]: payload.exp,
+							[fileId]: expiry,
 						},
 					}))
 
 					console.log(
-						`[JWTStore] JWT refreshed for room ${fileId}, expires at ${new Date(payload.exp * 1000).toISOString()}`,
+						`[JWTStore] JWT refreshed for room ${fileId}, expires at ${new Date(expiry * 1000).toISOString()}`,
 					)
 
 					// Only clear auth errors if this was not a JWT secret mismatch
@@ -593,7 +582,7 @@ export const useJWTStore = create<JWTStore>()(
 		{
 			name: 'jwt-storage',
 			storage: createJSONStorage(() => localStorage),
-			version: 2, // Increment this to invalidate old stored tokens
+			version: 3, // Increment this to invalidate old stored tokens
 			partialize: (state) => ({
 				tokens: state.tokens,
 				tokenExpiries: state.tokenExpiries,
@@ -603,7 +592,7 @@ export const useJWTStore = create<JWTStore>()(
 			}),
 			migrate: (persistedState: any, version: number) => {
 				// Clear tokens if version changes
-				if (version < 2) {
+				if (version < 3) {
 					console.log('[JWTStore] Storage version changed, clearing old tokens')
 					return {
 						tokens: {},
