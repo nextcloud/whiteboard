@@ -32,6 +32,7 @@ async function createPublicShareLink(
 		return [`${baseName}.whiteboard`, `${baseName}.excalidraw`, baseName]
 	})()
 
+	let lastError = ''
 	for (const candidate of candidates) {
 		for (let attempt = 0; attempt < 3; attempt++) {
 			const result = await page.evaluate(async ({ candidate, requestToken }) => {
@@ -41,7 +42,7 @@ async function createPublicShareLink(
 					permissions: '1',
 				})
 
-				const response = await fetch('ocs/v2.php/apps/files_sharing/api/v1/shares?format=json', {
+				const response = await fetch('/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json', {
 					method: 'POST',
 					credentials: 'include',
 					headers: {
@@ -72,41 +73,13 @@ async function createPublicShareLink(
 			if (metaStatus === 200 && typeof shareUrl === 'string') {
 				return shareUrl
 			}
+			lastError = JSON.stringify({ status: result?.status, meta: result?.data?.ocs?.meta })
 
 			await page.waitForTimeout(1000)
 		}
 	}
 
-	// Fallback: use the UI share sidebar to create a link
-	const row = page.getByRole('row', { name: new RegExp(baseName.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')) })
-	const shareButton = row.getByRole('button', { name: /Sharing options|Actions/i }).first()
-	await shareButton.click()
-
-	const createLinkButton = page.getByRole('button', { name: /create a new share link/i }).first()
-	await expect(createLinkButton).toBeVisible({ timeout: 15000 })
-	await createLinkButton.click()
-
-	const copyButton = page.getByRole('button', { name: /copy public link/i }).first()
-	await expect(copyButton).toBeVisible({ timeout: 15000 })
-	const dataClipboard = await copyButton.getAttribute('data-clipboard-text')
-	if (dataClipboard) {
-		return dataClipboard
-	}
-
-	await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
-	await copyButton.click()
-	const clipboardText = await page.evaluate(async () => {
-		try {
-			return await navigator.clipboard.readText()
-		} catch {
-			return ''
-		}
-	})
-
-	if (!clipboardText) {
-		throw new Error(`Failed to create public share link for ${baseName}`)
-	}
-	return clipboardText
+	throw new Error(`Failed to create public share link for ${baseName}: ${lastError}`)
 }
 
 async function uploadTextFile(page: Page, name: string, content: string) {
