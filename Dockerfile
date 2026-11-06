@@ -56,4 +56,4 @@ LABEL org.opencontainers.image.title="Nextcloud Whiteboard" \
       org.opencontainers.image.created="${CREATED}"
 ENTRYPOINT ["/sbin/tini", "--", "npm", "run", "server:start"]
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3002), (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+  CMD ["node", "websocket_server/healthcheck.js"]
