@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import { spawnSync } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createConfigMock } from './configMock.js'
 
@@ -16,14 +17,12 @@ vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => ({
 	default: createConfigMock({ RECORDINGS_DIR: mkdtempSync(join(tmpdir(), 'whiteboard-recordings-')) }),
 }))
 
-// ffmpeg is not needed to finish a recording in these tests
-vi.mock('child_process', async (importOriginal) => ({
-	...(await importOriginal()),
-	execFile: (file, args, callback) => {
-		writeFileSync(args.at(-1), 'remuxed')
-		callback(null, '', '')
-	},
-}))
+// A stand-in ffmpeg on PATH, outside the usual install locations, that logs its arguments
+// and writes 'remuxed' to its output file
+const ffmpegDir = mkdtempSync(join(tmpdir(), 'whiteboard-ffmpeg-'))
+const ffmpegCalls = join(ffmpegDir, 'calls')
+writeFileSync(join(ffmpegDir, 'ffmpeg'), `#!/bin/sh\necho "$*" >> '${ffmpegCalls}'\nfor out; do :; done\n[ -z "$out" ] || printf remuxed > "$out"\n`, { mode: 0o755 })
+process.env.PATH = ffmpegDir + delimiter + process.env.PATH
 
 vi.mock('puppeteer-core', () => ({
 	launch: vi.fn(async () => {
@@ -47,7 +46,12 @@ vi.mock('puppeteer-core', () => ({
 			evaluate: vi.fn(async (fn, ...args) => {
 				calls.push(['evaluate', fn.toString(), ...args])
 			}),
-			screencast: vi.fn(async ({ path }) => {
+			screencast: vi.fn(async ({ path, ffmpegPath = 'ffmpeg' }) => {
+				// Puppeteer checks that it can start ffmpeg before it captures
+				const { error } = spawnSync(ffmpegPath)
+				if (error) {
+					throw error
+				}
 				writeFileSync(path, 'webm')
 				calls.push(['screencast'])
 				return {
@@ -88,6 +92,17 @@ describe('RecordingService', () => {
 		expect(repaint).toBeGreaterThanOrEqual(0)
 		expect(repaint).toBeLessThan(screencast)
 	})
+
+	it('captures and remuxes with the ffmpeg found on PATH', async () => {
+		writeFileSync(ffmpegCalls, '')
+		const { recorder } = await startedRecorder()
+		expect(readFileSync(ffmpegCalls, 'utf8')).toBe('\n')
+
+		const { recordingData } = await recorder.stopRecording('42', 'teacher')
+
+		expect(readFileSync(ffmpegCalls, 'utf8').split('\n')[1]).toMatch(/^-i \S+\.webm -c copy \S+\.tmp\.webm$/)
+		expect(recordingData.toString()).toBe('remuxed')
+	}, 10000)
 
 	it('reports how long it captured, including the two seconds after the stop request', async () => {
 		let now = 1000

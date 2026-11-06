@@ -343,7 +343,7 @@ export default class RecordingService extends EventEmitter {
 			})
 
 			// Start browser-based recording
-			session.mediaRecorder = await page.screencast({ path: outputPath, ffmpegPath: '/usr/bin/ffmpeg' })
+			session.mediaRecorder = await page.screencast({ path: outputPath })
 			session.captureStartedAt = Date.now()
 
 			// Update status
@@ -385,7 +385,7 @@ export default class RecordingService extends EventEmitter {
 
 			// Screencast produces WebM without duration and index metadata, remux with ffmpeg to fix this
 			const tmpPath = outputPath + '.tmp.webm'
-			await execFileAsync('/usr/bin/ffmpeg', ['-i', outputPath, '-c', 'copy', tmpPath])
+			await execFileAsync('ffmpeg', ['-i', outputPath, '-c', 'copy', tmpPath])
 			await fs.rename(tmpPath, outputPath)
 
 			// Read the file into a buffer
