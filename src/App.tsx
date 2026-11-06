@@ -128,7 +128,7 @@ export default function App({
 		updateLang: state.updateLang,
 	})))
 
-	const { theme } = useThemeHandling()
+	const { theme, themeAttributes } = useThemeHandling(excalidrawAPI)
 	const { renderSmartPicker } = useSmartPicker()
 	const { renderTable } = useTableInsertion()
 	const { renderAssistant } = useAssistant()
@@ -623,6 +623,7 @@ export default function App({
 
 		return {
 			loadScene: false,
+			toggleTheme: true,
 		}
 	}, [isVersionPreview])
 
@@ -695,7 +696,7 @@ export default function App({
 	) => prepareDuplicatedElements(nextElements, previousElements, beforeElementCreated)
 
 	return (
-		<div className={appClassName} style={{ display: 'flex', flexDirection: 'column' }}>
+		<div className={appClassName} style={{ display: 'flex', flexDirection: 'column' }} {...themeAttributes}>
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				{!isVersionPreview && <MemoizedNetworkStatusIndicator />}
 				<MemoizedAuthErrorNotification />

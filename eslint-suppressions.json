@@ -753,12 +753,6 @@
     }
   },
   "src/hooks/useThemeHandling.ts": {
-    "@stylistic/implicit-arrow-linebreak": {
-      "count": 1
-    },
-    "@stylistic/indent-binary-ops": {
-      "count": 1
-    },
     "perfectionist/sort-imports": {
       "count": 1
     },

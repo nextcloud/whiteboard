@@ -77,7 +77,7 @@ export default function ReadOnlyViewer({
 	const [scene, setScene] = useState<SceneState | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-	const { theme } = useThemeHandling()
+	const { theme, themeAttributes } = useThemeHandling()
 
 	const langCode = useMemo(() => document.documentElement.lang || 'en', [])
 
@@ -196,7 +196,7 @@ export default function ReadOnlyViewer({
 	}
 
 	return (
-		<div className="App App--version-preview" style={{ display: 'flex', flexDirection: 'column' }}>
+		<div className="App App--version-preview" style={{ display: 'flex', flexDirection: 'column' }} {...themeAttributes}>
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				<ReadOnlyExcalidraw
 					initialData={scene}
