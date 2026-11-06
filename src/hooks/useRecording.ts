@@ -11,7 +11,7 @@ import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
 import { loadState } from '@nextcloud/initial-state'
-import type { CollaborationSocket } from '../types/collaboration'
+import type { CollaborationSocket, RecordingAvailabilityPayload } from '../types/collaboration'
 import type { RecordingHookState, RecordingState, RecordingUser } from '../types/recording'
 import { getLanguage, t } from '@nextcloud/l10n'
 
@@ -34,6 +34,7 @@ const INITIAL_STATE: RecordingState = {
 	successTimestamp: null,
 	startingPhase: null,
 	isAvailable: null,
+	isEnabled: false,
 	unavailableReason: null,
 	showUnavailableInfo: false,
 	autoUploadOnDisconnect: false,
@@ -174,12 +175,14 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 
 		handleSocketEvent(socketInstance, {
 			'recording-availability': (data) => {
-				console.log('[Recording] Availability check result:', data)
+				const availability = data as RecordingAvailabilityPayload
+				console.log('[Recording] Availability check result:', availability)
 				updateState({
-					isAvailable: data.available,
-					unavailableReason: data.reason,
+					isAvailable: availability.available,
+					isEnabled: availability.enabled !== false,
+					unavailableReason: availability.reason,
 					// Show info dialog if recording is unavailable and we have a reason
-					showUnavailableInfo: data.available === false && !!data.reason,
+					showUnavailableInfo: availability.available === false && !!availability.reason,
 				})
 			},
 			'recording-started': (data?: { startedAt?: number }) => {
@@ -355,8 +358,9 @@ export function useRecording({ fileId }: UseRecordingProps): RecordingHookState 
 				otherUsers: stateRef.current.otherUsers.filter(u => u.userId !== user.userId),
 			}),
 			connect: () => {
-				// Socket reconnected, check availability again
+				// The socket may have reconnected to another node, whose answer decides again
 				console.log('[Recording] Socket reconnected, checking availability')
+				updateState({ isAvailable: null, isEnabled: false, unavailableReason: null, showUnavailableInfo: false })
 				socketInstance.emit('check-recording-availability')
 			},
 			disconnect: () => stateRef.current.isRecording && updateState({ error: 'Connection lost', status: 'idle' }),

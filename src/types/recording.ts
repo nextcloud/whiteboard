@@ -25,6 +25,7 @@ export interface RecordingState {
 	successTimestamp: number | null
 	startingPhase: 'preparing' | 'initializing' | null
 	isAvailable: boolean | null
+	isEnabled: boolean
 	unavailableReason: string | null
 	showUnavailableInfo: boolean
 	autoUploadOnDisconnect: boolean

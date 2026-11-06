@@ -45,6 +45,11 @@ export default class RecordingControlService {
 	}
 
 	async checkAvailability(socket) {
+		if (!Config.RECORDING_ENABLED) {
+			socket.emit('recording-availability', { available: false, enabled: false, reason: null })
+			return
+		}
+
 		try {
 			const support = await checkPuppeteerAvailability({ force: false })
 			socket.emit('recording-availability', {
@@ -69,6 +74,10 @@ export default class RecordingControlService {
 		let recordingKey = null
 
 		try {
+			if (!Config.RECORDING_ENABLED) {
+				throw new Error('Recording is turned off on the collaboration server')
+			}
+
 			if (!Config.NEXTCLOUD_URL) {
 				throw new Error('NEXTCLOUD_URL is not configured')
 			}

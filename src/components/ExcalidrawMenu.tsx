@@ -206,16 +206,18 @@ export const ExcalidrawMenu = memo(function ExcalidrawMenu({ fileNameWithoutExte
 				shortcut={isMacPlatform ? '⌘+F' : t('whiteboard', 'Ctrl+F')}>
 				{t('whiteboard', 'Find text on canvas')}
 			</MainMenu.Item>
-			<RecordingMenuItem
-				isRecording={recordingState.isRecording}
-				isStarting={recordingState.isStarting}
-				isStopping={recordingState.isStopping}
-				startRecording={recordingState.startRecording}
-				stopRecording={recordingState.stopRecording}
-				isConnected={recordingState.isConnected}
-				isAvailable={recordingState.isAvailable}
-				unavailableReason={recordingState.unavailableReason}
-			/>
+			{(recordingState.isEnabled || recordingState.isRecording) && (
+				<RecordingMenuItem
+					isRecording={recordingState.isRecording}
+					isStarting={recordingState.isStarting}
+					isStopping={recordingState.isStopping}
+					startRecording={recordingState.startRecording}
+					stopRecording={recordingState.stopRecording}
+					isConnected={recordingState.isConnected}
+					isAvailable={recordingState.isAvailable}
+					unavailableReason={recordingState.unavailableReason}
+				/>
+			)}
 			<MainMenu.Item
 				icon={<Icon path={mdiTimerOutline} size={0.9} />}
 				onSelect={onToggleTimer}>

@@ -13,6 +13,10 @@ vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => ({
 	default: createConfigMock({ NEXTCLOUD_URL: 'https://cloud.example', JWT_SECRET_KEY: 'secret' }),
 }))
 
+vi.mock('../../websocket_server/Utilities/PuppeteerUtility.js', () => ({
+	checkPuppeteerAvailability: vi.fn(async () => ({ available: true, reason: null })),
+}))
+
 vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 	const { EventEmitter } = await import('node:events')
 	class FakeRecordingService extends EventEmitter {
@@ -43,6 +47,8 @@ vi.mock('../../websocket_server/Services/RecordingService.js', async () => {
 })
 
 const { default: RecordingControlService } = await import('../../websocket_server/Services/RecordingControlService.js')
+const { default: Config } = await import('../../websocket_server/Utilities/ConfigUtility.js')
+const { checkPuppeteerAvailability } = await import('../../websocket_server/Utilities/PuppeteerUtility.js')
 
 function userToken(claims = {}) {
 	return jwt.sign({ userid: 'teacher', fileId: 42, isFileReadOnly: false, user: { id: 'teacher', name: 'Teacher' }, ...claims }, 'secret', { expiresIn: 60 })
@@ -101,6 +107,30 @@ describe('RecordingControlService', () => {
 
 	afterEach(() => {
 		vi.useRealTimers()
+		Config.RECORDING_ENABLED = true
+		checkPuppeteerAvailability.mockClear()
+	})
+
+	it('reports recording as turned off without launching Chromium when it is disabled', async () => {
+		Config.RECORDING_ENABLED = false
+		const { service, socket, events } = setup()
+
+		await service.checkAvailability(socket('tab-1'))
+
+		expect(checkPuppeteerAvailability).not.toHaveBeenCalled()
+		expect(events('recording-availability')).toEqual([{ to: 'tab-1', event: 'recording-availability', payload: { available: false, enabled: false, reason: null } }])
+	})
+
+	it('refuses to start a recording when recording is disabled', async () => {
+		Config.RECORDING_ENABLED = false
+		const { service, socket, events, entries } = setup()
+
+		await service.startRecording(socket('tab-1'), startData(userToken()))
+
+		expect(recorders).toHaveLength(0)
+		expect(entries.size).toBe(0)
+		expect(events('recording-started')).toEqual([])
+		expect(events('recording-error')).toEqual([{ to: 'tab-1', event: 'recording-error', payload: 'Recording is turned off on the collaboration server' }])
 	})
 
 	it('gives the bot a read-only token and renews it until the recording stops', async () => {

@@ -19,6 +19,7 @@ const defaultMockValues = {
 	NEXTCLOUD_UPLOAD_ENABLED: false,
 	CLEANUP_LOCAL_RECORDINGS: false,
 	RECORDINGS_DIR: null,
+	RECORDING_ENABLED: true,
 }
 
 export function createConfigMock(customValues = {}) {

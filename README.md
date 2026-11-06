@@ -55,6 +55,7 @@ The websocket server reads these environment variables at startup:
 | `PORT` | `3002` | Port the server listens on |
 | `RECORDINGS_DIR` | `/tmp/whiteboard-recordings` in the Docker image | Writable directory for temporary recording files; falls back to the OS temp directory if it is not writable |
 | `RECORDING_DISCONNECT_GRACE_MS` | `5000` | Time in milliseconds before a recording stops after the recorder disconnects |
+| `RECORDING_ENABLED` | `true` | Set to `false` on every node to turn recording off: the server never starts Chromium and boards show no recording item |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection URL when `STORAGE_STRATEGY` is `redis`, in the form `redis://[username:password@]host[:port][/database_number]` |
 | `SESSION_TTL` | `86400000` (24 hours) | Time in milliseconds that collaboration data of a session, such as timers and votings, is kept |
 | `STORAGE_STRATEGY` | `lru` | `lru` keeps collaboration data in memory. `redis` keeps it in Redis and is required for more than one node |
@@ -115,7 +116,7 @@ services:
 
 ### Recording prerequisites
 
-Board recordings require a headless Chromium browser and [ffmpeg](https://ffmpeg.org/) on the `PATH` of the collaboration server. The system automatically detects Chrome installations:
+Board recordings require a headless Chromium browser and [ffmpeg](https://ffmpeg.org/) on the `PATH` of the collaboration server. If you do not want recordings, set `RECORDING_ENABLED=false` on every node of the collaboration server: it then never starts Chromium and boards show no recording item. The system automatically detects Chrome installations:
 
 - **Self-hosted**: Auto-detects Chrome/Chromium in standard locations
 - **Docker**: Uses bundled Alpine Chromium package
@@ -157,7 +158,7 @@ export CHROME_EXECUTABLE_PATH="/path/to/your/chrome"
 npm run server:start
 ```
 
-The server performs automated Chrome detection on startup and before each recording. If Chrome isn't found, users receive clear error messages with installation guidance. Temporary recording data is written to the directory specified by `RECORDINGS_DIR` (or `/tmp/whiteboard-recordings` in the official Docker image). If that location cannot be created or written, the server falls back to the operating system temp directory automatically and logs a warning. After installing Chrome, restart the websocket server to apply changes.
+With recording on, the server checks for Chrome when a board connects and before each recording. If Chrome isn't found, users receive clear error messages with installation guidance. Temporary recording data is written to the directory specified by `RECORDINGS_DIR` (or `/tmp/whiteboard-recordings` in the official Docker image). If that location cannot be created or written, the server falls back to the operating system temp directory automatically and logs a warning. After installing Chrome, restart the websocket server to apply changes.
 
 ## Reverse Proxy Configuration
 
