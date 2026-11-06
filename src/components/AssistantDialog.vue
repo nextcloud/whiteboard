@@ -11,6 +11,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcModal from '@nextcloud/vue/components/NcModal'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ScheduleTask } from '../services/assistant/api'
+import { normalizeMermaidCode } from '../utils/normalizeMermaidCode.ts'
 
 const AI_GENERATED_TYPE = 'assistant-mermaid'
 const WHITEBOARD_DEFAULT_FONT_FAMILY = 3
@@ -215,7 +216,9 @@ export default defineComponent({
 		async getExcalidrawElements(taskResponse) {
 			this.mermaidError = false
 
-			const { elements, files } = await parseMermaidToExcalidraw(taskResponse, {
+			const mermaidCode = normalizeMermaidCode(taskResponse)
+
+			const { elements, files } = await parseMermaidToExcalidraw(mermaidCode, {
 				fontFamily: WHITEBOARD_DEFAULT_FONT,
 			})
 			this.normalizeAssistantElements(elements)
@@ -238,8 +241,8 @@ export default defineComponent({
 				const res = await this.getExcalidrawElements(taskResponse)
 				this.$emit('submit', res)
 			} catch (error) {
-				this.mermaidError = error || t('whiteboard', 'An error occurred while creating the diagram')
-				console.error('Error generating diagram:', this.mermaidError)
+				this.mermaidError = true
+				console.error('Error generating diagram:', error)
 			} finally {
 				this.waitingForTask = false
 			}
@@ -265,7 +268,7 @@ export default defineComponent({
 						{{ getAssistantDisclosureText() }}
 					</p>
 				</div>
-				<div v-if="mermaidError" class="mermaid-error">
+				<div v-if="mermaidError" class="mermaid-error" role="alert">
 					{{ t('whiteboard', 'Something went wrong, please try again') }}
 				</div>
 				<form @submit.prevent="onGetTask">
