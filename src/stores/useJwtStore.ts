@@ -155,11 +155,9 @@ export const useJWTStore = create<JWTStore>()(
 			getJWT: async () => {
 				const { fileId } = useWhiteboardConfigStore.getState()
 
-				// Check if we have a persistent auth error - if so, don't try to get/refresh tokens
+				// The board is gone; a failing collaboration server alone does not stop saving to Nextcloud
 				const { authError } = useCollaborationStore.getState()
-
-				if (authError.isPersistent) {
-					console.warn('[JWTStore] Persistent auth error detected, working in local-only mode')
+				if (authError.isPersistent && authError.type === 'not_found') {
 					useWhiteboardConfigStore.getState().setReadOnly(true)
 					return null
 				}
@@ -271,11 +269,8 @@ export const useJWTStore = create<JWTStore>()(
 				const { fileId, publicSharingToken }
 					= useWhiteboardConfigStore.getState()
 
-				// Check if we have a persistent auth error - if so, don't try to refresh
 				const { authError } = useCollaborationStore.getState()
-
-				if (authError.isPersistent) {
-					console.warn('[JWTStore] Persistent auth error detected, skipping token refresh')
+				if (authError.isPersistent && authError.type === 'not_found') {
 					useWhiteboardConfigStore.getState().setReadOnly(true)
 					return null
 				}

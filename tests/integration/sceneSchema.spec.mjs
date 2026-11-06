@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { afterEach, describe, expect, it } from 'vitest'
-import { selectSavesToServer, useCollaborationStore } from '../../src/stores/useCollaborationStore.ts'
-import { isOutdatedSceneBroadcast, SCENE_SCHEMA_VERSION } from '../../src/utils/sceneSchema.ts'
+import { describe, expect, it } from 'vitest'
+import { isOutdatedSceneBroadcast, SCENE_SCHEMA_VERSION, sceneNotice } from '../../src/utils/sceneSchema.ts'
+import CreatorMetadataUtility from '../../websocket_server/Utilities/CreatorMetadataUtility.js'
 
-describe('scene broadcasts from clients older than 3.0', () => {
+describe('scene broadcasts from older clients', () => {
 	it.each(['SCENE_INIT', 'SCENE_UPDATE'])('drops %s without the schema marker', (type) => {
 		expect(isOutdatedSceneBroadcast({ type, payload: { elements: [] } })).toBe(true)
 		expect(isOutdatedSceneBroadcast({ type, schemaVersion: 1, payload: { elements: [] } })).toBe(true)
@@ -21,29 +21,13 @@ describe('scene broadcasts from clients older than 3.0', () => {
 		expect(isOutdatedSceneBroadcast({ type: 'SCENE_RESTORE', payload: { reloadFromServer: true } })).toBe(false)
 	})
 
+	it('sends a restore note in the form the collaboration server passes on', () => {
+		expect(CreatorMetadataUtility.isSceneRestoreReloadPayload(sceneNotice('restored', { epoch: 'e2', rev: 7 }))).toBe(true)
+		expect(isOutdatedSceneBroadcast(sceneNotice('saved', { epoch: 'e2', rev: 7 }))).toBe(false)
+	})
+
 	it('leaves other broadcasts alone', () => {
 		expect(isOutdatedSceneBroadcast({ type: 'MOUSE_LOCATION', payload: {} })).toBe(false)
 		expect(isOutdatedSceneBroadcast({ type: 'IMAGE_ADD', payload: {} })).toBe(false)
-	})
-})
-
-describe('saving while a client older than 3.0 is in the room', () => {
-	afterEach(() => {
-		useCollaborationStore.getState().resetStore()
-	})
-
-	it('saves only as the elected saver by default', () => {
-		expect(selectSavesToServer(useCollaborationStore.getState())).toBe(false)
-
-		useCollaborationStore.getState().setDedicatedSyncer(true)
-		expect(selectSavesToServer(useCollaborationStore.getState())).toBe(true)
-	})
-
-	it('saves once an outdated client sent a scene, until the store is reset', () => {
-		useCollaborationStore.getState().setHasOutdatedPeer()
-		expect(selectSavesToServer(useCollaborationStore.getState())).toBe(true)
-
-		useCollaborationStore.getState().resetStore()
-		expect(selectSavesToServer(useCollaborationStore.getState())).toBe(false)
 	})
 })

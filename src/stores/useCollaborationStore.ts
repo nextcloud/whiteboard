@@ -28,8 +28,6 @@ interface CollaborationStore {
 	authError: AuthErrorState
 	followedUserId: string | null // User ID being followed for viewport synchronization
 	isInRoom: boolean // Whether the socket has joined the current room
-	hasOutdatedPeer: boolean // Whether a client older than 3.0 sent a scene to the room
-	pendingServerMerge: boolean // Whether the saved board must be merged after a reconnect before saving
 
 	// Presentation state
 	presenterId: string | null // User ID of current presenter
@@ -45,8 +43,6 @@ interface CollaborationStore {
 	setSocket: (socket: CollaborationSocket | null) => void
 	setDedicatedSyncer: (isSyncer: boolean) => void
 	setIsInRoom: (inRoom: boolean) => void
-	setHasOutdatedPeer: () => void
-	setPendingServerMerge: (pending: boolean) => void
 	setAuthError: (error: Partial<AuthErrorState>) => void
 	incrementAuthFailure: (errorType: AuthErrorType, message: string) => void
 	clearAuthError: () => void
@@ -75,15 +71,13 @@ const initialAuthErrorState: AuthErrorState = {
 	isPersistent: false,
 }
 
-const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'setHasOutdatedPeer' | 'setPendingServerMerge' | 'setAuthError' | 'incrementAuthFailure' | 'clearAuthError' | 'resetStore' | 'setPresentationState' | 'setAutoFollowPresenter' | 'addVoting' | 'updateVoting' | 'setVotings'> = {
+const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDedicatedSyncer' | 'setAuthError' | 'incrementAuthFailure' | 'clearAuthError' | 'resetStore' | 'setPresentationState' | 'setAutoFollowPresenter' | 'addVoting' | 'updateVoting' | 'setVotings'> = {
 	status: 'offline',
 	socket: null,
 	isDedicatedSyncer: false,
 	authError: initialAuthErrorState,
 	followedUserId: null,
 	isInRoom: false,
-	hasOutdatedPeer: false,
-	pendingServerMerge: false,
 
 	// Presentation initial state
 	presenterId: null,
@@ -99,15 +93,6 @@ const initialState: Omit<CollaborationStore, 'setStatus' | 'setSocket' | 'setDed
 const MAX_AUTH_FAILURES = 3
 const PERSISTENT_FAILURE_THRESHOLD = 5 * 60 * 1000 // 5 minutes
 
-/**
- * Whether this client saves to the server. The saves of a client older than 3.0
- * are refused, so while one is in the room every 3.0 client saves.
- * @param state collaboration state
- */
-export function selectSavesToServer(state: Pick<CollaborationStore, 'isDedicatedSyncer' | 'hasOutdatedPeer'>): boolean {
-	return state.isDedicatedSyncer || state.hasOutdatedPeer
-}
-
 export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	...initialState,
 
@@ -115,8 +100,6 @@ export const useCollaborationStore = create<CollaborationStore>()((set) => ({
 	setSocket: (socket) => set({ socket }),
 	setDedicatedSyncer: (isSyncer) => set({ isDedicatedSyncer: isSyncer }),
 	setIsInRoom: (inRoom) => set({ isInRoom: inRoom }),
-	setHasOutdatedPeer: () => set({ hasOutdatedPeer: true }),
-	setPendingServerMerge: (pending) => set({ pendingServerMerge: pending }),
 
 	setAuthError: (error) => set((state) => ({
 		authError: { ...state.authError, ...error },

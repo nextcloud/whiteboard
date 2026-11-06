@@ -30,6 +30,11 @@
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
   </file>
+  <file src="lib/Listener/BoardOutsideWriteListener.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
   <file src="lib/Listener/LoadViewerListener.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
@@ -40,12 +45,27 @@
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
   </file>
+  <file src="lib/Migration/Version3000Date20261106000000.php">
+    <UnusedClass>
+      <code><![CDATA[Version3000Date20261106000000]]></code>
+    </UnusedClass>
+  </file>
   <file src="lib/Service/Authentication/AuthenticateUserServiceFactory.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
   </file>
   <file src="lib/Service/Authentication/GetUserFromIdServiceFactory.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Service/BoardStateStore.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Service/BoardSyncService.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
@@ -78,7 +98,6 @@
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
   </file>
-
   <file src="lib/Service/WhiteboardLibraryService.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>

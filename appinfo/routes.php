@@ -36,6 +36,8 @@ return [
 		['name' => 'Whiteboard#publishCanvasTemplate', 'url' => 'canvas-template', 'verb' => 'POST'],
 		/** @see PickerController::index() */
 		['name' => 'Picker#index', 'url' => 'picker', 'verb' => 'GET'],
+		/** @see WhiteboardController::restore() */
+		['name' => 'Whiteboard#restore', 'url' => '{fileId}/restore', 'verb' => 'POST'],
 		/** @see WhiteboardController::update() */
 		['name' => 'Whiteboard#update', 'url' => '{fileId}', 'verb' => 'PUT'],
 		/** @see WhiteboardController::show() */
