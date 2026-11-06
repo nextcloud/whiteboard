@@ -17,6 +17,7 @@ export interface RecordingStoppedPayload {
 
 export interface RecordingAvailabilityPayload {
 	available: boolean
+	enabled?: boolean
 	reason: string | null
 }
 

@@ -18,6 +18,7 @@ import {
 	DEFAULT_HOST,
 	DEFAULT_SESSION_TTL,
 	DEFAULT_RECORDING_DISCONNECT_GRACE_MS,
+	DEFAULT_RECORDING_ENABLED,
 } from './ConstantsUtility.js'
 import GeneralUtility from './GeneralUtility.js'
 import { createRequire } from 'module'
@@ -113,6 +114,9 @@ const Config = {
 	},
 
 	// Recording configuration
+	RECORDING_ENABLED: process.env.RECORDING_ENABLED !== undefined
+		? GeneralUtility.parseBooleanFromEnv(process.env.RECORDING_ENABLED)
+		: DEFAULT_RECORDING_ENABLED,
 	NEXTCLOUD_UPLOAD_ENABLED: GeneralUtility.parseBooleanFromEnv(process.env.NEXTCLOUD_UPLOAD_ENABLED),
 	CLEANUP_LOCAL_RECORDINGS: GeneralUtility.parseBooleanFromEnv(process.env.CLEANUP_LOCAL_RECORDINGS),
 	RECORDINGS_DIR: process.env.RECORDINGS_DIR || null,

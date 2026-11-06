@@ -25,6 +25,7 @@ const configState = vi.hoisted(() => ({
 	HOST: '127.0.0.1',
 	NEXTCLOUD_URL: '',
 	RECORDING_DISCONNECT_GRACE_MS: 0,
+	RECORDING_ENABLED: true,
 }))
 
 vi.mock('../../websocket_server/Utilities/ConfigUtility.js', () => {

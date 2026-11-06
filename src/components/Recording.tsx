@@ -384,10 +384,6 @@ export const RecordingMenuItem = memo(function RecordingMenuItem({
 		} else if (isAvailable === false) {
 			isDisabled = true
 			tooltipMessage = unavailableReason || t('whiteboard', 'Recording is currently unavailable')
-		} else if (isAvailable === null) {
-			// Still checking availability
-			isDisabled = true
-			tooltipMessage = t('whiteboard', 'Checking recording availability…')
 		}
 	}
 
