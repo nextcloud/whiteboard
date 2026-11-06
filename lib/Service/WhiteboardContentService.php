@@ -73,7 +73,7 @@ final class WhiteboardContentService {
 				'fileId' => $fileId,
 				'error' => $e->getMessage(),
 			]);
-			$current = $this->getEmptyState();
+			$current = $this->normalizeStoredData([]);
 		}
 
 		$actorInfo = $this->buildActorInfo($actor, $this->getCurrentTimeInMilliseconds());
@@ -260,11 +260,15 @@ final class WhiteboardContentService {
 	private function normalizeStoredData(array $stored): array {
 		$stored = $this->unwrapData($stored);
 
-		if (empty($stored)) {
-			return $this->getEmptyState();
+		// Excalidraw only opens files that carry its type marker
+		$normalized = ['type' => 'excalidraw', 'version' => 2] + $this->getEmptyState();
+		if (is_string($stored['source'] ?? null)) {
+			$normalized['source'] = $stored['source'];
 		}
 
-		$normalized = $this->getEmptyState();
+		if (empty($stored)) {
+			return $normalized;
+		}
 
 		if (array_key_exists('elements', $stored) && is_array($stored['elements'])) {
 			$normalized['elements'] = $this->sanitizeElements($stored['elements']);
