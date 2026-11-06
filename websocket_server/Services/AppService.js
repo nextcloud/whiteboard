@@ -7,6 +7,7 @@
 
 import express from 'express'
 import Config from '../Utilities/ConfigUtility.js'
+import GeneralUtility from '../Utilities/GeneralUtility.js'
 
 export default class AppService {
 
@@ -147,7 +148,7 @@ export default class AppService {
 			status: 'running',
 			config: {
 				maxUploadFileSizeBytes: Config.MAX_UPLOAD_FILE_SIZE,
-				maxHttpBufferSizeBytes: Config.MAX_UPLOAD_FILE_SIZE + 1e6,
+				maxHttpBufferSizeBytes: GeneralUtility.maxSocketMessageSize(Config.MAX_UPLOAD_FILE_SIZE),
 			},
 			metrics: {
 				rooms: roomStats,

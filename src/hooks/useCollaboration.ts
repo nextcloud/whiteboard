@@ -18,6 +18,7 @@ import type {
 } from '@nextcloud/excalidraw/types'
 import { restoreElements } from '@nextcloud/excalidraw'
 import { loadState } from '@nextcloud/initial-state'
+import { broadcastImage, handshakeMaxMessageBytes } from '../utils/collabServerLimits.ts'
 import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata'
 import { io } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
@@ -712,11 +713,9 @@ export function useCollaboration() {
 							const currentSocket = useCollaborationStore.getState().socket
 
 							if (currentSocket && currentSocket.connected && fileId) {
-								// Send the image using the existing broadcast mechanism
-								const fileData = { type: BroadcastType.ImageAdd, payload: { file } }
-								const fileJson = JSON.stringify(fileData)
-								const fileBuffer = new TextEncoder().encode(fileJson)
-								currentSocket.emit('server-broadcast', `${fileId}`, fileBuffer, [])
+								if (!broadcastImage(currentSocket, `${fileId}`, file)) {
+									console.warn(`[Collaboration] Image ${requestedFileId} is too large to share`)
+								}
 							}
 						}
 					}
@@ -772,11 +771,8 @@ export function useCollaboration() {
 
 			// Broadcast each image file
 			Object.entries(files).forEach(([, file]) => {
-				if (file && file.dataURL) {
-					const fileData = { type: BroadcastType.ImageAdd, payload: { file } }
-					const fileJson = JSON.stringify(fileData)
-					const fileBuffer = new TextEncoder().encode(fileJson)
-					socket.emit('server-broadcast', `${fileId}`, fileBuffer, [])
+				if (file && file.dataURL && !broadcastImage(socket, `${fileId}`, file)) {
+					console.warn(`[Collaboration] Image ${file.id} is too large to share`)
 				}
 			})
 		}
@@ -821,6 +817,7 @@ export function useCollaboration() {
 
 			socketInstance.on('connect', () => {
 				console.log('[Collaboration] Socket connect event fired - setting status to online')
+				useWhiteboardConfigStore.getState().setCollabMaxMessageBytes(handshakeMaxMessageBytes(socketInstance))
 				setStatus('online')
 				setIsInRoom(false) // not joined yet
 
@@ -841,6 +838,8 @@ export function useCollaboration() {
 
 			socketInstance.on('disconnect', (reason) => {
 				console.warn(`[Collaboration] Socket disconnect event fired: ${reason}`)
+				// The next connection may reach a node with a smaller limit
+				useWhiteboardConfigStore.getState().setCollabMaxMessageBytes(null)
 				clearExcalidrawCollaborators()
 				setIsInRoom(false)
 				// Others may save while this client is away; it saves again after merging their changes
@@ -1154,6 +1153,7 @@ export function useCollaboration() {
 	// --- Disconnect Logic ---
 	const disconnectSocket = useCallback(() => {
 		const currentSocket = useCollaborationStore.getState().socket
+		useWhiteboardConfigStore.getState().setCollabMaxMessageBytes(null)
 
 		if (currentSocket) {
 			console.log('[Collaboration] Disconnecting socket')

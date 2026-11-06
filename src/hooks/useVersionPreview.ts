@@ -14,6 +14,7 @@ import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useSyncStore } from '../stores/useSyncStore.ts'
 import { db } from '../database/db'
+import { broadcastImage, filesFitCollabMessages } from '../utils/collabServerLimits.ts'
 import { fetchWhiteboardSnapshot } from '../utils/fetchWhiteboardSnapshot.ts'
 import { mergeElementsWithMetadata } from '../utils/mergeElementsWithMetadata.ts'
 import { restoreVersionElements } from '../utils/restoreVersionElements.ts'
@@ -293,14 +294,9 @@ export function useVersionPreview({
 
 			const fileValues = snapshot.files ? Object.values(snapshot.files) : []
 			fileValues.forEach(file => {
-				if (!file) {
-					return
+				if (file && !broadcastImage(currentSocket, `${fileId}`, file)) {
+					logger.warn(`[useVersionPreview] Image ${file.id} is too large to share`)
 				}
-				const filePayload = {
-					type: 'IMAGE_ADD',
-					payload: { file },
-				}
-				currentSocket.emit('server-broadcast', `${fileId}`, encoder.encode(JSON.stringify(filePayload)), [])
 			})
 		} catch (error) {
 			logger.error('[useVersionPreview] Failed to broadcast restored version over socket', error)
@@ -386,6 +382,10 @@ export function useVersionPreview({
 			if (!snapshot) {
 				throw new Error('Could not read the version')
 			}
+			if (!filesFitCollabMessages(snapshot.files)) {
+				showError(t('whiteboard', 'This version has an image too large to share with others'))
+				return
+			}
 
 			const response = await fetch(versionDavEndpoints.restoreUrl, {
 				method: 'MOVE',
@@ -434,6 +434,10 @@ export function useVersionPreview({
 			const snapshot = await captureRestoredSnapshot(source, await readCurrentElements())
 			if (!snapshot) {
 				throw new Error('Could not read the version')
+			}
+			if (!filesFitCollabMessages(snapshot.files)) {
+				showError(t('whiteboard', 'This version has an image too large to share with others'))
+				return false
 			}
 
 			const response = await fetch(endpoints.restoreUrl, {

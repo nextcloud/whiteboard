@@ -11,6 +11,7 @@ import { translate as t } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
 import { Excalidraw as ExcalidrawComponent, useHandleLibrary, Sidebar, isElementLink } from '@nextcloud/excalidraw'
 import '@excalidraw/excalidraw/index.css'
+import type { ClipboardData } from '@nextcloud/excalidraw/clipboard'
 import type { ExcalidrawImperativeAPI, LibraryItems, SocketId } from '@nextcloud/excalidraw/types'
 import { useExcalidrawStore } from './stores/useExcalidrawStore'
 import { useWhiteboardConfigStore } from './stores/useWhiteboardConfigStore'
@@ -34,6 +35,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
 import { useAssistant } from './hooks/useAssistant'
+import { filesFitCollabMessages, imageOptionsFor } from './utils/collabServerLimits.ts'
 import logger from './utils/logger'
 import { prepareDuplicatedElements } from './utils/mergeElementsWithMetadata.ts'
 import { resolveOrgLibraryItems } from './utils/orgLibraryItems.ts'
@@ -114,6 +116,7 @@ export default function App({
 		resetInitialDataPromise,
 		resetStore,
 		setGridModeEnabled,
+		collabMaxMessageBytes,
 	} = useWhiteboardConfigStore(useShallow(state => ({
 		setConfig: state.setConfig,
 		gridModeEnabled: state.gridModeEnabled,
@@ -121,7 +124,9 @@ export default function App({
 		resetInitialDataPromise: state.resetInitialDataPromise,
 		resetStore: state.resetStore,
 		setGridModeEnabled: state.setGridModeEnabled,
+		collabMaxMessageBytes: state.collabMaxMessageBytes,
 	})))
+	const imageOptions = useMemo(() => imageOptionsFor(collabMaxMessageBytes), [collabMaxMessageBytes])
 
 	const { lang, updateLang } = useLangStore(useShallow(state => ({
 		lang: state.lang,
@@ -600,6 +605,19 @@ export default function App({
 		return Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
 	}, [maxImageSizeBytes, maxImageSizeMb])
 
+	// Elements copied from another board bring their files, which skip Excalidraw's size check
+	const onPaste = useCallback((data: ClipboardData) => {
+		if (filesFitCollabMessages(data.files)) {
+			return true
+		}
+		excalidrawAPI?.setToast({
+			message: t('whiteboard', 'This image is too large to share with others'),
+			closable: true,
+			duration: 5000,
+		})
+		return false
+	}, [excalidrawAPI])
+
 	const handleOnChange = useCallback(() => {
 		if (isVersionPreview) {
 			return
@@ -718,6 +736,8 @@ export default function App({
 					userToFollow={userToFollow}
 					initialData={initialDataPromise}
 					generateIdForFile={generateIdForFile}
+					imageOptions={imageOptions}
+					onPaste={onPaste}
 					onPointerUpdate={onPointerUpdate}
 					onChange={handleOnChange}
 					viewModeEnabled={isReadOnly}

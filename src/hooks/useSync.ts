@@ -10,8 +10,10 @@ import { useSyncStore, logSyncResult } from '../stores/useSyncStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { selectSavesToServer, useCollaborationStore } from '../stores/useCollaborationStore'
+import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
+import { broadcastImage } from '../utils/collabServerLimits.ts'
 import logger from '../utils/logger'
 import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
 import { saveSceneOnUnload } from '../utils/saveSceneOnUnload.ts'
@@ -33,7 +35,6 @@ import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
 enum SyncMessageType {
 	SceneInit = 'SCENE_INIT',
 	SceneUpdate = 'SCENE_UPDATE',
-	ImageAdd = 'IMAGE_ADD',
 	MouseLocation = 'MOUSE_LOCATION',
 	ViewportUpdate = 'VIEWPORT_UPDATE',
 	ServerBroadcast = 'server-broadcast',
@@ -99,6 +100,7 @@ export function useSync() {
 	const lastBroadcastedSceneHashRef = useRef<number | null>(null)
 	const broadcastedElementVersionsRef = useRef<BroadcastedElementVersions>({})
 	const hasBroadcastedSceneRef = useRef(false)
+	const unsharedFilesRef = useRef(new Set<string>())
 
 	// Reset prevSyncedFilesRef when fileId changes to prevent leakage across files
 	useEffect(() => {
@@ -106,6 +108,7 @@ export function useSync() {
 		lastBroadcastedSceneHashRef.current = null
 		broadcastedElementVersionsRef.current = {}
 		hasBroadcastedSceneRef.current = false
+		unsharedFilesRef.current = new Set()
 	}, [fileId]) // Depends on fileId from the hook scope
 
 	useEffect(() => {
@@ -281,12 +284,17 @@ export function useSync() {
 					const file = files[fileIdKey]
 					if (!file?.dataURL) continue
 					const currentHash = hashFileContent(file.dataURL)
-					currentFileHashes[fileIdKey] = currentHash
-					if (prevSyncedFilesRef.current[fileIdKey] !== currentHash) {
-						const fileData = { type: SyncMessageType.ImageAdd, payload: { file } }
-						const fileJson = JSON.stringify(fileData)
-						const fileBuffer = new TextEncoder().encode(fileJson)
-						socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, fileBuffer, [])
+					// A file the server refuses is tried again, for example after a reconnect to a node that accepts it
+					if (prevSyncedFilesRef.current[fileIdKey] === currentHash || broadcastImage(socket, `${fileId}`, file)) {
+						currentFileHashes[fileIdKey] = currentHash
+					} else if (!unsharedFilesRef.current.has(fileIdKey)) {
+						unsharedFilesRef.current.add(fileIdKey)
+						logger.warn(`[Sync] Image ${fileIdKey} is too large to share`)
+						excalidrawAPI.setToast({
+							message: t('whiteboard', 'This image is too large to share with others'),
+							closable: true,
+							duration: 5000,
+						})
 					}
 				}
 				prevSyncedFilesRef.current = currentFileHashes
