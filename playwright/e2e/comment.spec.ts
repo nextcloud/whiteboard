@@ -101,3 +101,41 @@ test('deleting a saved comment thread reaches other sessions and the server', as
 
 	await pageB.close()
 })
+
+test('panning across a comment moves the canvas, not the comment', async ({ page }) => {
+	await createWhiteboard(page, { name: `Comment panning ${Date.now()}` })
+	const canvas = await getCanvasForInteraction(page)
+	for (const [x, y, text] of [[300, 250, 'First'], [300, 400, 'Second']] as const) {
+		await page.locator('.comment-trigger').click()
+		await canvas.click({ position: { x, y } })
+		await page.locator('.comment-popover textarea').fill(text)
+		await page.locator('.comment-popover .comment-popover__button').click()
+		await page.keyboard.press('v')
+		await canvas.click({ position: { x: 900, y: 600 } })
+	}
+
+	const pins = page.locator('.comment-pin')
+	await expect(pins).toHaveCount(2)
+	const positions = () => pins.evaluateAll((elements) => elements.map((pin) => [parseFloat((pin as HTMLElement).style.left), parseFloat((pin as HTMLElement).style.top)]))
+	const dragFirstPin = async (button: 'left' | 'middle') => {
+		const box = (await pins.first().boundingBox())!
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+		await page.mouse.down({ button })
+		await page.mouse.move(box.x + box.width / 2 + 150, box.y + box.height / 2 + 100, { steps: 8 })
+		await page.mouse.up({ button })
+	}
+	const expectMoves = async (drag: () => Promise<void>, expected: number[][]) => {
+		const before = await positions()
+		await drag()
+		await expect.poll(async () => (await positions()).map(([x, y], i) => [Math.round(x - before[i][0]), Math.round(y - before[i][1])])).toEqual(expected)
+	}
+
+	// Panning moves every comment along with the canvas
+	await expectMoves(() => dragFirstPin('middle'), [[150, 100], [150, 100]])
+	await page.keyboard.press('h')
+	await expectMoves(() => dragFirstPin('left'), [[150, 100], [150, 100]])
+
+	// Dragging with the selection tool still moves only the comment
+	await page.keyboard.press('v')
+	await expectMoves(() => dragFirstPin('left'), [[150, 100], [0, 0]])
+})
