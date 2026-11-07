@@ -15,7 +15,6 @@ OC.L10N.register(
     "Delete" : "Poista",
     "Advanced settings" : "Lisäasetukset",
     "Max image size (MB)" : "Kuvan enimmäiskoko (Mt)",
-    "An error occurred while creating the diagram" : "Kaaviota luotaessa tapahtui virhe",
     "Generate diagram" : "Luo kaavio",
     "Something went wrong, please try again" : "Jokin meni pieleen, yritä uudelleen.",
     "Close" : "Sulje",
