@@ -5,6 +5,7 @@
 
 import type { FileId } from '@nextcloud/excalidraw/element/types'
 import type { BinaryFileData, DataURL } from '@nextcloud/excalidraw/types'
+import type { RefObject } from 'react'
 import type { ImportedPageSize, PageSizeTarget } from '../utils/pdfImportSize.ts'
 
 import { showError, showLoading, showSuccess, showWarning } from '@nextcloud/dialogs'
@@ -143,7 +144,12 @@ function passDropOn(ev: DragEvent, files: File[]) {
 	}
 }
 
-export function usePdfImport() {
+/**
+ * PDF import for one board: the menu entry, and PDFs dropped on the board.
+ *
+ * @param wrapperRef - This board's .excalidraw-wrapper, which drops are caught on.
+ */
+export function usePdfImport(wrapperRef: RefObject<HTMLElement | null>) {
 	const { excalidrawAPI } = useExcalidrawStore(useShallow((state) => ({
 		excalidrawAPI: state.excalidrawAPI,
 	})))
@@ -393,14 +399,9 @@ export function usePdfImport() {
 	}, [])
 
 	useEffect(() => {
-		// .excalidraw-wrapper only exists once Excalidraw has mounted, which is
-		// when excalidrawAPI gets set.
-		if (!excalidrawAPI) {
-			return
-		}
-
-		const wrapper = document.getElementsByClassName('excalidraw-wrapper')[0] as HTMLElement | undefined
-		if (!wrapper) {
+		// Attached once Excalidraw has mounted, which is when excalidrawAPI gets set.
+		const wrapper = wrapperRef.current
+		if (!excalidrawAPI || !wrapper) {
 			return
 		}
 
@@ -424,7 +425,7 @@ export function usePdfImport() {
 		// and every drop without one reaches it unchanged.
 		wrapper.addEventListener('drop', handleDrop, true)
 		return () => wrapper.removeEventListener('drop', handleDrop, true)
-	}, [excalidrawAPI, readFilesAndImport])
+	}, [excalidrawAPI, readFilesAndImport, wrapperRef])
 
 	const openImportDialog = useCallback(() => {
 		const input = document.createElement('input')

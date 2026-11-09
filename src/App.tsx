@@ -137,7 +137,10 @@ export default function App({
 	const { theme, themeAttributes } = useThemeHandling(excalidrawAPI)
 	const { renderSmartPicker } = useSmartPicker()
 	const { renderTable } = useTableInsertion()
-	const { openImportDialog } = usePdfImport()
+	// This board's wrapper: embedded boards and version comparisons render
+	// read-only viewers with the same class elsewhere on the page.
+	const excalidrawWrapperRef = useRef<HTMLDivElement>(null)
+	const { openImportDialog } = usePdfImport(excalidrawWrapperRef)
 	const { renderAssistant } = useAssistant()
 	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
@@ -717,7 +720,7 @@ export default function App({
 
 	return (
 		<div className={appClassName} style={{ display: 'flex', flexDirection: 'column' }} {...themeAttributes}>
-			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
+			<div ref={excalidrawWrapperRef} className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				{!isVersionPreview && <MemoizedNetworkStatusIndicator />}
 				<MemoizedAuthErrorNotification />
 				{isVersionPreview && (

@@ -79,9 +79,10 @@ describe('usePdfImport', () => {
 	let root
 	let hook
 	let excalidrawAPI
+	const wrapperRef = { current: null }
 
 	function Probe() {
-		hook = usePdfImport()
+		hook = usePdfImport(wrapperRef)
 		return null
 	}
 
@@ -123,6 +124,7 @@ describe('usePdfImport', () => {
 		container = document.createElement('div')
 		container.className = 'excalidraw-wrapper'
 		document.body.appendChild(container)
+		wrapperRef.current = container
 		root = createRoot(document.createElement('div'))
 		await renderHook()
 	})
@@ -401,6 +403,31 @@ describe('usePdfImport', () => {
 			expect(drops).toEqual([['photo.png']])
 			expect(openPdfDocument).toHaveBeenCalledTimes(1)
 			expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "dropped.pdf".')
+		})
+
+		it('catches drops on this board\'s wrapper, not on another .excalidraw-wrapper earlier on the page', async () => {
+			// Like the read-only viewer of an embedded board or a version comparison.
+			const otherWrapper = document.createElement('div')
+			otherWrapper.className = 'excalidraw-wrapper'
+			const otherTarget = document.createElement('div')
+			otherWrapper.appendChild(otherTarget)
+			document.body.prepend(otherWrapper)
+			// The listener is attached when the board mounts.
+			await act(async () => root.unmount())
+			root = createRoot(document.createElement('div'))
+			await renderHook()
+			givenPdf(1)
+
+			const elsewhere = new Event('drop', { bubbles: true, cancelable: true })
+			Object.defineProperty(elsewhere, 'dataTransfer', { value: { files: [pdf('elsewhere.pdf')] } })
+			otherTarget.dispatchEvent(elsewhere)
+			const onBoard = drop(pdf('board.pdf'))
+			await importFinished()
+
+			expect(elsewhere.defaultPrevented).toBe(false)
+			expect(onBoard.defaultPrevented).toBe(true)
+			expect(openPdfDocument).toHaveBeenCalledTimes(1)
+			expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "board.pdf".')
 		})
 
 		it('offers every dropped PDF in turn, each with its own dialog', async () => {
