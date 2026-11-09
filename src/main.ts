@@ -3,19 +3,15 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { WhiteboardRootHandle } from './utils/renderWhiteboardView'
+import type { ViewerComponentDefinition } from './viewer/legacyViewerComponent.ts'
 
 import { loadState } from '@nextcloud/initial-state'
 import { linkTo } from '@nextcloud/router'
 import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
-import { h } from 'vue'
-import { keepCtrlDelete } from './utils/keepCtrlDelete.ts'
 import logger from './utils/logger'
 import { callMobileMessage } from './utils/mobileInterface'
-import {
-	matchesComparisonRequest,
-	renderWhiteboardView,
-} from './utils/renderWhiteboardView'
+import { renderWhiteboardView } from './utils/renderWhiteboardView'
+import { createWhiteboardComponent, generateWhiteboardElementId } from './viewer/legacyViewerComponent.ts'
 
 import './styles/index.scss'
 import '@nextcloud/dialogs/style.css'
@@ -320,46 +316,6 @@ function runDefaultViewerRuntime(context: ViewerContext): void {
 	})
 }
 
-type ViewerComponentOptions = {
-	collabBackendUrl: string
-	resolveSharingToken: () => string | null
-}
-
-type WhiteboardComponentData = {
-	containerId: string
-	root: WhiteboardRootHandle | null
-	releaseCtrlDelete: (() => void) | null
-}
-
-type LegacyCreateElement = (
-	tag: string,
-	data?: Record<string, unknown>,
-	children?: string,
-) => unknown
-
-type WhiteboardComponentInstance = WhiteboardComponentData & {
-	$el?: Element
-	$emit: (event: string, ...args: unknown[]) => void
-	fileid?: number | null
-	fileId?: number | null
-	fileVersion?: string | null
-	source?: string | null
-	isEmbedded?: boolean
-	isComparisonView?: boolean
-	active?: boolean
-	basename?: string
-}
-
-type ViewerComponentDefinition = {
-	name: string
-	render(this: WhiteboardComponentInstance, createElement?: LegacyCreateElement): unknown
-	mounted(this: WhiteboardComponentInstance): void
-	beforeDestroy(this: WhiteboardComponentInstance): void
-	beforeUnmount(this: WhiteboardComponentInstance): void
-	props: Record<string, unknown>
-	data: () => WhiteboardComponentData
-}
-
 type ViewerHandlerRegistration = {
 	id: string
 	mimes: string[]
@@ -400,121 +356,6 @@ type ViewerApi = {
 type WindowWithViewer = Window & {
 	OCA?: {
 		Viewer?: ViewerApi
-	}
-}
-
-function unmountWhiteboardRoot(component: WhiteboardComponentInstance): void {
-	component.releaseCtrlDelete?.()
-	component.releaseCtrlDelete = null
-	component.root?.unmount()
-	component.root = null
-}
-
-function createWhiteboardComponent(options: ViewerComponentOptions): ViewerComponentDefinition {
-	return {
-		name: 'Whiteboard',
-		render(
-			this: WhiteboardComponentInstance,
-			createElement?: LegacyCreateElement,
-		): unknown {
-			const isVue2Render = typeof createElement === 'function'
-			const renderElement = isVue2Render ? createElement : h
-			const attrs = isVue2Render
-				? { attrs: { id: this.containerId } }
-				: { id: this.containerId }
-
-			return renderElement(
-				'div',
-				{
-					...attrs,
-					class: [
-						'whiteboard',
-						{
-							'whiteboard-viewer__embedding': Boolean(this.isEmbedded),
-						},
-					],
-				},
-				'',
-			)
-		},
-		mounted(this: WhiteboardComponentInstance) {
-			this.$emit('update:loaded', true)
-
-			const rootElement = (this.$el ?? document.getElementById(this.containerId)) as HTMLElement | null
-			if (!rootElement) {
-				return
-			}
-
-			rootElement.addEventListener('keydown', (event) => {
-				if (event.key === 'Escape') {
-					event.stopPropagation()
-				}
-			})
-			this.releaseCtrlDelete = keepCtrlDelete(() => this.active === true)
-
-			const normalizedFileId
-				= Number(this.fileid ?? this.fileId ?? 0) || 0
-			const isComparisonView = Boolean(this.isComparisonView)
-			const isEmbedded = Boolean(this.isEmbedded)
-			const rawVersionSource = this.source ?? null
-			const rawFileVersion = this.fileVersion ?? null
-			const isVersionsDavSource
-				= rawVersionSource?.includes('/dav/versions/')
-					|| rawVersionSource?.includes('/dav/trashbin/')
-					|| false
-			const shouldUseVersionPreview
-				= isComparisonView
-					|| (rawFileVersion !== null && isVersionsDavSource)
-					|| matchesComparisonRequest(
-						rawVersionSource,
-						rawFileVersion ?? null,
-					)
-			const versionSource = isEmbedded
-				? rawVersionSource
-				: shouldUseVersionPreview
-					? rawVersionSource
-					: null
-			const fileVersion = isEmbedded
-				? rawFileVersion
-				: shouldUseVersionPreview
-					? rawFileVersion
-					: null
-			const fileName
-				= typeof this.basename === 'string' ? this.basename : ''
-
-			this.root = renderWhiteboardView(rootElement, {
-				fileId: normalizedFileId,
-				isEmbedded,
-				fileName,
-				publicSharingToken: options.resolveSharingToken(),
-				collabBackendUrl: options.collabBackendUrl,
-				versionSource,
-				fileVersion,
-				isComparisonView,
-			})
-		},
-		beforeDestroy(this: WhiteboardComponentInstance) {
-			unmountWhiteboardRoot(this)
-		},
-		beforeUnmount(this: WhiteboardComponentInstance) {
-			unmountWhiteboardRoot(this)
-		},
-		props: {
-			filename: { type: String, default: null },
-			fileid: { type: Number, default: null },
-			fileId: { type: Number, default: null },
-			fileVersion: { type: String, default: null },
-			source: { type: String, default: null },
-			isEmbedded: { type: Boolean, default: false },
-			isComparisonView: { type: Boolean, default: false },
-			// The viewer also renders the previous and next file, without `active`
-			active: { type: Boolean, default: false },
-		},
-		data: (): WhiteboardComponentData => ({
-			containerId: generateWhiteboardElementId(),
-			root: null,
-			releaseCtrlDelete: null,
-		}),
 	}
 }
 
@@ -590,13 +431,6 @@ async function primeRecordingJwt(fileId: number, jwt: string): Promise<void> {
 function normalizeNumericState(value: unknown): number {
 	const normalized = Number(value)
 	return Number.isFinite(normalized) ? normalized : 0
-}
-
-function generateWhiteboardElementId() {
-	return `whiteboard-${Math.random()
-		.toString(36)
-		.replace(/[^a-z]+/g, '')
-		.substr(2, 10)}`
 }
 
 function createWhiteboardElement(id = generateWhiteboardElementId()) {

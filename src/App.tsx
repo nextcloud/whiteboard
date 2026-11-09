@@ -25,6 +25,8 @@ import Embeddable from './components/Embeddable'
 import { useLangStore } from './stores/useLangStore'
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
 import { AuthErrorNotification } from './components/AuthErrorNotification'
+import { BoardUnavailable } from './components/BoardUnavailable.tsx'
+import { SaveStatusIndicator } from './components/SaveStatusIndicator.tsx'
 import { useSync } from './hooks/useSync'
 import { useLibrary } from './hooks/useLibrary'
 import { useLibraryCatalog } from './hooks/useLibraryCatalog'
@@ -55,7 +57,6 @@ import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 import type { ElementCreatorInfo } from './types/whiteboard'
 import { VersionPreviewBanner } from './components/VersionPreviewBanner'
 import { useVersionPreview } from './hooks/useVersionPreview'
-import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { useComment } from './hooks/useComment'
 import { CommentSidebar } from './components/CommentSidebar'
 import { useEmojiPicker } from './hooks/useEmojiPicker'
@@ -80,6 +81,9 @@ export interface WhiteboardAppProps {
 	versionSource: string | null
 	fileVersion: string | null
 }
+
+// Counts the boards mounted in this page; the stores belong to the last one
+let mounts = 0
 
 export default function App({
 	fileId,
@@ -161,13 +165,11 @@ export default function App({
 		versionSourceLabel,
 		exitVersionPreview,
 		handleRestoreVersion,
-		handleExternalRestore,
 		isRestoringVersion,
 	} = useVersionPreview({
 		fileId: normalizedFileId,
 		versionSource,
 		fileVersion,
-		excalidrawAPI,
 		refreshReadOnlyState,
 		isReadOnly,
 	})
@@ -266,47 +268,6 @@ export default function App({
 		return () => observer.disconnect()
 	}, [excalidrawAPI])
 
-	useEffect(() => {
-		const onRestoreRequested = (payload: any) => {
-			// Nextcloud 33 and later send the file as a node
-			const payloadFileId = Number(payload?.fileInfo?.id ?? payload?.node?.fileid)
-			const mimetype = payload?.fileInfo?.mimetype ?? payload?.node?.mime
-			const fileName = payload?.fileInfo?.name ?? payload?.node?.basename ?? ''
-			const source = payload?.version?.source ?? payload?.version?.url ?? null
-			const versionId = payload?.version?.fileVersion ?? null
-
-			const isWhiteboard = mimetype === 'application/vnd.excalidraw+json'
-				|| (typeof fileName === 'string' && fileName.toLowerCase().endsWith('.whiteboard'))
-
-			if (!payload || !isWhiteboard) {
-				return
-			}
-
-			if (!Number.isFinite(payloadFileId) || payloadFileId !== normalizedFileId) {
-				return
-			}
-
-			if (!source) {
-				logger.error('[App] Missing version source for whiteboard restore request', { payload })
-				return
-			}
-
-			if (payload && typeof payload === 'object') {
-				payload.preventDefault = true
-			}
-
-			handleExternalRestore(source, versionId).catch(error => {
-				logger.error('[App] Failed to handle whiteboard restore from sidebar', { error, source, versionId })
-			})
-		}
-
-		subscribe('files_versions:restore:requested', onRestoreRequested)
-
-		return () => {
-			unsubscribe('files_versions:restore:requested', onRestoreRequested)
-		}
-	}, [handleExternalRestore, normalizedFileId])
-
 	// Use the board data manager hook
 	const {
 		isLoading,
@@ -387,11 +348,15 @@ export default function App({
 		setIsLibraryLoaded,
 	])
 
+	// The viewer can mount a board again before the old one is gone, for example after a version restore in Files
+	const mountRef = useRef(0)
 	useEffect(() => {
+		mountRef.current = ++mounts
 		return () => {
-			// Reset all stores
-			resetStore()
-			resetExcalidrawAPI()
+			if (mountRef.current === mounts) {
+				resetStore()
+				resetExcalidrawAPI()
+			}
 		}
 	}, [resetStore, resetExcalidrawAPI])
 
@@ -655,7 +620,9 @@ export default function App({
 			return
 		}
 
-		resetExcalidrawAPI()
+		if (mountRef.current === mounts) {
+			resetExcalidrawAPI()
+		}
 	}, [resetExcalidrawAPI, setExcalidrawAPI])
 
 	if (isLoading) {
@@ -717,6 +684,8 @@ export default function App({
 		<div className={appClassName} style={{ display: 'flex', flexDirection: 'column' }} {...themeAttributes}>
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
 				{!isVersionPreview && <MemoizedNetworkStatusIndicator />}
+				<SaveStatusIndicator />
+				<BoardUnavailable />
 				<MemoizedAuthErrorNotification />
 				{isVersionPreview && (
 					<VersionPreviewBanner

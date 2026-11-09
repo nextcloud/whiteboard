@@ -11,15 +11,16 @@ namespace OCA\Whiteboard\Controller;
 
 use Exception;
 use InvalidArgumentException;
-use OCA\Whiteboard\Exception\InvalidUserException;
+use OCA\Whiteboard\Exception\BoardBusyException;
+use OCA\Whiteboard\Exception\BoardReplacedException;
+use OCA\Whiteboard\Exception\BoardUnreadableException;
 use OCA\Whiteboard\Exception\UnauthorizedException;
 use OCA\Whiteboard\Service\Authentication\GetUserFromIdServiceFactory;
+use OCA\Whiteboard\Service\BoardSyncService;
 use OCA\Whiteboard\Service\CanvasTemplateService;
-use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
 use OCA\Whiteboard\Service\File\GetFileServiceFactory;
 use OCA\Whiteboard\Service\JWTService;
-use OCA\Whiteboard\Service\WhiteboardContentService;
 use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
@@ -28,20 +29,17 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\NotPermittedException;
-use OCP\ICacheFactory;
 use OCP\IGroupManager;
-use OCP\IMemcache;
 use OCP\IRequest;
 use Psr\Log\LoggerInterface;
 
 /**
+ * @psalm-api
  * @psalm-suppress UndefinedClass
  * @psalm-suppress UndefinedDocblockClass
  */
 final class WhiteboardController extends ApiController {
-	private const SCHEMA_VERSION = 2;
-
-	private IMemcache $cache;
+	private const SCHEMA_VERSION = 3;
 
 	public function __construct(
 		$appName,
@@ -49,81 +47,66 @@ final class WhiteboardController extends ApiController {
 		private GetUserFromIdServiceFactory $getUserFromIdServiceFactory,
 		private GetFileServiceFactory $getFileServiceFactory,
 		private JWTService $jwtService,
-		private WhiteboardContentService $contentService,
+		private BoardSyncService $boardSync,
 		private WhiteboardLibraryService $libraryService,
 		private CanvasTemplateService $canvasTemplateService,
 		private ExceptionService $exceptionService,
-		private ConfigService $configService,
 		private LoggerInterface $logger,
-		private ICacheFactory $cacheFactory,
 		private IGroupManager $groupManager,
 	) {
 		parent::__construct($appName, $request);
-		$this->cache = $cacheFactory->createLocking('whiteboard_sync');
 	}
 
+	/**
+	 * The board with its epoch and revision; with `epoch` and `since`, only
+	 * what changed after that revision while the epoch is the same
+	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	#[PublicPage]
-	public function show(int $fileId): DataResponse {
+	public function show(int $fileId, ?string $epoch = null, ?int $since = null): DataResponse {
 		try {
 			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->jwtService->getUserIdFromJWT($jwt, $fileId);
 			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
 			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
-			$data = $this->contentService->getContent($file);
 
-			return new DataResponse(['data' => $data]);
+			return new DataResponse($this->boardSync->read($file, $epoch, $since));
 		} catch (Exception $e) {
-			return $this->exceptionService->handleException($e);
+			return $this->handleBoardException($e);
 		}
 	}
 
+	/**
+	 * Merges the changed elements and files of a client into the board and
+	 * returns what changed after the client's revision
+	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	#[PublicPage]
-	public function update(int $fileId, array $data): DataResponse {
+	public function update(int $fileId, array $data, array $sync = []): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
-			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
-			$fileService = $this->getFileServiceFactory->create($user, $fileId);
-			$file = $fileService->getFile();
-			if ($fileService->isFileReadOnly() || $this->jwtService->isReadOnlyJWT($jwt)) {
-				throw new NotPermittedException('Permission denied');
-			}
+			[$user, $file] = $this->getWritableBoard($fileId);
 		} catch (Exception $e) {
-			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());
-			return $this->exceptionService->handleException($e);
+			return $this->handleBoardException($e);
 		}
 
-		// Clients older than 3.0 drop element types they do not know, so their
-		// writes are refused. The check comes before the lock, whose busy
-		// response Whiteboard 2.0 treats as saved.
+		// Clients that send whole scenes without an epoch can replace newer
+		// boards, so their writes are refused
 		if ($this->request->getParam('schemaVersion') !== self::SCHEMA_VERSION) {
 			return new DataResponse(['status' => 'error', 'code' => 'client_upgrade_required'], Http::STATUS_BAD_REQUEST);
 		}
 
-		$lockKey = "sync_lock_{$fileId}";
-		$lockValue = uniqid();
-		$lockTTL = 5; // 5 seconds
-
-		// Simple distributed lock
-		if (!$this->cache->add($lockKey, $lockValue, $lockTTL)) {
-			return new DataResponse(['status' => 'conflict'], 409);
-		}
-
 		try {
-			$this->contentService->updateContent($file, $data, $user);
+			$elements = is_array($data['elements'] ?? null) ? $data['elements'] : [];
+			$files = is_array($data['files'] ?? null) ? $data['files'] : [];
+			$settings = is_array($data['settings'] ?? null) ? $data['settings'] : [];
+			$epoch = is_string($sync['epoch'] ?? null) ? $sync['epoch'] : '';
+			$since = is_int($sync['since'] ?? null) ? $sync['since'] : 0;
 
-			return new DataResponse(['status' => 'success']);
+			return new DataResponse($this->boardSync->save($file, $epoch, $since, $elements, $files, $user, ($sync['repair'] ?? false) === true, $settings));
 		} catch (Exception $e) {
-			$this->logger->error('Error syncing whiteboard data: ' . $e->getMessage());
-			return $this->exceptionService->handleException($e);
-		} finally {
-			if ($this->cache->get($lockKey) === $lockValue) {
-				$this->cache->remove($lockKey);
-			}
+			return $this->handleBoardException($e);
 		}
 	}
 
@@ -251,6 +234,30 @@ final class WhiteboardController extends ApiController {
 		}
 	}
 
+	/**
+	 * @return array{0: \OCA\Whiteboard\Model\User, 1: \OCP\Files\File}
+	 */
+	private function getWritableBoard(int $fileId): array {
+		$jwt = $this->getJwtFromRequest();
+		$userId = $this->jwtService->getUserIdFromJWT($jwt, $fileId);
+		$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
+		$fileService = $this->getFileServiceFactory->create($user, $fileId);
+		$file = $fileService->getFile();
+		if ($fileService->isFileReadOnly() || $this->jwtService->isReadOnlyJWT($jwt)) {
+			throw new NotPermittedException('Permission denied');
+		}
+		return [$user, $file];
+	}
+
+	private function handleBoardException(Exception $e): DataResponse {
+		return match (true) {
+			$e instanceof BoardReplacedException => new DataResponse(['code' => 'board_replaced', 'sync' => $e->state->toSync()], Http::STATUS_CONFLICT),
+			$e instanceof BoardUnreadableException => new DataResponse(['code' => 'board_unreadable', 'sync' => $e->state->toSync()], Http::STATUS_CONFLICT),
+			$e instanceof BoardBusyException => new DataResponse(['code' => 'busy'], Http::STATUS_SERVICE_UNAVAILABLE, ['Retry-After' => '2']),
+			default => $this->exceptionService->handleException($e),
+		};
+	}
+
 	private function getJwtFromRequest(): string {
 		$authHeader = $this->request->getHeader('Authorization');
 		if (sscanf($authHeader, 'Bearer %s', $jwt) !== 1) {
@@ -258,34 +265,5 @@ final class WhiteboardController extends ApiController {
 			throw new UnauthorizedException();
 		}
 		return (string)$jwt;
-	}
-
-	private function getUserIdFromRequest(): string {
-		return $this->request->getHeader('X-Whiteboard-User');
-	}
-
-	private function validateBackendSharedToken(int $fileId): void {
-		$backendSharedToken = $this->request->getHeader('X-Whiteboard-Auth');
-		if (!$backendSharedToken || !$this->verifySharedToken($backendSharedToken, $fileId)) {
-			$this->logger->error('Invalid backend shared token', [
-				'file_id' => $fileId,
-				'token_present' => !empty($backendSharedToken)
-			]);
-			throw new InvalidUserException('Invalid backend shared token');
-		}
-	}
-
-	private function verifySharedToken(string $token, int $fileId): bool {
-		[$roomId, $timestamp, $signature] = explode(':', $token);
-
-		if ($roomId !== (string)$fileId) {
-			return false;
-		}
-
-		$sharedSecret = $this->configService->getWhiteboardSharedSecret();
-		$payload = "$roomId:$timestamp";
-		$expectedSignature = hash_hmac('sha256', $payload, $sharedSecret);
-
-		return hash_equals($expectedSignature, $signature);
 	}
 }

@@ -10,7 +10,6 @@ import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
 import type {
 	AppState,
 	BinaryFileData,
-	BinaryFiles,
 	Collaborator,
 	ExcalidrawImperativeAPI,
 	NormalizedZoomValue,
@@ -24,22 +23,19 @@ import { io } from 'socket.io-client'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
-import { selectSavesToServer, useCollaborationStore } from '../stores/useCollaborationStore'
-import { useSyncStore } from '../stores/useSyncStore.ts'
-import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
+import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { useShallow } from 'zustand/react/shallow'
 import { throttle, debounce } from 'lodash'
-import { db } from '../database/db'
-import { fetchWhiteboardSnapshot } from '../utils/fetchWhiteboardSnapshot.ts'
-import { computeElementVersionHash } from '../utils/syncSceneData'
 import type { ClientToServerEvents, CollaborationSocket, ServerToClientEvents } from '../types/collaboration'
 
-import { isOutdatedSceneBroadcast, SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
+import { getBoardSync } from '../sync/boardSync.ts'
+import { inIndexOrder } from '../sync/elementOrder.ts'
+import { encodeRoomMessage, isOutdatedSceneBroadcast, noticeSync, sceneMessage } from '../sync/roomMessages.ts'
 
 enum BroadcastType {
-	SceneInit = 'SCENE_INIT', // Incoming scene data from others
 	SceneUpdate = 'SCENE_UPDATE', // Incoming incremental scene data from others
-	SceneRestore = 'SCENE_RESTORE', // Force replace scene from authoritative source
+	SceneRestore = 'SCENE_RESTORE', // The board was restored; fetch it
+	SceneSaved = 'SCENE_SAVED', // A peer saved; fetch the new revision
 	MouseLocation = 'MOUSE_LOCATION', // Incoming cursor data
 	ImageAdd = 'IMAGE_ADD', // Incoming image data from others
 	ImageRequest = 'IMAGE_REQUEST', // Request for image data
@@ -47,18 +43,12 @@ enum BroadcastType {
 }
 
 const CURSOR_UPDATE_DELAY = 50
-const SERVER_MERGE_RETRY_DELAY = 3000
 
 export function useCollaboration() {
 	const joinedRoomRef = useRef<string | null>(null)
-	const pendingSceneUpdateRef = useRef<readonly ExcalidrawElement[] | null>(null)
+	// Elements that arrived before the editor was there, with the epoch they belong to
+	const pendingSceneUpdateRef = useRef<{ epoch: string | null, elements: readonly ExcalidrawElement[] } | null>(null)
 	const pendingImageUpdatesRef = useRef<Map<string, BinaryFileData>>(new Map())
-	const pendingSceneReplaceRef = useRef<{
-		elements: ExcalidrawElement[]
-		files: BinaryFiles
-		appState: Partial<AppState>
-		scrollToContent: boolean
-	} | null>(null)
 
 	const { excalidrawAPI: editorAPI } = useExcalidrawStore(
 		useShallow(state => ({
@@ -119,9 +109,9 @@ export function useCollaboration() {
 			if (!excalidrawAPI) return
 
 			try {
-				// Restore and reconcile elements
-				const restoredRemoteElements = restoreElements(remoteElements, null)
+				// The local elements complete partial updates, for example the target of an arrow binding
 				const localElements = excalidrawAPI.getSceneElementsIncludingDeleted() || []
+				const restoredRemoteElements = restoreElements(inIndexOrder(remoteElements), localElements)
 				const appState = excalidrawAPI.getAppState()
 				const reconciledElements = mergeElementsWithMetadata(localElements, restoredRemoteElements, appState)
 				excalidrawAPI.updateScene({ elements: reconciledElements })
@@ -171,7 +161,7 @@ export function useCollaboration() {
 	const queueSceneUpdate = useCallback(
 		(remoteElements: readonly ExcalidrawElement[]) => {
 			if (!excalidrawAPI) {
-				pendingSceneUpdateRef.current = remoteElements
+				pendingSceneUpdateRef.current = { epoch: getBoardSync()?.epoch ?? null, elements: remoteElements }
 				return
 			}
 
@@ -192,61 +182,16 @@ export function useCollaboration() {
 		[excalidrawAPI, handleRemoteImageAdd],
 	)
 
-	const applySceneReplacement = useCallback(
-		(payload: {
-			elements: ExcalidrawElement[]
-			files: BinaryFiles
-			appState: Partial<AppState>
-			scrollToContent: boolean
-		}) => {
-			if (!excalidrawAPI) {
-				return
-			}
-
-			try {
-				excalidrawAPI.resetScene()
-
-				const currentAppState = excalidrawAPI.getAppState()
-				const sanitizedPayloadAppState = sanitizeAppStateForSync(payload.appState)
-				const mergedAppState = {
-					...currentAppState,
-					...sanitizedPayloadAppState,
-					scrollToContent: payload.scrollToContent,
-				}
-
-				excalidrawAPI.updateScene({
-					elements: payload.elements,
-					appState: mergedAppState,
-				})
-
-				const filesArray = Object.values(payload.files || {}).filter(
-					(file): file is BinaryFileData => Boolean(file),
-				)
-
-				if (filesArray.length > 0) {
-					excalidrawAPI.addFiles(filesArray)
-				}
-			} catch (error) {
-				console.error('[Collaboration] Error applying restored scene:', error)
-			}
-		},
-		[excalidrawAPI],
-	)
-
 	useEffect(() => {
 		if (!excalidrawAPI) {
 			return
 		}
 
-		if (pendingSceneReplaceRef.current) {
-			const payload = pendingSceneReplaceRef.current
-			pendingSceneReplaceRef.current = null
-			applySceneReplacement(payload)
-		}
-
-		if (pendingSceneUpdateRef.current) {
-			const latestScene = pendingSceneUpdateRef.current
-			pendingSceneUpdateRef.current = null
+		const pending = pendingSceneUpdateRef.current
+		pendingSceneUpdateRef.current = null
+		// Dropped when the board changed epoch meanwhile, as a restore does
+		if (pending && pending.epoch === getBoardSync()?.epoch) {
+			const latestScene = pending.elements
 			reconcileAndApplyRemoteElements(latestScene)
 		}
 
@@ -257,56 +202,23 @@ export function useCollaboration() {
 				handleRemoteImageAdd(image)
 			})
 		}
-	}, [excalidrawAPI, handleRemoteImageAdd, reconcileAndApplyRemoteElements, applySceneReplacement])
+	}, [excalidrawAPI, handleRemoteImageAdd, reconcileAndApplyRemoteElements])
 
 	useEffect(() => {
 		pendingSceneUpdateRef.current = null
 		pendingImageUpdatesRef.current.clear()
-		pendingSceneReplaceRef.current = null
 	}, [fileId])
 
-	const { isInRoom, pendingServerMerge } = useCollaborationStore(useShallow((state) => ({
-		isInRoom: state.isInRoom,
-		pendingServerMerge: state.pendingServerMerge,
-	})))
-	const isVersionPreview = useWhiteboardConfigStore((state) => state.isVersionPreview)
+	const isInRoom = useCollaborationStore((state) => state.isInRoom)
 
+	// Back in the room: catch up with what others saved meanwhile, and tell the
+	// room which board this tab has, so a tab that missed a restore fetches it
 	useEffect(() => {
-		if (!isInRoom || !pendingServerMerge || isVersionPreview || !excalidrawAPI || !fileId) {
-			return
+		const boardSync = getBoardSync()
+		if (isInRoom && boardSync) {
+			void boardSync.fetch().then(() => boardSync.announceState())
 		}
-
-		let cancelled = false
-		let retryTimeout: ReturnType<typeof setTimeout> | undefined
-		const mergeSavedScene = async () => {
-			try {
-				const jwt = await getJWT()
-				if (!jwt) {
-					throw new Error('Missing JWT')
-				}
-				const snapshot = await fetchWhiteboardSnapshot(fileId, jwt)
-				if (cancelled) {
-					return
-				}
-				excalidrawAPI.addFiles(Object.values((snapshot.files || {}) as BinaryFiles))
-				reconcileAndApplyRemoteElements(snapshot.elements as ExcalidrawElement[])
-				// The saved board may lack what this client saved before, so the next save must not be skipped
-				useSyncStore.setState({ savedSceneKey: null })
-				useCollaborationStore.getState().setPendingServerMerge(false)
-			} catch (error) {
-				console.error('[Collaboration] Failed to merge the saved board, retrying:', error)
-				if (!cancelled) {
-					retryTimeout = setTimeout(mergeSavedScene, SERVER_MERGE_RETRY_DELAY)
-				}
-			}
-		}
-		mergeSavedScene()
-
-		return () => {
-			cancelled = true
-			clearTimeout(retryTimeout)
-		}
-	}, [isInRoom, pendingServerMerge, isVersionPreview, excalidrawAPI, fileId, getJWT, reconcileAndApplyRemoteElements])
+	}, [isInRoom])
 
 	// --- Collaborator State Management ---
 	// Unlike the editor's collaborators, kept while disconnected
@@ -602,73 +514,22 @@ export function useCollaboration() {
 				}
 
 				if (isOutdatedSceneBroadcast(decoded)) {
-					console.warn('[Collaboration] Ignoring scene broadcast from a client older than 3.0')
-					useCollaborationStore.getState().setHasOutdatedPeer()
+					console.warn('[Collaboration] Ignoring a scene broadcast from an older client')
 					return
 				}
 
 				switch (decoded.type) {
-				case BroadcastType.SceneRestore: {
-					if (decoded.payload?.reloadFromServer !== true || !fileId) {
-						console.warn('[Collaboration] Invalid SceneRestore payload:', decoded.payload)
+				case BroadcastType.SceneRestore:
+				case BroadcastType.SceneSaved:
+					getBoardSync()?.hint(noticeSync(decoded))
+					break
+				case BroadcastType.SceneUpdate: {
+					// Elements of another epoch belong to a board from before a restore
+					const boardSync = getBoardSync()
+					if (!boardSync || decoded.epoch !== boardSync.epoch) {
+						void boardSync?.fetch()
 						break
 					}
-
-					try {
-						const jwt = await getJWT()
-						if (!jwt) {
-							throw new Error('Missing JWT')
-						}
-						const payload = await fetchWhiteboardSnapshot(fileId, jwt)
-						const restoredElements = restoreElements(payload.elements as ExcalidrawElement[], null) as ExcalidrawElement[]
-						const files = (payload.files || {}) as BinaryFiles
-						const appStatePatch: Partial<AppState> = sanitizeAppStateForSync(payload.appState as Partial<AppState>)
-						const scrollToContent = payload.scrollToContent ?? true
-
-						// Clear pending queue state since we have an authoritative snapshot
-						pendingSceneUpdateRef.current = null
-						pendingImageUpdatesRef.current.clear()
-
-						if (excalidrawAPI) {
-							applySceneReplacement({
-								elements: restoredElements,
-								files,
-								appState: appStatePatch,
-								scrollToContent,
-							})
-						} else {
-							pendingSceneReplaceRef.current = {
-								elements: restoredElements,
-								files,
-								appState: appStatePatch,
-								scrollToContent,
-							}
-						}
-
-						// Persist authoritative snapshot locally to avoid stale IndexedDB data
-						if (fileId) {
-							try {
-								await db.put(
-									fileId,
-									restoredElements,
-									files || {},
-									appStatePatch,
-									{
-										hasPendingLocalChanges: false,
-										lastSyncedHash: computeElementVersionHash(restoredElements),
-									},
-								)
-							} catch (persistError) {
-								console.error('[Collaboration] Failed to persist restored scene to IndexedDB:', persistError)
-							}
-						}
-					} catch (error) {
-						console.error('[Collaboration] Error handling SceneRestore broadcast:', error)
-					}
-					break
-				}
-				case BroadcastType.SceneInit:
-				case BroadcastType.SceneUpdate:
 					if (Array.isArray(decoded.payload?.elements)) {
 						console.log('[Collaboration] Received scene payload', {
 							type: decoded.type,
@@ -686,6 +547,7 @@ export function useCollaboration() {
 						console.warn('[Collaboration] Invalid scene payload:', decoded.payload)
 					}
 					break
+				}
 				case BroadcastType.MouseLocation:
 					if (decoded.payload && typeof decoded.payload === 'object') {
 						updateCursorState(decoded.payload)
@@ -735,7 +597,7 @@ export function useCollaboration() {
 				console.error('[Collaboration] Error processing client broadcast:', error)
 			}
 		},
-		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId, applySceneReplacement, getJWT],
+		[queueSceneUpdate, updateCursorState, queueImageUpdate, updateViewportState, excalidrawAPI, fileId],
 	)
 
 	const handleSyncDesignate = useCallback((data: { isSyncer: boolean }) => {
@@ -743,40 +605,23 @@ export function useCollaboration() {
 		setDedicatedSyncer(data.isSyncer)
 	}, [setDedicatedSyncer])
 
-	// Handle user joined event - broadcast the current full scene and images if we're the syncer
-	const handleUserJoined = useCallback((data: { userId: string, userName: string, socketId: string, isSyncer: boolean }) => {
-		// If we are the syncer, re-broadcast the current full scene so late joiners
-		// reconcile against the latest peer state via Excalidraw's built-in merge.
-		if (selectSavesToServer(useCollaborationStore.getState()) && excalidrawAPI) {
-			console.log(`[Collaboration] Broadcasting full scene to new user: ${data.userName}`)
-
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
-			const files = excalidrawAPI.getFiles()
-			const socket = useCollaborationStore.getState().socket
-
-			if (!socket || !socket.connected || !fileId) return
-
-			const sceneData = { type: BroadcastType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
-			const sceneJson = JSON.stringify(sceneData)
-			const sceneBuffer = new TextEncoder().encode(sceneJson)
-			socket.emit('server-broadcast', `${fileId}`, sceneBuffer, [])
-
-			console.log('[Collaboration] Re-broadcasted full scene for room convergence', {
-				targetUser: data.userName,
-				elementsCount: elements.length,
-				sampleElementIds: elements.slice(0, 10).map((element) => element.id),
-			})
-
-			console.log(`[Collaboration] Broadcasting images to new user: ${data.userName}`)
-
-			// Broadcast each image file
-			Object.entries(files).forEach(([, file]) => {
-				if (file && file.dataURL && !broadcastImage(socket, `${fileId}`, file)) {
-					console.warn(`[Collaboration] Image ${file.id} is too large to share`)
-				}
-			})
+	// Someone joined: send what this tab has that Nextcloud does not yet; the rest comes from Nextcloud
+	const handleUserJoined = useCallback(() => {
+		const socket = useCollaborationStore.getState().socket
+		const boardSync = getBoardSync()
+		if (!socket?.connected || !fileId || !boardSync) {
+			return
 		}
-	}, [excalidrawAPI, fileId])
+		const { elements, files } = boardSync.unsavedChanges()
+		if (elements.length > 0) {
+			socket.emit('server-broadcast', `${fileId}`, encodeRoomMessage(sceneMessage(boardSync.epoch, { elements })), [])
+		}
+		Object.values(files).forEach((file) => {
+			if (!broadcastImage(socket, `${fileId}`, file)) {
+				console.warn(`[Collaboration] Image ${file.id} is too large to share`)
+			}
+		})
+	}, [fileId])
 
 	// No custom reconnection strategy needed - socket.io will handle reconnection with Infinity attempts
 
@@ -842,9 +687,6 @@ export function useCollaboration() {
 				useWhiteboardConfigStore.getState().setCollabMaxMessageBytes(null)
 				clearExcalidrawCollaborators()
 				setIsInRoom(false)
-				// Others may save while this client is away; it saves again after merging their changes
-				useCollaborationStore.getState().setPendingServerMerge(true)
-				useSyncStore.getState().worker?.postMessage({ type: 'DROP_WAITING_SERVER_SYNC', fileId: useWhiteboardConfigStore.getState().fileId })
 
 				// Only set to offline if this is an intentional disconnect
 				// For server disconnects, Socket.IO will automatically try to reconnect
@@ -938,7 +780,7 @@ export function useCollaboration() {
 
 			socketInstance.on('user-joined', (data) => {
 				console.log(`[Collaboration] User joined: ${data.userName} (${data.userId})`)
-				handleUserJoined(data)
+				handleUserJoined()
 			})
 
 			// Handle request for presenter's viewport
@@ -1161,10 +1003,7 @@ export function useCollaboration() {
 			// Remove all listeners first to prevent any callbacks during disconnect
 			currentSocket.removeAllListeners()
 
-			// Another tab takes over saving once this one leaves the room, so it
-			// leaves after the saves it queued for the board
-			const leave = () => currentSocket.disconnect()
-			useSyncStore.getState().flushBoard(useWhiteboardConfigStore.getState().fileId, true).then(leave, leave)
+			currentSocket.disconnect()
 
 			// Reset state
 			setSocket(null)

@@ -12,28 +12,24 @@ The official whiteboard app for Nextcloud. Create and share whiteboards with rea
 ## Features
 
 - 🎨 Drawing shapes, writing text, connecting elements
-- 📝 Real-time collaboration with semi-offline support
-- 💾 Client-first architecture with local storage
-- 🔄 Automatic sync between local and server storage
-- 🌐 Works semi-offline - changes saved locally and synced when online (websocket server configured successfully)
+- 📝 Real-time collaboration with the collaboration server
+- 💾 Every change is saved to Nextcloud, with or without the collaboration server
+- 🌐 Works offline - changes are kept in the browser and saved once Nextcloud can be reached
 - 💪 Built on [Excalidraw](https://github.com/excalidraw/excalidraw)
 
 ## Architecture
 
-Nextcloud Whiteboard uses a **client-first architecture** that prioritizes browser-based functionality:
-
-- **Browser-First**: The editor runs in the browser and saves to Nextcloud directly
-- **Local Storage**: Changes are immediately saved to browser storage (IndexedDB)
-- **Saving**: WebSocket server picks the browser that saves each board to Nextcloud, also when only one person edits it
-- **Real-time Collaboration**: WebSocket server handles live collaboration sessions
-- **Simplified Connectivity**: Only browsers need to connect to the websocket server
+- **Saving**: Every browser that can edit a board sends its changes to Nextcloud. Nextcloud merges them into the stored board element by element, so no save takes back what another one stored.
+- **Local Storage**: Changes Nextcloud does not have yet are kept in the browser (IndexedDB) until it does.
+- **Real-time Collaboration**: The collaboration server relays changes and cursors between the people on a board. It is optional: without it, open boards catch up with Nextcloud every 15 seconds.
+- **Simplified Connectivity**: Only browsers need to connect to the collaboration server.
 
 ## Installation & Setup
 
-Whiteboard has two parts, and a working setup needs both:
+Whiteboard has two parts:
 
-1. The **Whiteboard app**, installed in Nextcloud.
-2. The **collaboration server**, also called the websocket server: a separate Node.js service that the browsers of your users connect to.
+1. The **Whiteboard app**, installed in Nextcloud. It is all you need to create, edit and save boards.
+2. The **collaboration server**, also called the websocket server: a separate Node.js service that the browsers of your users connect to. It adds real-time collaboration and recordings.
 
 ### Installing the Whiteboard app
 
@@ -43,13 +39,13 @@ Install and enable the app from the Nextcloud App Store in Apps, or with occ:
 occ app:install whiteboard
 ```
 
-With the app alone, users can create and open boards, but their changes are not saved to Nextcloud. Set up the collaboration server next.
+With the app alone, users can create, edit and share boards, and every change is saved to Nextcloud. People editing the same board see each other's changes within half a minute. Set up the collaboration server for live editing with cursors.
 
 <a id="websocket-server-for-real-time-collaboration"></a>
 
 ### WebSocket Server
 
-The websocket server handles real-time collaboration sessions between users. **Important**: The websocket server is required, also when only one person edits a board. It decides which browser saves each board to Nextcloud, so without it changes stay in the browser and are not saved to Nextcloud. A websocket server deployment, with one or more nodes, serves a single Nextcloud instance.
+The websocket server handles real-time collaboration sessions between users. Boards are saved to Nextcloud without it. A websocket server deployment, with one or more nodes, serves a single Nextcloud instance.
 
 **Environment Variables:**
 The websocket server reads these environment variables at startup:
@@ -100,7 +96,7 @@ The app reads these settings, set with `occ config:app:set whiteboard <key>`:
 | Key | Default | Description |
 |---|---|---|
 | `collabBackendUrl` | none | URL of the websocket server as the browsers reach it, for example through the [reverse proxy](#reverse-proxy-configuration) |
-| `jwt_secret_key` | none | Must match `JWT_SECRET_KEY` of the websocket server |
+| `jwt_secret_key` | none | Must match `JWT_SECRET_KEY` of the websocket server. Without a websocket server you can leave it empty: Nextcloud then signs the tokens of its own requests with a key derived from its instance secret |
 | `max_file_size` | `10` | Largest image in megabytes that users can add to a board, measured on the original file. Images must also fit `MAX_UPLOAD_FILE_SIZE` of the websocket server, or the board refuses them. Set it with `--type=integer` |
 | `disable_external_libraries` | `false` | Set to `true` with `--type=boolean` to hide the button that browses the public Excalidraw libraries |
 
@@ -339,7 +335,7 @@ occ maintenance:mimetype:update-js
 ```
 
 **Misleading Admin Errors**
-The admin connectivity check connects from your browser in the same way the editor does. If it fails, check the websocket server URL, the reverse proxy and the browser console. Boards are saved to Nextcloud only while the editor is connected to the websocket server.
+The admin connectivity check connects from your browser in the same way the editor does. If it fails, check the websocket server URL, the reverse proxy and the browser console. Boards are still saved to Nextcloud while the editor cannot reach the websocket server; only real-time collaboration stops.
 
 ## Development
 

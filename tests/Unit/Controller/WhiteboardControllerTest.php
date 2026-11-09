@@ -11,13 +11,17 @@ namespace OCA\Whiteboard\Controller;
 
 use Firebase\JWT\JWT;
 use OCA\Whiteboard\Consts\JWTConsts;
+use OCA\Whiteboard\Exception\BoardBusyException;
+use OCA\Whiteboard\Exception\BoardReplacedException;
+use OCA\Whiteboard\Exception\BoardUnreadableException;
+use OCA\Whiteboard\Model\BoardState;
 use OCA\Whiteboard\Service\Authentication\GetUserFromIdServiceFactory;
+use OCA\Whiteboard\Service\BoardSyncService;
 use OCA\Whiteboard\Service\CanvasTemplateService;
 use OCA\Whiteboard\Service\ConfigService;
 use OCA\Whiteboard\Service\ExceptionService;
 use OCA\Whiteboard\Service\File\GetFileServiceFactory;
 use OCA\Whiteboard\Service\JWTService;
-use OCA\Whiteboard\Service\WhiteboardContentService;
 use OCA\Whiteboard\Service\WhiteboardFolderService;
 use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\AppFramework\Http;
@@ -28,10 +32,8 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\IUserFolder;
 use OCP\Files\Template\ITemplateManager;
-use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IGroupManager;
-use OCP\IMemcache;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserManager;
@@ -52,21 +54,26 @@ class WhiteboardControllerTest extends TestCase {
 
 	private File&MockObject $whiteboardFile;
 
+	private BoardSyncService&MockObject $boardSync;
+
 	private function makeController(
 		bool $isAdmin,
 		array $params,
 		int $whiteboardFilePermissions = Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE,
 		array $jwtClaims = [],
-		bool $syncLockBusy = false,
+		string $storedSecret = self::SECRET,
 	): WhiteboardController {
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getAppValueString')->willReturn($storedSecret);
+		$systemConfig = $this->createMock(IConfig::class);
+		$systemConfig->method('getSystemValueString')->willReturnMap([['secret', '', 'instance-secret-of-this-nextcloud']]);
+		$configService = new ConfigService($appConfig, $systemConfig);
+
 		$request = $this->createMock(IRequest::class);
-		$jwt = JWT::encode(['userid' => self::UID, 'exp' => time() + 300] + $jwtClaims, self::SECRET, JWTConsts::JWT_ALGORITHM);
+		// A token of board 123, as the token endpoint makes it
+		$jwt = JWT::encode($jwtClaims + ['userid' => self::UID, 'fileId' => 123, 'exp' => time() + 300], $configService->getJwtSecretKey(), JWTConsts::JWT_ALGORITHM);
 		$request->method('getHeader')->willReturnCallback(static fn (string $name): string => $name === 'Authorization' ? 'Bearer ' . $jwt : '');
 		$request->method('getParam')->willReturnCallback(static fn (string $key, $default = null) => $params[$key] ?? $default);
-
-		$appConfig = $this->createMock(IAppConfig::class);
-		$appConfig->method('getAppValueString')->willReturn(self::SECRET);
-		$configService = new ConfigService($appConfig, $this->createMock(IConfig::class));
 
 		$templateManager = $this->createMock(ITemplateManager::class);
 		$templateManager->method('hasTemplateDirectory')->willReturn(true);
@@ -112,10 +119,7 @@ class WhiteboardControllerTest extends TestCase {
 		$logger = $this->createMock(LoggerInterface::class);
 		$folders = new WhiteboardFolderService($templateManager, $rootFolder, $config, $logger, $this->createMock(IFactory::class), static fn (): bool => true);
 
-		$cache = $this->createMock(IMemcache::class);
-		$cache->method('add')->willReturn(!$syncLockBusy);
-		$cacheFactory = $this->createMock(ICacheFactory::class);
-		$cacheFactory->method('createLocking')->willReturn($cache);
+		$this->boardSync = $this->createMock(BoardSyncService::class);
 
 		$groupManager = $this->createMock(IGroupManager::class);
 		$groupManager->method('isAdmin')->with(self::UID)->willReturn($isAdmin);
@@ -136,27 +140,41 @@ class WhiteboardControllerTest extends TestCase {
 			),
 			new GetFileServiceFactory($rootFolder, $this->createMock(ShareManager::class), $logger),
 			new JWTService($configService),
-			new WhiteboardContentService($logger, $configService),
+			$this->boardSync,
 			new WhiteboardLibraryService($folders, $config, $logger),
 			new CanvasTemplateService($folders, $logger),
 			new ExceptionService($logger),
-			$configService,
 			$logger,
-			$cacheFactory,
 			$groupManager,
 		);
+	}
+
+	public function testBoardsOpenAndSaveWithoutAConfiguredSecret(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3], storedSecret: '');
+		$this->boardSync->method('read')->willReturn(['sync' => ['epoch' => 'e', 'rev' => 1], 'data' => ['elements' => []]]);
+		$this->boardSync->method('save')->willReturn(['sync' => ['epoch' => 'e', 'rev' => 2], 'delta' => ['elements' => [], 'files' => []]]);
+
+		$this->assertSame(Http::STATUS_OK, $controller->show(123)->getStatus());
+		$this->assertSame(Http::STATUS_OK, $controller->update(123, ['elements' => []], ['epoch' => 'e', 'since' => 1])->getStatus());
+	}
+
+	public function testTokenOfAnotherBoardIsRefused(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3], jwtClaims: ['fileId' => 999]);
+		$this->boardSync->expects($this->never())->method('read');
+		$this->boardSync->expects($this->never())->method('save');
+
+		$this->assertSame(Http::STATUS_UNAUTHORIZED, $controller->show(123)->getStatus());
+		$this->assertSame(Http::STATUS_UNAUTHORIZED, $controller->update(123, ['elements' => []], ['epoch' => 'e', 'since' => 1])->getStatus());
 	}
 
 	public function testUpdateRejectsReadOnlyFile(): void {
 		$controller = $this->makeController(false, [], Constants::PERMISSION_READ);
 
 		$response = $controller->update(123, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-			],
+			'elements' => [['id' => 'el', 'type' => 'rectangle']],
 		]);
 
-		$this->assertSame(Http::STATUS_FORBIDDEN, $response->getStatus());
+		$this->assertSame(self::contract()['answers']['forbidden']['status'], $response->getStatus());
 		$this->assertSame('Permission denied', $response->getData()['message']);
 	}
 
@@ -164,95 +182,131 @@ class WhiteboardControllerTest extends TestCase {
 		$controller = $this->makeController(false, [], Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE, ['isFileReadOnly' => true]);
 
 		$response = $controller->update(123, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-			],
+			'elements' => [['id' => 'el', 'type' => 'rectangle']],
 		]);
 
-		$this->assertSame(Http::STATUS_FORBIDDEN, $response->getStatus());
+		$this->assertSame(self::contract()['answers']['forbidden']['status'], $response->getStatus());
 		$this->assertSame('Permission denied', $response->getData()['message']);
 	}
 
-	public function testUpdateCanonicalizesForgedCreator(): void {
-		$controller = $this->makeController(false, ['schemaVersion' => 2]);
+	/**
+	 * What clients and Nextcloud agree on (`tests/fixtures/board-sync-contract.json`, read by the client tests too)
+	 *
+	 * @return array{schemaVersion: int, answers: array<string,array{status: int, code: string}>}
+	 */
+	private static function contract(): array {
+		return json_decode((string)file_get_contents(__DIR__ . '/../../fixtures/board-sync-contract.json'), true);
+	}
 
-		$response = $controller->update(123, [
-			'data' => [
-				'elements' => [[
-					'id' => 'forged-element',
-					'type' => 'text',
-					'customData' => [
-						'creator' => ['uid' => 'alice', 'displayName' => 'Alice', 'createdAt' => 1],
-					],
-				]],
-			],
-		]);
+	public function testUpdateTakesTheSchemaVersionOfThisClient(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => self::contract()['schemaVersion']]);
+		$this->boardSync->expects($this->once())->method('save')->willReturn(['sync' => ['epoch' => 'epoch1', 'rev' => 4, 'restored' => false], 'delta' => ['elements' => [], 'files' => []]]);
+
+		$response = $controller->update(123, ['elements' => []], ['epoch' => 'epoch1', 'since' => 3]);
 
 		$this->assertSame(Http::STATUS_OK, $response->getStatus());
-		$this->assertSame('success', $response->getData()['status']);
 	}
 
 	public static function outdatedClientParams(): array {
 		return [
 			'missing marker' => [[]],
 			'wrong marker' => [['schemaVersion' => 1]],
-			'marker as string' => [['schemaVersion' => '2']],
+			'marker of whole-scene clients' => [['schemaVersion' => 2]],
+			'marker as string' => [['schemaVersion' => '3']],
 		];
 	}
 
 	#[DataProvider('outdatedClientParams')]
 	public function testUpdateRejectsOutdatedClientWithoutWriting(array $params): void {
 		$controller = $this->makeController(false, $params);
-		$this->whiteboardFile->expects($this->never())->method('putContent');
+		$this->boardSync->expects($this->never())->method('save');
 
 		$response = $controller->update(123, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-			],
+			'elements' => [['id' => 'el', 'type' => 'rectangle']],
 		]);
 
-		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
-		$this->assertSame(['status' => 'error', 'code' => 'client_upgrade_required'], $response->getData());
+		$this->assertSame(self::contract()['answers']['upgrade']['status'], $response->getStatus());
+		$this->assertSame(['status' => 'error', 'code' => self::contract()['answers']['upgrade']['code']], $response->getData());
 	}
 
-	public function testUpdateRejectsOutdatedClientWhileSyncLockIsBusy(): void {
-		$controller = $this->makeController(false, [], syncLockBusy: true);
-		$this->whiteboardFile->expects($this->never())->method('putContent');
+	public function testUpdateMergesTheChangesOfTheClient(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3]);
+		$element = ['id' => 'el', 'type' => 'rectangle', 'version' => 2, 'versionNonce' => 1];
+		$this->boardSync->expects($this->once())->method('save')
+			->with($this->whiteboardFile, 'epoch1', 4, [$element], ['f' => ['id' => 'f']], $this->anything(), false)
+			->willReturn(['sync' => ['epoch' => 'epoch1', 'rev' => 5], 'delta' => ['elements' => [$element], 'files' => []]]);
 
-		$response = $controller->update(123, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-			],
-		]);
+		$response = $controller->update(123, ['elements' => [$element], 'files' => ['f' => ['id' => 'f']]], ['epoch' => 'epoch1', 'since' => 4]);
 
-		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
-		$this->assertSame('client_upgrade_required', $response->getData()['code']);
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
+		$this->assertSame(['epoch' => 'epoch1', 'rev' => 5], $response->getData()['sync']);
 	}
 
-	public function testUpdateWritesWithCurrentMarker(): void {
-		$controller = $this->makeController(false, ['schemaVersion' => 2]);
-		$this->whiteboardFile->expects($this->once())->method('putContent');
+	public function testUpdateOfARepairReplacesTheBoardThatCannotBeRead(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3]);
+		$this->boardSync->expects($this->once())->method('save')
+			->with($this->whiteboardFile, 'epoch1', 4, [], [], $this->anything(), true)
+			->willReturn(['sync' => ['epoch' => 'epoch1', 'rev' => 5], 'delta' => ['elements' => [], 'files' => []]]);
 
-		$response = $controller->update(123, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-			],
-		]);
+		// As src/sync/boardSync.ts sends a repair
+		$response = $controller->update(123, ['elements' => []], ['epoch' => 'epoch1', 'since' => 4, 'repair' => true]);
 
 		$this->assertSame(Http::STATUS_OK, $response->getStatus());
 	}
 
-	public function testUpdateWithCurrentMarkerReportsBusySyncLock(): void {
-		$controller = $this->makeController(false, ['schemaVersion' => 2], syncLockBusy: true);
-		$this->whiteboardFile->expects($this->never())->method('putContent');
+	public function testUpdatePassesBoardSettings(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3]);
+		$this->boardSync->expects($this->once())->method('save')
+			->with($this->whiteboardFile, 'epoch1', 4, [], [], $this->anything(), false, ['viewBackgroundColor' => '#ffec99'])
+			->willReturn(['sync' => ['epoch' => 'epoch1', 'rev' => 5], 'delta' => ['elements' => [], 'files' => [], 'settings' => ['viewBackgroundColor' => '#ffec99']]]);
 
-		$response = $controller->update(123, [
-			'data' => [
-				'elements' => [['id' => 'el', 'type' => 'rectangle']],
-			],
-		]);
+		$response = $controller->update(123, ['elements' => [], 'settings' => ['viewBackgroundColor' => '#ffec99']], ['epoch' => 'epoch1', 'since' => 4]);
 
-		$this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
+	}
+
+	public function testUpdateOfAReplacedBoardTellsTheNewEpoch(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3]);
+		$this->boardSync->method('save')->willThrowException(new BoardReplacedException($this->state('epoch2', 9)));
+
+		$response = $controller->update(123, ['elements' => []], ['epoch' => 'epoch1', 'since' => 4]);
+
+		$this->assertSame(self::contract()['answers']['replaced']['status'], $response->getStatus());
+		$this->assertSame(['code' => self::contract()['answers']['replaced']['code'], 'sync' => ['epoch' => 'epoch2', 'rev' => 9, 'restored' => false]], $response->getData());
+	}
+
+	public function testUpdateOfAnUnreadableBoardAsksForARepair(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3]);
+		$this->boardSync->method('save')->willThrowException(new BoardUnreadableException($this->state('epoch1', 3)));
+
+		$response = $controller->update(123, ['elements' => []], ['epoch' => 'epoch1', 'since' => 3]);
+
+		$this->assertSame(self::contract()['answers']['unreadable']['status'], $response->getStatus());
+		$this->assertSame(self::contract()['answers']['unreadable']['code'], $response->getData()['code']);
+	}
+
+	public function testUpdateOfABusyBoardAsksToRetry(): void {
+		$controller = $this->makeController(false, ['schemaVersion' => 3]);
+		$this->boardSync->method('save')->willThrowException(new BoardBusyException());
+
+		$response = $controller->update(123, ['elements' => []], ['epoch' => 'epoch1', 'since' => 3]);
+
+		$this->assertSame(self::contract()['answers']['busy']['status'], $response->getStatus());
+		$this->assertSame(self::contract()['answers']['busy']['code'], $response->getData()['code']);
+	}
+
+	public function testShowReturnsTheChangesSinceTheClientsRevision(): void {
+		$controller = $this->makeController(false, []);
+		$this->boardSync->expects($this->once())->method('read')->with($this->whiteboardFile, 'epoch1', 7)
+			->willReturn(['sync' => ['epoch' => 'epoch1', 'rev' => 8], 'delta' => ['elements' => [], 'files' => []]]);
+
+		$response = $controller->show(123, 'epoch1', 7);
+
+		$this->assertSame(['epoch' => 'epoch1', 'rev' => 8], $response->getData()['sync']);
+	}
+
+	private function state(string $epoch, int $rev): BoardState {
+		return new BoardState(123, $epoch, $rev, str_repeat('0', 64), null, null, null, false);
 	}
 
 	public function testSaveLibraryOrgScopeForbiddenForNonAdmin(): void {

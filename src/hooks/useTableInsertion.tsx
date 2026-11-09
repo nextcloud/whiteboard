@@ -15,6 +15,7 @@ import TableEditorDialog from '../components/TableEditorDialog.vue'
 import { renderToolbarButton } from '../components/ToolbarButton.tsx'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore.ts'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
+import { getBoardSync } from '../sync/boardSync.ts'
 import { getViewportCenterPoint, moveElementsToViewport } from '../utils/positionElementsAtViewport.ts'
 import { releaseLock, tryAcquireLock } from '../utils/tableLocking.ts'
 import { convertHtmlTableToImage } from '../utils/tableToImage.ts'
@@ -92,6 +93,9 @@ export function useTableInsertion() {
 			return
 		}
 
+		// The board the edit starts on: if it is replaced meanwhile, the edit goes to recovery
+		const boardSync = getBoardSync()
+		const epoch = boardSync?.epoch
 		try {
 			const tableData = await openTableEditor(initialHtml)
 			const newImageElement = await convertHtmlTableToImage(currentAPI, tableData.html)
@@ -99,8 +103,9 @@ export function useTableInsertion() {
 			// Replace the existing element with the updated one while preserving position
 			const elements: ExcalidrawElement[] = currentAPI.getSceneElementsIncludingDeleted().slice()
 			const elementIndex = elements.findIndex((el) => el.id === tableElement.id)
-			if (elementIndex !== -1) {
-				const currentElement = elements[elementIndex]
+			const replaced = getBoardSync() !== boardSync || boardSync?.epoch !== epoch
+			if (elementIndex !== -1 || replaced) {
+				const currentElement = elementIndex === -1 ? tableElement : elements[elementIndex]
 
 				// Calculate the scale factor
 				const storedNaturalWidth = tableElement.customData?.naturalWidth ?? newImageElement.width
@@ -122,14 +127,19 @@ export function useTableInsertion() {
 					width: newImageElement.width * scaleFactor,
 					height: newImageElement.height * scaleFactor,
 
-					// Increment version numbers to ensure this update wins during collaborative reconciliation
-					// Excalidraw uses these to resolve conflicts when multiple users edit simultaneously
+					// A new version with a random nonce, as every Excalidraw edit gets: two
+					// tabs editing the same table must not produce the same stamp
 					version: (currentElement.version || 0) + 1,
-					versionNonce: (currentElement.versionNonce || 0) + 1,
+					versionNonce: Math.floor(Math.random() * 2 ** 31),
 					// Include updated table data (tableHtml, isTable flag, and cleared lock)
 					customData: newImageElement.customData,
 				}
 
+				if (replaced) {
+					const file = currentAPI.getFiles()[newImageElement.fileId as string]
+					boardSync?.setAsideForRecovery({ elements: [updatedElement as ExcalidrawElement], files: file ? { [file.id]: file } : {} })
+					return
+				}
 				elements[elementIndex] = updatedElement
 				// Trigger Excalidraw's onChange which handles all sync (websocket, server API, local storage)
 				currentAPI.updateScene({ elements })

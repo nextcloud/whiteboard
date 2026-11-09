@@ -3,14 +3,15 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { useEffect, useState, memo, useCallback, useMemo, useRef } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-import { Icon } from '@mdi/react'
-import { mdiWifiOff, mdiWifi, mdiWifiStrength1, mdiWifiStrength2, mdiLoading } from '@mdi/js'
-import { t } from '@nextcloud/l10n'
-// Import the correct store
-import { useCollaborationStore } from '../stores/useCollaborationStore'
 import type { CollaborationConnectionStatus } from '../stores/useCollaborationStore'
+
+import { mdiLoading, mdiWifi, mdiWifiOff, mdiWifiStrength1, mdiWifiStrength2 } from '@mdi/js'
+import { Icon } from '@mdi/react'
+import { t } from '@nextcloud/l10n'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useCollaborationStore } from '../stores/useCollaborationStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
 
 interface StatusConfig {
 	icon: string;
@@ -25,9 +26,9 @@ const getStatusConfig = (status: CollaborationConnectionStatus): StatusConfig =>
 	case 'offline':
 		return {
 			icon: mdiWifiOff,
-			text: t('whiteboard', 'Offline'),
+			text: t('whiteboard', 'Live collaboration off'),
 			className: 'network-status--offline',
-			description: t('whiteboard', 'Offline - Changes saved locally.'),
+			description: t('whiteboard', 'Not connected to the collaboration server, so you do not see the changes of others live. Your changes are still saved to Nextcloud.'),
 		}
 	case 'connecting':
 		return {
@@ -70,6 +71,7 @@ const NetworkStatusIndicatorComponent = () => {
 			authError: state.authError,
 		})),
 	)
+	const collabBackendUrl = useWhiteboardConfigStore((state) => state.collabBackendUrl)
 	const [expanded, setExpanded] = useState(false)
 
 	// Refs to track previous status to avoid unnecessary effects
@@ -118,8 +120,8 @@ const NetworkStatusIndicatorComponent = () => {
 		}
 	}, [toggleExpanded])
 
-	// Hide the indicator when status is online
-	if (status === 'online') return null
+	// Hidden while connected, and without a collaboration server, which boards do not need to save
+	if (status === 'online' || !collabBackendUrl) return null
 
 	return (
 		<div

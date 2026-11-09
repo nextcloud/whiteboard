@@ -22,12 +22,18 @@ final class ConfigService {
 	) {
 	}
 
+	/**
+	 * The key that signs tokens: the secret shared with the collaboration
+	 * server, or one derived from this instance's secret while none is set,
+	 * so boards open and save without a collaboration server
+	 */
 	public function getJwtSecretKey(): string {
-		if (!method_exists($this->appConfig, 'getAppValueString')) {
-			return $this->appConfig->getAppValue(ConfigKeys::JWT_SECRET_KEY);
+		$configured = $this->getWhiteboardSharedSecret();
+		if ($configured !== '') {
+			return $configured;
 		}
-
-		return $this->appConfig->getAppValueString(ConfigKeys::JWT_SECRET_KEY);
+		$instanceSecret = $this->config->getSystemValueString('secret');
+		return $instanceSecret === '' ? '' : hash_hmac('sha256', 'whiteboard-jwt-secret', $instanceSecret);
 	}
 
 	public function getMaxFileSize(): int {
