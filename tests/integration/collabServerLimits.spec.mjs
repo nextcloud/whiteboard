@@ -5,7 +5,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useWhiteboardConfigStore } from '../../src/stores/useWhiteboardConfigStore.ts'
-import { broadcastImage, filesFitCollabMessages, handshakeMaxMessageBytes, imageOptionsFor, largestSharedFileBytes } from '../../src/utils/collabServerLimits.ts'
+import { broadcastImage, currentLargestSharedFileBytes, filesFitCollabMessages, handshakeMaxMessageBytes, imageOptionsFor, largestSharedFileBytes } from '../../src/utils/collabServerLimits.ts'
 import GeneralUtility from '../../websocket_server/Utilities/GeneralUtility.js'
 
 function imageFile(size, id = 'f'.repeat(40)) {
@@ -48,6 +48,14 @@ describe('collaboration server limits', () => {
 		expect(broadcastImage(target, '42', imageFile(largestSharedFileBytes(oldLimit) + 10000))).toBe(false)
 		expect(target.emit).not.toHaveBeenCalled()
 		expect(imageOptionsFor(null)).toEqual({ maxFileSizeBytes: largestSharedFileBytes(oldLimit) })
+	})
+
+	it('gives the largest file of the current connection, or of the fallback limit while it is unknown', () => {
+		expect(currentLargestSharedFileBytes()).toBe(largestSharedFileBytes(3e6))
+		setLimit(GeneralUtility.maxSocketMessageSize(1e6))
+		expect(currentLargestSharedFileBytes()).toBe(largestSharedFileBytes(GeneralUtility.maxSocketMessageSize(1e6)))
+		// The largest file it gives still fits a message.
+		expect(filesFitCollabMessages([imageFile(currentLargestSharedFileBytes())])).toBe(true)
 	})
 
 	it('limits images in Excalidraw only below its own 4 MB limit', () => {

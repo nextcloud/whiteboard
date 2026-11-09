@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { largestSharedFileBytes } from '../../src/utils/collabServerLimits.ts'
 import logger from '../../src/utils/logger.ts'
 import { getPageSizeTarget, IMPORT_TOTAL_BUDGET_BYTES } from '../../src/utils/pdfImportSize.ts'
 import {
@@ -31,6 +32,7 @@ import {
 	renderPdfPages,
 	withTimeout,
 } from '../../src/utils/pdfToImages.ts'
+import GeneralUtility from '../../websocket_server/Utilities/GeneralUtility.js'
 
 // Hand-built minimal PDF, two 300x150pt pages, no fonts/content streams needed.
 const fixturePath = fileURLToPath(new URL('./fixtures/two-page.pdf', import.meta.url))
@@ -410,7 +412,7 @@ describe('renderPdfPages', () => {
 	it('fits 50 pages of ~0.5 MB into the import budget, without a warning', async () => {
 		const { handle, loadingTask } = await openFixture(fiftyPagesFixturePath)
 		const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
-		const target = getPageSizeTarget(10 * 1024 * 1024, 50)
+		const target = getPageSizeTarget(10 * 1024 * 1024, largestSharedFileBytes(GeneralUtility.maxSocketMessageSize(2e6)), 50)
 
 		try {
 			const { pages: [unconstrained] } = await renderPdfPages(handle, { start: 1, end: 1 })

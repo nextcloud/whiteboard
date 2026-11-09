@@ -37,16 +37,6 @@ export const RENDER_PX_PER_PT = BASE_RENDER_DIMENSION_PX / A3_LONG_EDGE_PT
 export const DISPLAY_UNITS_PER_PT = 1440 / A4_LONG_EDGE_PT
 
 /**
- * Upper bound on a page's data URL length. Each image is broadcast as its own
- * Socket.io message, and the collab server rejects messages above 3 MB by
- * default.
- */
-const PAGE_DATAURL_BUDGET_BYTES = 2_500_000
-
-/** The largest page image, in bytes, whose data URL fits PAGE_DATAURL_BUDGET_BYTES. */
-export const MAX_SOCKET_PAGE_BYTES = PAGE_DATAURL_BUDGET_BYTES / 4 * 3
-
-/**
  * JPEG qualities a page over its byte budget is re-encoded with, in order,
  * before it is rendered smaller. The first is the default for every page.
  */
@@ -306,7 +296,7 @@ async function renderPageToCanvas(page: PDFPageProxy, longerEdgePx: number): Pro
  * @param firstQualityStep - Index into JPEG_QUALITY_STEPS to start at.
  * @param signal - Stops before the next render once aborted, throwing its reason.
  */
-export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: number, budgetBytes: number = PAGE_DATAURL_BUDGET_BYTES, firstQualityStep = 0, signal?: AbortSignal): Promise<BudgetedPage> {
+export async function renderPageWithinBudget(page: PDFPageProxy, longerEdgePx: number, budgetBytes: number = Infinity, firstQualityStep = 0, signal?: AbortSignal): Promise<BudgetedPage> {
 	const lowestQualityStep = JPEG_QUALITY_STEPS.length - 1
 	let edgePx = longerEdgePx
 	let smallest: BudgetedPage | undefined
@@ -387,9 +377,9 @@ async function encodePageWithinBudget(page: PDFPageProxy, longerEdgePx: number, 
  *   Omitted for the final import, where each page gets
  *   getPageRenderDimension for its paper format.
  * @param maxPageBytes - Image size, in bytes, each page is compressed and
- *   then shrunk to fit if possible, on top of the collab server's message
- *   limit. Pages that still don't fit are returned anyway, for the caller
- *   to skip or keep. Each page starts at the JPEG quality that sufficed for
+ *   then shrunk to fit if possible; no limit if omitted, as for previews.
+ *   Pages that still don't fit are returned anyway, for the caller to skip
+ *   or keep. Each page starts at the JPEG quality that sufficed for
  *   the page before it.
  * @param signal - Stops before the next page or render once aborted,
  *   throwing its reason.
@@ -404,7 +394,7 @@ export async function renderPdfPages(
 ): Promise<PdfToImagesResult> {
 	const { pdf, totalPages } = handle
 	// Base64 takes 4 characters per 3 bytes.
-	const budgetBytes = Math.min(PAGE_DATAURL_BUDGET_BYTES, maxPageBytes * 4 / 3)
+	const budgetBytes = maxPageBytes * 4 / 3
 	const pagesToRender = range.end - range.start + 1
 	const pages: PdfPageImage[] = []
 	// Pages of one document tend to need similar compression, so skip the

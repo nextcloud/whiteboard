@@ -4,7 +4,6 @@
  */
 
 import { loadState } from '@nextcloud/initial-state'
-import { MAX_SOCKET_PAGE_BYTES } from './pdfToImages.ts'
 
 /**
  * Total image size one PDF import may add, split evenly across its pages.
@@ -13,7 +12,7 @@ import { MAX_SOCKET_PAGE_BYTES } from './pdfToImages.ts'
 export const IMPORT_TOTAL_BUDGET_BYTES = 20 * 1024 * 1024
 
 /** Which limit sets a page's target size. */
-export type PageSizeLimit = 'admin' | 'socket' | 'importBudget'
+export type PageSizeLimit = 'admin' | 'collab' | 'importBudget'
 
 export interface PageSizeTarget {
 	bytes: number
@@ -48,16 +47,18 @@ export function getMaxImageSizeBytes(): number | null {
 
 /**
  * Size each page of an import is compressed to fit: the smallest of the
- * admin's maximum image size, the collab server's message limit and an even
- * share of IMPORT_TOTAL_BUDGET_BYTES. On a tie, the earlier one is named.
+ * admin's maximum image size, the largest file the collaboration server
+ * passes on and an even share of IMPORT_TOTAL_BUDGET_BYTES. On a tie, the
+ * earlier one is named.
  *
  * @param maxImageSizeBytes - The admin's maximum image size, or null for none.
+ * @param sharedFileBytes - The largest file the collaboration server passes
+ *   on, from currentLargestSharedFileBytes.
  * @param pageCount - Number of pages being imported.
  */
-export function getPageSizeTarget(maxImageSizeBytes: number | null, pageCount: number): PageSizeTarget {
+export function getPageSizeTarget(maxImageSizeBytes: number | null, sharedFileBytes: number, pageCount: number): PageSizeTarget {
 	const candidates: PageSizeTarget[] = [
-		...(maxImageSizeBytes === null ? [] : [{ bytes: maxImageSizeBytes, limit: 'admin' as const }]),
-		{ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' },
+		getPageSizeLimit(maxImageSizeBytes, sharedFileBytes),
 		{ bytes: Math.floor(IMPORT_TOTAL_BUDGET_BYTES / Math.max(pageCount, 1)), limit: 'importBudget' },
 	]
 	return candidates.reduce((smallest, candidate) => (candidate.bytes < smallest.bytes ? candidate : smallest))
@@ -65,17 +66,19 @@ export function getPageSizeTarget(maxImageSizeBytes: number | null, pageCount: n
 
 /**
  * Size above which a page is not imported: the smaller of the admin's
- * maximum image size, which regular images are refused above, and the collab
- * server's message limit, above which others in the board would never
- * receive the page. On a tie, the admin's limit is named.
+ * maximum image size, which regular images are refused above, and the
+ * largest file the collaboration server passes on, which the others in the
+ * board would not receive. On a tie, the admin's limit is named.
  *
  * @param maxImageSizeBytes - The admin's maximum image size, or null for none.
+ * @param sharedFileBytes - The largest file the collaboration server passes
+ *   on, from currentLargestSharedFileBytes.
  */
-export function getPageSizeLimit(maxImageSizeBytes: number | null): PageSizeTarget {
-	if (maxImageSizeBytes !== null && maxImageSizeBytes <= MAX_SOCKET_PAGE_BYTES) {
+export function getPageSizeLimit(maxImageSizeBytes: number | null, sharedFileBytes: number): PageSizeTarget {
+	if (maxImageSizeBytes !== null && maxImageSizeBytes <= sharedFileBytes) {
 		return { bytes: maxImageSizeBytes, limit: 'admin' }
 	}
-	return { bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' }
+	return { bytes: sharedFileBytes, limit: 'collab' }
 }
 
 /**

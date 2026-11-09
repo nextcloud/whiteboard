@@ -16,6 +16,7 @@ import { useShallow } from 'zustand/react/shallow'
 import PdfPageSelectionDialog from '../components/PdfPageSelectionDialog.vue'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore.ts'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
+import { currentLargestSharedFileBytes, filesFitCollabMessages } from '../utils/collabServerLimits.ts'
 import logger from '../utils/logger.ts'
 import { formatMegabytes, getImportSizeReport, getMaxImageSizeBytes, getPageSizeLimit, getPageSizeTarget, IMPORT_TOTAL_BUDGET_BYTES } from '../utils/pdfImportSize.ts'
 import { PREVIEW_MAX_DIMENSION_PX } from '../utils/pdfPageSelection.ts'
@@ -70,8 +71,8 @@ function getSkippedPagesMessage(pages: ImportedPageSize[], limit: PageSizeTarget
 	}
 	return n(
 		'whiteboard',
-		'Page {pages} is larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as others in this whiteboard would never see it.',
-		'{count} pages are larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality: {pages}. They were not imported, as others in this whiteboard would never see them.',
+		'Page {pages} is larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as the others in this whiteboard would not receive it.',
+		'{count} pages are larger than {max} MB, the largest image the collaboration server passes on, even at the lowest quality: {pages}. They were not imported, as the others in this whiteboard would not receive them.',
 		count,
 		variables,
 	)
@@ -246,8 +247,9 @@ export function usePdfImport() {
 			showProgress(0)
 
 			const maxImageSizeBytes = getMaxImageSizeBytes()
-			const sizeTarget = getPageSizeTarget(maxImageSizeBytes, pagesToRender)
-			const sizeLimit = getPageSizeLimit(maxImageSizeBytes)
+			const sharedFileBytes = currentLargestSharedFileBytes()
+			const sizeTarget = getPageSizeTarget(maxImageSizeBytes, sharedFileBytes, pagesToRender)
+			const sizeLimit = getPageSizeLimit(maxImageSizeBytes, sharedFileBytes)
 			const { pages: renderedPages } = await renderPdfPages(handle, range, showProgress, undefined, sizeTarget.bytes, signal)
 			// The last page may have finished just as the board stopped being writable.
 			signal.throwIfAborted()
@@ -257,35 +259,47 @@ export function usePdfImport() {
 			// Like regular images over the admin's limit, pages over a hard limit
 			// are refused. Pages that only miss their share of the budget are kept.
 			const { skippedPages, oversizedPages } = getImportSizeReport(renderedPages, sizeTarget.bytes, sizeLimit.bytes)
-			const pages = renderedPages.filter((page) => page.byteSize <= sizeLimit.bytes)
-			if (skippedPages.length > 0) {
-				showError(getSkippedPagesMessage(skippedPages, sizeLimit), { timeout: -1 })
+			const candidates = renderedPages.filter((page) => page.byteSize <= sizeLimit.bytes).map((page) => ({
+				page,
+				file: {
+					mimeType: page.mimeType,
+					id: uuidv4() as FileId,
+					dataURL: page.dataURL as DataURL,
+					created: Date.now(),
+				} satisfies BinaryFileData,
+			}))
+			// The files are checked once more as the board checks pasted ones: the
+			// connection, and with it the limit, may have changed while rendering.
+			const imported = candidates.filter(({ file }) => filesFitCollabMessages([file]))
+			const unshareablePages = candidates.filter((candidate) => !imported.includes(candidate)).map(({ page }) => page)
+
+			const adminSkippedPages = sizeLimit.limit === 'admin' ? skippedPages : []
+			const collabSkippedPages = [...(sizeLimit.limit === 'collab' ? skippedPages : []), ...unshareablePages]
+				.sort((a, b) => a.pageNumber - b.pageNumber)
+			if (adminSkippedPages.length > 0) {
+				showError(getSkippedPagesMessage(adminSkippedPages, sizeLimit), { timeout: -1 })
 			}
-			if (pages.length === 0) {
+			if (collabSkippedPages.length > 0) {
+				showError(getSkippedPagesMessage(collabSkippedPages, { bytes: currentLargestSharedFileBytes(), limit: 'collab' }), { timeout: -1 })
+			}
+			if (imported.length === 0) {
 				return
 			}
 
+			const pages = imported.map(({ page }) => page)
+			const files = imported.map(({ file }) => file)
 			const groupId = uuidv4()
-			const files: BinaryFileData[] = []
 			const maxHeight = Math.max(...pages.map((page) => page.displayHeight))
 			let cursorX = 0
 
-			const imageSpecs = pages.map((page) => {
-				const fileId = uuidv4() as FileId
-				files.push({
-					mimeType: page.mimeType,
-					id: fileId,
-					dataURL: page.dataURL as DataURL,
-					created: Date.now(),
-				})
-
+			const imageSpecs = imported.map(({ page, file }) => {
 				const x = cursorX
 				const y = (maxHeight - page.displayHeight) / 2
 				cursorX += page.displayWidth + PAGE_GAP_PX
 
 				return {
 					type: 'image' as const,
-					fileId,
+					fileId: file.id,
 					x,
 					y,
 					width: page.displayWidth,
@@ -310,8 +324,9 @@ export function usePdfImport() {
 				name: fileName,
 			}))
 
-			if (oversizedPages.length > 0) {
-				showWarning(getOversizedPagesMessage(oversizedPages, sizeTarget.bytes), { timeout: -1 })
+			const oversizedImportedPages = oversizedPages.filter((oversized) => pages.some((page) => page.pageNumber === oversized.pageNumber))
+			if (oversizedImportedPages.length > 0) {
+				showWarning(getOversizedPagesMessage(oversizedImportedPages, sizeTarget.bytes), { timeout: -1 })
 			}
 		} catch (error) {
 			toastState.current?.hideToast()

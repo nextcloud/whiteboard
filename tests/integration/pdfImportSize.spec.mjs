@@ -13,11 +13,12 @@ import {
 	getPageSizeTarget,
 	IMPORT_TOTAL_BUDGET_BYTES,
 } from '../../src/utils/pdfImportSize.ts'
-import { MAX_SOCKET_PAGE_BYTES } from '../../src/utils/pdfToImages.ts'
 
 vi.mock('@nextcloud/initial-state', () => ({ loadState: vi.fn() }))
 
 const MB = 1024 * 1024
+// Largest file a collaboration server with the default MAX_UPLOAD_FILE_SIZE passes on, about 2.62 MB.
+const SHARED = 2_746_928
 
 describe('getMaxImageSizeBytes', () => {
 	afterEach(() => {
@@ -45,40 +46,43 @@ describe('getMaxImageSizeBytes', () => {
 
 describe('getPageSizeTarget', () => {
 	it('uses the admin\'s maximum image size when it is the smallest limit', () => {
-		expect(getPageSizeTarget(1 * MB, 1)).toEqual({ bytes: 1 * MB, limit: 'admin' })
+		expect(getPageSizeTarget(1 * MB, SHARED, 1)).toEqual({ bytes: 1 * MB, limit: 'admin' })
 	})
 
-	it('uses the collab server\'s message limit when the admin allows more', () => {
-		expect(getPageSizeTarget(10 * MB, 1)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' })
-		expect(getPageSizeTarget(null, 1)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' })
+	it('uses the largest file the collab server passes on when the admin allows more or set none', () => {
+		expect(getPageSizeTarget(10 * MB, SHARED, 1)).toEqual({ bytes: SHARED, limit: 'collab' })
+		expect(getPageSizeTarget(null, SHARED, 1)).toEqual({ bytes: SHARED, limit: 'collab' })
 	})
 
 	it('shares the import budget evenly when it is the smallest limit', () => {
-		expect(getPageSizeTarget(10 * MB, 50)).toEqual({ bytes: Math.floor(IMPORT_TOTAL_BUDGET_BYTES / 50), limit: 'importBudget' })
+		expect(getPageSizeTarget(10 * MB, SHARED, 50)).toEqual({ bytes: Math.floor(IMPORT_TOTAL_BUDGET_BYTES / 50), limit: 'importBudget' })
 	})
 
 	it('keeps an import of pages that all meet the target within the import budget', () => {
 		for (const pageCount of [1, 7, 20, 50]) {
-			expect(getPageSizeTarget(10 * MB, pageCount).bytes * pageCount).toBeLessThanOrEqual(IMPORT_TOTAL_BUDGET_BYTES)
+			expect(getPageSizeTarget(10 * MB, SHARED, pageCount).bytes * pageCount).toBeLessThanOrEqual(IMPORT_TOTAL_BUDGET_BYTES)
 		}
 	})
 })
 
 describe('getPageSizeLimit', () => {
-	it('is the admin\'s maximum image size when it is below the collab server\'s limit', () => {
-		expect(getPageSizeLimit(1 * MB)).toEqual({ bytes: 1 * MB, limit: 'admin' })
-		expect(getPageSizeLimit(MAX_SOCKET_PAGE_BYTES)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'admin' })
+	it('is the admin\'s maximum image size when it is at or below the collab server\'s limit', () => {
+		expect(getPageSizeLimit(1 * MB, SHARED)).toEqual({ bytes: 1 * MB, limit: 'admin' })
+		expect(getPageSizeLimit(SHARED, SHARED)).toEqual({ bytes: SHARED, limit: 'admin' })
 	})
 
 	it('is the collab server\'s limit when the admin allows larger images or set none', () => {
-		expect(getPageSizeLimit(10 * MB)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' })
-		expect(getPageSizeLimit(null)).toEqual({ bytes: MAX_SOCKET_PAGE_BYTES, limit: 'socket' })
+		expect(getPageSizeLimit(10 * MB, SHARED)).toEqual({ bytes: SHARED, limit: 'collab' })
+		expect(getPageSizeLimit(null, SHARED)).toEqual({ bytes: SHARED, limit: 'collab' })
+		expect(getPageSizeLimit(2 * MB, 1_746_928)).toEqual({ bytes: 1_746_928, limit: 'collab' })
 	})
 
 	it('never lies below the target, so only the import budget can be missed by an imported page', () => {
 		for (const maxImageSize of [null, 1 * MB, 10 * MB]) {
-			for (const pageCount of [1, 7, 50]) {
-				expect(getPageSizeTarget(maxImageSize, pageCount).bytes).toBeLessThanOrEqual(getPageSizeLimit(maxImageSize).bytes)
+			for (const shared of [1_746_928, SHARED]) {
+				for (const pageCount of [1, 7, 50]) {
+					expect(getPageSizeTarget(maxImageSize, shared, pageCount).bytes).toBeLessThanOrEqual(getPageSizeLimit(maxImageSize, shared).bytes)
+				}
 			}
 		}
 	})

@@ -14,9 +14,9 @@ import { usePdfImport } from '../../src/hooks/usePdfImport.ts'
 import { useExcalidrawStore } from '../../src/stores/useExcalidrawStore.ts'
 import { useWhiteboardConfigStore } from '../../src/stores/useWhiteboardConfigStore.ts'
 import { IMPORT_TOTAL_BUDGET_BYTES } from '../../src/utils/pdfImportSize.ts'
-import { MAX_SOCKET_PAGE_BYTES } from '../../src/utils/pdfToImages.ts'
 import { closePdfDocument, openPdfDocument, renderPdfPages } from '../../src/utils/pdfToImages.ts'
 import { mountVueComponent } from '../../src/utils/vue.ts'
+import GeneralUtility from '../../websocket_server/Utilities/GeneralUtility.js'
 
 vi.mock('@nextcloud/dialogs', () => ({
 	showError: vi.fn(),
@@ -32,7 +32,6 @@ vi.mock('@nextcloud/excalidraw', () => ({
 }))
 // Rendering is covered by pdfToImages.spec.mjs, the dialog by PdfPageSelectionDialog.spec.mjs.
 vi.mock('../../src/utils/pdfToImages.ts', () => ({
-	MAX_SOCKET_PAGE_BYTES: 1_875_000,
 	closePdfDocument: vi.fn(async () => {}),
 	openPdfDocument: vi.fn(),
 	renderPdfPages: vi.fn(),
@@ -44,6 +43,16 @@ const MB = 1024 * 1024
 
 function page(pageNumber, byteSize = 100_000) {
 	return { pageNumber, byteSize, dataURL: 'data:image/png;base64,AAAA', mimeType: 'image/png', width: 1440, height: 1018, displayWidth: 1440, displayHeight: 1018 }
+}
+
+/** A page whose data URL is as long as its size needs, for the final check on the files. */
+function pageWithDataUrl(pageNumber, byteSize) {
+	return { ...page(pageNumber, byteSize), mimeType: 'image/jpeg', dataURL: 'data:image/jpeg;base64,' + 'A'.repeat(Math.ceil(byteSize / 3) * 4) }
+}
+
+/** The collaboration server's message limit for a MAX_UPLOAD_FILE_SIZE in MB, as the board reads it from the handshake. */
+function givenCollabServer(maxUploadFileSizeMb) {
+	useWhiteboardConfigStore.setState({ collabMaxMessageBytes: GeneralUtility.maxSocketMessageSize(maxUploadFileSizeMb * 1e6) })
 }
 
 function givenMaxFileSize(megabytes) {
@@ -109,7 +118,7 @@ describe('usePdfImport', () => {
 			updateScene: vi.fn(),
 		}
 		useExcalidrawStore.setState({ excalidrawAPI })
-		useWhiteboardConfigStore.setState({ isReadOnly: false })
+		useWhiteboardConfigStore.setState({ isReadOnly: false, collabMaxMessageBytes: null })
 
 		container = document.createElement('div')
 		container.className = 'excalidraw-wrapper'
@@ -237,27 +246,94 @@ describe('usePdfImport', () => {
 		expect(showWarning).toHaveBeenCalledWith('Page 7 (0.5 MB) is larger than 0.4 MB, its share of the 20 MB limit for one import, even at the lowest quality. It was imported anyway.', { timeout: -1 })
 	})
 
-	it('skips a page over the collab server\'s limit when the admin allows larger images, as others would never receive it', async () => {
-		givenMaxFileSize(10)
-		givenPdf(1, [page(1, 2 * MB)])
+	describe('with the collaboration server\'s limit', () => {
+		// Largest files the server passes on: about 2.62 MB by default, 1.67 MB with
+		// MAX_UPLOAD_FILE_SIZE=1, and 2.14 MB before the board knows the limit.
+		const DEFAULT_SHARED = 2_746_928
+		const SMALL_SHARED = 1_746_928
+		const FALLBACK_SHARED = 2_246_928
 
-		await chooseFile()
-		await importFinished()
+		beforeEach(() => {
+			givenMaxFileSize(10)
+		})
 
-		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, MAX_SOCKET_PAGE_BYTES, expect.any(AbortSignal))
-		expect(showError).toHaveBeenCalledWith('Page 1 (2 MB) is larger than 1.79 MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as others in this whiteboard would never see it.', { timeout: -1 })
-		expect(excalidrawAPI.addFiles).not.toHaveBeenCalled()
-	})
+		it('does not shrink pages below the default server\'s 2.62 MB, and imports a 2.5 MB page', async () => {
+			givenCollabServer(2)
+			givenPdf(1, [pageWithDataUrl(1, 2.5 * MB)])
 
-	it('falls back to the collab server\'s limit when the admin setting is not a positive number', async () => {
-		givenMaxFileSize(0)
-		givenPdf(1)
+			await chooseFile()
+			await importFinished()
 
-		await chooseFile()
-		await importFinished()
+			expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, DEFAULT_SHARED, expect.any(AbortSignal))
+			expect(excalidrawAPI.addFiles.mock.calls[0][0]).toHaveLength(1)
+			expect(showError).not.toHaveBeenCalled()
+			expect(showWarning).not.toHaveBeenCalled()
+		})
 
-		expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, MAX_SOCKET_PAGE_BYTES, expect.any(AbortSignal))
-		expect(showWarning).not.toHaveBeenCalled()
+		it('compresses to 1.67 MB with MAX_UPLOAD_FILE_SIZE=1 and skips a 1.7 MB page, naming that limit', async () => {
+			givenCollabServer(1)
+			givenPdf(2, [pageWithDataUrl(1, 1.7 * MB), pageWithDataUrl(2, 1.6 * MB)])
+
+			await chooseFile()
+			await vi.waitFor(() => expect(mountVueComponent).toHaveBeenCalled())
+			mountedDialog().listeners.submit({ start: 1, end: 2 })
+			await importFinished()
+
+			expect(renderPdfPages).toHaveBeenLastCalledWith(expect.anything(), { start: 1, end: 2 }, expect.any(Function), undefined, SMALL_SHARED, expect.any(AbortSignal))
+			expect(showError).toHaveBeenCalledWith('Page 1 (1.7 MB) is larger than 1.67 MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as the others in this whiteboard would not receive it.', { timeout: -1 })
+			expect(excalidrawAPI.addFiles.mock.calls[0][0]).toHaveLength(1)
+			expect(showSuccess).toHaveBeenCalledWith('Imported 1 PDF page from "slides.pdf".')
+		})
+
+		it('falls back to the limit the board uses until the connection tells it', async () => {
+			givenPdf(1, [pageWithDataUrl(1, 2.2 * MB)])
+
+			await chooseFile()
+			await importFinished()
+
+			expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, FALLBACK_SHARED, expect.any(AbortSignal))
+			expect(showError).toHaveBeenCalledWith('Page 1 (2.2 MB) is larger than 2.14 MB, the largest image the collaboration server passes on, even at the lowest quality. It was not imported, as the others in this whiteboard would not receive it.', { timeout: -1 })
+		})
+
+		it('names the admin\'s limit when it is the smaller one', async () => {
+			givenMaxFileSize(1)
+			givenCollabServer(2)
+			givenPdf(1, [pageWithDataUrl(1, 1.5 * MB)])
+
+			await chooseFile()
+			await importFinished()
+
+			expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, 1 * MB, expect.any(AbortSignal))
+			expect(showError).toHaveBeenCalledWith('Page 1 (1.5 MB) is larger than the maximum image size of 1 MB set by your administrator, even at the lowest quality. It was not imported.', { timeout: -1 })
+		})
+
+		it('checks the files again, so a page is skipped when the limit dropped while rendering', async () => {
+			givenCollabServer(2)
+			givenPdf(1)
+			vi.mocked(renderPdfPages).mockImplementation(async () => {
+				// A reconnect to a node with a smaller limit.
+				givenCollabServer(1)
+				return { pages: [pageWithDataUrl(1, 2 * MB)], totalPages: 1 }
+			})
+
+			await chooseFile()
+			await importFinished()
+
+			expect(showError).toHaveBeenCalledWith(expect.stringContaining('Page 1 (2 MB) is larger than 1.67 MB, the largest image the collaboration server passes on'), { timeout: -1 })
+			expect(excalidrawAPI.addFiles).not.toHaveBeenCalled()
+		})
+
+		it('uses the collab server\'s limit when the admin setting is not a positive number', async () => {
+			givenMaxFileSize(0)
+			givenCollabServer(2)
+			givenPdf(1)
+
+			await chooseFile()
+			await importFinished()
+
+			expect(renderPdfPages).toHaveBeenCalledWith(expect.anything(), { start: 1, end: 1 }, expect.any(Function), undefined, DEFAULT_SHARED, expect.any(AbortSignal))
+			expect(showWarning).not.toHaveBeenCalled()
+		})
 	})
 
 	it('shows an error and closes the document when rendering fails', async () => {
