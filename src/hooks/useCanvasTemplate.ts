@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react'
 import { useJWTStore } from '../stores/useJwtStore'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
 import { generateUrl } from '@nextcloud/router'
 import type { BinaryFiles } from '@nextcloud/excalidraw/types'
 
@@ -18,17 +19,19 @@ export function useCanvasTemplate() {
 	const getJWT = useJWTStore(state => state.getJWT)
 
 	const publishCanvasTemplate = useCallback(async (scope: 'personal' | 'org', name: string, data: CanvasTemplateData): Promise<void> => {
-		const jwt = await getJWT()
-		if (!jwt) {
+		const isStandalone = !useWhiteboardConfigStore.getState().collabBackendUrl
+		const jwt = isStandalone ? null : await getJWT()
+		if (!isStandalone && !jwt) {
 			throw new Error('No JWT')
 		}
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+			'X-Requested-With': 'XMLHttpRequest',
+		}
+		if (jwt) headers.Authorization = `Bearer ${jwt}`
 		const response = await globalThis.fetch(generateUrl('apps/whiteboard/canvas-template'), {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-Requested-With': 'XMLHttpRequest',
-				Authorization: `Bearer ${jwt}`,
-			},
+			headers,
 			body: JSON.stringify({ scope, name, data }),
 		})
 		if (!response.ok) {
