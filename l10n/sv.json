@@ -110,6 +110,7 @@
     "A library with this name already exists. Choose a different name." : "Det finns redan ett bibliotek med det här namnet. Välj ett annat namn.",
     "Could not save canvas." : "Det gick inte att spara arbetsytan.",
     "Max image size is {max} MB" : "Maximal bildstorlek är {max} MB",
+    "This image is too large to share with others" : "Denna bild är för stor för att delas med andra",
     "My library" : "Mitt bibliotek",
     "Comments" : "Kommentarer",
     "Voting" : "Omröstning",
@@ -290,6 +291,7 @@
     "Could not restore this version" : "Det gick inte att återställa den här versionen",
     "Version restored" : "Versionen har återställts",
     "This table is currently being edited by {user}" : "Den här tabellen redigeras för närvarande av {user}",
+    "This table is too large to share with others" : "Denna tabell är för stor för att delas med andra",
     "Just now" : "Nyss"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }
