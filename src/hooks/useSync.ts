@@ -54,10 +54,11 @@ function hasUnsavedChanges(elements: readonly ExcalidrawElement[], files: Binary
 }
 
 export function useSync() {
-	const { fileId, isReadOnly } = useWhiteboardConfigStore(
+	const { fileId, isReadOnly, collabBackendUrl } = useWhiteboardConfigStore(
 		useShallow(state => ({
 			fileId: state.fileId,
 			isReadOnly: state.isReadOnly,
+			collabBackendUrl: state.collabBackendUrl,
 		})),
 	)
 
@@ -153,10 +154,14 @@ export function useSync() {
 	const doSyncToServerAPI = useCallback(async (forceSync = false) => {
 		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, savesToServer, pendingServerMerge, collabStatus })
 
+		// In standalone mode (no collab backend) the socket is never connected, so we skip
+		// the collabStatus === 'online' requirement — the single user is always the syncer.
+		const isStandalone = !collabBackendUrl
+
 		// Allow force sync for final save, otherwise check normal conditions
-		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !savesToServer || pendingServerMerge || isReadOnly || collabStatus !== 'online')) {
+		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !savesToServer || pendingServerMerge || isReadOnly || (!isStandalone && collabStatus !== 'online'))) {
 			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, savesToServer, isReadOnly, collabStatus,
+				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, savesToServer, isReadOnly, collabStatus, isStandalone,
 			})
 			return
 		}
@@ -181,8 +186,8 @@ export function useSync() {
 		logger.debug('[Sync] Sending SYNC_TO_SERVER message to worker')
 
 		try {
-			const jwt = await getJWT()
-			if (!jwt) throw new Error('JWT token missing for server API sync.')
+			const jwt = isStandalone ? null : await getJWT()
+			if (!isStandalone && !jwt) throw new Error('JWT token missing for server API sync.')
 			if (useWhiteboardConfigStore.getState().fileId !== fileId) {
 				throw new Error('FileId changed during server sync preparation.')
 			}
@@ -208,7 +213,7 @@ export function useSync() {
 				type: 'SYNC_TO_SERVER',
 				fileId,
 				url: generateUrl(`apps/whiteboard/${fileId}`),
-				jwt,
+				...(jwt ? { jwt } : {}),
 				elements,
 				files,
 				sceneKey,
@@ -220,7 +225,7 @@ export function useSync() {
 			logger.error('[Sync] Server API sync failed:', error)
 			logSyncResult('server', { status: 'error API', error: error instanceof Error ? error.message : String(error) })
 		}
-	}, [isWorkerReady, worker, fileId, excalidrawAPI, savesToServer, pendingServerMerge, isReadOnly, collabStatus, getJWT])
+	}, [isWorkerReady, worker, fileId, excalidrawAPI, savesToServer, pendingServerMerge, isReadOnly, collabStatus, collabBackendUrl, getJWT])
 
 	// Simple hash function for file content
 	const hashFileContent = (content: string): string => {
@@ -498,9 +503,10 @@ export function useSync() {
 	const doFinalServerSync = useCallback((isUnloading = false) => {
 		// Use CACHED state instead of trying to get it now (might be cleared already)
 		const scene = cachedStateRef.current
-		const jwt = fileId ? useJWTStore.getState().tokens[fileId] : null
+		const isStandalone = !useWhiteboardConfigStore.getState().collabBackendUrl
+		const jwt = fileId ? useJWTStore.getState().tokens[fileId] ?? null : null
 		// Read live: after a disconnect the cached scene may miss what others saved meanwhile
-		if (!fileId || !scene?.elements.length || !jwt || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly || useSyncStore.getState().pausedFileId === fileId || useCollaborationStore.getState().pendingServerMerge) {
+		if (!fileId || !scene?.elements.length || (!isStandalone && !jwt) || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly || useSyncStore.getState().pausedFileId === fileId || useCollaborationStore.getState().pendingServerMerge) {
 			return
 		}
 
@@ -512,7 +518,7 @@ export function useSync() {
 
 		const url = generateUrl(`apps/whiteboard/${fileId}`)
 		if (!isUnloading) {
-			const message: WorkerInboundMessage = { type: 'SYNC_TO_SERVER', fileId, url, jwt, elements, files, sceneKey }
+			const message: WorkerInboundMessage = { type: 'SYNC_TO_SERVER', fileId, url, ...(jwt ? { jwt } : {}), elements, files, sceneKey }
 			useSyncStore.getState().worker?.postMessage(message)
 			return
 		}

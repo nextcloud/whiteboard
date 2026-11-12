@@ -25,6 +25,7 @@ import Embeddable from './components/Embeddable'
 import { useLangStore } from './stores/useLangStore'
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator'
 import { AuthErrorNotification } from './components/AuthErrorNotification'
+import { StandaloneModeIndicator } from './components/StandaloneModeIndicator'
 import { useSync } from './hooks/useSync'
 import { useLibrary } from './hooks/useLibrary'
 import { useLibraryCatalog } from './hooks/useLibraryCatalog'
@@ -69,6 +70,7 @@ const Excalidraw = memo(ExcalidrawComponent)
 
 const MemoizedNetworkStatusIndicator = memo(NetworkStatusIndicator)
 const MemoizedAuthErrorNotification = memo(AuthErrorNotification)
+const MemoizedStandaloneModeIndicator = memo(StandaloneModeIndicator)
 const MemoizedExcalidrawMenu = memo(ExcalidrawMenu)
 
 export interface WhiteboardAppProps {
@@ -716,7 +718,7 @@ export default function App({
 	return (
 		<div className={appClassName} style={{ display: 'flex', flexDirection: 'column' }} {...themeAttributes}>
 			<div className="excalidraw-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
-				{!isVersionPreview && <MemoizedNetworkStatusIndicator />}
+				{!isVersionPreview && (collabBackendUrl ? <MemoizedNetworkStatusIndicator /> : <MemoizedStandaloneModeIndicator />)}
 				<MemoizedAuthErrorNotification />
 				{isVersionPreview && (
 					<VersionPreviewBanner

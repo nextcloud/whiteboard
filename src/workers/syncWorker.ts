@@ -100,8 +100,8 @@ const handleSyncToLocal = async (data: SyncToLocalMessage) => {
 const handleSyncToServer = async (data: SyncToServerMessage) => {
 	const { fileId, url, jwt, elements, files, sceneKey } = data
 
-	if (!fileId || !url || !jwt) {
-		error('Missing required data for server sync', { fileId, url: !!url, jwt: !!jwt })
+	if (!fileId || !url) {
+		error('Missing required data for server sync', { fileId, url: !!url })
 		sendMessage({
 			type: 'SERVER_SYNC_ERROR',
 			error: 'Missing required data for server sync',
@@ -115,7 +115,9 @@ const handleSyncToServer = async (data: SyncToServerMessage) => {
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 			'X-Requested-With': 'XMLHttpRequest',
-			Authorization: `Bearer ${jwt}`,
+		}
+		if (jwt) {
+			headers.Authorization = `Bearer ${jwt}`
 		}
 
 		const response = await globalThis.fetch(url, {
