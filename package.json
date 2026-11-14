@@ -47,6 +47,7 @@
     "lodash": "^4.18.1",
     "lru-cache": "^11.5.3",
     "node-fetch": "^3.3.2",
+    "pdfjs-dist": "^6.3.289",
     "persist": "^0.2.7",
     "prom-client": "^14.2.0",
     "puppeteer-core": "^25.16.0",
@@ -62,6 +63,7 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.1.0",
     "@nextcloud/browserslist-config": "^3.1.2",
     "@nextcloud/e2e-test-server": "^0.6.1",
     "@nextcloud/eslint-config": "^9.0.1",
@@ -72,6 +74,8 @@
     "@types/lodash": "^4.17.27",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "@vue/test-utils": "^2.5.1",
     "@vue/tsconfig": "^0.9.1",
     "browserslist": "^4.29.5",
     "fake-indexeddb": "^6.2.7",
