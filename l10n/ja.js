@@ -44,6 +44,7 @@ OC.L10N.register(
     "Authentication issue detected. Retrying…" : "認証の問題が検出されました。再試行中です...",
     "Local changes are automatically saved to your device. Collaboration features will be unavailable until this issue is resolved." : "ブラウザー側での変更はローカルのデバイスに自動的に保存されます。この問題が解決されるまで、コラボレーション機能は利用できません。",
     "Dismiss" : "閉じる",
+    "Guest" : "ゲスト",
     "Delete thread" : "スレッドを削除",
     "Edit" : "編集",
     "Save" : "保存する",
