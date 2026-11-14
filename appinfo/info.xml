@@ -11,7 +11,7 @@
 
 The official whiteboard app for Nextcloud. It allows users to create and share whiteboards with other users and collaborate in real-time.
 
-**Whiteboard requires a separate collaboration server to work.** Please see the [documentation](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#backend) on how to install it.
+Boards are saved to Nextcloud with the app alone. Real-time collaboration (seeing each other's changes and cursors live) and recordings need a separate collaboration server; please see the [documentation](https://github.com/nextcloud/whiteboard?tab=readme-ov-file#websocket-server) on how to install it.
 
 - 🎨 Drawing shapes, writing text, connecting elements
 - 📝 Real-time collaboration
@@ -23,7 +23,7 @@ The official whiteboard app for Nextcloud. It allows users to create and share w
 
 ]]>
 	</description>
-	<version>3.0.0-beta.1</version>
+	<version>3.0.0-beta.2</version>
 	<licence>agpl</licence>
 	<author>Julius Härtl</author>
 	<namespace>Whiteboard</namespace>

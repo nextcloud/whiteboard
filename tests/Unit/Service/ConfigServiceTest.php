@@ -80,6 +80,35 @@ class ConfigServiceTest extends TestCase {
 		];
 	}
 
+	public function testJwtSecretIsDerivedFromTheInstanceSecretWhenNoneIsSet(): void {
+		$service = $this->serviceWithSecrets('', 'instance-secret-of-this-nextcloud');
+		$other = $this->serviceWithSecrets('', 'instance-secret-of-another-nextcloud');
+
+		$secret = $service->getJwtSecretKey();
+
+		$this->assertSame(64, strlen($secret));
+		$this->assertSame($secret, $this->serviceWithSecrets('', 'instance-secret-of-this-nextcloud')->getJwtSecretKey());
+		$this->assertNotSame($secret, $other->getJwtSecretKey());
+		$this->assertStringNotContainsString('instance-secret', $secret);
+		$this->assertSame('', $service->getWhiteboardSharedSecret());
+	}
+
+	public function testConfiguredJwtSecretIsUsed(): void {
+		$this->assertSame('configured', $this->serviceWithSecrets('configured', 'instance-secret-of-this-nextcloud')->getJwtSecretKey());
+	}
+
+	public function testNoJwtSecretWithoutAnInstanceSecret(): void {
+		$this->assertSame('', $this->serviceWithSecrets('', '')->getJwtSecretKey());
+	}
+
+	private function serviceWithSecrets(string $stored, string $instance): ConfigService {
+		$appConfig = $this->createStub(IAppConfig::class);
+		$appConfig->method('getAppValueString')->willReturnMap([['jwt_secret_key', '', false, $stored]]);
+		$config = $this->createStub(IConfig::class);
+		$config->method('getSystemValueString')->willReturnMap([['secret', '', $instance]]);
+		return new ConfigService($appConfig, $config);
+	}
+
 	private function createService(string $backendUrl): ConfigService {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getAppValueString')

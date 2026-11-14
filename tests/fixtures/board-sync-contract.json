@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 3,
+	"boardSettings": ["viewBackgroundColor", "gridSize", "gridStep"],
+	"answers": {
+		"replaced": { "status": 409, "code": "board_replaced" },
+		"unreadable": { "status": 409, "code": "board_unreadable" },
+		"busy": { "status": 503, "code": "busy" },
+		"upgrade": { "status": 400, "code": "client_upgrade_required" },
+		"forbidden": { "status": 403 },
+		"gone": { "status": 404 }
+	},
+	"wins": [
+		{ "copy": { "version": 2, "versionNonce": 9 }, "stored": { "version": 1, "versionNonce": 1 }, "wins": true },
+		{ "copy": { "version": 1, "versionNonce": 9 }, "stored": { "version": 2, "versionNonce": 1 }, "wins": false },
+		{ "copy": { "version": 3, "versionNonce": 1 }, "stored": { "version": 3, "versionNonce": 2 }, "wins": true },
+		{ "copy": { "version": 3, "versionNonce": 2 }, "stored": { "version": 3, "versionNonce": 1 }, "wins": false },
+		{ "copy": { "version": 3, "versionNonce": 2 }, "stored": { "version": 3, "versionNonce": 2 }, "wins": false },
+		{ "copy": { "version": 1 }, "stored": {}, "wins": true },
+		{ "copy": {}, "stored": { "version": 0, "versionNonce": 0 }, "wins": false },
+		{ "copy": { "version": 2.0, "versionNonce": 9 }, "stored": { "version": 1, "versionNonce": 1 }, "wins": true },
+		{ "copy": { "version": 2, "versionNonce": 5.0 }, "stored": { "version": 2.0, "versionNonce": 7 }, "wins": true }
+	],
+	"order": [
+		{ "elements": [{ "id": "b", "index": "a1" }, { "id": "a", "index": "a0" }, { "id": "c", "index": "a1" }], "ids": ["a", "b", "c"] },
+		{ "elements": [{ "id": "a", "index": "a0" }, { "id": "x" }, { "id": "c", "index": "a2" }, { "id": "b", "index": "a1" }], "ids": ["a", "x", "c", "b"] }
+	]
+}

@@ -1,7 +1,7 @@
 {
   "src/App.tsx": {
     "@stylistic/arrow-parens": {
-      "count": 7
+      "count": 6
     },
     "@stylistic/jsx-closing-bracket-location": {
       "count": 1
@@ -228,12 +228,6 @@
     },
     "no-console": {
       "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 3
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 3
     }
   },
   "src/components/PersonalSettings.vue": {
@@ -402,17 +396,6 @@
       "count": 1
     }
   },
-  "src/database/db.ts": {
-    "@stylistic/function-paren-newline": {
-      "count": 2
-    },
-    "@stylistic/padded-blocks": {
-      "count": 2
-    },
-    "perfectionist/sort-imports": {
-      "count": 2
-    }
-  },
   "src/files.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
@@ -424,17 +407,8 @@
     }
   },
   "src/hooks/useBoardDataManager.ts": {
-    "@stylistic/arrow-parens": {
-      "count": 2
-    },
     "import-extensions/extensions": {
-      "count": 9
-    },
-    "perfectionist/sort-imports": {
-      "count": 4
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
+      "count": 6
     }
   },
   "src/hooks/useCanvasTemplate.ts": {
@@ -459,13 +433,13 @@
       "count": 12
     },
     "@stylistic/function-paren-newline": {
-      "count": 14
+      "count": 12
     },
     "@stylistic/implicit-arrow-linebreak": {
       "count": 2
     },
     "@stylistic/indent": {
-      "count": 114
+      "count": 68
     },
     "@stylistic/indent-binary-ops": {
       "count": 1
@@ -483,10 +457,10 @@
       "count": 1
     },
     "curly": {
-      "count": 7
+      "count": 6
     },
     "import-extensions/extensions": {
-      "count": 9
+      "count": 6
     },
     "perfectionist/sort-imports": {
       "count": 7
@@ -711,40 +685,31 @@
   },
   "src/hooks/useSync.ts": {
     "@stylistic/arrow-parens": {
-      "count": 5
+      "count": 3
     },
     "@stylistic/comma-style": {
-      "count": 6
-    },
-    "@stylistic/exp-list-style": {
-      "count": 10
+      "count": 3
     },
     "@stylistic/function-paren-newline": {
-      "count": 22
+      "count": 12
     },
     "@stylistic/implicit-arrow-linebreak": {
-      "count": 6
+      "count": 3
     },
     "@stylistic/member-delimiter-style": {
       "count": 9
     },
-    "@typescript-eslint/no-use-before-define": {
+    "curly": {
       "count": 1
     },
-    "curly": {
-      "count": 3
-    },
     "import-extensions/extensions": {
-      "count": 11
+      "count": 8
     },
     "no-console": {
       "count": 1
     },
     "perfectionist/sort-imports": {
       "count": 8
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
     }
   },
   "src/hooks/useTableInsertion.tsx": {
@@ -775,20 +740,8 @@
     }
   },
   "src/hooks/useVersionPreview.ts": {
-    "@stylistic/arrow-parens": {
-      "count": 5
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
     "import-extensions/extensions": {
-      "count": 7
-    },
-    "perfectionist/sort-imports": {
-      "count": 8
-    },
-    "preserve-caught-error": {
-      "count": 1
+      "count": 2
     }
   },
   "src/hooks/useVoting.ts": {
@@ -810,7 +763,7 @@
   },
   "src/main.ts": {
     "import-extensions/extensions": {
-      "count": 5
+      "count": 4
     }
   },
   "src/services/ai.ts": {
@@ -870,7 +823,7 @@
       "count": 1
     },
     "@stylistic/function-paren-newline": {
-      "count": 18
+      "count": 16
     },
     "@stylistic/implicit-arrow-linebreak": {
       "count": 1
@@ -900,11 +853,6 @@
     },
     "perfectionist/sort-imports": {
       "count": 2
-    }
-  },
-  "src/stores/useSyncStore.ts": {
-    "import-extensions/extensions": {
-      "count": 1
     }
   },
   "src/stores/useWhiteboardConfigStore.ts": {
@@ -1017,26 +965,8 @@
     "@stylistic/function-paren-newline": {
       "count": 6
     },
-    "@stylistic/indent-binary-ops": {
-      "count": 3
-    },
-    "@stylistic/padded-blocks": {
-      "count": 1
-    },
-    "@stylistic/type-annotation-spacing": {
-      "count": 1
-    },
-    "@stylistic/type-generic-spacing": {
-      "count": 1
-    },
     "antfu/top-level-function": {
       "count": 5
-    },
-    "curly": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
     }
   },
   "src/utils/tableLocking.ts": {
@@ -1071,17 +1001,6 @@
     },
     "perfectionist/sort-named-imports": {
       "count": 2
-    }
-  },
-  "src/workers/syncWorker.ts": {
-    "antfu/top-level-function": {
-      "count": 7
-    },
-    "import-extensions/extensions": {
-      "count": 3
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
     }
   },
   "tests/integration/metrics.spec.mjs": {

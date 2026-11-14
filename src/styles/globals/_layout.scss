@@ -120,14 +120,14 @@
 	}
 }
 
-.network-status {
+/* A pill in the bottom corner that shows its text on hover, click or when it matters */
+@mixin status-pill($block) {
 	display: flex;
 	align-items: center;
 	padding: 8px;
 	border-radius: 8px;
 	transition: all 0.2s ease;
 	position: absolute;
-	bottom: 80px; /* Position at the bottom with enough space for other UI elements */
 	inset-inline-end: 16px;
 	z-index: 10000; /* Increased z-index to ensure it's above all other UI elements */
 	max-width: 40px;
@@ -143,16 +143,6 @@
 		justify-content: center;
 		min-width: 24px;
 		min-height: 24px;
-	}
-
-	&__loading-spinner {
-		position: absolute;
-		top: 0;
-		inset-inline: 0;
-		bottom: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
 	}
 
 	&__content {
@@ -171,14 +161,55 @@
 		font-size: 13px;
 	}
 
+	&--expanded {
+		max-width: 260px;
+		padding: 8px 12px;
+		z-index: 10001; /* Ensure expanded state is above other UI elements */
+		background-color: var(--color-main-background);
+
+		.#{$block}__content {
+			max-width: 220px;
+			opacity: 1;
+		}
+	}
+
+	&:hover {
+		opacity: 1;
+		box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+		background-color: var(--color-main-background);
+		max-width: 260px;
+
+		.#{$block}__content {
+			max-width: 220px;
+			opacity: 1;
+		}
+	}
+
+	&:focus-visible {
+		@include tokens.focus-ring();
+	}
+}
+
+/* Live collaboration, above the save state */
+.network-status {
+	@include status-pill('network-status');
+	bottom: 128px;
+
+	&__loading-spinner {
+		position: absolute;
+		top: 0;
+		inset-inline: 0;
+		bottom: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	/* Live collaboration is off; saving goes on, so it does not alarm */
 	&--offline {
-		background-color: rgba(244, 67, 54, 0.2);
-		color: rgba(244, 67, 54, 1);
-		border: 1px solid rgba(244, 67, 54, 0.4);
-		/* Use will-change to isolate animation and prevent image flickering */
-		will-change: box-shadow, border-color;
-		transform: translateZ(0);
-		animation: pulse-red 2s infinite;
+		background-color: rgba(255, 152, 0, 0.2);
+		color: rgba(255, 152, 0, 1);
+		border: 1px solid rgba(255, 152, 0, 0.4);
 	}
 
 	&--connecting {
@@ -206,33 +237,39 @@
 		color: rgba(76, 175, 80, 1);
 		border: 1px solid rgba(76, 175, 80, 0.4);
 	}
+}
 
-	&--expanded {
-		max-width: 150px;
-		padding: 8px 12px;
-		z-index: 10001; /* Ensure expanded state is above other UI elements */
-		background-color: var(--color-main-background);
+/* Whether the changes of this tab reached Nextcloud */
+.save-status {
+	@include status-pill('save-status');
+	bottom: 80px;
+	background-color: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+	border: 1px solid var(--color-border);
 
-		.network-status__content {
-			max-width: 110px;
-			opacity: 1;
-		}
+	&--not-saved {
+		color: var(--color-warning-text, var(--color-warning));
+		border-color: var(--color-warning);
 	}
+}
 
-	&:hover {
-		opacity: 1;
-		box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
-		background-color: var(--color-main-background);
-		max-width: 150px;
+.board-unavailable {
+	position: absolute;
+	inset: 0;
+	z-index: 10002;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 16px;
+	text-align: center;
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
 
-		.network-status__content {
-			max-width: 110px;
-			opacity: 1;
-		}
-	}
-
-	&:focus-visible {
-		@include tokens.focus-ring();
+	&__title {
+		font-weight: 600;
+		font-size: 18px;
 	}
 }
 
@@ -451,24 +488,6 @@
 }
 
 /* Performance optimized animations that only animate opacity to reduce repaints */
-@keyframes pulse-red {
-	0% {
-		box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4);
-		border-color: rgba(244, 67, 54, 0.4);
-		opacity: 0.9;
-	}
-	50% {
-		box-shadow: 0 0 0 5px rgba(244, 67, 54, 0.2);
-		border-color: rgba(244, 67, 54, 0.6);
-		opacity: 1;
-	}
-	100% {
-		box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
-		border-color: rgba(244, 67, 54, 0.4);
-		opacity: 0.9;
-	}
-}
-
 @keyframes pulse-orange {
 	0% {
 		box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4);
@@ -488,7 +507,8 @@
 }
 
 @media (prefers-reduced-motion) {
-	.network-status {
+	.network-status,
+	.save-status {
 		transition: none;
 		animation: none !important;
 
@@ -500,24 +520,30 @@
 
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
-	.network-status {
+	.save-status {
 		bottom: 90px;
+		inset-inline-end: 8px;
+		padding: 6px;
+		max-width: 36px;
+
+		&--expanded,
+		&:hover {
+			max-width: 260px;
+			padding: 6px 10px;
+		}
+	}
+
+	.network-status {
+		bottom: 138px;
 		inset-inline-end: 8px;
 		padding: 6px;
 		max-width: 36px;
 		z-index: 10001; /* Ensure it's above all UI elements on mobile */
 
-		&--expanded {
-			max-width: 130px;
-			padding: 6px 10px;
-		}
-
+		&--expanded,
 		&:hover {
-			max-width: 130px;
-
-			.network-status__content {
-				max-width: 90px;
-			}
+			max-width: 260px;
+			padding: 6px 10px;
 		}
 	}
 }

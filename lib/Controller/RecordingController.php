@@ -70,7 +70,7 @@ final class RecordingController extends Controller {
 	public function recording(int $fileId, string $userId) {
 		try {
 			$jwt = $this->validateJWTToken();
-			$jwtUserId = $this->jwtService->getUserIdFromJWT($jwt);
+			$jwtUserId = $this->jwtService->getUserIdFromJWT($jwt, $fileId);
 
 			// Verify the JWT user matches the URL user
 			if ($jwtUserId !== $userId) {
@@ -94,7 +94,7 @@ final class RecordingController extends Controller {
 		try {
 			// Only authenticated users should use this endpoint
 			$uploadToken = $this->validateUploadToken();
-			$userId = $this->jwtService->getUserIdFromJWT($uploadToken);
+			$userId = $this->jwtService->getUserIdFromJWT($uploadToken, $fileId);
 
 			// Authenticate user and validate file access
 			try {

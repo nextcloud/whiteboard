@@ -15,7 +15,6 @@ import {
 	openFilesApp,
 	openWhiteboardFromFiles,
 	fetchBoardContent,
-	getBoardAuth,
 } from '../support/utils'
 
 test.beforeEach(async ({ page }) => {
@@ -59,18 +58,10 @@ test('whiteboard changes sync across sessions', async ({ page, browser, user }) 
 	const boardName = `Collab board ${Date.now()}`
 
 	await createWhiteboard(page, { name: boardName })
+	// The first save can leave as soon as the text is in
+	const saved = captureBoardAuthFromSave(page, { containsText: 'First session text' })
 	await addTextElement(page, 'First session text')
-
-	let auth
-	try {
-		auth = await getBoardAuth(page)
-	} catch {
-		const saveResp = await page.waitForResponse((response) => response.request().method() === 'PUT' && response.url().includes('/apps/whiteboard/'), { timeout: 60000 })
-		const authHeader = saveResp.request().headers()['authorization'] || ''
-		const apiPath = new URL(saveResp.url()).pathname.replace('/index.php/', '')
-		const fileId = Number(apiPath.split('/').pop())
-		auth = { fileId, jwt: authHeader }
-	}
+	const auth = await saved
 
 	await expect.poll(async () => JSON.stringify(await fetchBoardContent(page, auth)), {
 		timeout: 20000,

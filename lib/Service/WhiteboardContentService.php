@@ -12,122 +12,256 @@ namespace OCA\Whiteboard\Service;
 use JsonException;
 use OCA\Whiteboard\Model\PublicSharingUser;
 use OCA\Whiteboard\Model\User;
-use OCP\Files\File;
-use OCP\Files\GenericFileException;
-use OCP\Files\NotPermittedException;
-use OCP\Lock\LockedException;
-use Psr\Log\LoggerInterface;
 
 final class WhiteboardContentService {
 	private const CREATOR_PROOF_DOMAIN = 'whiteboard.creator.v1';
+	// Settings of the whole board that every tab shows the same; the last one saved wins
+	private const BOARD_SETTINGS = ['viewBackgroundColor', 'gridSize', 'gridStep'];
+	// Clients count revisions in JavaScript numbers, which are exact up to 2^53
+	private const MAX_REVISION = 2 ** 53 - 2;
+	// A new epoch starts above the revisions in the file only up to here, so later saves stay countable
+	private const MAX_START_REVISION = 2 ** 52;
 	private const CREATOR_PROOF_PREFIX = 'v1:';
 
 	private string $creatorSecret;
 
 	public function __construct(
-		private LoggerInterface $logger,
 		ConfigService $configService,
 	) {
 		$this->creatorSecret = $configService->getJwtSecretKey();
 	}
 
 	/**
-	 * @throws NotPermittedException
-	 * @throws GenericFileException
-	 * @throws LockedException
-	 * @throws JsonException
+	 * The board in the stored bytes; blank bytes are an empty board
+	 *
+	 * @return array<string,mixed>
+	 * @throws JsonException when the bytes are not a board
 	 */
-	public function getContent(File $file): array {
-		$fileContent = $file->getContent();
+	public function decode(string $bytes): array {
 		// Some object stores create new files with a single space
-		if (trim($fileContent, " \t\r\n") === '') {
-			$fileContent = '{"elements":[],"scrollToContent":true}';
+		if (trim($bytes, " \t\r\n") === '') {
+			return ['elements' => [], 'scrollToContent' => true];
 		}
 
-		return json_decode($fileContent, true, 512, JSON_THROW_ON_ERROR);
+		$board = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
+		// A JSON list is no board either, though PHP decodes it to an array
+		if (!is_array($board) || ($board !== [] && array_is_list($board))) {
+			throw new JsonException('The board is not a JSON object');
+		}
+		return $board;
 	}
 
 	/**
-	 * @throws NotPermittedException
-	 * @throws GenericFileException
-	 * @throws LockedException
+	 * @param array<string,mixed> $board
 	 * @throws JsonException
 	 */
-	public function updateContent(File $file, array $data, User $actor): void {
-		$fileId = $file->getId();
-		$incoming = $this->normalizeIncomingData($data);
+	public function encode(array $board): string {
+		return json_encode($board, JSON_THROW_ON_ERROR);
+	}
 
-		if ($this->isEffectivelyEmptyPayload($incoming)) {
-			$this->logger->debug('Skipping whiteboard save because payload is empty', [
-				'app' => 'whiteboard',
-				'fileId' => $fileId,
-			]);
-			return;
-		}
-
-		try {
-			$current = $this->normalizeStoredData($this->getContent($file));
-		} catch (JsonException $e) {
-			$this->logger->warning('Existing whiteboard content is invalid JSON, resetting to defaults', [
-				'app' => 'whiteboard',
-				'fileId' => $fileId,
-				'error' => $e->getMessage(),
-			]);
-			$current = $this->normalizeStoredData([]);
-		}
-
+	/**
+	 * Merges elements and files into the stored board by Excalidraw's order: an
+	 * element replaces the stored copy only with a higher version, or an equal
+	 * version and a lower nonce. Elements missing from the request stay as
+	 * they are; files are added under new ids only; board settings take the
+	 * sent value, unless the setting changed after revision `$since`, which the
+	 * sender did not know. Each changed element, file and setting gets the revision `$rev`.
+	 *
+	 * @param array<string,mixed> $stored decoded board
+	 * @param array<mixed> $elements
+	 * @param array<mixed> $files
+	 * @param array<mixed> $settings
+	 * @return array{board: array<string,mixed>, elements: list<string>, files: list<string>, settings: list<string>}
+	 */
+	public function merge(array $stored, array $elements, array $files, User $actor, int $fileId, int $rev, array $settings = [], int $since = PHP_INT_MAX): array {
+		$board = $this->normalizeStoredData($stored);
+		$byId = $this->indexElementsById($board['elements']);
 		$actorInfo = $this->buildActorInfo($actor, $this->getCurrentTimeInMilliseconds());
-		$merged = $this->mergeData($current, $incoming, $actorInfo, $fileId);
+		$changedElements = [];
 
-		$canonicalCurrent = $this->canonicalize($current);
-		$canonicalMerged = $this->canonicalize($merged);
-
-		if ($canonicalCurrent === $canonicalMerged || $this->hasSameElementVersions($canonicalCurrent, $canonicalMerged)) {
-			$this->logger->debug('Skipping whiteboard save because payload matches stored content', [
-				'app' => 'whiteboard',
-				'fileId' => $fileId,
-			]);
-			return;
-		}
-
-		try {
-			$encodedPayload = json_encode($canonicalMerged, JSON_THROW_ON_ERROR);
-		} catch (JsonException $e) {
-			$this->logger->error('Failed to encode whiteboard content before saving', [
-				'app' => 'whiteboard',
-				'fileId' => $fileId,
-				'error' => $e->getMessage(),
-			]);
-			throw $e;
-		}
-
-		$maxRetries = 3;
-		$baseDelay = 1000000; // 1 second
-
-		for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
-			try {
-				$file->putContent($encodedPayload);
-				return;
-			} catch (LockedException $e) {
-				if ($attempt === $maxRetries - 1) {
-					$this->logger->error('Whiteboard file write failed after retries', [
-						'app' => 'whiteboard',
-						'fileId' => $fileId,
-						'error' => $e->getMessage(),
-					]);
-					throw $e;
-				}
-
-				$delay = (int)($baseDelay * ((int)(2 ** $attempt)));
-				$this->logger->warning('Whiteboard file locked, retrying', [
-					'app' => 'whiteboard',
-					'fileId' => $fileId,
-					'attempt' => $attempt + 1,
-				]);
-
-				usleep($delay);
+		// A request may carry several copies of an element; the one that wins counts
+		$incomingById = [];
+		foreach ($this->sanitizeElements($elements) as $incoming) {
+			$elementId = $this->getElementId($incoming);
+			if ($elementId !== null && (!isset($incomingById[$elementId]) || $this->wins($incoming, $incomingById[$elementId]))) {
+				$incomingById[$elementId] = $incoming;
 			}
 		}
+
+		foreach ($incomingById as $incoming) {
+			// Array keys turn numeric ids into integers
+			$elementId = (string)$this->getElementId($incoming);
+			$storedElement = $byId[$elementId] ?? null;
+			if ($storedElement !== null && !$this->wins($incoming, $storedElement)) {
+				continue;
+			}
+
+			$merged = $this->stripCreatorMetadata($incoming);
+			if ($storedElement !== null) {
+				$storedCreator = $this->getCreator($storedElement);
+				if ($storedCreator !== null) {
+					$merged = $this->setCreator($merged, $storedCreator, $this->getValidCreatorProof($fileId, $elementId, $storedElement, $storedCreator));
+				}
+			} else {
+				$incomingCreator = $this->getCreator($incoming);
+				$proof = $incomingCreator !== null ? $this->getValidCreatorProof($fileId, $elementId, $incoming, $incomingCreator) : null;
+				$merged = $proof !== null && $incomingCreator !== null
+					? $this->setCreator($merged, $incomingCreator, $proof)
+					: $this->setCreator($merged, $actorInfo, $this->createCreatorProof($fileId, $elementId, $actorInfo));
+			}
+			$byId[$elementId] = $merged;
+			$changedElements[$elementId] = true;
+		}
+
+		$changedFiles = [];
+		foreach ($this->sanitizeFiles($files) as $id => $file) {
+			if (!isset($board['files'][$id])) {
+				$board['files'][$id] = $file;
+				$changedFiles[(string)$id] = true;
+			}
+		}
+
+		$changedSettings = [];
+		$revisions = $this->getRevisions($stored);
+		$settingRevisions = $revisions['settings'];
+		foreach ($this->sanitizeSettings($settings) as $key => $value) {
+			if (($settingRevisions[$key] ?? 0) > $since) {
+				continue;
+			}
+			if (!array_key_exists($key, $board['appState'] ?? []) || $board['appState'][$key] !== $value) {
+				$board['appState'][$key] = $value;
+				$changedSettings[] = $key;
+			}
+		}
+
+		if ($changedElements === [] && $changedFiles === [] && $changedSettings === []) {
+			return ['board' => $stored, 'elements' => [], 'files' => [], 'settings' => []];
+		}
+
+		// Stored elements keep their place, new ones follow
+		$board['elements'] = $this->orderElements(array_values($byId));
+		ksort($board['files']);
+		$board['revisions'] = $revisions;
+		foreach (array_keys($changedElements) as $id) {
+			$board['revisions']['elements'][$id] = $rev;
+		}
+		foreach (array_keys($changedFiles) as $id) {
+			$board['revisions']['files'][$id] = $rev;
+		}
+		foreach ($changedSettings as $key) {
+			$board['revisions']['settings'][$key] = $rev;
+		}
+
+		return ['board' => $board, 'elements' => array_map('strval', array_keys($changedElements)), 'files' => array_map('strval', array_keys($changedFiles)), 'settings' => $changedSettings];
+	}
+
+	/**
+	 * The elements, files and board settings changed after revision `$since`
+	 *
+	 * @param array<string,mixed> $board decoded board
+	 * @return array{elements: list<array<string,mixed>>, files: array<string,mixed>, settings: array<string,mixed>}
+	 */
+	public function changesSince(array $board, int $since): array {
+		$revisions = $this->getRevisions($board);
+		$elements = [];
+		foreach ($board['elements'] ?? [] as $element) {
+			$elementId = is_array($element) ? $this->getElementId($element) : null;
+			if ($elementId !== null && ($revisions['elements'][$elementId] ?? 0) > $since) {
+				$elements[] = $element;
+			}
+		}
+		$files = [];
+		foreach (is_array($board['files'] ?? null) ? $board['files'] : [] as $id => $file) {
+			if (($revisions['files'][$id] ?? 0) > $since) {
+				$files[$id] = $file;
+			}
+		}
+		$settings = [];
+		foreach ($this->sanitizeSettings(is_array($board['appState'] ?? null) ? $board['appState'] : []) as $key => $value) {
+			if (($revisions['settings'][$key] ?? 0) > $since) {
+				$settings[$key] = $value;
+			}
+		}
+		return ['elements' => $elements, 'files' => $files, 'settings' => $settings];
+	}
+
+	/**
+	 * The board as clients read it: always with an element list, never with
+	 * revisions
+	 *
+	 * @param array<string,mixed> $board
+	 * @return array<string,mixed>
+	 */
+	public function forClient(array $board): array {
+		return $this->normalizeStoredData($board);
+	}
+
+	/**
+	 * @param array<string,mixed> $board
+	 */
+	public function latestRevision(array $board): int {
+		$revisions = $this->getRevisions($board);
+		$all = [...array_values($revisions['elements']), ...array_values($revisions['files']), ...array_values($revisions['settings'])];
+		return max([0, ...array_filter($all, static fn (int $rev): bool => $rev <= self::MAX_START_REVISION)]);
+	}
+
+	/**
+	 * @param array<string,mixed> $board
+	 * @return array{elements: array<string,int>, files: array<string,int>, settings: array<string,int>}
+	 */
+	private function getRevisions(array $board): array {
+		$revisions = ['elements' => [], 'files' => [], 'settings' => []];
+		foreach (['elements', 'files', 'settings'] as $kind) {
+			foreach (is_array($board['revisions'][$kind] ?? null) ? $board['revisions'][$kind] : [] as $id => $rev) {
+				// A file written elsewhere may carry any number
+				if (is_int($rev) && $rev >= 0 && $rev <= self::MAX_REVISION) {
+					$revisions[$kind][(string)$id] = $rev;
+				}
+			}
+		}
+		return $revisions;
+	}
+
+	/**
+	 * Excalidraw's order: higher version, then lower nonce
+	 *
+	 * @param array<string,mixed> $incoming
+	 * @param array<string,mixed> $stored
+	 */
+	private function wins(array $incoming, array $stored): bool {
+		$version = $this->stamp($incoming['version'] ?? null);
+		$storedVersion = $this->stamp($stored['version'] ?? null);
+		if ($version !== $storedVersion) {
+			return $version > $storedVersion;
+		}
+		return $this->stamp($incoming['versionNonce'] ?? null) < $this->stamp($stored['versionNonce'] ?? null);
+	}
+
+	/**
+	 * A version or nonce as an integer, 0 when there is none; JSON's 2.0 is 2, as for clients
+	 */
+	private function stamp(mixed $value): int {
+		if (is_float($value) && floor($value) === $value && abs($value) <= PHP_INT_MAX) {
+			return (int)$value;
+		}
+		return is_int($value) ? $value : 0;
+	}
+
+	/**
+	 * Orders elements by fractional index and id, as Excalidraw does, when
+	 * every element has an index; older boards keep their order
+	 *
+	 * @param list<array<string,mixed>> $elements
+	 * @return list<array<string,mixed>>
+	 */
+	private function orderElements(array $elements): array {
+		foreach ($elements as $element) {
+			if (!is_string($element['index'] ?? null)) {
+				return $elements;
+			}
+		}
+		usort($elements, static fn (array $a, array $b): int => strcmp($a['index'], $b['index']) ?: strcmp((string)$a['id'], (string)$b['id']));
+		return $elements;
 	}
 
 	/**
@@ -155,107 +289,9 @@ final class WhiteboardContentService {
 	}
 
 	/**
-	 * @param array<string,mixed> $incoming
-	 *
-	 * @return array<string,mixed>
-	 */
-	private function normalizeIncomingData(array $incoming): array {
-		$incoming = $this->unwrapData($incoming);
-
-		if (empty($incoming)) {
-			return $this->getEmptyState();
-		}
-
-		$normalized = [];
-
-		if (array_key_exists('elements', $incoming) && is_array($incoming['elements'])) {
-			$normalized['elements'] = $this->sanitizeElements($incoming['elements']);
-		}
-
-		if (array_key_exists('files', $incoming)) {
-			$normalized['files'] = is_array($incoming['files'])
-				? $this->sanitizeFiles($incoming['files'])
-				: [];
-		}
-
-		if (array_key_exists('libraryItems', $incoming) && is_array($incoming['libraryItems'])) {
-			$normalized['libraryItems'] = $this->sanitizeLibraryItems($incoming['libraryItems']);
-		}
-
-		if (array_key_exists('appState', $incoming) && is_array($incoming['appState'])) {
-			$normalized['appState'] = $this->sanitizeAppState($incoming['appState']);
-		}
-
-		if (array_key_exists('scrollToContent', $incoming)) {
-			$normalized['scrollToContent'] = (bool)$incoming['scrollToContent'];
-		}
-
-		if (array_key_exists('libraryRef', $incoming)) {
-			if ($incoming['libraryRef'] === null) {
-				// Explicit removal marker; mergeData() drops the stored ref.
-				$normalized['libraryRef'] = null;
-			} else {
-				$ref = $this->sanitizeLibraryRef($incoming['libraryRef']);
-				if ($ref !== null) {
-					$normalized['libraryRef'] = $ref;
-				}
-			}
-		}
-
-		return $normalized;
-	}
-
-	/**
-	 * @param array<string,mixed> $payload
-	 */
-	private function isEffectivelyEmptyPayload(array $payload): bool {
-		if (array_key_exists('libraryItems', $payload)) {
-			return false;
-		}
-
-		$hasFiles = array_key_exists('files', $payload)
-			&& is_array($payload['files'])
-			&& !empty($payload['files']);
-
-		if ($hasFiles) {
-			return false;
-		}
-
-		$hasAppState = array_key_exists('appState', $payload)
-			&& is_array($payload['appState'])
-			&& !empty($payload['appState']);
-
-		if ($hasAppState) {
-			return false;
-		}
-
-		if (array_key_exists('scrollToContent', $payload) && $payload['scrollToContent'] !== true) {
-			return false;
-		}
-
-		if (!array_key_exists('elements', $payload) || !is_array($payload['elements'])) {
-			return false;
-		}
-
-		if (!empty($payload['elements'])) {
-			return false;
-		}
-
-		foreach ($payload as $key => $_value) {
-			if (!in_array($key, ['elements', 'files', 'libraryItems', 'appState', 'scrollToContent'], true)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	/**
 	 * @param array<string,mixed> $stored
 	 *
 	 * @return array<string,mixed>
-	 *
-	 * @throws JsonException
 	 */
 	private function normalizeStoredData(array $stored): array {
 		$stored = $this->unwrapData($stored);
@@ -284,8 +320,6 @@ final class WhiteboardContentService {
 
 		if (array_key_exists('appState', $stored) && is_array($stored['appState'])) {
 			$normalized['appState'] = $this->sanitizeAppState($stored['appState']);
-		} elseif (array_key_exists('appState', $stored) && $stored['appState'] === null) {
-			unset($normalized['appState']);
 		}
 
 		if (array_key_exists('scrollToContent', $stored)) {
@@ -300,119 +334,6 @@ final class WhiteboardContentService {
 		}
 
 		return $normalized;
-	}
-
-	/**
-	 * @param array<string,mixed> $current
-	 * @param array<string,mixed> $incoming
-	 * @param array{uid:string,displayName:string,createdAt:int} $actorInfo
-	 *
-	 * @return array<string,mixed>
-	 */
-	private function mergeData(array $current, array $incoming, array $actorInfo, int $fileId): array {
-		$merged = $current;
-
-		if (array_key_exists('elements', $incoming)) {
-			$merged['elements'] = $this->mergeElements(
-				$current['elements'] ?? [],
-				$incoming['elements'],
-				$actorInfo,
-				$fileId,
-			);
-		}
-
-		if (array_key_exists('files', $incoming)) {
-			$merged['files'] = $incoming['files'];
-		}
-
-		if (array_key_exists('libraryItems', $incoming)) {
-			$merged['libraryItems'] = $incoming['libraryItems'];
-		}
-
-		if (array_key_exists('appState', $incoming)) {
-			if ($incoming['appState'] === null) {
-				unset($merged['appState']);
-			} else {
-				$merged['appState'] = $incoming['appState'];
-			}
-		}
-
-		if (array_key_exists('scrollToContent', $incoming)) {
-			$merged['scrollToContent'] = (bool)$incoming['scrollToContent'];
-		}
-
-		if (array_key_exists('libraryRef', $incoming)) {
-			if ($incoming['libraryRef'] === null) {
-				unset($merged['libraryRef']);
-			} else {
-				$ref = $this->sanitizeLibraryRef($incoming['libraryRef']);
-				if ($ref !== null) {
-					$merged['libraryRef'] = $ref;
-				}
-			}
-		}
-
-		return $merged;
-	}
-
-	/**
-	 * @param array<int,mixed> $currentElements
-	 * @param array<int,mixed> $incomingElements
-	 * @param array{uid:string,displayName:string,createdAt:int} $actorInfo
-	 *
-	 * @return array<int,mixed>
-	 */
-	private function mergeElements(array $currentElements, array $incomingElements, array $actorInfo, int $fileId): array {
-		$currentElementsById = $this->indexElementsById($currentElements);
-		$mergedElements = [];
-		$seenElementIds = [];
-
-		foreach ($incomingElements as $incomingElement) {
-			if (!is_array($incomingElement)) {
-				continue;
-			}
-
-			$elementId = $this->getElementId($incomingElement);
-			if ($elementId !== null && isset($seenElementIds[$elementId])) {
-				$this->logger->warning('Skipping duplicate whiteboard element ID', [
-					'app' => 'whiteboard',
-					'fileId' => $fileId,
-					'elementId' => $elementId,
-				]);
-				continue;
-			}
-			if ($elementId !== null) {
-				$seenElementIds[$elementId] = true;
-			}
-
-			$storedElement = $elementId !== null ? ($currentElementsById[$elementId] ?? null) : null;
-			$incomingCreator = $this->getCreator($incomingElement);
-			$mergedElement = $this->stripCreatorMetadata($incomingElement);
-
-			if ($storedElement !== null && $elementId !== null) {
-				$storedCreator = $this->getCreator($storedElement);
-				if ($storedCreator !== null) {
-					$storedProof = $this->getValidCreatorProof($fileId, $elementId, $storedElement, $storedCreator);
-					$mergedElement = $this->setCreator($mergedElement, $storedCreator, $storedProof);
-				}
-				$mergedElements[] = $mergedElement;
-				continue;
-			}
-
-			$validProof = $incomingCreator !== null && $elementId !== null
-				? $this->getValidCreatorProof($fileId, $elementId, $incomingElement, $incomingCreator)
-				: null;
-			if ($validProof !== null && $incomingCreator !== null) {
-				$creator = $incomingCreator;
-				$proof = $validProof;
-			} else {
-				$creator = $actorInfo;
-				$proof = $elementId !== null ? $this->createCreatorProof($fileId, $elementId, $creator) : null;
-			}
-			$mergedElements[] = $this->setCreator($mergedElement, $creator, $proof);
-		}
-
-		return $mergedElements;
 	}
 
 	/**
@@ -573,11 +494,40 @@ final class WhiteboardContentService {
 
 		foreach ($data as $element) {
 			if (is_array($element)) {
-				$elements[] = $element;
+				$elements[] = $this->withStringIds($element);
 			}
 		}
 
 		return $elements;
+	}
+
+	/**
+	 * Excalidraw's ids are strings; a board written by another tool may number
+	 * its elements, and then also the references to them
+	 *
+	 * @param array<mixed> $element
+	 * @return array<mixed>
+	 */
+	private function withStringIds(array $element): array {
+		$string = static fn (mixed $id): mixed => is_int($id) ? (string)$id : $id;
+		foreach (['id', 'containerId', 'frameId'] as $key) {
+			if (array_key_exists($key, $element)) {
+				$element[$key] = $string($element[$key]);
+			}
+		}
+		foreach (['startBinding', 'endBinding'] as $key) {
+			if (is_array($element[$key] ?? null) && array_key_exists('elementId', $element[$key])) {
+				$element[$key]['elementId'] = $string($element[$key]['elementId']);
+			}
+		}
+		if (is_array($element['boundElements'] ?? null)) {
+			foreach ($element['boundElements'] as $index => $bound) {
+				if (is_array($bound) && array_key_exists('id', $bound)) {
+					$element['boundElements'][$index]['id'] = $string($bound['id']);
+				}
+			}
+		}
+		return $element;
 	}
 
 	/**
@@ -642,6 +592,26 @@ final class WhiteboardContentService {
 	}
 
 	/**
+	 * The board settings a client may change, with values the editor accepts
+	 *
+	 * @param array<mixed> $settings
+	 * @return array<string,mixed>
+	 */
+	private function sanitizeSettings(array $settings): array {
+		$sanitized = [];
+		foreach (self::BOARD_SETTINGS as $key) {
+			$value = $settings[$key] ?? null;
+			$valid = $key === 'viewBackgroundColor'
+				? is_string($value) && strlen($value) <= 100
+				: is_int($value) && $value > 0 && $value <= 1000;
+			if ($valid) {
+				$sanitized[$key] = $value;
+			}
+		}
+		return $sanitized;
+	}
+
+	/**
 	 * A board references at most one library by {scope, name}; the live items
 	 * are resolved on open, so updating the library propagates to every board.
 	 *
@@ -660,69 +630,5 @@ final class WhiteboardContentService {
 			return ['scope' => $scope, 'name' => $name];
 		}
 		return null;
-	}
-
-	/**
-	 * @param mixed $value
-	 *
-	 * @return mixed
-	 */
-	/**
-	 * Excalidraw changes the version and nonce of an element on every edit, so
-	 * equal versions mean an unchanged scene, also when a newer client
-	 * serializes old elements differently (for example upgraded arrow bindings).
-	 *
-	 * @param array<string,mixed> $current
-	 * @param array<string,mixed> $merged
-	 */
-	private function hasSameElementVersions(array $current, array $merged): bool {
-		$versions = static function (array $data): ?array {
-			$list = [];
-			foreach ($data['elements'] ?? [] as $element) {
-				if (!is_array($element) || !is_int($element['version'] ?? null) || !is_int($element['versionNonce'] ?? null)) {
-					return null;
-				}
-				$list[] = [$element['id'] ?? null, $element['version'], $element['versionNonce']];
-			}
-			return $list;
-		};
-
-		$currentVersions = $versions($current);
-		if ($currentVersions === null || $currentVersions !== $versions($merged)) {
-			return false;
-		}
-
-		unset($current['elements'], $merged['elements']);
-		return $current === $merged;
-	}
-
-	private function canonicalize($value) {
-		if (is_array($value)) {
-			if (!$this->isList($value)) {
-				ksort($value);
-			}
-
-			foreach ($value as $key => $item) {
-				$value[$key] = $this->canonicalize($item);
-			}
-		}
-
-		return $value;
-	}
-
-	private function isList(array $array): bool {
-		if (function_exists('array_is_list')) {
-			return array_is_list($array);
-		}
-
-		$expectedKey = 0;
-		foreach ($array as $key => $_) {
-			if ($key !== $expectedKey) {
-				return false;
-			}
-			$expectedKey++;
-		}
-
-		return true;
 	}
 }

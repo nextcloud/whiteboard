@@ -398,6 +398,25 @@ async function resolveFileIdByDav(page: Page, name: string): Promise<string | nu
 	return null
 }
 
+/**
+ * Restores a version as the Files sidebar does: a WebDAV move to the restore
+ * target, then the event Files sends once it is done
+ */
+export async function restoreVersionLikeFiles(page: Page, fileId: number, source: string) {
+	await page.evaluate(async ({ fileId, source }) => {
+		const url = new URL(source, window.location.href)
+		const destination = url.href.replace(/\/versions\/[^/]+\/[^/]+$/, '/restore/target')
+		const response = await fetch(url, {
+			method: 'MOVE',
+			headers: { Destination: destination, requesttoken: (window as any).OC.requestToken },
+		})
+		if (!response.ok) {
+			throw new Error(`The restore failed with ${response.status}`)
+		}
+		(window as any)._nc_event_bus.emit('files_versions:restore:restored', { node: { fileid: fileId }, version: { fileId } })
+	}, { fileId, source })
+}
+
 export async function fetchBoardContent(page: Page, auth: { fileId: number | string, jwt: string }) {
 	const token = auth.jwt.startsWith('Bearer ') ? auth.jwt : `Bearer ${auth.jwt}`
 	const maxAttempts = 5

@@ -67,14 +67,24 @@ final class JWTService {
 		}
 	}
 
-	public function getUserIdFromJWT(string $jwt): string {
+	/**
+	 * @param int|null $fileId the board the request is about; a token made for another board is refused
+	 */
+	public function getUserIdFromJWT(string $jwt, ?int $fileId = null): string {
 		try {
 			$key = $this->configService->getJwtSecretKey();
 			$decoded = JWT::decode($jwt, new Key($key, JWTConsts::JWT_ALGORITHM));
-
-			return $decoded->userid;
 		} catch (Exception) {
 			throw new UnauthorizedException();
 		}
+		// Only a token of the board may open it; tokens of the admin settings carry no board and no user
+		if ($fileId !== null && (int)($decoded->fileId ?? 0) !== $fileId) {
+			throw new UnauthorizedException();
+		}
+		$userId = $decoded->userid ?? null;
+		if (!is_string($userId)) {
+			throw new UnauthorizedException();
+		}
+		return $userId;
 	}
 }
