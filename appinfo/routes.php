@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use OCA\Whiteboard\Controller\AiController;
 use OCA\Whiteboard\Controller\JWTController;
+use OCA\Whiteboard\Controller\PageController;
 use OCA\Whiteboard\Controller\PickerController;
 use OCA\Whiteboard\Controller\RecordingController;
 use OCA\Whiteboard\Controller\SettingsController;
@@ -38,6 +39,8 @@ return [
 		['name' => 'Picker#index', 'url' => 'picker', 'verb' => 'GET'],
 		/** @see WhiteboardController::update() */
 		['name' => 'Whiteboard#update', 'url' => '{fileId}', 'verb' => 'PUT'],
+		/** @see PageController::standalone() */
+		['name' => 'Page#standalone', 'url' => 'standalone/{fileId}', 'verb' => 'GET'],
 		/** @see WhiteboardController::show() */
 		['name' => 'Whiteboard#show', 'url' => '{fileId}', 'verb' => 'GET'],
 		/** @see RecordingController::recording() */

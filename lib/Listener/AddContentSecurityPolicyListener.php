@@ -73,6 +73,7 @@ class AddContentSecurityPolicyListener implements IEventListener {
 		return $this->pathMatches($pathInfo, '/apps/files')
 			|| $this->pathMatches($pathInfo, '/settings/admin/whiteboard')
 			|| $this->pathMatches($pathInfo, '/apps/whiteboard/recording')
+			|| $this->pathMatches($pathInfo, '/apps/whiteboard/standalone')
 			|| $this->pathMatches($pathInfo, '/apps/spreed')
 			|| $this->pathMatches($pathInfo, '/call')
 			|| $this->pathMatches($pathInfo, '/f')
