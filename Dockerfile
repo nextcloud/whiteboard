@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-FROM node:26.13.0-alpine AS build
+FROM node:26.13.1-alpine AS build
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 ARG NODE_ENV=production
 ENV PUPPETEER_SKIP_DOWNLOAD=1
@@ -14,7 +14,7 @@ RUN npm install --global clean-modules && \
     npm cache clean --force
 COPY . .
 
-FROM node:26.13.0-alpine
+FROM node:26.13.1-alpine
 WORKDIR /app
 ENV NODE_ENV=production \
     HOME=/app \
@@ -24,7 +24,9 @@ ENV NODE_ENV=production \
     CRASHPAD_DATABASE=/tmp/chrome-crashpad \
     RECORDINGS_DIR=/tmp/whiteboard-recordings \
     CHROME_OPTIONS="--max-old-space-size=2048 --no-sandbox"
-RUN apk add --no-cache \
+RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
+    apk upgrade --no-cache && \
+    apk add --no-cache \
         ca-certificates \
         tini \
         netcat-openbsd \
@@ -35,6 +37,9 @@ RUN apk add --no-cache \
         ttf-freefont \
         ffmpeg && \
     chromium-browser --version && \
+    npm install --global "npm@$(node -p "require('/tmp/package.json').engines.npm") >=$(npm --version)" && \
+    npm --version && \
+    rm -rf /app/.npm && \
     install -d -m 0700 -o nobody -g nobody /tmp/chromium-runtime /tmp/chrome-crashpad /tmp/whiteboard-recordings && \
     mv /usr/lib/chromium/chrome_crashpad_handler /usr/lib/chromium/chrome_crashpad_handler.real && \
     printf '%s\n' '#!/bin/sh' 'exec /usr/lib/chromium/chrome_crashpad_handler.real --no-periodic-tasks --database="${CRASHPAD_DATABASE:-/tmp/chrome-crashpad}" "$@"' >/usr/lib/chromium/chrome_crashpad_handler && \
