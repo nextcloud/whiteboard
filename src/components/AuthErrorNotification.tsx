@@ -27,7 +27,7 @@ const getAuthErrorConfig = (errorType: AuthErrorType, isPersistent: boolean): Au
 			icon: mdiAlert,
 			title: isPersistent ? t('whiteboard', 'Authentication Configuration Issue') : t('whiteboard', 'Authentication Error'),
 			message: isPersistent
-				? t('whiteboard', 'Unable to connect to collaboration server. The JWT secret may be misconfigured. You can continue working locally, and your changes will be saved to your device.')
+				? t('whiteboard', 'Unable to connect to collaboration server. The JWT secret may be misconfigured. Your changes are still saved to Nextcloud, but you do not see the changes of others live.')
 				: t('whiteboard', 'Temporary authentication issue. Retrying connection…'),
 			actionText: isPersistent ? t('whiteboard', 'Open Admin Settings') : undefined,
 			severity: isPersistent ? 'error' : 'warning',
@@ -44,7 +44,7 @@ const getAuthErrorConfig = (errorType: AuthErrorType, isPersistent: boolean): Au
 			icon: mdiAlert,
 			title: isPersistent ? t('whiteboard', 'Access Denied') : t('whiteboard', 'Authentication Issue'),
 			message: isPersistent
-				? t('whiteboard', 'You do not have permission to access this whiteboard for collaboration. You can continue working locally.')
+				? t('whiteboard', 'You do not have permission to access this whiteboard for collaboration.')
 				: t('whiteboard', 'Authentication issue detected. Retrying…'),
 			severity: isPersistent ? 'error' : 'warning',
 		}

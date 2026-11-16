@@ -75,6 +75,42 @@ describe('token of a deleted board', () => {
 		}
 	})
 
+	it('still gets tokens to save to Nextcloud when the collaboration server keeps refusing them', async () => {
+		const encode = (part) => btoa(JSON.stringify(part)).replace(/=+$/, '')
+		const now = Math.floor(Date.now() / 1000)
+		const token = `${encode({ alg: 'HS256' })}.${encode({ userid: 'alice', fileId: 1, iat: now, exp: now + 900 })}.signature`
+		axiosGet.mockResolvedValue({ data: { token } })
+		for (let i = 0; i < 5; i++) {
+			useCollaborationStore.getState().incrementAuthFailure('jwt_secret_mismatch', 'WebSocket authentication failed')
+		}
+		expect(useCollaborationStore.getState().authError.isPersistent).toBe(true)
+
+		await expect(useJWTStore.getState().getJWT()).resolves.toBe(token)
+		expect(useWhiteboardConfigStore.getState().isReadOnly).toBe(false)
+	})
+
+	it('keeps refreshing the token before it expires when the collaboration server keeps refusing it', async () => {
+		vi.useFakeTimers()
+		try {
+			const encode = (part) => btoa(JSON.stringify(part)).replace(/=+$/, '')
+			const now = Math.floor(Date.now() / 1000)
+			const token = `${encode({ alg: 'HS256' })}.${encode({ userid: 'alice', fileId: 1, iat: now - 840, exp: now + 60 })}.signature`
+			useJWTStore.setState({ tokens: { 1: token }, tokenExpiries: { 1: now + 60 } })
+			axiosGet.mockResolvedValue({ data: { token } })
+			for (let i = 0; i < 5; i++) {
+				useCollaborationStore.getState().incrementAuthFailure('jwt_secret_mismatch', 'WebSocket authentication failed')
+			}
+
+			useJWTStore.getState().setupAutoRefresh('1')
+			await vi.advanceTimersByTimeAsync(10_000)
+
+			expect(axiosGet).toHaveBeenCalledTimes(1)
+		} finally {
+			useJWTStore.getState().clearTokens()
+			vi.useRealTimers()
+		}
+	})
+
 	it('keeps retrying after a server error', async () => {
 		axiosGet.mockRejectedValue(httpError(500))
 

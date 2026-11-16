@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<files psalm-version="6.20.10@7fc81490f861c801061836a9010603d2393bf8da">
+<files psalm-version="6.10.0@9c0add4eb88d4b169ac04acb7c679918cbb9c252">
   <file src="lib/AppInfo/Application.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
@@ -15,21 +15,6 @@
       <code><![CDATA[SettingsController]]></code>
     </UnusedClass>
   </file>
-  <file src="lib/Controller/WhiteboardController.php">
-    <UnusedClass>
-      <code><![CDATA[WhiteboardController]]></code>
-    </UnusedClass>
-  </file>
-  <file src="lib/Exception/BoardReplacedException.php">
-    <PossiblyUnusedProperty>
-      <code><![CDATA[$state]]></code>
-    </PossiblyUnusedProperty>
-  </file>
-  <file src="lib/Exception/BoardUnreadableException.php">
-    <PossiblyUnusedProperty>
-      <code><![CDATA[$state]]></code>
-    </PossiblyUnusedProperty>
-  </file>
   <file src="lib/Listener/AddContentSecurityPolicyListener.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
@@ -41,9 +26,9 @@
     </PossiblyUnusedMethod>
   </file>
   <file src="lib/Listener/BoardOutsideWriteListener.php">
-    <UnusedClass>
-      <code><![CDATA[BoardOutsideWriteListener]]></code>
-    </UnusedClass>
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
   </file>
   <file src="lib/Listener/LoadViewerListener.php">
     <PossiblyUnusedMethod>
@@ -78,8 +63,6 @@
   <file src="lib/Service/BoardSyncService.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
-      <code><![CDATA[read]]></code>
-      <code><![CDATA[save]]></code>
     </PossiblyUnusedMethod>
   </file>
   <file src="lib/Service/ConfigService.php">

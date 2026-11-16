@@ -36,7 +36,6 @@ use OCP\Lock\LockedException;
 use OCP\Security\ISecureRandom;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
-use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 /**
@@ -238,7 +237,7 @@ class BoardSyncServiceTest extends TestCase {
 			$config->method('getSystemValueBool')->willReturnMap([['filelocking.enabled', true, $fileLocking]]);
 			$config->method('getSystemValueString')->willReturnMap([['memcache.locking', '', $memcacheLocking]]);
 			return new BoardSyncService(
-				new WhiteboardContentService($this->createMock(LoggerInterface::class), new ConfigService($appConfig, $this->createMock(IConfig::class))),
+				new WhiteboardContentService(new ConfigService($appConfig, $this->createMock(IConfig::class))),
 				$this->states,
 				$locking,
 				$random,
@@ -676,7 +675,7 @@ class BoardSyncServiceTest extends TestCase {
 			$this->service->save($this->file, $sync['epoch'], $sync['rev'], [$this->box('a', 1)], [], $this->actor());
 		} catch (\RuntimeException) {
 		}
-		$bytes = (new WhiteboardContentService($this->createMock(LoggerInterface::class), new ConfigService($this->createMock(IAppConfig::class), $this->createMock(IConfig::class))))->encode(['x' => 1]);
+		$bytes = (new WhiteboardContentService(new ConfigService($this->createMock(IAppConfig::class), $this->createMock(IConfig::class))))->encode(['x' => 1]);
 		$this->states->rows[42]['pending_digest'] = hash('sha256', $bytes);
 		$this->states->rows[42]['pending_at'] = $this->now;
 		$this->bytes = $bytes;

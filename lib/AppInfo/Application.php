@@ -11,15 +11,18 @@ namespace OCA\Whiteboard\AppInfo;
 
 use OCA\Files\Event\LoadAdditionalScriptsEvent;
 use OCA\Files_Sharing\Event\BeforeTemplateRenderedEvent;
+use OCA\Files_Versions\Events\VersionRestoredEvent;
 use OCA\Viewer\Event\LoadViewer;
 use OCA\Whiteboard\ConfigLexicon;
 use OCA\Whiteboard\Listener\AddContentSecurityPolicyListener;
 use OCA\Whiteboard\Listener\BeforeTemplateRenderedListener;
+use OCA\Whiteboard\Listener\BoardOutsideWriteListener;
 use OCA\Whiteboard\Listener\FilesLoadAdditionalScriptsListener;
 use OCA\Whiteboard\Listener\LoadTextEditorListener;
 use OCA\Whiteboard\Listener\LoadViewerListener;
 use OCA\Whiteboard\Listener\RegisterDirectEditorListener;
 use OCA\Whiteboard\Listener\RegisterTemplateCreatorListener;
+use OCA\Whiteboard\Service\BoardSyncService;
 use OCA\Whiteboard\Settings\SetupCheck;
 use OCA\Whiteboard\Template\GlobalTemplateProvider;
 use OCP\AppFramework\App;
@@ -29,6 +32,8 @@ use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent as HttpBeforeTemplateRenderedEvent;
 use OCP\Config\Lexicon\ILexicon;
 use OCP\DirectEditing\RegisterDirectEditorEvent;
+use OCP\Files\Events\Node\NodeDeletedEvent;
+use OCP\Files\Events\Node\NodeWrittenEvent;
 use OCP\Files\Template\ITemplateManager;
 use OCP\Files\Template\RegisterTemplateCreatorEvent;
 use OCP\IL10N;
@@ -54,6 +59,11 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(RegisterTemplateCreatorEvent::class, RegisterTemplateCreatorListener::class);
 		$context->registerEventListener(BeforeTemplateRenderedEvent::class, BeforeTemplateRenderedListener::class);
 		$context->registerEventListener(RegisterDirectEditorEvent::class, RegisterDirectEditorListener::class);
+		$context->registerEventListener(NodeWrittenEvent::class, BoardOutsideWriteListener::class);
+		$context->registerEventListener(NodeDeletedEvent::class, BoardOutsideWriteListener::class);
+		if (class_exists(VersionRestoredEvent::class)) {
+			$context->registerEventListener(VersionRestoredEvent::class, BoardOutsideWriteListener::class);
+		}
 		if (interface_exists(ILexicon::class)) {
 			$context->registerConfigLexicon(ConfigLexicon::class);
 		}
@@ -79,6 +89,12 @@ class Application extends App implements IBootstrap {
 	#[\Override]
 	public function boot(IBootContext $context): void {
 		[$major] = Util::getVersion();
+		// Cancels a save that would write over bytes someone else wrote since it read the board
+		Util::connectHook('OC_Filesystem', 'write', BoardSyncService::class, 'guardOwnWrite');
+		// Nextcloud 31, and any server whose files_versions is disabled, has no VersionRestoredEvent; connecting this hook throws from 36 on
+		if ($major < 36 && !class_exists(VersionRestoredEvent::class)) {
+			Util::connectHook('\\OCP\\Versions', 'rollback', BoardOutsideWriteListener::class, 'onRollback');
+		}
 		if ($major < 30) {
 			$context->injectFn(function (ITemplateManager $templateManager, IL10N $l10n) {
 				$templateManager->registerTemplateFileCreator(function () use ($l10n) {
