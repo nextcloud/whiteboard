@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<files psalm-version="6.10.0@9c0add4eb88d4b169ac04acb7c679918cbb9c252">
+<files psalm-version="6.20.10@7fc81490f861c801061836a9010603d2393bf8da">
   <file src="lib/AppInfo/Application.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
@@ -20,6 +20,16 @@
       <code><![CDATA[WhiteboardController]]></code>
     </UnusedClass>
   </file>
+  <file src="lib/Exception/BoardReplacedException.php">
+    <PossiblyUnusedProperty>
+      <code><![CDATA[$state]]></code>
+    </PossiblyUnusedProperty>
+  </file>
+  <file src="lib/Exception/BoardUnreadableException.php">
+    <PossiblyUnusedProperty>
+      <code><![CDATA[$state]]></code>
+    </PossiblyUnusedProperty>
+  </file>
   <file src="lib/Listener/AddContentSecurityPolicyListener.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
@@ -29,6 +39,11 @@
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
     </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Listener/BoardOutsideWriteListener.php">
+    <UnusedClass>
+      <code><![CDATA[BoardOutsideWriteListener]]></code>
+    </UnusedClass>
   </file>
   <file src="lib/Listener/LoadViewerListener.php">
     <PossiblyUnusedMethod>
@@ -45,11 +60,6 @@
       <code><![CDATA[Version3000Date20261106000000]]></code>
     </UnusedClass>
   </file>
-  <file src="lib/Model/BoardState.php">
-    <PossiblyUnusedMethod>
-      <code><![CDATA[toSync]]></code>
-    </PossiblyUnusedMethod>
-  </file>
   <file src="lib/Service/Authentication/AuthenticateUserServiceFactory.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
@@ -61,9 +71,16 @@
     </PossiblyUnusedMethod>
   </file>
   <file src="lib/Service/BoardStateStore.php">
-    <UnusedClass>
-      <code><![CDATA[BoardStateStore]]></code>
-    </UnusedClass>
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="lib/Service/BoardSyncService.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+      <code><![CDATA[read]]></code>
+      <code><![CDATA[save]]></code>
+    </PossiblyUnusedMethod>
   </file>
   <file src="lib/Service/ConfigService.php">
     <PossiblyUnusedMethod>
@@ -91,16 +108,8 @@
   <file src="lib/Service/WhiteboardContentService.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
-      <code><![CDATA[decode]]></code>
-      <code><![CDATA[encode]]></code>
-      <code><![CDATA[merge]]></code>
-      <code><![CDATA[changesSince]]></code>
-      <code><![CDATA[forClient]]></code>
-      <code><![CDATA[latestRevision]]></code>
-      <code><![CDATA[missingFiles]]></code>
     </PossiblyUnusedMethod>
   </file>
-
   <file src="lib/Service/WhiteboardLibraryService.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
