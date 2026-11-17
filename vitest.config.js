@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 import { execSync } from 'child_process'
 
@@ -19,6 +20,8 @@ try {
   console.warn('⚠️  Skipping Redis-dependent tests (multinode-redis.spec.mjs, redisClient.spec.mjs)')
 }
 export default defineConfig({
+	// Compiles .vue files for the component tests.
+	plugins: [vue()],
 	test: {
 		environment: 'node',
 		// The viewer bundle test builds the whole app
@@ -34,7 +37,8 @@ export default defineConfig({
 			],
 		server: {
 			deps: {
-				inline: ['@nextcloud/excalidraw'],
+				// @nextcloud/vue imports its own CSS, which only Vite can load.
+				inline: ['@nextcloud/excalidraw', /@nextcloud\/vue/],
 			},
 		},
 	},
