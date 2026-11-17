@@ -67,8 +67,22 @@ export default defineComponent({
 		},
 
 		onCancel() {
+			this.close('cancel')
+		},
+
+		/**
+		 * Hide the modal before the parent unmounts it, so NcModal cancels its pending enter transition and focus trap
+		 *
+		 * @param {string} event - The event to emit
+		 * @param {object} [payload] - The event payload
+		 */
+		async close(event, payload) {
+			if (!this.show) {
+				return
+			}
 			this.show = false
-			this.$emit('cancel')
+			await this.$nextTick()
+			this.$emit(event, payload)
 		},
 
 		markAssistantGeneratedElements(elements) {
@@ -239,7 +253,7 @@ export default defineComponent({
 				const taskResponse = response.data.ocs.data.task.output.output
 
 				const res = await this.getExcalidrawElements(taskResponse)
-				this.$emit('submit', res)
+				this.close('submit', res)
 			} catch (error) {
 				this.mermaidError = true
 				console.error('Error generating diagram:', error)
@@ -254,9 +268,10 @@ export default defineComponent({
 
 <template>
 	<NcModal
-		v-if="show"
+		:show="show"
 		size="normal"
-		@close="onCancel">
+		@update:show="show = $event"
+		@close="$emit('cancel')">
 		<div class="assistant-dialog">
 			<div>
 				<h2>
