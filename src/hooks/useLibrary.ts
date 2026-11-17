@@ -4,12 +4,12 @@
  */
 
 import { useCallback, useState } from 'react'
-import { useJWTStore } from '../stores/useJwtStore'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { useJWTStore } from '../stores/useJwtStore.ts'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
 import type { LibraryItem, LibraryItems } from '@nextcloud/excalidraw/types'
-import logger from '../utils/logger'
+import logger from '../utils/logger.ts'
 
 type LibraryItemExtended = LibraryItem & {
 	filename?: string;
@@ -39,7 +39,9 @@ export function useLibrary() {
 				'Content-Type': 'application/json',
 				'X-Requested-With': 'XMLHttpRequest',
 			}
-			if (jwt) headers.Authorization = `Bearer ${jwt}`
+			if (jwt) {
+				headers.Authorization = `Bearer ${jwt}`
+			}
 			const url = generateUrl('apps/whiteboard/library')
 			const response = await globalThis.fetch(url, {
 				method: 'GET',
@@ -110,7 +112,9 @@ export function useLibrary() {
 				'Content-Type': 'application/json',
 				'X-Requested-With': 'XMLHttpRequest',
 			}
-			if (jwt) headers.Authorization = `Bearer ${jwt}`
+			if (jwt) {
+				headers.Authorization = `Bearer ${jwt}`
+			}
 			// Persist only the writable "My library" items — items tagged with a
 			// libraryName belong to a read-only source resolved per board.
 			const itemsToSave = items.filter(item => !(item as LibraryItemExtended).libraryName)

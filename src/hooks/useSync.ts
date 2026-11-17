@@ -161,7 +161,14 @@ export function useSync() {
 		// Allow force sync for final save, otherwise check normal conditions
 		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !savesToServer || pendingServerMerge || isReadOnly || (!isStandalone && collabStatus !== 'online'))) {
 			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, savesToServer, isReadOnly, collabStatus, isStandalone,
+				isWorkerReady,
+				worker: !!worker,
+				fileId,
+				excalidrawAPI: !!excalidrawAPI,
+				savesToServer,
+				isReadOnly,
+				collabStatus,
+				isStandalone,
 			})
 			return
 		}
@@ -169,7 +176,11 @@ export function useSync() {
 		// For force sync, only check minimum requirements
 		if (forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly)) {
 			logger.debug('[Sync] Skipping forced server sync - minimum requirements not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isReadOnly,
+				isWorkerReady,
+				worker: !!worker,
+				fileId,
+				excalidrawAPI: !!excalidrawAPI,
+				isReadOnly,
 			})
 			return
 		}

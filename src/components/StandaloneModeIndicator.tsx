@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { useState, memo, useCallback } from 'react'
-import { Icon } from '@mdi/react'
 import { mdiAccountNetworkOff } from '@mdi/js'
+import { Icon } from '@mdi/react'
 import { t } from '@nextcloud/l10n'
+import { memo, useCallback, useState } from 'react'
 
 const TOOLTIP = t(
 	'whiteboard',
@@ -14,10 +14,10 @@ const TOOLTIP = t(
 	+ 'Opening this whiteboard in multiple browser tabs or windows at the same time may cause data conflicts.',
 )
 
-const StandaloneModeIndicatorComponent = () => {
+function StandaloneModeIndicatorComponent() {
 	const [expanded, setExpanded] = useState(false)
 
-	const toggleExpanded = useCallback(() => setExpanded(prev => !prev), [])
+	const toggleExpanded = useCallback(() => setExpanded((prev) => !prev), [])
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
 		if (e.key === 'Enter' || e.key === ' ') {

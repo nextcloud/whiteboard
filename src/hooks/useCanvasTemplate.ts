@@ -4,8 +4,8 @@
  */
 
 import { useCallback } from 'react'
-import { useJWTStore } from '../stores/useJwtStore'
-import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
+import { useJWTStore } from '../stores/useJwtStore.ts'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
 import { generateUrl } from '@nextcloud/router'
 import type { BinaryFiles } from '@nextcloud/excalidraw/types'
 
@@ -28,7 +28,9 @@ export function useCanvasTemplate() {
 			'Content-Type': 'application/json',
 			'X-Requested-With': 'XMLHttpRequest',
 		}
-		if (jwt) headers.Authorization = `Bearer ${jwt}`
+		if (jwt) {
+			headers.Authorization = `Bearer ${jwt}`
+		}
 		const response = await globalThis.fetch(generateUrl('apps/whiteboard/canvas-template'), {
 			method: 'POST',
 			headers,
