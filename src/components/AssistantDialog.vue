@@ -268,8 +268,9 @@ export default defineComponent({
 
 <template>
 	<NcModal
-		v-model:show="show"
+		:show="show"
 		size="normal"
+		@update:show="show = $event"
 		@close="$emit('cancel')">
 		<div class="assistant-dialog">
 			<div>

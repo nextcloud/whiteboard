@@ -281,8 +281,9 @@ export default defineComponent({
 
 <template>
 	<NcModal
-		v-model:show="show"
+		:show="show"
 		class="table-editor-modal"
+		@update:show="show = $event"
 		@close="$emit('cancel')">
 		<div class="table-editor-dialog">
 			<div class="editor-header">
