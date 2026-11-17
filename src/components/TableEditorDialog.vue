@@ -144,8 +144,22 @@ export default defineComponent({
 		},
 
 		onCancel() {
+			this.close('cancel')
+		},
+
+		/**
+		 * Hide the modal before the parent unmounts it, so NcModal cancels its pending enter transition and focus trap
+		 *
+		 * @param {string} event - The event to emit
+		 * @param {object} [payload] - The event payload
+		 */
+		async close(event, payload) {
+			if (!this.show) {
+				return
+			}
 			this.show = false
-			this.$emit('cancel')
+			await this.$nextTick()
+			this.$emit(event, payload)
 		},
 
 		async onInsert() {
@@ -174,11 +188,9 @@ export default defineComponent({
 
 				const tableHtml = table.outerHTML.trim()
 
-				this.$emit('submit', {
+				this.close('submit', {
 					html: tableHtml,
 				})
-
-				this.show = false
 			} catch (error) {
 				console.error('Failed to get editor content:', error)
 				this.error = t('whiteboard', 'Failed to get content: {error}', { error: error.message })
@@ -269,9 +281,9 @@ export default defineComponent({
 
 <template>
 	<NcModal
-		v-if="show"
+		v-model:show="show"
 		class="table-editor-modal"
-		@close="onCancel">
+		@close="$emit('cancel')">
 		<div class="table-editor-dialog">
 			<div class="editor-header">
 				<h2>
