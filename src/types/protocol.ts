@@ -20,7 +20,7 @@ export type WorkerInboundMessage
 			type: 'SYNC_TO_SERVER'
 			fileId: number
 			url: string
-			jwt: string
+			jwt?: string // omitted in standalone mode; session cookies cover auth
 			elements: readonly ExcalidrawElement[]
 			files: BinaryFiles
 			sceneKey: string

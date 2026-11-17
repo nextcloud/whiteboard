@@ -236,6 +236,84 @@
 	}
 }
 
+.standalone-mode-indicator {
+	display: flex;
+	align-items: center;
+	padding: 8px;
+	border-radius: 8px;
+	transition: all 0.2s ease;
+	position: absolute;
+	bottom: 80px;
+	inset-inline-end: 16px;
+	z-index: 10000;
+	max-width: 40px;
+	cursor: pointer;
+	opacity: 0.9;
+	font-size: 13px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+	background-color: rgba(255, 152, 0, 0.15);
+	color: rgba(200, 110, 0, 1);
+	border: 1px solid rgba(255, 152, 0, 0.4);
+
+	&__icon-container {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 24px;
+		min-height: 24px;
+	}
+
+	&__content {
+		display: flex;
+		align-items: center;
+		overflow: hidden;
+		max-width: 0;
+		opacity: 0;
+		transition: all 0.2s ease;
+	}
+
+	&__text {
+		white-space: nowrap;
+		margin-inline-start: 8px;
+		font-weight: 600;
+		font-size: 13px;
+	}
+
+	&--expanded {
+		max-width: 150px;
+		padding: 8px 12px;
+		z-index: 10001;
+		background-color: var(--color-main-background);
+
+		.standalone-mode-indicator__content {
+			max-width: 110px;
+			opacity: 1;
+		}
+	}
+
+	&:hover {
+		opacity: 1;
+		box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+		background-color: var(--color-main-background);
+		max-width: 150px;
+
+		.standalone-mode-indicator__content {
+			max-width: 110px;
+			opacity: 1;
+		}
+	}
+
+	&:focus-visible {
+		@include tokens.focus-ring();
+	}
+}
+
+@media (prefers-color-scheme: dark) {
+	.standalone-mode-indicator {
+		color: rgba(255, 180, 60, 1);
+	}
+}
+
 .App--version-preview {
 	.grid-toggle-button {
 		display: none;

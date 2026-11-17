@@ -4,11 +4,12 @@
  */
 
 import { useCallback, useState } from 'react'
-import { useJWTStore } from '../stores/useJwtStore'
+import { useJWTStore } from '../stores/useJwtStore.ts'
+import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore.ts'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
 import type { LibraryItem, LibraryItems } from '@nextcloud/excalidraw/types'
-import logger from '../utils/logger'
+import logger from '../utils/logger.ts'
 
 type LibraryItemExtended = LibraryItem & {
 	filename?: string;
@@ -28,19 +29,23 @@ export function useLibrary() {
 
 	const fetchLibraryItems = useCallback(async (): Promise<LibraryItems | null> => {
 		try {
-			const jwt = await getJWT()
-			if (!jwt) {
+			const isStandalone = !useWhiteboardConfigStore.getState().collabBackendUrl
+			const jwt = isStandalone ? null : await getJWT()
+			if (!isStandalone && !jwt) {
 				logger.warn('[Library] No JWT found, cannot fetch library')
 				return null
+			}
+			const headers: Record<string, string> = {
+				'Content-Type': 'application/json',
+				'X-Requested-With': 'XMLHttpRequest',
+			}
+			if (jwt) {
+				headers.Authorization = `Bearer ${jwt}`
 			}
 			const url = generateUrl('apps/whiteboard/library')
 			const response = await globalThis.fetch(url, {
 				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest',
-					Authorization: `Bearer ${jwt}`,
-				},
+				headers,
 			})
 
 			if (!response.ok) {
@@ -97,10 +102,18 @@ export function useLibrary() {
 
 	const updateLibraryItems = useCallback(async (items: LibraryItems): Promise<void> => {
 		try {
-			const jwt = await getJWT()
-			if (!jwt) {
+			const isStandalone = !useWhiteboardConfigStore.getState().collabBackendUrl
+			const jwt = isStandalone ? null : await getJWT()
+			if (!isStandalone && !jwt) {
 				logger.warn('[Library] No JWT found, cannot update library')
 				return
+			}
+			const headers: Record<string, string> = {
+				'Content-Type': 'application/json',
+				'X-Requested-With': 'XMLHttpRequest',
+			}
+			if (jwt) {
+				headers.Authorization = `Bearer ${jwt}`
 			}
 			// Persist only the writable "My library" items — items tagged with a
 			// libraryName belong to a read-only source resolved per board.
@@ -108,11 +121,7 @@ export function useLibrary() {
 			const url = generateUrl('apps/whiteboard/library')
 			const response = await globalThis.fetch(url, {
 				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest',
-					Authorization: `Bearer ${jwt}`,
-				},
+				headers,
 				body: JSON.stringify({ items: itemsToSave }),
 			})
 
