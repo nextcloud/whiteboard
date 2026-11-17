@@ -91,6 +91,13 @@
   <file src="lib/Service/WhiteboardContentService.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
+      <code><![CDATA[decode]]></code>
+      <code><![CDATA[encode]]></code>
+      <code><![CDATA[merge]]></code>
+      <code><![CDATA[changesSince]]></code>
+      <code><![CDATA[forClient]]></code>
+      <code><![CDATA[latestRevision]]></code>
+      <code><![CDATA[missingFiles]]></code>
     </PossiblyUnusedMethod>
   </file>
 
