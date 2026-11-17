@@ -10,8 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { SaveStatusIndicator } = await import('../../src/components/SaveStatusIndicator.tsx')
 const { BoardUnavailable } = await import('../../src/components/BoardUnavailable.tsx')
+const { NetworkStatusIndicator } = await import('../../src/components/NetworkStatusIndicator.tsx')
 const { useBoardStatusStore } = await import('../../src/stores/useBoardStatusStore.ts')
 const { useWhiteboardConfigStore } = await import('../../src/stores/useWhiteboardConfigStore.ts')
+const { useCollaborationStore } = await import('../../src/stores/useCollaborationStore.ts')
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -135,5 +137,23 @@ describe('save state shown on the board', () => {
 		await show(BoardUnavailable, status())
 
 		expect(container.textContent).toBe('')
+	})
+
+	it('does not tell people their changes stay on the device when live collaboration is down', async () => {
+		useCollaborationStore.setState({ status: 'offline' })
+		await show(NetworkStatusIndicator, status())
+
+		const label = container.querySelector('[role="button"]').getAttribute('title')
+		expect(label).not.toMatch(/saved locally/i)
+		expect(label).toMatch(/still saved/i)
+	})
+
+	it('shows no collaboration state when no collaboration server is set up', async () => {
+		useWhiteboardConfigStore.setState({ collabBackendUrl: '' })
+		useCollaborationStore.setState({ status: 'offline' })
+		await show(NetworkStatusIndicator, status())
+
+		expect(container.textContent).toBe('')
+		expect(container.querySelector('[role="button"]')).toBeNull()
 	})
 })

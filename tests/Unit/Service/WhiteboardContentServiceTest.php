@@ -15,7 +15,6 @@ use OCP\AppFramework\Services\IAppConfig;
 use OCP\Files\File;
 use OCP\IConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class WhiteboardContentServiceTest extends TestCase {
@@ -639,7 +638,7 @@ class WhiteboardContentServiceTest extends TestCase {
 	}
 
 	private function service(): WhiteboardContentService {
-		return new WhiteboardContentService($this->createMock(LoggerInterface::class), $this->configService());
+		return new WhiteboardContentService($this->configService());
 	}
 
 	/**

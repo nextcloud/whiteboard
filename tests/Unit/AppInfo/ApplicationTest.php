@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCA\Whiteboard\AppInfo;
 
 use OCA\Whiteboard\ConfigLexicon;
+use OCA\Whiteboard\Service\BoardSyncService;
+use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\Config\Lexicon\ILexicon;
 
@@ -23,5 +25,18 @@ class ApplicationTest extends \Test\TestCase {
 
 		$app = new Application();
 		$app->register($registrationContext);
+	}
+
+	public function testBootGuardsSavesAgainstWritesOfOthers(): void {
+		(new Application())->boot($this->createMock(IBootContext::class));
+
+		$this->assertContains(['class' => BoardSyncService::class, 'name' => 'guardOwnWrite'], \OC_Hook::getHooks()['OC_Filesystem']['write'] ?? []);
+	}
+
+	#[\Override]
+	protected function tearDown(): void {
+		// As the test bootstrap leaves it
+		\OC_Hook::clear('OC_Filesystem', 'write');
+		parent::tearDown();
 	}
 }

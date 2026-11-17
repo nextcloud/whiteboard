@@ -10,7 +10,6 @@ import {
 	captureBoardAuthFromSave,
 	createWhiteboard,
 	fetchBoardContent,
-	getBoardAuth,
 	openFilesApp,
 } from '../support/utils'
 
@@ -23,14 +22,10 @@ test('offline edits sync after reconnect', async ({ page }) => {
 	const boardName = `Offline board ${Date.now()}`
 
 	await createWhiteboard(page, { name: boardName })
+	// The first save can leave as soon as the text is in
+	const saved = captureBoardAuthFromSave(page, { containsText: 'Online text' })
 	await addTextElement(page, 'Online text')
-
-	let auth
-	try {
-		auth = await getBoardAuth(page)
-	} catch {
-		auth = await captureBoardAuthFromSave(page)
-	}
+	const auth = await saved
 
 	const status = page.locator('.network-status')
 

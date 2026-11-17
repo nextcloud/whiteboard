@@ -35,3 +35,16 @@ describe.each(['1.5.9', '2.0.0'])('board saved by Whiteboard %s', (version) => {
 		expect(board.files[image.fileId]).toBeDefined()
 	})
 })
+
+// The engine tests stand in for this rule of Excalidraw (tests/integration/boardSync.spec.mjs): an element out of index order gets a later index and a new version
+describe('restoring elements out of index order', () => {
+	it('gives the later element a later index and a higher version', () => {
+		const box = (id, index) => ({ id, type: 'rectangle', x: 0, y: 0, width: 10, height: 10, index, version: 3, versionNonce: 7 })
+
+		const [first, second] = restoreElements([box('a', 'a2'), box('b', 'a1')], null)
+
+		expect(first).toMatchObject({ id: 'a', index: 'a2', version: 3 })
+		expect(second.index > first.index).toBe(true)
+		expect(second.version).toBeGreaterThan(3)
+	})
+})
