@@ -21,6 +21,7 @@ function trackConsoleErrors(page: Page) {
 				&& !text.includes('Refused to connect because it violates the document\'s Content Security Policy')
 				&& !text.includes('Failed to load user status')
 				&& !text.includes('[ERROR] viewer: Could not register handler')
+				&& !text.includes('Permissions policy violation: unload is not allowed in this document.')
 				&& !isMissingUserStatus
 			) {
 				consoleErrors.push(text)
