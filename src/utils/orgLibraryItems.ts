@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { LibraryItems } from '@nextcloud/excalidraw/types'
+import type { LibraryItem, LibraryItems } from '@nextcloud/excalidraw/types'
 import type { LibraryEntry } from '../hooks/useLibraryCatalog.ts'
 import type { LibraryRef } from '../stores/useWhiteboardConfigStore.ts'
 
@@ -25,4 +25,8 @@ export async function resolveOrgLibraryItems(
 		logger.error('[Library] Error resolving organization library:', result.reason)
 		return []
 	})
+}
+
+export function isFromOrgLibrary(item: LibraryItem & { libraryName?: string }, name: string): boolean {
+	return item.id.startsWith('org:') && item.libraryName === name
 }

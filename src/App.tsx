@@ -5,7 +5,9 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import LibrariesDialog from './components/LibrariesDialog.vue'
 import { getCurrentUser } from '@nextcloud/auth'
 import { translate as t } from '@nextcloud/l10n'
 import { loadState } from '@nextcloud/initial-state'
@@ -31,6 +33,7 @@ import { useLibraryCatalog } from './hooks/useLibraryCatalog'
 import { useCanvasTemplate } from './hooks/useCanvasTemplate'
 import { SaveScopedDialog } from './components/SaveScopedDialog'
 import type { SaveScope } from './components/SaveScopedDialog'
+import type { OrgLibraryEntry } from './hooks/useLibraryCatalog.ts'
 import { useShallow } from 'zustand/react/shallow'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useBoardDataManager } from './hooks/useBoardDataManager'
@@ -38,7 +41,7 @@ import { useAssistant } from './hooks/useAssistant'
 import { filesFitCollabMessages, imageOptionsFor } from './utils/collabServerLimits.ts'
 import logger from './utils/logger'
 import { prepareDuplicatedElements } from './utils/mergeElementsWithMetadata.ts'
-import { resolveOrgLibraryItems } from './utils/orgLibraryItems.ts'
+import { isFromOrgLibrary, resolveOrgLibraryItems } from './utils/orgLibraryItems.ts'
 import { saveErrorMessage } from './utils/saveErrorMessage.ts'
 import { useRecording } from './hooks/useRecording'
 import { RecordingOverlay } from './components/Recording'
@@ -140,7 +143,7 @@ export default function App({
 	const { renderEmojiPicker } = useEmojiPicker()
 	const { onChange: onChangeSync, onPointerUpdate } = useSync()
 	const { fetchLibraryItems, updateLibraryItems, isLibraryLoaded, setIsLibraryLoaded } = useLibrary()
-	const { fetchLibraries, resolveLibrary, saveLibrary } = useLibraryCatalog()
+	const { fetchLibraries, resolveLibrary, setOrgLibraryVisibility, saveLibrary } = useLibraryCatalog()
 	const { publishCanvasTemplate } = useCanvasTemplate()
 	// Org saves need admin rights and a server (30+) whose picker can
 	// actually surface org templates.
@@ -150,6 +153,7 @@ export default function App({
 	const [canvasTemplateDialogOpen, setCanvasTemplateDialogOpen] = useState(false)
 	const [saveDialogError, setSaveDialogError] = useState<string | null>(null)
 	const [isSavingDialog, setIsSavingDialog] = useState(false)
+	const [orgLibraries, setOrgLibraries] = useState<OrgLibraryEntry[] | null>(null)
 	// Items captured when "Save as library" is triggered from the library ⋯ menu.
 	const libraryItemsRef = useRef<LibraryItems>([])
 	useCollaboration()
@@ -359,10 +363,11 @@ export default function App({
 					}
 				}
 				const { org } = await fetchLibraries()
-				const orgItems = await resolveOrgLibraryItems(org, ref, resolveLibrary)
+				const orgItems = await resolveOrgLibraryItems(org.filter((library) => library.visible), ref, resolveLibrary)
 				if (cancelled) {
 					return
 				}
+				setOrgLibraries(org)
 				await excalidrawAPI.updateLibrary({
 					libraryItems: [...myLibrary, ...refItems, ...orgItems],
 					merge: false,
@@ -506,6 +511,52 @@ export default function App({
 			setIsSavingDialog(false)
 		}
 	}, [saveLibrary])
+
+	const toggleOrgLibrary = useCallback(async (name: string, visible: boolean): Promise<boolean> => {
+		if (!excalidrawAPI) {
+			return false
+		}
+		try {
+			await setOrgLibraryVisibility(name, visible)
+		} catch (error) {
+			showError(t('whiteboard', 'Could not update your organization libraries.'))
+			logger.error('[App] Error updating organization library visibility:', error)
+			return false
+		}
+		setOrgLibraries((libraries) => libraries && libraries.map((library) => (library.name === name ? { ...library, visible } : library)))
+
+		const ref = useWhiteboardConfigStore.getState().libraryRef
+		if (ref?.scope === 'org' && ref.name === name) {
+			return true
+		}
+		try {
+			const items = visible ? await resolveLibrary('org', name) : []
+			await excalidrawAPI.updateLibrary({
+				libraryItems: (current) => [...current.filter((item) => !isFromOrgLibrary(item, name)), ...items],
+				merge: false,
+			})
+		} catch (error) {
+			showError(t('whiteboard', 'Could not load the library "{name}".', { name }))
+			logger.error('[App] Error loading organization library:', error)
+		}
+		return true
+	}, [excalidrawAPI, setOrgLibraryVisibility, resolveLibrary])
+
+	const renderLibraryBrowseButton = useMemo(() => {
+		if (!orgLibraries?.length) {
+			return undefined
+		}
+		const openLibrariesDialog = (libraryUrl: string) => spawnDialog(LibrariesDialog, {
+			libraries: orgLibraries,
+			libraryUrl: loadState('whiteboard', 'disableExternalLibraries', false) ? null : libraryUrl,
+			onToggle: toggleOrgLibrary,
+		}).catch(() => {})
+		return (libraryUrl: string) => (
+			<button type="button" className="library-menu-browse-button" onClick={() => openLibrariesDialog(libraryUrl)}>
+				{t('whiteboard', 'Manage libraries')}
+			</button>
+		)
+	}, [orgLibraries, toggleOrgLibrary])
 
 	const handleSaveAsCanvasTemplate = useCallback(() => {
 		if (isReadOnly || isVersionPreview) {
@@ -753,6 +804,7 @@ export default function App({
 					langCode={lang}
 					libraryReturnUrl={libraryReturnUrl}
 					libraryMenuTitle={t('whiteboard', 'My library')}
+					renderLibraryBrowseButton={renderLibraryBrowseButton}
 					onLibrarySaveAs={(isReadOnly || isVersionPreview) ? undefined : handleLibrarySaveAs}
 					onSaveAsCanvasTemplate={(isReadOnly || isVersionPreview) ? undefined : handleSaveAsCanvasTemplate}
 				>

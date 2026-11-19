@@ -356,6 +356,10 @@
 	background: var(--color-primary);
 }
 
+.excalidraw button.library-menu-browse-button:focus:not(:hover) {
+	background-color: var(--color-primary);
+}
+
 .version-preview-banner {
 	position: absolute;
 	top: calc(var(--default-grid-baseline) * 2);

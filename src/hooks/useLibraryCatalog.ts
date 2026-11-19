@@ -13,7 +13,9 @@ export type LibraryScope = 'personal' | 'org'
 
 export type LibraryEntry = { name: string; itemCount: number }
 
-export type LibraryCatalog = { personal: LibraryEntry[]; org: LibraryEntry[] }
+export type OrgLibraryEntry = LibraryEntry & { visible: boolean }
+
+export type LibraryCatalog = { personal: LibraryEntry[]; org: OrgLibraryEntry[] }
 
 const authHeaders = (jwt: string) => ({
 	'Content-Type': 'application/json',
@@ -67,6 +69,21 @@ export function useLibraryCatalog() {
 		return Array.isArray(json?.data) ? json.data : []
 	}, [getJWT])
 
+	const setOrgLibraryVisibility = useCallback(async (name: string, visible: boolean): Promise<void> => {
+		const jwt = await getJWT()
+		if (!jwt) {
+			throw new Error('No JWT')
+		}
+		const response = await globalThis.fetch(generateUrl('apps/whiteboard/libraries/visibility'), {
+			method: 'PUT',
+			headers: authHeaders(jwt),
+			body: JSON.stringify({ name, visible }),
+		})
+		if (!response.ok) {
+			throw new Error(`Failed to save library visibility: ${response.statusText}`)
+		}
+	}, [getJWT])
+
 	const saveLibrary = useCallback(async (scope: LibraryScope, name: string, items: LibraryItems): Promise<void> => {
 		const jwt = await getJWT()
 		if (!jwt) {
@@ -99,5 +116,5 @@ export function useLibraryCatalog() {
 		}
 	}, [getJWT])
 
-	return { fetchLibraries, resolveLibrary, saveLibrary, deleteLibrary }
+	return { fetchLibraries, resolveLibrary, setOrgLibraryVisibility, saveLibrary, deleteLibrary }
 }

@@ -18,8 +18,8 @@ export function useDisableExternalLibraries() {
 
 		const style = document.createElement('style')
 		style.textContent = `
-    .excalidraw .library-menu-browse-button,
-    .excalidraw .library-menu-control-buttons--at-bottom,
+    .excalidraw a.library-menu-browse-button,
+    .excalidraw .library-menu-control-buttons--at-bottom:not(:has(button.library-menu-browse-button)),
     .excalidraw .library-menu-items-container__header--excal,
     .excalidraw .library-menu-items-container__header--excal + * {
      display: none !important;
