@@ -43,6 +43,15 @@ The official whiteboard app for Nextcloud. It allows users to create and share w
 		<nextcloud min-version="31" max-version="36"/>
 	</dependencies>
 
+	<repair-steps>
+		<post-migration>
+			<step>OCA\Whiteboard\Migration\UpdateBundledLibraries</step>
+		</post-migration>
+		<install>
+			<step>OCA\Whiteboard\Migration\InstallBundledLibraries</step>
+		</install>
+	</repair-steps>
+
 	<settings>
 		<admin>OCA\Whiteboard\Settings\Admin</admin>
 		<admin-section>OCA\Whiteboard\Settings\Section</admin-section>

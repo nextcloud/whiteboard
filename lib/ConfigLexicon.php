@@ -53,6 +53,13 @@ class ConfigLexicon implements ILexicon {
 				definition: 'Whether to disable loading external libraries (e.g. mermaid, excalidraw-libraries) from the internet',
 				lazy: false,
 			),
+			new Entry(
+				ConfigKeys::BUNDLED_LIBRARIES,
+				ValueType::STRING,
+				defaultRaw: '{}',
+				definition: 'Bundled libraries created as organization libraries, with their default visibility and file hash',
+				lazy: false,
+			),
 		];
 	}
 
@@ -70,6 +77,12 @@ class ConfigLexicon implements ILexicon {
 				ValueType::BOOL,
 				defaultRaw: false,
 				definition: 'Whether the legacy Excalidraw libraries of the user have already been migrated',
+			),
+			new Entry(
+				ConfigKeys::USER_ORG_LIBRARY_VISIBILITY,
+				ValueType::STRING,
+				defaultRaw: '{}',
+				definition: 'Organization libraries the user has shown or hidden in the library panel',
 			),
 		];
 	}

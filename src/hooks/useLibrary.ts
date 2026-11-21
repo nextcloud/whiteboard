@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useJWTStore } from '../stores/useJwtStore'
 import { useShallow } from 'zustand/react/shallow'
 import { generateUrl } from '@nextcloud/router'
@@ -25,6 +25,7 @@ export function useLibrary() {
 	)
 
 	const [isLibraryLoaded, setIsLibraryLoaded] = useState(false)
+	const lastSavedItems = useRef('')
 
 	const fetchLibraryItems = useCallback(async (): Promise<LibraryItems | null> => {
 		try {
@@ -105,6 +106,11 @@ export function useLibrary() {
 			// Persist only the writable "My library" items — items tagged with a
 			// libraryName belong to a read-only source resolved per board.
 			const itemsToSave = items.filter(item => !(item as LibraryItemExtended).libraryName)
+			const serializedItems = JSON.stringify(itemsToSave)
+			if (serializedItems === lastSavedItems.current) {
+				return
+			}
+			lastSavedItems.current = serializedItems
 			const url = generateUrl('apps/whiteboard/library')
 			const response = await globalThis.fetch(url, {
 				method: 'PUT',
@@ -120,6 +126,7 @@ export function useLibrary() {
 				throw new Error(`Failed to update library: ${response.statusText}`)
 			}
 		} catch (error) {
+			lastSavedItems.current = ''
 			logger.error('[Library] Error updating library:', error)
 		}
 	}, [getJWT])

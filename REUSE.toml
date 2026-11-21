@@ -28,3 +28,22 @@ path = ["img/svgmoji/**.svg"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2020 KickJump Ltd"
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["resources/libraries/**.excalidrawlib"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = [
+	"2020 Excalidraw contributors <https://libraries.excalidraw.com>",
+	"2023 Mateusz Baran <https://github.com/mateuszbaransanok>",
+	"2020 dbs-sticky",
+	"2020 Nicolas Goudry <https://github.com/g-script>",
+	"2021 ferminrp <https://github.com/ferminrp>",
+	"2021 drwnio.polyrand.net <https://drwnio.polyrand.net/>",
+	"2021 rfranzke",
+	"2020 Youri Tjang <https://github.com/youritjang>",
+	"2021 Kaligule <https://schauderbasis.de>",
+	"2023 gianpaima (freepik) <https://twitter.com/gianpaima>, dwelle <https://twitter.com/dluzar>",
+	"2021 Oscar Capraro",
+	"2026 Nextcloud GmbH and Nextcloud contributors",
+]
+SPDX-License-Identifier = "MIT"

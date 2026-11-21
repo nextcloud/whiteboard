@@ -28,6 +28,8 @@ return [
 		['name' => 'Whiteboard#listLibraries', 'url' => 'libraries', 'verb' => 'GET'],
 		/** @see WhiteboardController::resolveLibrary() */
 		['name' => 'Whiteboard#resolveLibrary', 'url' => 'libraries/resolve', 'verb' => 'GET'],
+		/** @see WhiteboardController::setOrgLibraryVisibility() */
+		['name' => 'Whiteboard#setOrgLibraryVisibility', 'url' => 'libraries/visibility', 'verb' => 'PUT'],
 		/** @see WhiteboardController::saveLibrary() */
 		['name' => 'Whiteboard#saveLibrary', 'url' => 'libraries', 'verb' => 'POST'],
 		/** @see WhiteboardController::deleteLibrary() */
