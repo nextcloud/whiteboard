@@ -126,7 +126,7 @@ export default function App({
 		setGridModeEnabled: state.setGridModeEnabled,
 		collabMaxMessageBytes: state.collabMaxMessageBytes,
 	})))
-	const imageOptions = useMemo(() => imageOptionsFor(collabMaxMessageBytes), [collabMaxMessageBytes])
+	const imageOptions = useMemo(() => imageOptionsFor(collabMaxMessageBytes, maxImageSizeBytes), [collabMaxMessageBytes, maxImageSizeBytes])
 
 	const { lang, updateLang } = useLangStore(useShallow(state => ({
 		lang: state.lang,
