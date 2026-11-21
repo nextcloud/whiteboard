@@ -54,14 +54,17 @@ export function largestSharedFileBytes(maxMessageBytes: number): number {
 }
 
 /**
- * Image options for Excalidraw that refuse images the collaboration server
- * cannot pass on to the other users.
+ * Image options for Excalidraw: the largest image the collaboration server can
+ * pass on to the other users, capped by the admin's max image size. Without an
+ * admin limit, Excalidraw's own 4 MB limit stays the cap.
  *
  * @param collabMaxMessageBytes - Limit of the connection, null while unknown
+ * @param adminMaxImageBytes - The admin's max image size, null when unset
  */
-export function imageOptionsFor(collabMaxMessageBytes: number | null): { maxFileSizeBytes: number } | undefined {
-	const maxFileSizeBytes = largestSharedFileBytes(collabMaxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES)
-	return maxFileSizeBytes < EXCALIDRAW_MAX_IMAGE_BYTES ? { maxFileSizeBytes } : undefined
+export function imageOptionsFor(collabMaxMessageBytes: number | null, adminMaxImageBytes: number | null = null): { maxFileSizeBytes: number } | undefined {
+	const sharedFileBytes = largestSharedFileBytes(collabMaxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES)
+	const maxFileSizeBytes = Math.min(sharedFileBytes, adminMaxImageBytes ?? EXCALIDRAW_MAX_IMAGE_BYTES)
+	return maxFileSizeBytes === EXCALIDRAW_MAX_IMAGE_BYTES ? undefined : { maxFileSizeBytes }
 }
 
 /**
