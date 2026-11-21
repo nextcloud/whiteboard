@@ -75,7 +75,7 @@
     "@vue/tsconfig": "^0.9.1",
     "browserslist": "^4.29.6",
     "fake-indexeddb": "^6.2.8",
-    "jsdom": "^31.0.0",
+    "jsdom": "^31.0.1",
     "nodemon": "^3.1.14",
     "prettier": "^3.10.1",
     "redis-memory-server": "^0.17.2",
