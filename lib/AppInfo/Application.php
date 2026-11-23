@@ -48,6 +48,9 @@ class Application extends App implements IBootstrap {
 
 	#[\Override]
 	public function register(IRegistrationContext $context): void {
+		if (interface_exists(\OCP\Teams\ITeamAppProvider::class)) {
+			$context->registerTeamAppProvider(\OCA\Whiteboard\Teams\TeamsProvider::class);
+		}
 		include_once __DIR__ . '/../../vendor/autoload.php';
 
 		$context->registerEventListener(AddContentSecurityPolicyEvent::class, AddContentSecurityPolicyListener::class);
