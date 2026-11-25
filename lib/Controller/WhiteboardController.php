@@ -13,6 +13,8 @@ use Exception;
 use InvalidArgumentException;
 use OCA\Whiteboard\Exception\InvalidUserException;
 use OCA\Whiteboard\Exception\UnauthorizedException;
+use OCA\Whiteboard\Model\User;
+use OCA\Whiteboard\Service\Authentication\AuthenticateUserServiceFactory;
 use OCA\Whiteboard\Service\Authentication\GetUserFromIdServiceFactory;
 use OCA\Whiteboard\Service\CanvasTemplateService;
 use OCA\Whiteboard\Service\ConfigService;
@@ -46,6 +48,7 @@ final class WhiteboardController extends ApiController {
 	public function __construct(
 		$appName,
 		IRequest $request,
+		private AuthenticateUserServiceFactory $authenticateUserServiceFactory,
 		private GetUserFromIdServiceFactory $getUserFromIdServiceFactory,
 		private GetFileServiceFactory $getFileServiceFactory,
 		private JWTService $jwtService,
@@ -67,13 +70,14 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function show(int $fileId): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
-			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
-			$file = $this->getFileServiceFactory->create($user, $fileId)->getFile();
+			$user = $this->resolveUser();
+			$fileService = $this->getFileServiceFactory->create($user, $fileId);
+			$file = $fileService->getFile();
 			$data = $this->contentService->getContent($file);
+			$jwt = $this->resolveJwt();
+			$isReadOnly = $fileService->isFileReadOnly() || ($jwt !== null && $this->jwtService->isReadOnlyJWT($jwt));
 
-			return new DataResponse(['data' => $data]);
+			return new DataResponse(['data' => $data, 'isReadOnly' => $isReadOnly]);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
 		}
@@ -84,12 +88,11 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function update(int $fileId, array $data): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
-			$user = $this->getUserFromIdServiceFactory->create($userId)->getUser();
+			$user = $this->resolveUser();
+			$jwt = $this->resolveJwt();
 			$fileService = $this->getFileServiceFactory->create($user, $fileId);
 			$file = $fileService->getFile();
-			if ($fileService->isFileReadOnly() || $this->jwtService->isReadOnlyJWT($jwt)) {
+			if ($fileService->isFileReadOnly() || ($jwt !== null && $this->jwtService->isReadOnlyJWT($jwt))) {
 				throw new NotPermittedException('Permission denied');
 			}
 		} catch (Exception $e) {
@@ -132,8 +135,7 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function getLib(): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->resolveUser()->getUID();
 			$data = $this->libraryService->getUserLib($userId);
 
 			return new DataResponse(['data' => $data]);
@@ -147,8 +149,7 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function updateLib(): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->resolveUser()->getUID();
 			$items = $this->request->getParam('items', []);
 			$this->libraryService->updateUserLib($userId, $items);
 
@@ -163,8 +164,7 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function listLibraries(): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->resolveUser()->getUID();
 			return new DataResponse(['data' => $this->libraryService->listLibraries($userId)]);
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
@@ -176,8 +176,7 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function resolveLibrary(): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->resolveUser()->getUID();
 			$scope = (string)$this->request->getParam('scope', '');
 			$name = (string)$this->request->getParam('name', '');
 			return new DataResponse(['data' => $this->libraryService->resolveLibrary($userId, $scope, $name)]);
@@ -191,8 +190,7 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function saveLibrary(): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->resolveUser()->getUID();
 			$scope = (string)$this->request->getParam('scope', 'personal');
 			$name = (string)$this->request->getParam('name', '');
 			$items = $this->request->getParam('items', []);
@@ -213,8 +211,7 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function deleteLibrary(string $scope, string $name): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->resolveUser()->getUID();
 			if ($scope === 'org' && !$this->groupManager->isAdmin($userId)) {
 				throw new InvalidArgumentException('Only administrators can delete organization libraries', Http::STATUS_FORBIDDEN);
 			}
@@ -230,8 +227,7 @@ final class WhiteboardController extends ApiController {
 	#[PublicPage]
 	public function publishCanvasTemplate(): DataResponse {
 		try {
-			$jwt = $this->getJwtFromRequest();
-			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$userId = $this->resolveUser()->getUID();
 			$scope = (string)$this->request->getParam('scope', 'personal');
 			$name = (string)$this->request->getParam('name', '');
 			$data = $this->request->getParam('data');
@@ -249,6 +245,34 @@ final class WhiteboardController extends ApiController {
 		} catch (Exception $e) {
 			return $this->exceptionService->handleException($e);
 		}
+	}
+
+	/**
+	 * Returns the authenticated user.
+	 *
+	 * In collab mode (collabBackendUrl set): extracts user from the JWT Bearer token.
+	 * In standalone mode (no collabBackendUrl): falls back to the Nextcloud session user,
+	 * which lets the whiteboard work without a JWT secret configured.
+	 */
+	private function resolveUser(): User {
+		if ($this->request->getHeader('Authorization') === '' && $this->configService->getCollabBackendUrl() === '') {
+			$publicSharingToken = $this->request->getParam('sharingToken') ?: null;
+			return $this->authenticateUserServiceFactory->create($publicSharingToken)->authenticate();
+		}
+		$jwt = $this->getJwtFromRequest();
+		$userId = $this->jwtService->getUserIdFromJWT($jwt);
+		return $this->getUserFromIdServiceFactory->create($userId)->getUser();
+	}
+
+	/**
+	 * Returns the raw JWT string, or null in standalone session-auth mode.
+	 * Used where the JWT payload itself carries information (e.g. isReadOnly flag).
+	 */
+	private function resolveJwt(): ?string {
+		if ($this->request->getHeader('Authorization') === '' && $this->configService->getCollabBackendUrl() === '') {
+			return null;
+		}
+		return $this->getJwtFromRequest();
 	}
 
 	private function getJwtFromRequest(): string {

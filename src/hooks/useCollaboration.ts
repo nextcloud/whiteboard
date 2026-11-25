@@ -80,9 +80,10 @@ export function useCollaboration() {
 		})),
 	)
 
-	const { fileId } = useWhiteboardConfigStore(
+	const { fileId, collabBackendUrl } = useWhiteboardConfigStore(
 		useShallow(state => ({
 			fileId: state.fileId,
+			collabBackendUrl: state.collabBackendUrl,
 		})),
 	)
 
@@ -1183,6 +1184,16 @@ export function useCollaboration() {
 	// --- Effects ---
 	// Connect/Disconnect based on fileId
 	useEffect(() => {
+		if (!collabBackendUrl) {
+			// Standalone mode — no collaboration backend. Make this client the
+			// dedicated syncer so it can save to Nextcloud without needing a socket.
+			console.log('[Collaboration] No collab backend URL — running in standalone mode')
+			setDedicatedSyncer(true)
+			return () => {
+				debouncedJoinRoom.cancel()
+			}
+		}
+
 		if (fileId) {
 			console.log(`[Collaboration] FileId ${fileId} active, connecting socket`)
 			connectSocket()
@@ -1197,7 +1208,7 @@ export function useCollaboration() {
 			// Cancel any pending debounced room joins
 			debouncedJoinRoom.cancel()
 		}
-	}, [fileId, connectSocket, disconnectSocket, debouncedJoinRoom])
+	}, [fileId, collabBackendUrl, connectSocket, disconnectSocket, debouncedJoinRoom, setDedicatedSyncer])
 
 	// Cleanup on unmount
 	useEffect(() => {

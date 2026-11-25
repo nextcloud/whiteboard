@@ -44,20 +44,30 @@ export function useBoardDataManager() {
 
 	const fetchDataFromServer = useCallback(async (fileId: number) => {
 		try {
-			const jwt = await useJWTStore.getState().getJWT()
-			if (!jwt) {
+			const { collabBackendUrl, publicSharingToken } = useWhiteboardConfigStore.getState()
+			const isStandalone = !collabBackendUrl
+			const jwt = isStandalone ? null : await useJWTStore.getState().getJWT()
+
+			if (!isStandalone && !jwt) {
 				logger.error('[BoardDataManager] Failed to get JWT token for server data fetch')
 				return null
 			}
 
-			const url = generateUrl(`apps/whiteboard/${fileId}`)
+			const headers: Record<string, string> = {
+				'Content-Type': 'application/json',
+				'X-Requested-With': 'XMLHttpRequest',
+			}
+			if (jwt) {
+				headers.Authorization = `Bearer ${jwt}`
+			}
+
+			let url = generateUrl(`apps/whiteboard/${fileId}`)
+			if (isStandalone && publicSharingToken) {
+				url += `?sharingToken=${encodeURIComponent(publicSharingToken)}`
+			}
 			const response = await fetch(url, {
 				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest',
-					Authorization: `Bearer ${jwt}`,
-				},
+				headers,
 			})
 
 			if (!response.ok) {
@@ -69,6 +79,10 @@ export function useBoardDataManager() {
 			if (!responseData || !responseData.data) {
 				logger.error('[BoardDataManager] Invalid response data from server:', responseData)
 				return null
+			}
+
+			if (isStandalone && responseData.isReadOnly !== undefined) {
+				useWhiteboardConfigStore.getState().setReadOnly(responseData.isReadOnly)
 			}
 
 			return responseData.data

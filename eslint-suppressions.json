@@ -441,9 +441,6 @@
     "@stylistic/arrow-parens": {
       "count": 1
     },
-    "import-extensions/extensions": {
-      "count": 1
-    },
     "perfectionist/sort-imports": {
       "count": 2
     }
@@ -609,9 +606,6 @@
     "@stylistic/member-delimiter-style": {
       "count": 2
     },
-    "import-extensions/extensions": {
-      "count": 2
-    },
     "perfectionist/sort-imports": {
       "count": 4
     }
@@ -715,9 +709,6 @@
     },
     "@stylistic/comma-style": {
       "count": 6
-    },
-    "@stylistic/exp-list-style": {
-      "count": 10
     },
     "@stylistic/function-paren-newline": {
       "count": 22

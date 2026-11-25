@@ -153,7 +153,13 @@ export const useJWTStore = create<JWTStore>()(
 			},
 
 			getJWT: async () => {
-				const { fileId } = useWhiteboardConfigStore.getState()
+				const { fileId, collabBackendUrl } = useWhiteboardConfigStore.getState()
+
+				// In standalone mode there is no collab backend; Nextcloud session auth covers API
+				// calls so a JWT is not needed and must not be fetched (endpoint may not be configured).
+				if (!collabBackendUrl) {
+					return null
+				}
 
 				// Check if we have a persistent auth error - if so, don't try to get/refresh tokens
 				const { authError } = useCollaborationStore.getState()
@@ -268,8 +274,13 @@ export const useJWTStore = create<JWTStore>()(
 			},
 
 			refreshJWT: async () => {
-				const { fileId, publicSharingToken }
+				const { fileId, publicSharingToken, collabBackendUrl }
 					= useWhiteboardConfigStore.getState()
+
+				// In standalone mode, skip JWT issuance — no collab backend to authenticate with.
+				if (!collabBackendUrl) {
+					return null
+				}
 
 				// Check if we have a persistent auth error - if so, don't try to refresh
 				const { authError } = useCollaborationStore.getState()
