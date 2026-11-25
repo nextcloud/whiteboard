@@ -55,6 +55,17 @@ describe('collaboration server limits', () => {
 		expect(imageOptionsFor(GeneralUtility.maxSocketMessageSize(10e6))).toBeUndefined()
 	})
 
+	it('raises the limit above 4 MB to the admin max image size when the server can pass the image on', () => {
+		const MB = 1024 * 1024
+		const large = GeneralUtility.maxSocketMessageSize(50e6)
+		const small = GeneralUtility.maxSocketMessageSize(2e6)
+
+		expect(imageOptionsFor(large, 20 * MB)).toEqual({ maxFileSizeBytes: 20 * MB })
+		expect(imageOptionsFor(large, 100 * MB)).toEqual({ maxFileSizeBytes: largestSharedFileBytes(large) })
+		expect(imageOptionsFor(small, 20 * MB)).toEqual({ maxFileSizeBytes: largestSharedFileBytes(small) })
+		expect(imageOptionsFor(large, 1 * MB)).toEqual({ maxFileSizeBytes: 1 * MB })
+	})
+
 	it('checks every file and ignores entries without data', () => {
 		setLimit(10000)
 
