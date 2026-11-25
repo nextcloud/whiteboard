@@ -54,6 +54,14 @@ export function largestSharedFileBytes(maxMessageBytes: number): number {
 }
 
 /**
+ * Largest file the collaboration server passes on over the board's current
+ * connection, with the default limit used until the connection tells it.
+ */
+export function currentLargestSharedFileBytes(): number {
+	return largestSharedFileBytes(maxMessageBytes())
+}
+
+/**
  * Image options for Excalidraw that refuse images the collaboration server
  * cannot pass on to the other users.
  *
