@@ -19,6 +19,7 @@ use OCP\IDBConnection;
  */
 class BoardStateStore {
 	private const TABLE = 'whiteboard_sync';
+	private const CLEANUP_BATCH = 1000;
 
 	public function __construct(
 		private IDBConnection $db,
@@ -114,6 +115,43 @@ class BoardStateStore {
 		$qb->delete(self::TABLE)
 			->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
 			->executeStatement();
+	}
+
+	/**
+	 * Drops the rows of boards whose file is gone, such as the boards in a
+	 * deleted folder, of which Nextcloud tells only the folder. The file cache
+	 * is looked up by id, which also works when it is sharded.
+	 */
+	public function deleteGone(): void {
+		$after = -1;
+		do {
+			$qb = $this->db->getQueryBuilder();
+			$ids = array_map('intval', $qb->select('file_id')
+				->from(self::TABLE)
+				->where($qb->expr()->gt('file_id', $qb->createNamedParameter($after, IQueryBuilder::PARAM_INT)))
+				->orderBy('file_id')
+				->setMaxResults(self::CLEANUP_BATCH)
+				->executeQuery()
+				->fetchFirstColumn());
+			if ($ids === []) {
+				return;
+			}
+			$after = end($ids);
+
+			$qb = $this->db->getQueryBuilder();
+			$existing = array_map('intval', $qb->select('fileid')
+				->from('filecache')
+				->where($qb->expr()->in('fileid', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)))
+				->executeQuery()
+				->fetchFirstColumn());
+			$gone = array_values(array_diff($ids, $existing));
+			if ($gone !== []) {
+				$qb = $this->db->getQueryBuilder();
+				$qb->delete(self::TABLE)
+					->where($qb->expr()->in('file_id', $qb->createNamedParameter($gone, IQueryBuilder::PARAM_INT_ARRAY)))
+					->executeStatement();
+			}
+		} while (count($ids) === self::CLEANUP_BATCH);
 	}
 
 	/**

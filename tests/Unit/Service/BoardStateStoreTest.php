@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Service;
 
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\Server;
 use PHPUnit\Framework\Attributes\Group;
@@ -22,6 +23,7 @@ class BoardStateStoreTest extends TestCase {
 	private const FILE_ID = 2147480001;
 
 	private BoardStateStore $store;
+	private ?int $cachedFileId = null;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -31,7 +33,31 @@ class BoardStateStoreTest extends TestCase {
 
 	protected function tearDown(): void {
 		$this->store->delete(self::FILE_ID);
+		if ($this->cachedFileId !== null) {
+			$this->store->delete($this->cachedFileId);
+			$qb = Server::get(IDBConnection::class)->getQueryBuilder();
+			$qb->delete('filecache')->where($qb->expr()->eq('fileid', $qb->createNamedParameter($this->cachedFileId, IQueryBuilder::PARAM_INT)))->executeStatement();
+		}
 		parent::tearDown();
+	}
+
+	public function testRowsOfBoardsWhoseFileIsGoneAreDropped(): void {
+		// Deleting a folder tells of the folder only, not of the boards in it
+		$path = 'files/' . uniqid('whiteboard-', true) . '.whiteboard';
+		$qb = Server::get(IDBConnection::class)->getQueryBuilder();
+		$qb->insert('filecache')->values([
+			'storage' => $qb->createNamedParameter(self::FILE_ID, IQueryBuilder::PARAM_INT),
+			'path' => $qb->createNamedParameter($path),
+			'path_hash' => $qb->createNamedParameter(md5($path)),
+		])->executeStatement();
+		$this->cachedFileId = $qb->getLastInsertId();
+		$this->store->create($this->cachedFileId, 'e1', 0, 'd1', null);
+		$this->store->create(self::FILE_ID, 'e1', 0, 'd1', null);
+
+		$this->store->deleteGone();
+
+		$this->assertNotNull($this->store->find($this->cachedFileId));
+		$this->assertNull($this->store->find(self::FILE_ID));
 	}
 
 	public function testABoardSeenTwiceKeepsTheFirstRow(): void {
