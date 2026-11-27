@@ -13,7 +13,7 @@ const readSource = (path) => readFileSync(resolve(root, path), 'utf8')
 
 describe('Vue 3 migration guardrails', () => {
 	it('cleans up viewer roots hosted by Vue 2 or Vue 3', () => {
-		const source = readSource('src/main.ts')
+		const source = readSource('src/viewer/legacyViewerComponent.ts')
 		expect(source).toContain('beforeDestroy(this: WhiteboardComponentInstance)')
 		expect(source).toContain('beforeUnmount(this: WhiteboardComponentInstance)')
 		expect(source.match(/unmountWhiteboardRoot\(this\)/g)).toHaveLength(2)

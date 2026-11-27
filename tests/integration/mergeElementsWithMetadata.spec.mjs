@@ -1,24 +1,10 @@
 /**
  * SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
+ * @vitest-environment jsdom
  */
 
 import { describe, expect, it, vi } from 'vitest'
-
-// Keeps the element with the higher version, the remote one on a tie
-vi.mock('@nextcloud/excalidraw', () => ({
-	reconcileElements: (localElements, remoteElements) => {
-		const localById = new Map(localElements.map((element) => [element.id, element]))
-		const remoteIds = new Set(remoteElements.map((element) => element.id))
-		return [
-			...remoteElements.map((remote) => {
-				const local = localById.get(remote.id)
-				return local && (local.version ?? 0) > (remote.version ?? 0) ? local : remote
-			}),
-			...localElements.filter((element) => !remoteIds.has(element.id)),
-		]
-	},
-}))
 
 const { mergeElementsWithMetadata, prepareDuplicatedElements } = await import('../../src/utils/mergeElementsWithMetadata.ts')
 
@@ -114,6 +100,16 @@ describe('table metadata reconciliation', () => {
 
 		expect(merged.customData.tableHtml).toBe('<table>new</table>')
 		expect(merged.customData.tableLock).toBeUndefined()
+	})
+
+	it('keeps the local element when both copies have the same version and nonce', () => {
+		const [merged] = mergeElementsWithMetadata(
+			[{ ...table(2, '<table>local</table>'), versionNonce: 5 }],
+			[{ ...table(2, '<table>remote</table>'), versionNonce: 5 }],
+			{},
+		)
+
+		expect(merged.customData.tableHtml).toBe('<table>local</table>')
 	})
 
 	it('takes the table content and lock of the remote element when it wins', () => {

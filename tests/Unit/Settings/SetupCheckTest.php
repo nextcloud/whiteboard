@@ -17,19 +17,20 @@ use OCP\SetupCheck\SetupResult;
 use Test\TestCase;
 
 class SetupCheckTest extends TestCase {
-	public function testMissingServerIsAnErrorBecauseBoardsAreNotSaved(): void {
-		$result = $this->setupCheck('', 'secret')->run();
+	public function testMissingServerOnlyMeansNoLiveCollaboration(): void {
+		$result = $this->setupCheck('', '')->run();
 
-		$this->assertSame(SetupResult::ERROR, $result->getSeverity());
-		$this->assertStringContainsString('to save boards', $result->getDescription());
-		$this->assertStringNotContainsString('works without it', $result->getDescription());
+		$this->assertSame(SetupResult::INFO, $result->getSeverity());
+		$this->assertStringContainsString('Boards are saved to Nextcloud', $result->getDescription());
+		$this->assertStringNotContainsString('to save boards', $result->getDescription());
 	}
 
-	public function testMissingSecretIsAnErrorBecauseBoardsAreNotSaved(): void {
+	public function testMissingSecretStopsLiveCollaborationButNotSaving(): void {
 		$result = $this->setupCheck('https://whiteboard.example.com', '')->run();
 
 		$this->assertSame(SetupResult::ERROR, $result->getSeverity());
-		$this->assertStringContainsString('to save boards', $result->getDescription());
+		$this->assertStringContainsString('real-time collaboration', $result->getDescription());
+		$this->assertStringNotContainsString('to save boards', $result->getDescription());
 	}
 
 	public function testConfiguredServerPasses(): void {
