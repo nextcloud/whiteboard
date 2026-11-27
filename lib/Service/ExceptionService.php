@@ -48,7 +48,8 @@ final class ExceptionService {
 			$e instanceof NotPermittedException => Http::STATUS_FORBIDDEN,
 			$e instanceof UnauthorizedException => Http::STATUS_UNAUTHORIZED,
 			$e instanceof InvalidUserException => Http::STATUS_BAD_REQUEST,
-			default => (int)($e->getCode() ?: Http::STATUS_INTERNAL_SERVER_ERROR),
+			// A code from 400 to 599 is taken as the HTTP status, as this app's exceptions set it; other codes, such as those of JSON and database errors, are none
+			default => $e->getCode() >= 400 && $e->getCode() < 600 ? (int)$e->getCode() : Http::STATUS_INTERNAL_SERVER_ERROR,
 		};
 	}
 

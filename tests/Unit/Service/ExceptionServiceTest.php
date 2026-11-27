@@ -22,13 +22,16 @@ use Test\TestCase;
 
 final class ExceptionServiceTest extends TestCase {
 	public static function exceptionProvider(): array {
+		// The answers board clients read (tests/fixtures/board-sync-contract.json)
+		$answers = json_decode((string)file_get_contents(__DIR__ . '/../../fixtures/board-sync-contract.json'), true)['answers'];
 		return [
-			'missing file' => [new NotFoundException('File not found'), 404, LogLevel::DEBUG],
-			'no permission' => [new NotPermittedException('No read permission'), 403, LogLevel::DEBUG],
+			'missing file' => [new NotFoundException('File not found'), $answers['gone']['status'], LogLevel::DEBUG],
+			'no permission' => [new NotPermittedException('No read permission'), $answers['forbidden']['status'], LogLevel::DEBUG],
 			'unauthorized' => [new UnauthorizedException('Unauthorized'), 401, LogLevel::DEBUG],
 			'templates folder unavailable' => [new TemplatesFolderUnavailableException('alice'), 424, LogLevel::ERROR],
 			'server error' => [new Exception('Database is gone'), 500, LogLevel::ERROR],
-			'malformed board' => [new JsonException('Syntax error', JSON_ERROR_SYNTAX), JSON_ERROR_SYNTAX, LogLevel::ERROR],
+			'malformed board' => [new JsonException('Syntax error', JSON_ERROR_SYNTAX), 500, LogLevel::ERROR],
+			'database error with a driver code' => [new Exception('Deadlock found', 1213), 500, LogLevel::ERROR],
 		];
 	}
 

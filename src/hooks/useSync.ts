@@ -6,51 +6,41 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { throttle } from 'lodash'
 import { useWhiteboardConfigStore } from '../stores/useWhiteboardConfigStore'
-import { useSyncStore, logSyncResult } from '../stores/useSyncStore'
 import { useExcalidrawStore } from '../stores/useExcalidrawStore'
 import { useJWTStore } from '../stores/useJwtStore'
-import { selectSavesToServer, useCollaborationStore } from '../stores/useCollaborationStore'
+import { useCollaborationStore } from '../stores/useCollaborationStore'
 import { t } from '@nextcloud/l10n'
-import { generateUrl } from '@nextcloud/router'
 import { useShallow } from 'zustand/react/shallow'
 import { broadcastImage } from '../utils/collabServerLimits.ts'
 import logger from '../utils/logger'
-import { sanitizeAppStateForSync } from '../utils/sanitizeAppState'
-import { saveSceneOnUnload } from '../utils/saveSceneOnUnload.ts'
 import type { ExcalidrawElement } from '@nextcloud/excalidraw/element/types'
-import type { AppState, BinaryFiles } from '@nextcloud/excalidraw/types'
+import type { BinaryFiles } from '@nextcloud/excalidraw/types'
 import type { CollaborationSocket } from '../types/collaboration'
-import type { WorkerInboundMessage } from '../types/protocol'
 import {
 	buildBroadcastedElementVersions,
 	computeElementVersionHash,
-	computeSceneKey,
 	getIncrementalSceneElements,
 	updateBroadcastedElementVersions,
 } from '../utils/syncSceneData'
 import type { BroadcastedElementVersions } from '../utils/syncSceneData'
-
-import { SCENE_SCHEMA_VERSION } from '../utils/sceneSchema.ts'
+import { getBoardSync } from '../sync/boardSync.ts'
+import { changeSet } from '../sync/changes.ts'
+import { encodeRoomMessage, sceneMessage } from '../sync/roomMessages.ts'
 
 enum SyncMessageType {
-	SceneInit = 'SCENE_INIT',
-	SceneUpdate = 'SCENE_UPDATE',
 	MouseLocation = 'MOUSE_LOCATION',
 	ViewportUpdate = 'VIEWPORT_UPDATE',
 	ServerBroadcast = 'server-broadcast',
 	ServerVolatileBroadcast = 'server-volatile-broadcast',
 }
 
-const LOCAL_SYNC_DELAY = 200
-const SERVER_API_SYNC_DELAY = 10000
 const WEBSOCKET_SYNC_DELAY = 500
-const FULL_SCENE_HEALING_INTERVAL = 20000
 const CURSOR_SYNC_DELAY = 50
 
-// Until the merge after a reconnect, what this tab saved before may be gone from the server
-function hasUnsavedChanges(elements: readonly ExcalidrawElement[], files: BinaryFiles): boolean {
-	return useCollaborationStore.getState().pendingServerMerge
-		|| computeSceneKey(elements, files) !== useSyncStore.getState().savedSceneKey
+// A cheap fingerprint of an image, to send each image once
+function hashFileContent(content: string): string {
+	if (!content) return ''
+	return `${content.length}:${content.substring(0, 20)}:${content.substring(Math.max(0, content.length - 20))}`
 }
 
 export function useSync() {
@@ -61,298 +51,103 @@ export function useSync() {
 		})),
 	)
 
-	const {
-		initializeWorker,
-		isWorkerReady,
-		worker,
-	} = useSyncStore(
-		useShallow(state => ({
-			initializeWorker: state.initializeWorker,
-			isWorkerReady: state.isWorkerReady,
-			worker: state.worker,
-		})),
-	)
-
-	const { getJWT } = useJWTStore(
-		useShallow(state => ({
-			getJWT: state.getJWT,
-		})),
-	)
-
 	const { excalidrawAPI } = useExcalidrawStore(
 		useShallow(state => ({
 			excalidrawAPI: state.excalidrawAPI,
 		})),
 	)
 
-	const { savesToServer, pendingServerMerge, status: collabStatus, socket, isInRoom } = useCollaborationStore(
+	const { status: collabStatus, socket, isInRoom } = useCollaborationStore(
 		useShallow(state => ({
-			savesToServer: selectSavesToServer(state),
-			pendingServerMerge: state.pendingServerMerge,
 			status: state.status,
 			socket: state.socket as CollaborationSocket | null,
 			isInRoom: state.isInRoom,
 		})),
 	)
 
-	// Keep track of previously synced files to avoid resending unchanged files
 	const prevSyncedFilesRef = useRef<Record<string, string>>({})
 	const lastBroadcastedSceneHashRef = useRef<number | null>(null)
-	const broadcastedElementVersionsRef = useRef<BroadcastedElementVersions>({})
-	const hasBroadcastedSceneRef = useRef(false)
+	const broadcastedElementVersionsRef = useRef<BroadcastedElementVersions | null>(null)
 	const unsharedFilesRef = useRef(new Set<string>())
 
-	// Reset prevSyncedFilesRef when fileId changes to prevent leakage across files
 	useEffect(() => {
 		prevSyncedFilesRef.current = {}
 		lastBroadcastedSceneHashRef.current = null
-		broadcastedElementVersionsRef.current = {}
-		hasBroadcastedSceneRef.current = false
+		broadcastedElementVersionsRef.current = null
+	}, [fileId, socket?.id, isInRoom])
+
+	useEffect(() => {
 		unsharedFilesRef.current = new Set()
-	}, [fileId]) // Depends on fileId from the hook scope
+	}, [fileId])
 
-	useEffect(() => {
-		lastBroadcastedSceneHashRef.current = null
-		broadcastedElementVersionsRef.current = {}
-		hasBroadcastedSceneRef.current = false
-	}, [socket?.id])
-
-	useEffect(() => {
-		if (!isInRoom) {
-			lastBroadcastedSceneHashRef.current = null
-			broadcastedElementVersionsRef.current = {}
-			hasBroadcastedSceneRef.current = false
-		}
-	}, [isInRoom])
-
-	// --- Sync Logic ---
-
-	// Saves current state to IndexedDB
-	const doSyncToLocal = useCallback(async () => {
-		if (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly || useSyncStore.getState().pausedFileId === fileId) {
+	const broadcastChanges = useCallback((payload: object) => {
+		if (!socket || !fileId) {
 			return
 		}
+		socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, encodeRoomMessage(sceneMessage(getBoardSync()?.epoch, payload)), [])
+	}, [socket, fileId])
 
-		try {
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-			const appState = excalidrawAPI.getAppState()
-			const files = excalidrawAPI.getFiles() as BinaryFiles
-			const filteredAppState = sanitizeAppStateForSync(appState)
-
-			const hasPendingLocalChanges = hasUnsavedChanges(elements, files)
-			const message: WorkerInboundMessage = { type: 'SYNC_TO_LOCAL', fileId, elements, files, appState: filteredAppState, hasPendingLocalChanges }
-			worker.postMessage(message)
-			logSyncResult('local', { status: 'syncing' })
-		} catch (error) {
-			logger.error('[Sync] Local sync failed:', error)
-			logSyncResult('local', { status: 'error', error: error instanceof Error ? error.message : String(error) })
-		}
-	}, [isWorkerReady, worker, fileId, excalidrawAPI, isReadOnly])
-
-	// Saves current state to the Nextcloud server API
-	const doSyncToServerAPI = useCallback(async (forceSync = false) => {
-		logger.debug('[Sync] doSyncToServerAPI called', { forceSync, savesToServer, pendingServerMerge, collabStatus })
-
-		// Allow force sync for final save, otherwise check normal conditions
-		if (!forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || !savesToServer || pendingServerMerge || isReadOnly || collabStatus !== 'online')) {
-			logger.debug('[Sync] Skipping server sync - normal conditions not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, savesToServer, isReadOnly, collabStatus,
-			})
-			return
-		}
-
-		// For force sync, only check minimum requirements
-		if (forceSync && (!isWorkerReady || !worker || !fileId || !excalidrawAPI || isReadOnly)) {
-			logger.debug('[Sync] Skipping forced server sync - minimum requirements not met', {
-				isWorkerReady, worker: !!worker, fileId, excalidrawAPI: !!excalidrawAPI, isReadOnly,
-			})
-			return
-		}
-
-		if (useSyncStore.getState().pausedFileId === fileId) {
-			return
-		}
-
-		if (computeSceneKey(excalidrawAPI!.getSceneElementsIncludingDeleted(), excalidrawAPI!.getFiles()) === useSyncStore.getState().savedSceneKey) {
-			return
-		}
-
-		logSyncResult('server', { status: 'syncing API' })
-		logger.debug('[Sync] Sending SYNC_TO_SERVER message to worker')
-
-		try {
-			const jwt = await getJWT()
-			if (!jwt) throw new Error('JWT token missing for server API sync.')
-			if (useWhiteboardConfigStore.getState().fileId !== fileId) {
-				throw new Error('FileId changed during server sync preparation.')
-			}
-			// The board closed meanwhile; the editor's scene is already cleared and the final save covers it
-			if (useExcalidrawStore.getState().excalidrawAPI !== excalidrawAPI) {
-				return
-			}
-			// A restore started meanwhile, and this scene is older than the restored one
-			if (useSyncStore.getState().pausedFileId === fileId) {
-				return
-			}
-			if (useCollaborationStore.getState().pendingServerMerge) {
-				logger.debug('[Sync] Skipping server sync - the connection was lost meanwhile')
-				return
-			}
-
-			// Read only now: a merge after a reconnect may have changed the scene during the wait
-			const elements = excalidrawAPI!.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-			const files = excalidrawAPI!.getFiles() as BinaryFiles
-			const sceneKey = computeSceneKey(elements, files)
-
-			const message: WorkerInboundMessage = {
-				type: 'SYNC_TO_SERVER',
-				fileId,
-				url: generateUrl(`apps/whiteboard/${fileId}`),
-				jwt,
-				elements,
-				files,
-				sceneKey,
-			}
-
-			worker.postMessage(message)
-			logger.debug('[Sync] SYNC_TO_SERVER message sent to worker')
-		} catch (error) {
-			logger.error('[Sync] Server API sync failed:', error)
-			logSyncResult('server', { status: 'error API', error: error instanceof Error ? error.message : String(error) })
-		}
-	}, [isWorkerReady, worker, fileId, excalidrawAPI, savesToServer, pendingServerMerge, isReadOnly, collabStatus, getJWT])
-
-	// Simple hash function for file content
-	const hashFileContent = (content: string): string => {
-		if (!content) return ''
-		const len = content.length
-		const start = content.substring(0, 20)
-		const end = content.substring(Math.max(0, len - 20))
-		return `${len}:${start}:${end}`
-	}
-
-	// Syncs scene and files via WebSocket
-	const doSyncViaWebSocket = useCallback(async () => {
+	// Sends the elements and images that changed since the last broadcast. The
+	// first broadcast after joining sends this tab's unsaved changes: the room
+	// has the rest from Nextcloud.
+	const doSyncViaWebSocket = useCallback(() => {
 		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly || !isInRoom) {
 			return
 		}
 
 		try {
 			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-			const files = excalidrawAPI.getFiles() as BinaryFiles
 			const sceneHash = computeElementVersionHash(elements)
-			let syncedElementsCount = 0
-
-			if (!hasBroadcastedSceneRef.current) {
-				const sceneData = { type: SyncMessageType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
-				const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
-				socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
-				hasBroadcastedSceneRef.current = true
-				lastBroadcastedSceneHashRef.current = sceneHash
+			let changed: readonly ExcalidrawElement[]
+			let files: BinaryFiles
+			if (broadcastedElementVersionsRef.current === null) {
+				const unsaved = getBoardSync()?.unsavedChanges() ?? changeSet()
+				changed = unsaved.elements
+				files = unsaved.files
 				broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
-				syncedElementsCount = elements.length
+				// The room gets the other images from Nextcloud
+				prevSyncedFilesRef.current = Object.fromEntries(Object.entries(excalidrawAPI.getFiles())
+					.filter(([id]) => !files[id])
+					.map(([id, file]) => [id, hashFileContent(file?.dataURL ?? '')]))
 			} else if (lastBroadcastedSceneHashRef.current !== sceneHash) {
-				const incrementalElements = getIncrementalSceneElements(
-					elements,
-					broadcastedElementVersionsRef.current,
-				)
-
-				if (incrementalElements.length === 0) {
-					const sceneData = { type: SyncMessageType.SceneInit, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
-					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
-					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
-					broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
-					syncedElementsCount = elements.length
-				} else {
-					const sceneData = { type: SyncMessageType.SceneUpdate, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements: incrementalElements } }
-					const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
-					socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
-					broadcastedElementVersionsRef.current = updateBroadcastedElementVersions(
-						broadcastedElementVersionsRef.current,
-						incrementalElements,
-					)
-					syncedElementsCount = incrementalElements.length
-				}
-
-				lastBroadcastedSceneHashRef.current = sceneHash
-			}
-
-			// 2. Send only new or changed files
-			if (files && Object.keys(files).length > 0) {
-				const currentFileHashes: Record<string, string> = {}
-				for (const fileIdKey in files) {
-					const file = files[fileIdKey]
-					if (!file?.dataURL) continue
-					const currentHash = hashFileContent(file.dataURL)
-					// A file the server refuses is tried again, for example after a reconnect to a node that accepts it
-					if (prevSyncedFilesRef.current[fileIdKey] === currentHash || broadcastImage(socket, `${fileId}`, file)) {
-						currentFileHashes[fileIdKey] = currentHash
-					} else if (!unsharedFilesRef.current.has(fileIdKey)) {
-						unsharedFilesRef.current.add(fileIdKey)
-						logger.warn(`[Sync] Image ${fileIdKey} is too large to share`)
-						excalidrawAPI.setToast({
-							message: t('whiteboard', 'This image is too large to share with others'),
-							closable: true,
-							duration: 5000,
-						})
-					}
-				}
-				prevSyncedFilesRef.current = currentFileHashes
-				logSyncResult('websocket', { status: 'sync success', elementsCount: syncedElementsCount })
+				changed = getIncrementalSceneElements(elements, broadcastedElementVersionsRef.current)
+				broadcastedElementVersionsRef.current = updateBroadcastedElementVersions(broadcastedElementVersionsRef.current, changed)
+				files = excalidrawAPI.getFiles()
 			} else {
-				logSyncResult('websocket', { status: 'sync success', elementsCount: syncedElementsCount })
-				prevSyncedFilesRef.current = {}
+				changed = []
+				files = excalidrawAPI.getFiles()
+			}
+			lastBroadcastedSceneHashRef.current = sceneHash
+
+			if (changed.length > 0) {
+				broadcastChanges({ elements: changed })
+			}
+			for (const [id, file] of Object.entries(files)) {
+				const hash = hashFileContent(file?.dataURL ?? '')
+				if (!file?.dataURL || prevSyncedFilesRef.current[id] === hash) {
+					continue
+				}
+				// A file the server refuses is tried again, for example after a reconnect to a node that accepts it
+				if (broadcastImage(socket, `${fileId}`, file)) {
+					prevSyncedFilesRef.current[id] = hash
+				} else if (!unsharedFilesRef.current.has(id)) {
+					unsharedFilesRef.current.add(id)
+					logger.warn(`[Sync] Image ${id} is too large to share`)
+					excalidrawAPI.setToast({
+						message: t('whiteboard', 'This image is too large to share with others'),
+						closable: true,
+						duration: 5000,
+					})
+				}
 			}
 		} catch (error) {
 			logger.error('[Sync] WebSocket sync failed:', error)
-			logSyncResult('websocket', { status: 'sync error', error: error instanceof Error ? error.message : String(error) })
 		}
-	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isInRoom])
-
-	const doPeriodicFullSceneHealing = useCallback(() => {
-		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly || !isInRoom || !hasBroadcastedSceneRef.current) {
-			return
-		}
-
-		try {
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted() as readonly ExcalidrawElement[]
-			const sceneHash = computeElementVersionHash(elements)
-			const sceneData = { type: SyncMessageType.SceneUpdate, schemaVersion: SCENE_SCHEMA_VERSION, payload: { elements } }
-			const sceneBuffer = new TextEncoder().encode(JSON.stringify(sceneData))
-			socket.emit(SyncMessageType.ServerBroadcast, `${fileId}`, sceneBuffer, [])
-			lastBroadcastedSceneHashRef.current = sceneHash
-			broadcastedElementVersionsRef.current = buildBroadcastedElementVersions(elements)
-		} catch (error) {
-			logger.error('[Sync] Periodic full-scene healing failed:', error)
-		}
-	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isInRoom])
-
-	const throttledSyncToLocal = useMemo(() =>
-		// Use both leading and trailing edge executions to ensure changes are saved immediately and after delay
-		throttle(doSyncToLocal, LOCAL_SYNC_DELAY, { leading: true, trailing: true })
-	, [doSyncToLocal])
-
-	const throttledSyncToServerAPI = useMemo(() =>
-		// Use both leading and trailing edge executions for server sync
-		throttle(doSyncToServerAPI, SERVER_API_SYNC_DELAY, { leading: true, trailing: true })
-	, [doSyncToServerAPI])
+	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isInRoom, broadcastChanges])
 
 	const throttledSyncViaWebSocket = useMemo(() =>
-		// Use both leading and trailing edge executions for WebSocket sync
 		throttle(doSyncViaWebSocket, WEBSOCKET_SYNC_DELAY, { leading: true, trailing: true })
 	, [doSyncViaWebSocket])
-
-	const throttledFullSceneHealing = useMemo(() =>
-		throttle(doPeriodicFullSceneHealing, FULL_SCENE_HEALING_INTERVAL, { leading: false, trailing: true })
-	, [doPeriodicFullSceneHealing])
-
-	const flushPendingWebSocketSync = useCallback(() => {
-		if (!fileId || !excalidrawAPI || !socket || collabStatus !== 'online' || isReadOnly || !isInRoom) {
-			return
-		}
-
-		throttledSyncViaWebSocket.flush()
-	}, [fileId, excalidrawAPI, socket, collabStatus, isReadOnly, isInRoom, throttledSyncViaWebSocket])
 
 	useEffect(() => {
 		if (isInRoom && fileId && socket && collabStatus === 'online' && !isReadOnly) {
@@ -379,13 +174,9 @@ export function useSync() {
 						selectedElementIds: excalidrawAPI.getAppState().selectedElementIds,
 					},
 				}
-				const json = JSON.stringify(data)
-				const encodedBuffer = new TextEncoder().encode(json)
-				socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer)
-				logSyncResult('cursor', { status: 'sync success' })
+				socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, new TextEncoder().encode(JSON.stringify(data)))
 			} catch (error) {
 				logger.error('[Sync] Error syncing cursor:', error)
-				logSyncResult('cursor', { status: 'sync error', error: error instanceof Error ? error.message : String(error) })
 			}
 		},
 		[fileId, excalidrawAPI, socket, collabStatus],
@@ -410,7 +201,6 @@ export function useSync() {
 				|| Math.abs(zoom.value - lastViewport.zoom) > 0.01
 			) {
 				try {
-					// Get current user ID for viewport tracking
 					const { getJWT, parseJwt } = useJWTStore.getState()
 					const jwt = await getJWT()
 					const jwtPayload = jwt ? parseJwt(jwt) : null
@@ -425,9 +215,7 @@ export function useSync() {
 							zoom: zoom.value,
 						},
 					}
-					const json = JSON.stringify(data)
-					const encodedBuffer = new TextEncoder().encode(json)
-					socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, encodedBuffer)
+					socket.emit(SyncMessageType.ServerVolatileBroadcast, `${fileId}`, new TextEncoder().encode(JSON.stringify(data)))
 
 					lastBroadcastedViewportRef.current = { scrollX, scrollY, zoom: zoom.value }
 				} catch (error) {
@@ -448,29 +236,12 @@ export function useSync() {
 
 	// --- Event Handlers ---
 	const onChange = useCallback(() => {
-		// Update cached state immediately on every change
-		if (excalidrawAPI) {
-			const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
-			const files = excalidrawAPI.getFiles()
-			cachedStateRef.current = { elements, files, appState: excalidrawAPI.getAppState() }
-			const sceneHash = computeElementVersionHash(elements)
-			if (sceneHash !== lastBroadcastedSceneHashRef.current) {
-				throttledFullSceneHealing()
-			}
-		}
-
-		throttledSyncToLocal()
-		throttledSyncToServerAPI()
+		getBoardSync()?.changed()
 		throttledSyncViaWebSocket()
-
-		// Sync viewport changes
 		if (excalidrawAPI) {
-			const appState = excalidrawAPI.getAppState()
-			throttledSyncViewport(appState)
+			throttledSyncViewport(excalidrawAPI.getAppState())
 		}
-
-		logger.debug('[Sync] Changes detected, triggered sync operations')
-	}, [throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledFullSceneHealing, throttledSyncViewport, excalidrawAPI])
+	}, [throttledSyncViaWebSocket, throttledSyncViewport, excalidrawAPI])
 
 	const onPointerUpdate = useCallback(
 		(payload: {
@@ -485,123 +256,39 @@ export function useSync() {
 		[throttledSyncCursors],
 	)
 
-	// Capture syncer state immediately to avoid closure issues
-	const isSyncerRef = useRef(savesToServer)
 	useEffect(() => {
-		isSyncerRef.current = savesToServer
-	}, [savesToServer])
-
-	// Cache the latest state for final sync - update on EVERY change
-	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[], files: BinaryFiles, appState: AppState } | null>(null)
-
-	// Saves the scene when leaving, unless this tab already saved it
-	const doFinalServerSync = useCallback((isUnloading = false) => {
-		// Use CACHED state instead of trying to get it now (might be cleared already)
-		const scene = cachedStateRef.current
-		const jwt = fileId ? useJWTStore.getState().tokens[fileId] : null
-		// Read live: after a disconnect the cached scene may miss what others saved meanwhile
-		if (!fileId || !scene?.elements.length || !jwt || !isSyncerRef.current || useWhiteboardConfigStore.getState().isReadOnly || useSyncStore.getState().pausedFileId === fileId || useCollaborationStore.getState().pendingServerMerge) {
-			return
+		const handlePageHide = () => {
+			throttledSyncViaWebSocket.flush()
 		}
-
-		const { elements, files } = scene
-		const sceneKey = computeSceneKey(elements, files)
-		if (sceneKey === useSyncStore.getState().savedSceneKey) {
-			return
-		}
-
-		const url = generateUrl(`apps/whiteboard/${fileId}`)
-		if (!isUnloading) {
-			const message: WorkerInboundMessage = { type: 'SYNC_TO_SERVER', fileId, url, jwt, elements, files, sceneKey }
-			useSyncStore.getState().worker?.postMessage(message)
-			return
-		}
-
-		saveSceneOnUnload(url, jwt, elements, files)
-			.then((saved) => {
-				if (saved) {
-					useSyncStore.setState({ savedSceneKey: sceneKey })
-				}
-			})
-			.catch((error) => logger.error('[Sync] Final sync failed:', error))
-	}, [fileId])
-
-	// Keeps the last scene of the board in IndexedDB and saves it, when the board closes or changes
-	const doFinalSync = useCallback(() => {
-		const scene = cachedStateRef.current
-		const syncWorker = useSyncStore.getState().worker
-		if (fileId && scene?.elements.length && syncWorker && !useWhiteboardConfigStore.getState().isReadOnly && useSyncStore.getState().pausedFileId !== fileId) {
-			const message: WorkerInboundMessage = {
-				type: 'SYNC_TO_LOCAL',
-				fileId,
-				elements: scene.elements,
-				files: scene.files,
-				appState: sanitizeAppStateForSync(scene.appState),
-				hasPendingLocalChanges: hasUnsavedChanges(scene.elements, scene.files),
-			}
-			syncWorker.postMessage(message)
-		}
-		doFinalServerSync()
-		cachedStateRef.current = null
-	}, [fileId, doFinalServerSync])
-
-	useEffect(() => {
-		initializeWorker()
-		return () => doFinalSync()
-	}, [initializeWorker, doFinalSync])
-
-	useEffect(() => {
-		const handleBeforeUnload = () => {
-			if (excalidrawAPI && !isReadOnly) {
-				flushPendingWebSocketSync()
-			}
-
-			if (excalidrawAPI && !isReadOnly && isSyncerRef.current) {
-				// Cancel any pending throttled trailing call FIRST
-				throttledSyncToLocal.cancel()
-				throttledSyncToServerAPI.cancel()
-				// Call the unthrottled versions directly
-				doSyncToLocal()
-				doFinalServerSync(true)
-			}
-		}
-
-		// Also handle visibility change as backup for mobile/tabs
 		const handleVisibilityChange = () => {
-			if (document.visibilityState !== 'hidden' || !excalidrawAPI || isReadOnly) {
-				return
-			}
-
-			flushPendingWebSocketSync()
-
-			if (isSyncerRef.current) {
-				throttledSyncToLocal.cancel()
-				throttledSyncToServerAPI.cancel()
-				doSyncToLocal()
-				doFinalServerSync()
+			if (document.visibilityState === 'hidden') {
+				throttledSyncViaWebSocket.flush()
+				getBoardSync()?.hidden()
+			} else {
+				void getBoardSync()?.fetch()
 			}
 		}
+		const handleOnline = () => {
+			void getBoardSync()?.fetch()
+			void getBoardSync()?.save()
+		}
 
-		window.addEventListener('beforeunload', handleBeforeUnload)
+		window.addEventListener('pagehide', handlePageHide)
+		window.addEventListener('beforeunload', handlePageHide)
+		window.addEventListener('online', handleOnline)
 		document.addEventListener('visibilitychange', handleVisibilityChange)
 
-		// Cleanup function for component unmount
 		return () => {
-			window.removeEventListener('beforeunload', handleBeforeUnload)
+			window.removeEventListener('pagehide', handlePageHide)
+			window.removeEventListener('beforeunload', handlePageHide)
+			window.removeEventListener('online', handleOnline)
 			document.removeEventListener('visibilitychange', handleVisibilityChange)
-
-			if (excalidrawAPI && !isReadOnly) {
-				flushPendingWebSocketSync()
-			}
-
-			// Cancel all throttled functions to prevent them from running after unmount
-			throttledSyncToLocal.cancel()
-			throttledSyncToServerAPI.cancel()
+			throttledSyncViaWebSocket.flush()
 			throttledSyncViaWebSocket.cancel()
-			throttledFullSceneHealing.cancel()
 			throttledSyncCursors.cancel()
+			throttledSyncViewport.cancel()
 		}
-	}, [doSyncToLocal, doSyncToServerAPI, doFinalServerSync, throttledSyncToLocal, throttledSyncToServerAPI, throttledSyncViaWebSocket, throttledFullSceneHealing, throttledSyncCursors, excalidrawAPI, isReadOnly, flushPendingWebSocketSync])
+	}, [throttledSyncViaWebSocket, throttledSyncCursors, throttledSyncViewport])
 
 	return { onChange, onPointerUpdate }
 }
