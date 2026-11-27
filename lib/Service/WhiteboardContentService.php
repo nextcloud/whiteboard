@@ -20,7 +20,17 @@ use Psr\Log\LoggerInterface;
 
 final class WhiteboardContentService {
 	private const CREATOR_PROOF_DOMAIN = 'whiteboard.creator.v1';
+	// Settings of the whole board that every tab shows the same; the last one saved wins
+	private const BOARD_SETTINGS = ['viewBackgroundColor', 'gridSize', 'gridStep'];
+	// Clients count revisions in JavaScript numbers, which are exact up to 2^53
+	private const MAX_REVISION = 2 ** 53 - 2;
+	// A new epoch starts above the revisions in the file only up to here, so later saves stay countable
+	private const MAX_START_REVISION = 2 ** 52;
+	// JavaScript's Number.MAX_SAFE_INTEGER
+	private const MAX_SAFE_INTEGER = 2 ** 53 - 1;
 	private const CREATOR_PROOF_PREFIX = 'v1:';
+	// As in Excalidraw's collaboration: a deleted element is kept this long after Nextcloud stored its deletion, so a tab that missed it cannot bring it back
+	private const DELETED_ELEMENT_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
 	private string $creatorSecret;
 
@@ -29,6 +39,304 @@ final class WhiteboardContentService {
 		ConfigService $configService,
 	) {
 		$this->creatorSecret = $configService->getJwtSecretKey();
+	}
+
+	/**
+	 * The board in the stored bytes; blank bytes are an empty board
+	 *
+	 * @return array<string,mixed>
+	 * @throws JsonException when the bytes are not a board
+	 */
+	public function decode(string $bytes): array {
+		// Some object stores create new files with a single space
+		if (trim($bytes, " \t\r\n") === '') {
+			return ['elements' => [], 'scrollToContent' => true];
+		}
+
+		$board = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
+		// A JSON list is no board either, though PHP decodes it to an array
+		if (!is_array($board) || ($board !== [] && array_is_list($board))) {
+			throw new JsonException('The board is not a JSON object');
+		}
+		return $board;
+	}
+
+	/**
+	 * @param array<string,mixed> $board
+	 * @throws JsonException
+	 */
+	public function encode(array $board): string {
+		return json_encode($board, JSON_THROW_ON_ERROR);
+	}
+
+	/**
+	 * Merges elements and files into the stored board by Excalidraw's order: an
+	 * element replaces the stored copy only with a higher version, or an equal
+	 * version and a lower nonce. Elements missing from the request stay as
+	 * they are; files are added under new ids only; board settings take the
+	 * sent value, unless the setting changed after revision `$since`, which the
+	 * sender did not know. Each changed element, file and setting gets the revision `$rev`;
+	 * stored revisions from `$rev` up were written elsewhere and are dropped.
+	 * A board that changes drops the elements whose deletion Nextcloud stored
+	 * more than a day ago and the images no element uses, unless this save
+	 * sent them. It notes the latest revision of the elements it drops, as no
+	 * delta from before it can tell they are gone.
+	 *
+	 * @param array<string,mixed> $stored decoded board
+	 * @param array<mixed> $elements
+	 * @param array<mixed> $files
+	 * @param array<mixed> $settings
+	 * @return array{board: array<string,mixed>, elements: list<string>, files: list<string>, settings: list<string>}
+	 */
+	public function merge(array $stored, array $elements, array $files, User $actor, int $fileId, int $rev, array $settings = [], int $since = PHP_INT_MAX): array {
+		$board = $this->normalizeStoredData($stored);
+		$byId = $this->indexElementsById($board['elements']);
+		$actorInfo = $this->buildActorInfo($actor, $this->getCurrentTimeInMilliseconds());
+		$changedElements = [];
+
+		// A request may carry several copies of an element; the one that wins counts
+		$incomingById = [];
+		foreach ($this->sanitizeElements($elements) as $incoming) {
+			$elementId = $this->getElementId($incoming);
+			if ($elementId !== null && (!isset($incomingById[$elementId]) || $this->wins($incoming, $incomingById[$elementId]))) {
+				$incomingById[$elementId] = $incoming;
+			}
+		}
+
+		foreach ($incomingById as $incoming) {
+			// Array keys turn numeric ids into integers
+			$elementId = (string)$this->getElementId($incoming);
+			$storedElement = $byId[$elementId] ?? null;
+			if ($storedElement !== null && !$this->wins($incoming, $storedElement)) {
+				continue;
+			}
+
+			$merged = $this->stripCreatorMetadata($incoming);
+			if ($storedElement !== null) {
+				$storedCreator = $this->getCreator($storedElement);
+				if ($storedCreator !== null) {
+					$merged = $this->setCreator($merged, $storedCreator, $this->getValidCreatorProof($fileId, $elementId, $storedElement, $storedCreator));
+				}
+			} else {
+				$incomingCreator = $this->getCreator($incoming);
+				$proof = $incomingCreator !== null ? $this->getValidCreatorProof($fileId, $elementId, $incoming, $incomingCreator) : null;
+				$merged = $proof !== null && $incomingCreator !== null
+					? $this->setCreator($merged, $incomingCreator, $proof)
+					: $this->setCreator($merged, $actorInfo, $this->createCreatorProof($fileId, $elementId, $actorInfo));
+			}
+			$byId[$elementId] = $merged;
+			$changedElements[$elementId] = true;
+		}
+
+		$changedFiles = [];
+		foreach ($this->sanitizeFiles($files) as $id => $file) {
+			if (!isset($board['files'][$id])) {
+				$board['files'][$id] = $file;
+				$changedFiles[(string)$id] = true;
+			}
+		}
+
+		$changedSettings = [];
+		$revisions = $this->getRevisions($stored, $rev - 1);
+		$settingRevisions = $revisions['settings'];
+		foreach ($this->sanitizeSettings($settings) as $key => $value) {
+			if (($settingRevisions[$key] ?? 0) > $since) {
+				continue;
+			}
+			if (!array_key_exists($key, $board['appState'] ?? []) || $board['appState'][$key] !== $value) {
+				$board['appState'][$key] = $value;
+				$changedSettings[] = $key;
+			}
+		}
+
+		if ($changedElements === [] && $changedFiles === [] && $changedSettings === []) {
+			return ['board' => $stored, 'elements' => [], 'files' => [], 'settings' => []];
+		}
+
+		// When Nextcloud stored each deletion, by its own clock; one it has no time for counts from now
+		$now = $this->getCurrentTimeInMilliseconds();
+		$deletedAt = [];
+		foreach ($byId as $id => $element) {
+			if (($element['isDeleted'] ?? false) === true) {
+				$deletedAt[(string)$id] = $revisions['deletedAt'][(string)$id] ?? $now;
+			}
+		}
+		$kept = array_filter($byId, static fn (string|int $id): bool => isset($changedElements[(string)$id])
+			|| ($deletedAt[(string)$id] ?? $now) > $now - self::DELETED_ELEMENT_TIMEOUT_MS, ARRAY_FILTER_USE_KEY);
+		foreach (array_keys(array_diff_key($byId, $kept)) as $id) {
+			$revisions['pruned'] = max($revisions['pruned'], $revisions['elements'][(string)$id] ?? 0);
+		}
+		$byId = $kept;
+		$used = $this->fileIdsOf([...array_values($byId), ...array_merge(...array_column($board['libraryItems'] ?? [], 'elements'))]);
+		$board['files'] = array_filter($board['files'], static fn (string|int $id): bool => isset($changedFiles[(string)$id]) || isset($used[(string)$id]), ARRAY_FILTER_USE_KEY);
+
+		// Stored elements keep their place, new ones follow
+		$board['elements'] = $this->orderElements(array_values($byId));
+		ksort($board['files']);
+		$revisions['elements'] = array_intersect_key($revisions['elements'], $byId);
+		$revisions['files'] = array_intersect_key($revisions['files'], $board['files']);
+		$revisions['deletedAt'] = array_intersect_key($deletedAt, $byId);
+		$board['revisions'] = $revisions;
+		foreach (array_keys($changedElements) as $id) {
+			$board['revisions']['elements'][$id] = $rev;
+		}
+		foreach (array_keys($changedFiles) as $id) {
+			$board['revisions']['files'][$id] = $rev;
+		}
+		foreach ($changedSettings as $key) {
+			$board['revisions']['settings'][$key] = $rev;
+		}
+
+		return ['board' => $board, 'elements' => array_map('strval', array_keys($changedElements)), 'files' => array_map('strval', array_keys($changedFiles)), 'settings' => $changedSettings];
+	}
+
+	/**
+	 * The elements, files and board settings changed after revision `$since`,
+	 * or null when the board dropped deleted elements that changed after it
+	 *
+	 * @param array<string,mixed> $board decoded board
+	 * @param int $rev the revision of the board; higher ones in it were written elsewhere
+	 * @return array{elements: list<array<string,mixed>>, files: array<string,mixed>, settings: array<string,mixed>}|null
+	 */
+	public function changesSince(array $board, int $since, int $rev): ?array {
+		$revisions = $this->getRevisions($board, $rev);
+		if ($since < $revisions['pruned']) {
+			return null;
+		}
+		$elements = [];
+		foreach ($board['elements'] ?? [] as $element) {
+			$elementId = is_array($element) ? $this->getElementId($element) : null;
+			if ($elementId !== null && ($revisions['elements'][$elementId] ?? 0) > $since) {
+				$elements[] = $element;
+			}
+		}
+		$files = [];
+		foreach (is_array($board['files'] ?? null) ? $board['files'] : [] as $id => $file) {
+			if (($revisions['files'][$id] ?? 0) > $since) {
+				$files[$id] = $file;
+			}
+		}
+		$settings = [];
+		foreach ($this->sanitizeSettings(is_array($board['appState'] ?? null) ? $board['appState'] : []) as $key => $value) {
+			if (($revisions['settings'][$key] ?? 0) > $since) {
+				$settings[$key] = $value;
+			}
+		}
+		return ['elements' => $elements, 'files' => $files, 'settings' => $settings];
+	}
+
+	/**
+	 * The board as clients read it: always with an element list, never with
+	 * revisions
+	 *
+	 * @param array<string,mixed> $board
+	 * @return array<string,mixed>
+	 */
+	public function forClient(array $board): array {
+		return $this->normalizeStoredData($board);
+	}
+
+	/**
+	 * @param array<string,mixed> $board
+	 */
+	public function latestRevision(array $board): int {
+		$revisions = $this->getRevisions($board);
+		$all = [...array_values($revisions['elements']), ...array_values($revisions['files']), ...array_values($revisions['settings'])];
+		return max([$revisions['pruned'], ...array_filter($all, static fn (int $rev): bool => $rev <= self::MAX_START_REVISION)]);
+	}
+
+	/**
+	 * @param array<string,mixed> $board
+	 * @return array{elements: array<string,int>, files: array<string,int>, settings: array<string,int>, deletedAt: array<string,int>, pruned: int}
+	 */
+	private function getRevisions(array $board, int $upTo = self::MAX_REVISION): array {
+		// A file written elsewhere may carry any number
+		$valid = static fn (mixed $value, int $max): bool => is_int($value) && $value >= 0 && $value <= $max;
+		$revisions = ['elements' => [], 'files' => [], 'settings' => [], 'deletedAt' => []];
+		foreach (['elements', 'files', 'settings', 'deletedAt'] as $kind) {
+			// Deletion times are clock times, not revisions
+			$max = $kind === 'deletedAt' ? self::MAX_REVISION : min($upTo, self::MAX_REVISION);
+			foreach (is_array($board['revisions'][$kind] ?? null) ? $board['revisions'][$kind] : [] as $id => $rev) {
+				if ($valid($rev, $max)) {
+					$revisions[$kind][(string)$id] = $rev;
+				}
+			}
+		}
+		// An epoch starts at or above the dropped deletions, so no client of it is behind them
+		$pruned = $board['revisions']['pruned'] ?? 0;
+		return $revisions + ['pruned' => $valid($pruned, min($upTo, self::MAX_START_REVISION)) ? $pruned : 0];
+	}
+
+	/**
+	 * The images that elements on the board show and the board lacks, so the
+	 * tabs that have them send them again
+	 *
+	 * @param array<string,mixed> $board decoded board
+	 * @return list<string>
+	 */
+	public function missingFiles(array $board): array {
+		$live = array_filter(is_array($board['elements'] ?? null) ? $board['elements'] : [], static fn (mixed $element): bool => is_array($element) && ($element['isDeleted'] ?? false) !== true);
+		$files = is_array($board['files'] ?? null) ? $board['files'] : [];
+		return array_map('strval', array_keys(array_diff_key($this->fileIdsOf($live), $files)));
+	}
+
+	/**
+	 * The ids of the images the elements show
+	 *
+	 * @param array<mixed> $elements
+	 * @return array<string,true>
+	 */
+	private function fileIdsOf(array $elements): array {
+		$ids = [];
+		foreach ($elements as $element) {
+			if (is_array($element) && is_string($element['fileId'] ?? null)) {
+				$ids[$element['fileId']] = true;
+			}
+		}
+		return $ids;
+	}
+
+	/**
+	 * Excalidraw's order: higher version, then lower nonce
+	 *
+	 * @param array<string,mixed> $incoming
+	 * @param array<string,mixed> $stored
+	 */
+	private function wins(array $incoming, array $stored): bool {
+		if ($incoming['version'] !== $stored['version']) {
+			return $incoming['version'] > $stored['version'];
+		}
+		return $incoming['versionNonce'] < $stored['versionNonce'];
+	}
+
+	/**
+	 * A safe integer, from an integer, an integral number or a string of
+	 * digits, or null
+	 */
+	private function safeInteger(mixed $value): ?int {
+		if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
+			$value = (int)$value;
+		} elseif (is_float($value) && floor($value) === $value && abs($value) <= self::MAX_SAFE_INTEGER) {
+			$value = (int)$value;
+		}
+		return is_int($value) && abs($value) <= self::MAX_SAFE_INTEGER ? $value : null;
+	}
+
+	/**
+	 * Orders elements by fractional index and id, as Excalidraw does, when
+	 * every element has an index; older boards keep their order
+	 *
+	 * @param list<array<string,mixed>> $elements
+	 * @return list<array<string,mixed>>
+	 */
+	private function orderElements(array $elements): array {
+		foreach ($elements as $element) {
+			if (!is_string($element['index'] ?? null)) {
+				return $elements;
+			}
+		}
+		usort($elements, static fn (array $a, array $b): int => strcmp($a['index'], $b['index']) ?: strcmp((string)$a['id'], (string)$b['id']));
+		return $elements;
 	}
 
 	/**
@@ -254,8 +562,6 @@ final class WhiteboardContentService {
 	 * @param array<string,mixed> $stored
 	 *
 	 * @return array<string,mixed>
-	 *
-	 * @throws JsonException
 	 */
 	private function normalizeStoredData(array $stored): array {
 		$stored = $this->unwrapData($stored);
@@ -284,8 +590,6 @@ final class WhiteboardContentService {
 
 		if (array_key_exists('appState', $stored) && is_array($stored['appState'])) {
 			$normalized['appState'] = $this->sanitizeAppState($stored['appState']);
-		} elseif (array_key_exists('appState', $stored) && $stored['appState'] === null) {
-			unset($normalized['appState']);
 		}
 
 		if (array_key_exists('scrollToContent', $stored)) {
@@ -573,11 +877,44 @@ final class WhiteboardContentService {
 
 		foreach ($data as $element) {
 			if (is_array($element)) {
+				$element = $this->withStringIds($element);
+				// As Excalidraw restores stamps, but always integers; clients read them the same way
+				$element['version'] = max($this->safeInteger($element['version'] ?? null) ?? 1, 1);
+				$element['versionNonce'] = $this->safeInteger($element['versionNonce'] ?? null) ?? 0;
 				$elements[] = $element;
 			}
 		}
 
 		return $elements;
+	}
+
+	/**
+	 * Excalidraw's ids are strings; a board written by another tool may number
+	 * its elements, and then also the references to them
+	 *
+	 * @param array<mixed> $element
+	 * @return array<mixed>
+	 */
+	private function withStringIds(array $element): array {
+		$string = static fn (mixed $id): mixed => is_int($id) ? (string)$id : $id;
+		foreach (['id', 'containerId', 'frameId'] as $key) {
+			if (array_key_exists($key, $element)) {
+				$element[$key] = $string($element[$key]);
+			}
+		}
+		foreach (['startBinding', 'endBinding'] as $key) {
+			if (is_array($element[$key] ?? null) && array_key_exists('elementId', $element[$key])) {
+				$element[$key]['elementId'] = $string($element[$key]['elementId']);
+			}
+		}
+		if (is_array($element['boundElements'] ?? null)) {
+			foreach ($element['boundElements'] as $index => $bound) {
+				if (is_array($bound) && array_key_exists('id', $bound)) {
+					$element['boundElements'][$index]['id'] = $string($bound['id']);
+				}
+			}
+		}
+		return $element;
 	}
 
 	/**
@@ -639,6 +976,26 @@ final class WhiteboardContentService {
 		}
 
 		return $appState;
+	}
+
+	/**
+	 * The board settings a client may change, with values the editor accepts
+	 *
+	 * @param array<mixed> $settings
+	 * @return array<string,mixed>
+	 */
+	private function sanitizeSettings(array $settings): array {
+		$sanitized = [];
+		foreach (self::BOARD_SETTINGS as $key) {
+			$value = $settings[$key] ?? null;
+			$valid = $key === 'viewBackgroundColor'
+				? is_string($value) && strlen($value) <= 100
+				: is_int($value) && $value > 0 && $value <= 1000;
+			if ($valid) {
+				$sanitized[$key] = $value;
+			}
+		}
+		return $sanitized;
 	}
 
 	/**
