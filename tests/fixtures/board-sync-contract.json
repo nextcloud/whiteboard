@@ -1,0 +1,51 @@
+{
+	"schemaVersion": 3,
+	"boardSettings": ["viewBackgroundColor", "gridSize", "gridStep"],
+	"save": {
+		"schemaVersion": 3,
+		"sync": { "epoch": "e1", "since": 4, "repair": false },
+		"changes": {
+			"elements": [{ "id": "a", "type": "rectangle", "version": 2, "versionNonce": 7, "isDeleted": false }],
+			"files": {},
+			"settings": { "viewBackgroundColor": "#ffec99" }
+		}
+	},
+	"answers": {
+		"replaced": { "status": 409, "code": "board_replaced" },
+		"unreadable": { "status": 409, "code": "board_unreadable" },
+		"behind": { "status": 409, "code": "board_behind" },
+		"busy": { "status": 503, "code": "busy" },
+		"upgrade": { "status": 400, "code": "client_upgrade_required" },
+		"forbidden": { "status": 403 },
+		"gone": { "status": 404 }
+	},
+	"wins": [
+		{ "copy": { "version": 2, "versionNonce": 9 }, "stored": { "version": 1, "versionNonce": 1 }, "wins": true },
+		{ "copy": { "version": 1, "versionNonce": 9 }, "stored": { "version": 2, "versionNonce": 1 }, "wins": false },
+		{ "copy": { "version": 3, "versionNonce": 1 }, "stored": { "version": 3, "versionNonce": 2 }, "wins": true },
+		{ "copy": { "version": 3, "versionNonce": 2 }, "stored": { "version": 3, "versionNonce": 1 }, "wins": false },
+		{ "copy": { "version": 3, "versionNonce": 2 }, "stored": { "version": 3, "versionNonce": 2 }, "wins": false },
+		{ "copy": { "version": 1 }, "stored": {}, "wins": false },
+		{ "copy": { "version": 2 }, "stored": {}, "wins": true },
+		{ "copy": { "version": "8" }, "stored": { "version": "7" }, "wins": true },
+		{ "copy": {}, "stored": { "version": 0, "versionNonce": 0 }, "wins": false },
+		{ "copy": { "version": 2.0, "versionNonce": 9 }, "stored": { "version": 1, "versionNonce": 1 }, "wins": true },
+		{ "copy": { "version": 2, "versionNonce": 5.0 }, "stored": { "version": 2.0, "versionNonce": 7 }, "wins": true }
+	],
+	"stamps": [
+		{ "element": { "version": 7, "versionNonce": 3 }, "stamps": { "version": 7, "versionNonce": 3 } },
+		{ "element": { "version": "7", "versionNonce": "-3" }, "stamps": { "version": 7, "versionNonce": -3 } },
+		{ "element": { "version": 2.0, "versionNonce": 5.0 }, "stamps": { "version": 2, "versionNonce": 5 } },
+		{ "element": {}, "stamps": { "version": 1, "versionNonce": 0 } },
+		{ "element": { "version": 0, "versionNonce": 0 }, "stamps": { "version": 1, "versionNonce": 0 } },
+		{ "element": { "version": -4, "versionNonce": null }, "stamps": { "version": 1, "versionNonce": 0 } },
+		{ "element": { "version": 9007199254740993, "versionNonce": 9007199254740993 }, "stamps": { "version": 1, "versionNonce": 0 } },
+		{ "element": { "version": "9007199254740991", "versionNonce": 9007199254740991 }, "stamps": { "version": 9007199254740991, "versionNonce": 9007199254740991 } },
+		{ "element": { "version": 2.5, "versionNonce": "x" }, "stamps": { "version": 1, "versionNonce": 0 } },
+		{ "element": { "version": "7.0", "versionNonce": true }, "stamps": { "version": 1, "versionNonce": 0 } }
+	],
+	"order": [
+		{ "elements": [{ "id": "b", "index": "a1" }, { "id": "a", "index": "a0" }, { "id": "c", "index": "a1" }], "ids": ["a", "b", "c"] },
+		{ "elements": [{ "id": "a", "index": "a0" }, { "id": "x" }, { "id": "c", "index": "a2" }, { "id": "b", "index": "a1" }], "ids": ["a", "x", "c", "b"] }
+	]
+}
