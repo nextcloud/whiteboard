@@ -15,6 +15,24 @@ import { useCollaborationStore } from './useCollaborationStore'
 
 const TOKEN_REFRESH_BUFFER = 90
 const REFRESH_RETRY_DELAY = 30_000
+// Every board request waits for the token, so a request that never ends must not hold them all
+const TOKEN_REQUEST_TIMEOUT = 30_000
+
+/**
+ * Asks Nextcloud for a token for a board; fails when the request does
+ * not end within TOKEN_REQUEST_TIMEOUT
+ *
+ * @param fileId
+ * @param publicSharingToken the share the board is open with
+ */
+export async function requestBoardToken(fileId: number | string, publicSharingToken?: string | null): Promise<string | null> {
+	const url = generateUrl(`apps/whiteboard/${fileId}/token`) + (publicSharingToken ? `?publicSharingToken=${encodeURIComponent(publicSharingToken)}` : '')
+	const controller = new AbortController()
+	const timeout = setTimeout(() => controller.abort(), TOKEN_REQUEST_TIMEOUT)
+	const response = await axios.get(url, { withCredentials: true, signal: controller.signal }).finally(() => clearTimeout(timeout))
+	const { token } = response.data as { token?: unknown }
+	return typeof token === 'string' ? token : null
+}
 
 function isTokenFormatValid(token: string): boolean {
 	const parts = token.split('.')
@@ -58,6 +76,7 @@ interface JWTStore {
 	setupAutoRefresh: (roomId: string, afterFailure?: boolean) => void
 	clearAutoRefresh: (roomId: string) => void
 	clearTokens: () => void
+	dropToken: (roomId: string) => void
 }
 
 export const useJWTStore = create<JWTStore>()(
@@ -283,17 +302,7 @@ export const useJWTStore = create<JWTStore>()(
 				try {
 					console.log(`[JWTStore] Refreshing JWT for room ${fileId}`)
 
-					const baseUrl = generateUrl(
-						`apps/whiteboard/${fileId}/token`,
-					)
-					const url = publicSharingToken
-						? `${baseUrl}?publicSharingToken=${encodeURIComponent(publicSharingToken)}`
-						: baseUrl
-
-					const response = await axios.get(url, {
-						withCredentials: true,
-					})
-					const { token } = response.data
+					const token = await requestBoardToken(fileId, publicSharingToken)
 
 					if (!token) {
 						console.error(
@@ -575,6 +584,16 @@ export const useJWTStore = create<JWTStore>()(
 
 					console.log(`[JWTStore] Cleared auto-refresh timer for room ${roomId}`)
 				}
+			},
+
+			dropToken: (roomId) => {
+				set((state) => {
+					const tokens = { ...state.tokens }
+					const tokenExpiries = { ...state.tokenExpiries }
+					delete tokens[roomId]
+					delete tokenExpiries[roomId]
+					return { tokens, tokenExpiries }
+				})
 			},
 
 			clearTokens: () => {
