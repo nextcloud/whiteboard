@@ -3,3 +3,79 @@
 namespace OCA\Viewer\Event {
 	class LoadViewer extends \OCP\EventDispatcher\Event {}
 }
+
+namespace OC {
+	class ServerNotAvailableException extends \Exception {}
+}
+
+namespace OC\Files {
+	class Filesystem {
+		/**
+		 * @param callable(string, \OCP\Files\Storage\IStorage, \OCP\Files\Mount\IMountPoint): \OCP\Files\Storage\IStorage $wrapper
+		 */
+		public static function addStorageWrapper(string $wrapperName, callable $wrapper, int $priority = 50): void {}
+	}
+}
+
+namespace OC\Files\Storage\Wrapper {
+	use OCP\Files\Cache\ICache;
+	use OCP\Files\Cache\IPropagator;
+	use OCP\Files\Cache\IScanner;
+	use OCP\Files\Cache\IUpdater;
+	use OCP\Files\Cache\IWatcher;
+	use OCP\Files\InvalidPathException;
+	use OCP\Files\Storage\IStorage;
+
+	class Wrapper implements IStorage {
+		public function __construct(array $parameters) {}
+		public function getWrapperStorage(): IStorage {}
+		public function getId() {}
+		public function mkdir(string $path) {}
+		public function rmdir(string $path) {}
+		public function opendir(string $path) {}
+		public function is_dir(string $path) {}
+		public function is_file(string $path) {}
+		public function stat(string $path) {}
+		public function filetype(string $path) {}
+		public function filesize(string $path) {}
+		public function isCreatable(string $path) {}
+		public function isReadable(string $path) {}
+		public function isUpdatable(string $path) {}
+		public function isDeletable(string $path) {}
+		public function isSharable(string $path) {}
+		public function getPermissions(string $path) {}
+		public function file_exists(string $path) {}
+		public function filemtime(string $path) {}
+		public function file_get_contents(string $path) {}
+		public function file_put_contents(string $path, mixed $data) {}
+		public function unlink(string $path) {}
+		public function rename(string $source, string $target) {}
+		public function copy(string $source, string $target) {}
+		public function fopen(string $path, string $mode) {}
+		public function getMimeType(string $path) {}
+		public function hash(string $type, string $path, bool $raw = false) {}
+		public function free_space(string $path) {}
+		public function touch(string $path, ?int $mtime = null) {}
+		public function getLocalFile(string $path) {}
+		public function hasUpdated(string $path, int $time) {}
+		public function getETag(string $path) {}
+		public function isLocal() {}
+		public function instanceOfStorage(string $class) {}
+		public function getDirectDownload(string $path) {}
+		public function getDirectDownloadById(string $fileId): array|false {}
+		public function verifyPath(string $path, string $fileName) {}
+		public function copyFromStorage(IStorage $sourceStorage, string $sourceInternalPath, string $targetInternalPath) {}
+		public function moveFromStorage(IStorage $sourceStorage, string $sourceInternalPath, string $targetInternalPath) {}
+		public function test() {}
+		public function getAvailability() {}
+		public function setAvailability(bool $isAvailable) {}
+		public function needsPartFile() {}
+		public function getOwner(string $path) {}
+		public function getCache(string $path = '', ?IStorage $storage = null) {}
+		public function getPropagator() {}
+		public function getScanner() {}
+		public function getUpdater() {}
+		public function getWatcher() {}
+		public function setOwner(?string $user): void {}
+	}
+}
