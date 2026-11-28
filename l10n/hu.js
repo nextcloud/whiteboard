@@ -45,6 +45,7 @@ OC.L10N.register(
     "Duration" : "Időtartam",
     "Stop recording" : "Felvétel leállítása",
     "Unknown user" : "Ismeretlen felhasználó",
+    "{count} users" : "{count} felhasználó",
     "File" : "Fájl",
     "Saving…" : "Mentés…",
     "Running" : "Futás",
