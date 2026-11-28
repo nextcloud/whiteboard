@@ -14,7 +14,9 @@ final class ConfigKeys {
 	public const MAX_FILE_SIZE = 'max_file_size';
 	public const COLLAB_BACKEND_URL = 'collabBackendUrl';
 	public const DISABLE_EXTERNAL_LIBRARIES = 'disable_external_libraries';
+	public const BUNDLED_LIBRARIES = 'bundled_libraries';
 
 	public const USER_RECORDING_AUTO_UPLOAD_ON_DISCONNECT = 'recording_auto_upload_on_disconnect';
 	public const USER_LEGACY_LIBRARIES_MIGRATED = 'legacy_libraries_migrated';
+	public const USER_ORG_LIBRARY_VISIBILITY = 'org_library_visibility';
 }

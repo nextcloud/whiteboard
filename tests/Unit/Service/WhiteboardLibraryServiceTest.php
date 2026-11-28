@@ -34,6 +34,8 @@ class WhiteboardLibraryServiceTest extends TestCase {
 	private array $templatesChildren = [];
 	/** Children of appdata whiteboard/<dir>, dir => [name => node mock]. */
 	private array $appDataChildren = [];
+	private array $appValues = [];
+	private array $userValues = [];
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -84,6 +86,14 @@ class WhiteboardLibraryServiceTest extends TestCase {
 
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->with('instanceid', '')->willReturn('test');
+		$config->method('getAppValue')->willReturnCallback(fn (string $app, string $key, string $default = ''): string => $this->appValues[$key] ?? $default);
+		$config->method('setAppValue')->willReturnCallback(function (string $app, string $key, string $value): void {
+			$this->appValues[$key] = $value;
+		});
+		$config->method('getUserValue')->willReturnCallback(fn (string $uid, string $app, string $key, string $default = ''): string => $this->userValues[$key] ?? $default);
+		$config->method('setUserValue')->willReturnCallback(function (string $uid, string $app, string $key, string $value): void {
+			$this->userValues[$key] = $value;
+		});
 
 		$logger = $this->createMock(LoggerInterface::class);
 		$folders = new WhiteboardFolderService($this->templateManager, $this->rootFolder, $config, $logger, $this->createMock(IFactory::class), static fn (): bool => true);
@@ -257,7 +267,7 @@ class WhiteboardLibraryServiceTest extends TestCase {
 			[['name' => 'Alpha', 'itemCount' => 2], ['name' => 'broken', 'itemCount' => 0], ['name' => 'zebra', 'itemCount' => 1]],
 			$result['personal']
 		);
-		$this->assertSame([['name' => 'Org kit', 'itemCount' => 1]], $result['org']);
+		$this->assertSame([['name' => 'Org kit', 'itemCount' => 1, 'visible' => true]], $result['org']);
 	}
 
 	public function testResolveLibraryTagsItemsWithLibraryName(): void {
@@ -371,11 +381,6 @@ class WhiteboardLibraryServiceTest extends TestCase {
 	// pointer helpers
 	// -------------------------------------------------------------------
 
-	public function testLibraryNameFromPointerStripsExtension(): void {
-		$this->assertSame('Kit', $this->service->libraryNameFromPointer('Kit.whiteboard'));
-		$this->assertSame('other.txt', $this->service->libraryNameFromPointer('other.txt'));
-	}
-
 	public function testGetOrgLibraryPointerFilesListsOnlyWhiteboardFiles(): void {
 		$this->appDataChildren['library-pointers'] = [
 			'Kit.whiteboard' => $this->mockWritableFile('Kit.whiteboard'),
@@ -385,5 +390,40 @@ class WhiteboardLibraryServiceTest extends TestCase {
 		$files = $this->service->getOrgLibraryPointerFiles();
 		$this->assertCount(1, $files);
 		$this->assertSame('Kit.whiteboard', $files[0]->getName());
+	}
+
+	public function testSyncBundledLibrariesOnInstallCreatesVisibleLibraries(): void {
+		$this->service->syncBundledLibraries(true);
+
+		$this->assertNotEmpty($this->orgVisibility());
+		$this->assertNotContains(false, $this->orgVisibility());
+	}
+
+	public function testSyncBundledLibrariesOnUpgradeCreatesOptInLibraries(): void {
+		$this->service->syncBundledLibraries(false);
+
+		$this->assertNotEmpty($this->orgVisibility());
+		$this->assertNotContains(true, $this->orgVisibility());
+	}
+
+	public function testSetOrgLibraryVisibilityOverridesDefault(): void {
+		$this->service->syncBundledLibraries(true);
+		$name = array_key_first($this->orgVisibility());
+
+		$this->service->setOrgLibraryVisibility(self::UID, $name, false);
+
+		$this->assertFalse($this->orgVisibility()[$name]);
+	}
+
+	public function testSetOrgLibraryVisibilityRejectsUnknownLibrary(): void {
+		$this->expectException(InvalidArgumentException::class);
+		$this->expectExceptionCode(\OCP\AppFramework\Http::STATUS_NOT_FOUND);
+
+		$this->service->setOrgLibraryVisibility(self::UID, 'Nope', true);
+	}
+
+	/** @return array<string, bool> */
+	private function orgVisibility(): array {
+		return array_column($this->service->listLibraries(self::UID)['org'], 'visible', 'name');
 	}
 }

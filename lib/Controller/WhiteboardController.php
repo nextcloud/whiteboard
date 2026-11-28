@@ -228,6 +228,25 @@ final class WhiteboardController extends ApiController {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	#[PublicPage]
+	public function setOrgLibraryVisibility(): DataResponse {
+		try {
+			$jwt = $this->getJwtFromRequest();
+			$userId = $this->jwtService->getUserIdFromJWT($jwt);
+			$name = $this->request->getParam('name');
+			$visible = $this->request->getParam('visible');
+			if (!is_string($name) || !is_bool($visible)) {
+				throw new InvalidArgumentException('Invalid library visibility', Http::STATUS_BAD_REQUEST);
+			}
+			$this->libraryService->setOrgLibraryVisibility($userId, $name, $visible);
+			return new DataResponse(['status' => 'success']);
+		} catch (Exception $e) {
+			return $this->exceptionService->handleException($e);
+		}
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	#[PublicPage]
 	public function publishCanvasTemplate(): DataResponse {
 		try {
 			$jwt = $this->getJwtFromRequest();

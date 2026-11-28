@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Whiteboard\Service;
 
+use Exception;
 use InvalidArgumentException;
 use JsonException;
 use OCA\Whiteboard\ConfigKeys;
@@ -51,6 +52,7 @@ final class WhiteboardLibraryService {
 	private const ORG_LIBRARY_DIR = 'libraries';
 	private const ORG_LIBRARY_POINTER_DIR = 'library-pointers';
 	private const SCOPE_ORG = WhiteboardFolderService::SCOPE_ORG;
+	private const BUNDLED_LIBRARY_DIR = __DIR__ . '/../../resources/libraries';
 
 	public function __construct(
 		private WhiteboardFolderService $folders,
@@ -120,7 +122,7 @@ final class WhiteboardLibraryService {
 	/**
 	 * The library catalog for the picker / save dialog.
 	 *
-	 * @return array{personal: array<int, array{name: string, itemCount: int}>, org: array<int, array{name: string, itemCount: int}>}
+	 * @return array{personal: array<int, array{name: string, itemCount: int}>, org: array<int, array{name: string, itemCount: int, visible: bool}>}
 	 *
 	 * @throws NotPermittedException
 	 * @throws NotFoundException
@@ -132,7 +134,7 @@ final class WhiteboardLibraryService {
 		}
 		return [
 			'personal' => $this->listLibrariesIn($this->getPersonalLibraryFolder($uid)),
-			'org' => $this->listLibrariesIn($this->getOrgLibraryFolder(false)),
+			'org' => $this->withVisibility($uid, $this->listLibrariesIn($this->getOrgLibraryFolder(false))),
 		];
 	}
 
@@ -188,6 +190,46 @@ final class WhiteboardLibraryService {
 		return $tagged;
 	}
 
+	public function setOrgLibraryVisibility(string $uid, string $name, bool $visible): void {
+		if (str_starts_with($uid, 'shared_')) {
+			return;
+		}
+
+		$name = $this->folders->normalizeName($name);
+		if (!$this->orgLibraryExists($name)) {
+			throw new InvalidArgumentException('Organization library not found', Http::STATUS_NOT_FOUND);
+		}
+
+		$visibility = $this->getOrgLibraryVisibility($uid);
+		$visibility[$name] = $visible;
+		$this->config->setUserValue($uid, 'whiteboard', ConfigKeys::USER_ORG_LIBRARY_VISIBILITY, json_encode($visibility, JSON_THROW_ON_ERROR));
+	}
+
+	public function syncBundledLibraries(bool $isInstall): void {
+		$bundled = $this->getBundledLibraries();
+
+		foreach (glob(self::BUNDLED_LIBRARY_DIR . '/*' . self::LIBRARY_EXTENSION) ?: [] as $path) {
+			$name = basename($path, self::LIBRARY_EXTENSION);
+			$content = (string)file_get_contents($path);
+			$hash = sha1($content);
+			if (!$this->shouldSyncBundledLibrary($name, $hash, $bundled)) {
+				continue;
+			}
+			try {
+				$this->saveLibrary('', self::SCOPE_ORG, $name, $this->parseLibraryFile($content));
+				$bundled[$name] = ['visible' => $bundled[$name]['visible'] ?? $isInstall, 'hash' => $hash];
+			} catch (Exception $e) {
+				$this->logger->warning('Could not sync bundled whiteboard library', [
+					'app' => 'whiteboard',
+					'library' => $name,
+					'exception' => $e,
+				]);
+			}
+		}
+
+		$this->setBundledLibraries($bundled);
+	}
+
 	/**
 	 * Create or replace a saved library from library items.
 	 *
@@ -238,6 +280,10 @@ final class WhiteboardLibraryService {
 		$this->writeLibraryFile($folder, $name . self::LIBRARY_EXTENSION, $sanitized);
 		$this->writeLibraryPointer($pointerFolder, $scope, $name);
 
+		if ($scope === self::SCOPE_ORG && $uid !== '') {
+			$this->markBundledLibraryAsAdminOwned($name);
+		}
+
 		return ['name' => $name, 'scope' => $scope];
 	}
 
@@ -285,12 +331,6 @@ final class WhiteboardLibraryService {
 			}
 		}
 		return $files;
-	}
-
-	public function libraryNameFromPointer(string $fileName): string {
-		return $this->isWhiteboardFile($fileName)
-			? substr($fileName, 0, -strlen(self::WHITEBOARD_EXTENSION))
-			: $fileName;
 	}
 
 	/**
@@ -518,7 +558,10 @@ final class WhiteboardLibraryService {
 			if (!is_array($item) || !isset($item['elements']) || !is_array($item['elements']) || count($item['elements']) === 0) {
 				continue;
 			}
-			unset($item['filename'], $item['basename'], $item['name'], $item['writable'], $item['libraryName']);
+			unset($item['filename'], $item['basename'], $item['writable'], $item['libraryName']);
+			if (isset($item['name']) && !is_string($item['name'])) {
+				unset($item['name']);
+			}
 			$item['elements'] = array_values($item['elements']);
 			$sanitized[] = $item;
 		}
@@ -543,6 +586,79 @@ final class WhiteboardLibraryService {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * @param array<string, array{visible: bool, hash?: string, admin?: bool}> $bundled
+	 */
+	private function shouldSyncBundledLibrary(string $name, string $hash, array $bundled): bool {
+		$exists = $this->orgLibraryExists($name);
+		if (!isset($bundled[$name])) {
+			return !$exists;
+		}
+
+		$isDeletedByAdmin = !$exists;
+		$isOwnedByAdmin = $bundled[$name]['admin'] ?? false;
+		if ($isDeletedByAdmin || $isOwnedByAdmin) {
+			return false;
+		}
+
+		return ($bundled[$name]['hash'] ?? null) !== $hash;
+	}
+
+	private function orgLibraryExists(string $name): bool {
+		return $this->getOrgLibraryFolder(false)?->nodeExists($name . self::LIBRARY_EXTENSION) ?? false;
+	}
+
+	/**
+	 * @param array<int, array{name: string, itemCount: int}> $libraries
+	 *
+	 * @return array<int, array{name: string, itemCount: int, visible: bool}>
+	 */
+	private function withVisibility(string $uid, array $libraries): array {
+		$bundled = $this->getBundledLibraries();
+		$visibility = $this->getOrgLibraryVisibility($uid);
+		return array_map(static fn (array $library): array => $library + [
+			'visible' => (bool)($visibility[$library['name']] ?? $bundled[$library['name']]['visible'] ?? true),
+		], $libraries);
+	}
+
+	private function markBundledLibraryAsAdminOwned(string $name): void {
+		$bundled = $this->getBundledLibraries();
+		if (!isset($bundled[$name])) {
+			return;
+		}
+		$bundled[$name] = ['visible' => true, 'admin' => true];
+		$this->setBundledLibraries($bundled);
+	}
+
+	/**
+	 * @return array<string, array{visible: bool, hash?: string, admin?: bool}>
+	 */
+	private function getBundledLibraries(): array {
+		return $this->decodeJsonMap($this->config->getAppValue('whiteboard', ConfigKeys::BUNDLED_LIBRARIES, '{}'));
+	}
+
+	/**
+	 * @param array<string, array{visible: bool, hash?: string, admin?: bool}> $bundled
+	 */
+	private function setBundledLibraries(array $bundled): void {
+		$this->config->setAppValue('whiteboard', ConfigKeys::BUNDLED_LIBRARIES, json_encode($bundled, JSON_THROW_ON_ERROR));
+	}
+
+	/**
+	 * @return array<string, bool>
+	 */
+	private function getOrgLibraryVisibility(string $uid): array {
+		return $this->decodeJsonMap($this->config->getUserValue($uid, 'whiteboard', ConfigKeys::USER_ORG_LIBRARY_VISIBILITY, '{}'));
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function decodeJsonMap(string $json): array {
+		$map = json_decode($json, true);
+		return is_array($map) ? $map : [];
 	}
 
 	private function isLibraryFile(string $fileName): bool {

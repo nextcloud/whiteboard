@@ -11,7 +11,6 @@ namespace OCA\Whiteboard\Template;
 
 use Exception;
 use OCA\Whiteboard\Service\CanvasTemplateService;
-use OCA\Whiteboard\Service\WhiteboardLibraryService;
 use OCP\Files\File;
 use OCP\Files\NotFoundException;
 use OCP\Files\Template\ICustomTemplateProvider;
@@ -19,24 +18,19 @@ use OCP\Files\Template\Template;
 use Psr\Log\LoggerInterface;
 
 /**
- * Surfaces organization entries in the "New whiteboard" picker:
- *
- * - Libraries: pointer board files holding a libraryRef; creating from one
- *   makes a board that resolves the library's live items on open.
- * - Canvas templates: full board files whose content Nextcloud copies verbatim.
+ * Surfaces organization canvas templates in the "New whiteboard" picker:
+ * full board files whose content Nextcloud copies verbatim.
  *
  * @psalm-suppress UndefinedClass
  */
 final class GlobalTemplateProvider implements ICustomTemplateProvider {
 	private const WHITEBOARD_MIMETYPE = 'application/vnd.excalidraw+json';
-	private const LIBRARY_ID_PREFIX = 'whiteboard-org-library:';
 	private const CANVAS_TEMPLATE_ID_PREFIX = 'whiteboard-org-canvas-template:';
 
 	/**
 	 * @psalm-suppress PossiblyUnusedMethod
 	 */
 	public function __construct(
-		private WhiteboardLibraryService $libraryService,
 		private CanvasTemplateService $canvasTemplateService,
 		private LoggerInterface $logger,
 	) {
@@ -52,15 +46,7 @@ final class GlobalTemplateProvider implements ICustomTemplateProvider {
 		}
 
 		try {
-			$libraries = array_map(
-				fn (File $file): Template => new Template(
-					self::class,
-					self::LIBRARY_ID_PREFIX . $this->libraryService->libraryNameFromPointer($file->getName()),
-					$file
-				),
-				$this->libraryService->getOrgLibraryPointerFiles()
-			);
-			$templates = array_map(
+			return array_map(
 				fn (File $file): Template => new Template(
 					self::class,
 					self::CANVAS_TEMPLATE_ID_PREFIX . $this->canvasTemplateService->canvasTemplateNameFromFile($file->getName()),
@@ -68,7 +54,6 @@ final class GlobalTemplateProvider implements ICustomTemplateProvider {
 				),
 				$this->canvasTemplateService->getOrgCanvasTemplateFiles()
 			);
-			return array_merge($templates, $libraries);
 		} catch (Exception $e) {
 			$this->logger->warning('Failed to list organization whiteboard canvas templates', ['exception' => $e]);
 			return [];
@@ -80,26 +65,17 @@ final class GlobalTemplateProvider implements ICustomTemplateProvider {
 	 */
 	#[\Override]
 	public function getCustomTemplate(string $template): File {
-		if (str_starts_with($template, self::CANVAS_TEMPLATE_ID_PREFIX)) {
-			$name = substr($template, strlen(self::CANVAS_TEMPLATE_ID_PREFIX));
-			foreach ($this->canvasTemplateService->getOrgCanvasTemplateFiles() as $file) {
-				if ($this->canvasTemplateService->canvasTemplateNameFromFile($file->getName()) === $name) {
-					return $file;
-				}
-			}
+		if (!str_starts_with($template, self::CANVAS_TEMPLATE_ID_PREFIX)) {
 			throw new NotFoundException('Organization canvas template not found');
 		}
 
-		$name = str_starts_with($template, self::LIBRARY_ID_PREFIX)
-			? substr($template, strlen(self::LIBRARY_ID_PREFIX))
-			: $template;
-
-		foreach ($this->libraryService->getOrgLibraryPointerFiles() as $file) {
-			if ($this->libraryService->libraryNameFromPointer($file->getName()) === $name) {
+		$name = substr($template, strlen(self::CANVAS_TEMPLATE_ID_PREFIX));
+		foreach ($this->canvasTemplateService->getOrgCanvasTemplateFiles() as $file) {
+			if ($this->canvasTemplateService->canvasTemplateNameFromFile($file->getName()) === $name) {
 				return $file;
 			}
 		}
 
-		throw new NotFoundException('Organization library not found');
+		throw new NotFoundException('Organization canvas template not found');
 	}
 }
